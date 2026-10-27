@@ -115,13 +115,27 @@ Set-Content -Encoding ascii -Path "$InstallDir\start-hidden.vbs" -Value @(
   "shell.Run `"cmd /c `"`"$InstallDir\run.cmd`"`"`", 0, False"
 )
 
-Write-Host 'Настраиваю автозапуск при входе в Windows...'
 $action = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "`"$InstallDir\start-hidden.vbs`""
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
-$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
-Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings `
-  -Description 'Сервер голосовых звонков «Созвон»' -Force | Out-Null
-Start-ScheduledTask -TaskName $taskName
+# Задание пересоздаём, только если его нет или оно запускает что-то другое:
+# созданное из PowerShell администратора обычный PowerShell перезаписать не может
+$existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+if (-not $existing -or $existing.Actions[0].Arguments -ne $action.Arguments) {
+  Write-Host 'Настраиваю автозапуск при входе в Windows...'
+  $trigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
+  $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+  try {
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings `
+      -Description 'Сервер голосовых звонков «Созвон»' -Force -ErrorAction Stop | Out-Null
+  } catch {
+    Write-Warning 'Не удалось настроить автозапуск: нет прав. Запустите PowerShell от имени администратора и повторите команду.'
+  }
+} else {
+  Write-Host 'Автозапуск уже настроен.'
+}
+
+# Запускаем сервер; если задание недоступно, запускаем напрямую
+try { Start-ScheduledTask -TaskName $taskName -ErrorAction Stop }
+catch { Start-Process wscript.exe -ArgumentList "`"$InstallDir\start-hidden.vbs`"" }
 
 $ok = $false
 foreach ($i in 1..20) {
