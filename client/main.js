@@ -1,5 +1,6 @@
 const { app, BrowserWindow, globalShortcut, ipcMain, session, shell } = require('electron');
 const path = require('node:path');
+const { listenForOAuth } = require('./oauth-loopback');
 
 // --profile=имя запускает отдельный экземпляр со своим входом (удобно, чтобы проверить звонок на одном ПК)
 const profileArg = process.argv.find((a) => a.startsWith('--profile='));
@@ -48,6 +49,23 @@ app.whenReady().then(() => {
   // Глобальные клавиши работают, даже когда в фокусе игра
   globalShortcut.register('CommandOrControl+Shift+M', () => win?.webContents.send('hotkey', 'toggle-mute'));
   globalShortcut.register('CommandOrControl+Shift+D', () => win?.webContents.send('hotkey', 'toggle-deafen'));
+});
+
+// Вход через Google / Яндекс / VK: открываем страницу входа в обычном браузере и ждём ответ на localhost
+let pendingOAuth = null;
+ipcMain.handle('oauth', async (_event, authUrl) => {
+  pendingOAuth?.close();
+  const pending = (pendingOAuth = await listenForOAuth(authUrl));
+  try {
+    await shell.openExternal(authUrl);
+    return await pending.result;
+  } finally {
+    if (pendingOAuth === pending) pendingOAuth = null;
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
+  }
 });
 
 ipcMain.on('attention', () => {

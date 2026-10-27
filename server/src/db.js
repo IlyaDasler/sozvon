@@ -32,6 +32,17 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS messages_pair ON messages (from_id, to_id, id);
+
+  -- Аккаунты Google / Яндекс / VK, через которые можно войти в профиль
+  CREATE TABLE IF NOT EXISTS identities (
+    provider TEXT NOT NULL,
+    provider_user_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (provider, provider_user_id),
+    UNIQUE (user_id, provider)
+  );
 `);
 
 export const toPublicUser = (row) =>
@@ -61,6 +72,13 @@ const q = {
   hasContact: db.prepare('SELECT 1 FROM contacts WHERE user_id = ? AND contact_id = ?'),
   addContact: db.prepare('INSERT OR IGNORE INTO contacts (user_id, contact_id, created_at) VALUES (?, ?, ?)'),
   removeContact: db.prepare('DELETE FROM contacts WHERE user_id = ? AND contact_id = ?'),
+
+  findIdentity: db.prepare('SELECT * FROM identities WHERE provider = ? AND provider_user_id = ?'),
+  identitiesOf: db.prepare('SELECT provider, email FROM identities WHERE user_id = ? ORDER BY provider'),
+  addIdentity: db.prepare(
+    'INSERT INTO identities (provider, provider_user_id, user_id, email, created_at) VALUES (?, ?, ?, ?, ?)'
+  ),
+  removeIdentity: db.prepare('DELETE FROM identities WHERE user_id = ? AND provider = ?'),
 
   insertMessage: db.prepare('INSERT INTO messages (from_id, to_id, text, created_at) VALUES (?, ?, ?, ?)'),
   messageById: db.prepare('SELECT * FROM messages WHERE id = ?'),
@@ -96,6 +114,21 @@ export const contacts = {
     q.removeContact.run(b, a);
   },
 };
+
+export const identities = {
+  find: (provider, providerUserId) => q.findIdentity.get(provider, providerUserId),
+  of: (userId) => q.identitiesOf.all(userId),
+  add: (provider, providerUserId, userId, email) =>
+    q.addIdentity.run(provider, providerUserId, userId, email, Date.now()),
+  remove: (userId, provider) => q.removeIdentity.run(userId, provider),
+};
+
+// Данные о себе: публичный профиль плюс способы входа
+export const toSelf = (row) => ({
+  ...toPublicUser(row),
+  hasPassword: Boolean(row.password_hash),
+  identities: identities.of(row.id).map((i) => ({ provider: i.provider, email: i.email })),
+});
 
 export const messages = {
   add(fromId, toId, text) {

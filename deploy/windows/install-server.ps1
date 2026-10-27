@@ -71,11 +71,26 @@ Set-Content -Encoding ascii -Path $configFile -Value @(
   'set "WEB_DIR=%~dp0app\web"'
 )
 
+# Ключи входа через Google / Яндекс / VK. Файл создаётся один раз и дальше не перезаписывается
+$oauthFile = Join-Path $InstallDir 'oauth.cmd'
+if (-not (Test-Path $oauthFile)) {
+  Set-Content -Encoding ascii -Path $oauthFile -Value @(
+    '@echo off'
+    'rem Keys for sign-in with Google / Yandex / VK (see README). Fill in, then rerun install-server.ps1'
+    'set "GOOGLE_CLIENT_ID="'
+    'set "GOOGLE_CLIENT_SECRET="'
+    'set "YANDEX_CLIENT_ID="'
+    'set "YANDEX_CLIENT_SECRET="'
+    'set "VK_CLIENT_ID="'
+  )
+}
+
 # Перезапуск при падении: сервер поднимется снова через 5 секунд
 Set-Content -Encoding ascii -Path "$InstallDir\run.cmd" -Value @(
   '@echo off'
   'cd /d "%~dp0app"'
   'call "%~dp0config.cmd"'
+  'call "%~dp0oauth.cmd"'
   ':loop'
   "`"$node`" src\index.js >> `"%~dp0logs\server.log`" 2>&1"
   'timeout /t 5 /nobreak >nul'
@@ -112,3 +127,4 @@ Write-Host "  Код приглашения:    $InviteCode"
 Write-Host "  Папка сервера:      $InstallDir"
 Write-Host ''
 Write-Host "Проброс портов в роутере на ${localIp}: $Port/TCP, 3478/UDP, 49160-49200/UDP"
+Write-Host "Ключи для входа через Google / Яндекс / VK: $oauthFile (после правки запустите этот скрипт ещё раз)"
