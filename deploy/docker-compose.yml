@@ -13,6 +13,12 @@ services:
       STUN_URLS: "stun:${PUBLIC_IP}:3478"
       TURN_URLS: "turn:${PUBLIC_IP}:3478?transport=udp,turn:${PUBLIC_IP}:3478?transport=tcp"
       TURN_SECRET: ${TURN_SECRET}
+      INVITE_CODE: ${INVITE_CODE:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
+      VK_CLIENT_ID: ${VK_CLIENT_ID:-}
     volumes:
       - sozvon-data:/data
 

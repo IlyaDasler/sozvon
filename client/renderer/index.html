@@ -42,6 +42,10 @@
 
       <p class="error" id="auth-error"></p>
       <button class="btn primary wide" id="auth-submit">Войти</button>
+      <div id="oauth-block" class="oauth hidden">
+        <div class="divider"><span>или</span></div>
+        <div id="oauth-buttons" class="oauth-buttons"></div>
+      </div>
       <p class="muted center small">
         <span id="auth-switch-text">Нет аккаунта?</span>
         <a href="#" id="auth-toggle">Зарегистрироваться</a>
@@ -181,9 +185,14 @@
       </label>
       <label class="check"><input type="checkbox" id="set-ns"> Шумоподавление и эхоподавление</label>
 
-      <h4>Сменить пароль</h4>
+      <div id="identities-section" class="hidden">
+        <h4>Вход через сервисы</h4>
+        <div id="identity-list" class="identity-list"></div>
+      </div>
+
+      <h4 id="password-title">Сменить пароль</h4>
       <div class="row">
-        <label class="field grow"><span>Текущий</span><input type="password" id="set-cur-pass" autocomplete="current-password"></label>
+        <label class="field grow" id="cur-pass-field"><span>Текущий</span><input type="password" id="set-cur-pass" autocomplete="current-password"></label>
         <label class="field grow"><span>Новый</span><input type="password" id="set-new-pass" autocomplete="new-password"></label>
       </div>
 
