@@ -92,8 +92,10 @@ function fillAvatar(el, user, online) {
   el.style.backgroundImage = hasImage ? `url("${Api.base}${user.avatarUrl}")` : '';
   el.textContent = hasImage ? '' : (user.displayName || user.username || '?').trim().charAt(0).toUpperCase();
   if (online !== undefined) {
+    const status = typeof online === 'string' ? online : online ? 'online' : 'offline';
     const dot = document.createElement('span');
-    dot.className = `status${online ? ' online' : ''}`;
+    dot.className = `status s-${status}${status === 'online' ? ' online' : ''}`;
+    dot.title = STATUS[status]?.label || '';
     el.append(dot);
   }
 }
@@ -105,21 +107,6 @@ function toast(text, ms = 4000) {
   el.classList.remove('hidden');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.add('hidden'), ms);
-}
-
-function notify(title, body) {
-  if (document.hasFocus()) return;
-  window.desktop?.attention();
-  if (!('Notification' in window)) return;
-  const show = () => {
-    const n = new Notification(title, { body });
-    n.onclick = () => {
-      window.desktop?.focus();
-      window.focus();
-    };
-  };
-  if (Notification.permission === 'granted') show();
-  else if (Notification.permission === 'default') Notification.requestPermission().then((p) => p === 'granted' && show());
 }
 
 function showScreen(name) {
@@ -470,6 +457,7 @@ function enterMain(user) {
       if (ok) {
         refreshContacts();
         refreshRooms();
+        sendAutoStatus();
       } else if (state.call) {
         finishCall('Связь с сервером прервалась, звонок завершён');
       }
@@ -523,9 +511,12 @@ function renderMe() {
   const me = state.me;
   const av = $('me-avatar');
   av.replaceChildren();
-  fillAvatar(av, me);
+  fillAvatar(av, me, myStatus());
+  $('me-status-btn').title = `Статус: ${STATUS[myStatus()].label}. Нажмите, чтобы сменить`;
+  renderNotifBadge();
   $('me-name').textContent = me.displayName;
-  $('me-username').textContent = `@${me.username}`;
+  // Под именем — логин, а если статус не «Активен» — сам статус, чтобы было видно, что он включён
+  $('me-username').textContent = myStatus() === 'online' ? `@${me.username}` : STATUS[myStatus()].label;
   $('empty-username').textContent = me.username;
 }
 
@@ -533,7 +524,7 @@ function renderContacts() {
   const list = $('contact-list');
   list.replaceChildren();
   const sorted = [...state.contacts.values()].sort(
-    (a, b) => b.online - a.online || a.displayName.localeCompare(b.displayName, 'ru')
+    (a, b) => isAvailable(b) - isAvailable(a) || a.displayName.localeCompare(b.displayName, 'ru')
   );
   $('contact-count').textContent = sorted.length;
 
@@ -546,8 +537,8 @@ function renderContacts() {
 
   for (const c of sorted) {
     const li = document.createElement('li');
-    li.className = `contact${c.id === state.selectedId ? ' active' : ''}${c.online ? '' : ' offline'}`;
-    li.append(makeAvatar(c, c.online));
+    li.className = `contact${c.id === state.selectedId ? ' active' : ''}${isAvailable(c) ? '' : ' offline'}`;
+    li.append(makeAvatar(c, presenceOf(c)));
 
     const name = document.createElement('div');
     name.className = 'name';
@@ -560,7 +551,7 @@ function renderContacts() {
       sub.textContent = 'В звонке';
       sub.classList.add('in-call-tag');
     } else {
-      sub.textContent = c.online ? 'В сети' : 'Не в сети';
+      sub.textContent = STATUS[presenceOf(c)].sub;
     }
     name.append(title, sub);
     li.append(name);
@@ -646,13 +637,13 @@ function renderChatHeader() {
   if (!c) return;
   const av = $('peer-avatar');
   av.replaceChildren();
-  fillAvatar(av, c, c.online);
+  fillAvatar(av, c, presenceOf(c));
   $('peer-name').textContent = c.displayName;
-  $('peer-status').textContent = `@${c.username} · ${c.online ? 'в сети' : 'не в сети'}`;
+  $('peer-status').textContent = `@${c.username} · ${STATUS[presenceOf(c)].sub.toLowerCase()}`;
   const busy = Boolean(state.call || state.incoming);
   $('call-btn').classList.toggle('hidden', state.call?.peerId === c.id);
-  $('call-btn').disabled = !c.online || busy;
-  $('call-btn').title = !c.online ? 'Друг не в сети' : busy ? 'Вы уже в звонке' : 'Звонок — камеру и экран можно включить во время разговора';
+  $('call-btn').disabled = !isAvailable(c) || busy;
+  $('call-btn').title = !isAvailable(c) ? 'Друг не в сети' : busy ? 'Вы уже в звонке' : 'Звонок — камеру и экран можно включить во время разговора';
 }
 
 // ---------- Сообщения ----------
@@ -734,7 +725,7 @@ function addMessage(m) {
   if (!visible) {
     if (peerId !== state.selectedId) state.unread.set(peerId, (state.unread.get(peerId) || 0) + 1);
     renderContacts();
-    notify(state.contacts.get(peerId)?.displayName || 'Новое сообщение', m.text);
+    notify(state.contacts.get(peerId)?.displayName || 'Новое сообщение', m.text, { kind: 'message', open: { contact: peerId } });
   }
 }
 
@@ -771,11 +762,13 @@ const UNAVAILABLE_REASONS = {
 function handleEvent(msg) {
   switch (msg.type) {
     case 'presence':
-      return updateUser(msg.userId, { online: msg.online });
+      return updateUser(msg.userId, { online: msg.online, status: msg.status || (msg.online ? 'online' : 'offline') });
+    case 'me:status':
+      return onMyStatus(msg.status);
     case 'contact:added':
       state.contacts.set(msg.user.id, msg.user);
       renderContacts();
-      toast(`${msg.user.displayName} добавил(а) вас в друзья`);
+      notify('Новый друг', `${msg.user.displayName} добавил(а) вас в друзья`, { kind: 'friend', open: { contact: msg.user.id } });
       return;
     case 'contact:removed':
       state.contacts.delete(msg.userId);
@@ -830,7 +823,7 @@ function newCall(peer, callId, phase) {
 async function startCall() {
   const peer = state.contacts.get(state.selectedId);
   if (!peer || state.call || state.incoming) return;
-  if (!peer.online) return toast('Друг не в сети');
+  if (!isAvailable(peer)) return toast('Друг не в сети');
   if (state.room) {
     if (!confirm('Вы в голосовой комнате. Выйти из неё и позвонить?')) return;
     leaveRoomVoice();
@@ -857,9 +850,9 @@ function onIncoming({ callId, from }) {
   $('incoming-name').textContent = peer.displayName;
   $('incoming').classList.remove('hidden');
   renderChatHeader();
+  if (doNotDisturb()) return;
   tone.loop('ring');
   window.desktop?.focus();
-  notify(`${peer.displayName} звонит`, 'Входящий звонок');
 }
 
 function hideIncoming() {
@@ -896,9 +889,13 @@ function declineIncoming() {
 
 function onCallEnded({ callId, reason }) {
   if (state.incoming?.callId === callId) {
-    const name = state.incoming.from.displayName;
+    const { from } = state.incoming;
+    const name = from.displayName;
     hideIncoming();
-    if (reason !== 'answered-elsewhere') toast(`Пропущенный звонок от ${name}`);
+    if (reason !== 'answered-elsewhere') {
+      toast(`Пропущенный звонок от ${name}`);
+      notify('Пропущенный звонок', name, { kind: 'missed', open: { contact: state.contacts.has(from.id) ? from.id : null } });
+    }
     return;
   }
   if (state.call?.callId === callId) finishCall(END_REASONS[reason] || 'Звонок завершён');
@@ -1214,6 +1211,7 @@ function renderPasswordSection() {
 }
 
 async function openSettings() {
+  renderNotifySettings();
   $('email-link').classList.add('hidden');
   $('link-email').value = '';
   renderIdentities();

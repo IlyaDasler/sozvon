@@ -337,3 +337,52 @@ test('без почтового ящика на сервере регистра�
   // Старые версии приложения по-прежнему регистрируются по логину
   assert.equal((await api('POST', '/register', { username: 'petr_old', password: 'secret1', inviteCode: 'friends' })).status, 200);
 });
+
+test('статусы: активен, неактивен, не беспокоить, невидимый', async () => {
+  const reg = async (username) =>
+    (await api('POST', '/register', { username, password: 'secret1', displayName: username, inviteCode: 'friends' })).body;
+  const a = await reg('status_a');
+  const b = await reg('status_b');
+  await api('POST', '/contacts', { username: 'status_b' }, a.token);
+  assert.equal(a.user.status, 'online');
+
+  const cb = connect(b.token);
+  await cb.open;
+  const ca = connect(a.token);
+  await ca.open;
+  const presence = async (status) => {
+    let m;
+    do m = await cb.next('presence');
+    while (m.userId !== a.user.id || m.status !== status);
+    return m;
+  };
+  assert.equal((await presence('online')).online, true);
+
+  // Давно не трогали компьютер — «неактивен», вернулись — снова «активен»
+  ca.send({ type: 'status:auto', idle: true });
+  assert.equal((await presence('idle')).online, true);
+  ca.send({ type: 'status:auto', idle: false });
+  await presence('online');
+
+  // Не беспокоить: в сети, но со своим статусом; неверный статус не принимается
+  assert.equal((await api('PUT', '/me/status', { status: 'busy' }, a.token)).status, 400);
+  assert.equal((await api('PUT', '/me/status', { status: 'dnd' }, a.token)).body.status, 'dnd');
+  assert.equal((await presence('dnd')).online, true);
+  assert.equal((await ca.next('me:status')).status, 'dnd');
+
+  // Невидимый: для друзей «не в сети», сам себя видит невидимым
+  const me = await api('PUT', '/me/status', { status: 'invisible' }, a.token);
+  assert.equal(me.body.status, 'invisible');
+  assert.equal((await presence('offline')).online, false);
+  const seen = (await api('GET', '/contacts', null, b.token)).body.find((c) => c.id === a.user.id);
+  assert.deepEqual([seen.online, seen.status], [false, 'offline']);
+  // Статус сохраняется: после переподключения невидимый остаётся невидимым
+  ca.ws.close();
+  const ca2 = connect(a.token);
+  await ca2.open;
+  await new Promise((r) => setTimeout(r, 200));
+  assert.equal((await api('GET', '/contacts', null, b.token)).body.find((c) => c.id === a.user.id).status, 'offline');
+  await api('PUT', '/me/status', { status: 'online' }, a.token);
+  await presence('online');
+  for (const c of [ca2, cb]) c.ws.close();
+});

@@ -1,9 +1,10 @@
 import crypto from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { verifyToken } from './auth.js';
-import { contacts, relatedUserIds, rooms, toPublicUser, users } from './db.js';
+import { contacts, rooms, toPublicUser, users } from './db.js';
 import { hub } from './hub.js';
 import { ALL_PERMS, PERMS, has } from './perms.js';
+import { broadcastPresence, setAutoIdle, userGone } from './presence.js';
 import { MAX_VOICE_PARTICIPANTS, voice } from './voice.js';
 
 const RING_TIMEOUT_MS = 45_000;
@@ -25,10 +26,6 @@ function endCall(call, reason) {
   // Пока звонок не принят, он звонит на всех устройствах собеседника
   if (call.callee.ws) hub.sendTo(call.callee.ws, message);
   else hub.send(call.callee.uid, message);
-}
-
-function notifyPresence(uid, online) {
-  for (const id of relatedUserIds(uid)) hub.send(id, { type: 'presence', userId: uid, online });
 }
 
 const handlers = {
@@ -119,6 +116,11 @@ const handlers = {
     if (target) hub.sendTo(target.ws, { type: 'room:signal', roomId, from: user.id, data: msg.data });
   },
 
+  // Приложение сообщает, что за компьютером давно никого нет (или человек вернулся)
+  'status:auto'(_ws, user, msg) {
+    setAutoIdle(user.id, Boolean(msg.idle));
+  },
+
   // Микрофон, звук, камера и демонстрация экрана — чтобы все видели значки в списке комнаты
   'room:state'(ws, user, msg) {
     const roomId = Number(msg.roomId);
@@ -137,7 +139,7 @@ function onConnection(ws, user) {
   ws.isAlive = true;
   ws.on('pong', () => (ws.isAlive = true));
 
-  if (hub.add(user.id, ws)) notifyPresence(user.id, true);
+  if (hub.add(user.id, ws)) broadcastPresence(user.id);
 
   ws.on('message', (raw) => {
     let msg;
@@ -156,7 +158,7 @@ function onConnection(ws, user) {
       if (call.caller.ws === ws || call.callee.ws === ws) endCall(call, 'disconnected');
     }
     voice.leaveSocket(ws);
-    if (hub.remove(user.id, ws)) notifyPresence(user.id, false);
+    if (hub.remove(user.id, ws)) userGone(user.id);
   });
 }
 
