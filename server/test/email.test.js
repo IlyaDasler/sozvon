@@ -92,4 +92,19 @@ test('регистрация по почте с кодом, вход по поч
   const legacy = await api('POST', '/register', { username: 'old_client', password: 'secret1', displayName: 'Старый' });
   assert.equal(legacy.status, 200);
   assert.equal(legacy.body.user.email, null);
+
+  // Почта привязывается к уже существующему профилю — как Яндекс, но с кодом из письма
+  const tok = legacy.body.token;
+  assert.equal((await api('POST', '/me/email/code', { email: 'anna@mail.ru' }, tok)).status, 409, 'чужая почта');
+  assert.equal((await api('POST', '/me/email/code', { email: 'Old@Mail.ru' }, tok)).status, 200);
+  const linkCode = lastCode('old@mail.ru', 'link');
+  assert.equal((await api('PUT', '/me/email', { email: 'old@mail.ru', code: wrong === linkCode ? '333333' : wrong }, tok)).status, 400);
+  const linked = await api('PUT', '/me/email', { email: 'old@mail.ru', code: linkCode }, tok);
+  assert.equal(linked.status, 200);
+  assert.equal(linked.body.email, 'old@mail.ru');
+  assert.equal((await api('POST', '/login', { username: 'old@mail.ru', password: 'secret1' })).status, 200);
+  // Отвязали — по почте больше не войти, по логину можно
+  assert.equal((await api('DELETE', '/me/email', null, tok)).body.email, null);
+  assert.equal((await api('POST', '/login', { username: 'old@mail.ru', password: 'secret1' })).status, 401);
+  assert.equal((await api('POST', '/login', { username: 'old_client', password: 'secret1' })).status, 200);
 });

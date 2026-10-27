@@ -205,6 +205,7 @@ export const users = {
   byId: (id) => q.userById.get(id),
   byUsername: (username) => q.userByName.get(username),
   byEmail: (email) => q.userByEmail.get(email),
+  setEmail: (id, email) => q.setEmail.run(email, id),
   create({ username, passwordHash, displayName, avatarColor, email }) {
     const res = q.insertUser.run(username, passwordHash, displayName, avatarColor, Date.now());
     if (email) q.setEmail.run(email, Number(res.lastInsertRowid));
