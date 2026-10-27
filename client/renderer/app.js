@@ -39,6 +39,13 @@ const state = {
   deafened: store.get('deafened', false),
   settings: store.get('audio', { micId: '', speakerId: '', noiseSuppression: true }),
   registerMode: false,
+  providers: [], // способы входа, включённые на сервере: [{ id, name }]
+};
+
+const PROVIDER_STYLE = {
+  google: { label: 'G', bg: '#ffffff', fg: '#4285f4' },
+  yandex: { label: 'Я', bg: '#fc3f1d', fg: '#ffffff' },
+  vk: { label: 'VK', bg: '#0077ff', fg: '#ffffff' },
 };
 
 let socket = null;
@@ -124,6 +131,97 @@ function setAuthMode(register) {
   $('auth-toggle').textContent = register ? 'Войти' : 'Зарегистрироваться';
   $('auth-password').autocomplete = register ? 'new-password' : 'current-password';
   $('auth-error').textContent = '';
+  renderOAuthButtons();
+}
+
+// ---------- Вход через Google / Яндекс / VK ----------
+
+// Ошибки из главного процесса Electron приходят с длинным техническим префиксом
+const cleanError = (err) => err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+
+const base64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const randomToken = (size) => base64url(crypto.getRandomValues(new Uint8Array(size)));
+
+function providerBadge(id) {
+  const style = PROVIDER_STYLE[id] || { label: '?', bg: '#555', fg: '#fff' };
+  const el = document.createElement('span');
+  el.className = 'provider-badge';
+  el.textContent = style.label;
+  el.style.background = style.bg;
+  el.style.color = style.fg;
+  return el;
+}
+
+async function loadProviders(base) {
+  state.providers = [];
+  // Вход через сервисы работает только в приложении: браузерной версии некуда принять ответ
+  if (window.desktop?.oauth && base) {
+    try {
+      const res = await fetch(`${base}/api/oauth/providers`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) state.providers = await res.json();
+    } catch {}
+  }
+  renderOAuthButtons();
+}
+
+function renderOAuthButtons() {
+  const box = $('oauth-buttons');
+  box.replaceChildren();
+  for (const p of state.providers) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn oauth-btn';
+    const text = document.createElement('span');
+    text.textContent = `${state.registerMode ? 'Регистрация' : 'Войти'} через ${p.name}`;
+    button.append(providerBadge(p.id), text);
+    button.onclick = () => oauthLogin(p.id);
+    box.append(button);
+  }
+  $('oauth-block').classList.toggle('hidden', !state.providers.length);
+}
+
+// PKCE: сервис входа вернёт код только тому, кто знает исходную случайную строку
+async function runOAuth(provider, mode, extra = {}) {
+  const verifier = randomToken(48);
+  const stateToken = randomToken(16);
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = base64url(new Uint8Array(hash));
+
+  const { url } = await Api.get(`/oauth/${provider}/url?state=${stateToken}&challenge=${challenge}`);
+  const params = await window.desktop.oauth(url);
+  if (params.error) throw new Error('Вход отменён');
+  if (params.state !== stateToken || !params.code) throw new Error('Ответ сервиса не прошёл проверку, попробуйте ещё раз');
+
+  return Api.post(`/oauth/${provider}`, {
+    code: params.code,
+    codeVerifier: verifier,
+    deviceId: params.device_id,
+    state: stateToken,
+    mode,
+    ...extra,
+  });
+}
+
+async function oauthLogin(provider) {
+  const base = isWeb ? location.origin : normalizeServer($('server-url').value);
+  if (!base) return ($('auth-error').textContent = 'Укажите адрес сервера');
+  const buttons = $('auth-form').querySelectorAll('button');
+  buttons.forEach((b) => (b.disabled = true));
+  $('auth-error').textContent = '';
+  Api.base = base;
+  Api.token = '';
+  try {
+    const { token, user, created } = await runOAuth(provider, 'login', { inviteCode: $('auth-invite').value.trim() });
+    Api.token = token;
+    store.set('session', { base, token });
+    store.set('server', base);
+    enterMain(user);
+    if (created) toast(`Профиль создан! Ваш логин для друзей: ${user.username}`, 8000);
+  } catch (err) {
+    $('auth-error').textContent = cleanError(err);
+  } finally {
+    buttons.forEach((b) => (b.disabled = false));
+  }
 }
 
 function normalizeServer(url) {
@@ -172,6 +270,7 @@ $('auth-form').onsubmit = async (e) => {
 function enterMain(user) {
   state.me = user;
   renderMe();
+  if (!state.providers.length) loadProviders(Api.base);
   applyAudioState();
   showScreen('main');
   selectContact(null);
@@ -754,7 +853,52 @@ function renderColorPicker() {
   }
 }
 
+function renderIdentities() {
+  const list = $('identity-list');
+  list.replaceChildren();
+  $('identities-section').classList.toggle('hidden', !state.providers.length);
+
+  for (const p of state.providers) {
+    const linked = state.me.identities.find((i) => i.provider === p.id);
+    const row = document.createElement('div');
+    row.className = 'identity-row';
+    const info = document.createElement('div');
+    const name = document.createElement('div');
+    name.textContent = p.name;
+    const sub = document.createElement('div');
+    sub.className = 'muted small ellipsis';
+    sub.textContent = linked ? linked.email || 'привязан' : 'не привязан';
+    info.append(name, sub);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = linked ? 'btn danger-outline' : 'btn';
+    button.textContent = linked ? 'Отвязать' : 'Привязать';
+    button.onclick = async () => {
+      button.disabled = true;
+      $('settings-error').textContent = '';
+      try {
+        state.me = linked ? await Api.del(`/me/identities/${p.id}`) : await runOAuth(p.id, 'link');
+        renderIdentities();
+        renderPasswordSection();
+      } catch (err) {
+        $('settings-error').textContent = cleanError(err);
+        button.disabled = false;
+      }
+    };
+    row.append(providerBadge(p.id), info, button);
+    list.append(row);
+  }
+}
+
+function renderPasswordSection() {
+  $('password-title').textContent = state.me.hasPassword ? 'Сменить пароль' : 'Задать пароль';
+  $('cur-pass-field').classList.toggle('hidden', !state.me.hasPassword);
+}
+
 async function openSettings() {
+  renderIdentities();
+  renderPasswordSection();
   $('set-display').value = state.me.displayName;
   pickedColor = state.me.avatarColor;
   renderColorPicker();
@@ -795,7 +939,7 @@ $('settings-form').onsubmit = async (e) => {
       renderMe();
       renderMessages();
       renderCallPanel();
-      if (body.newPassword) toast('Пароль изменён');
+      if (body.newPassword) toast('Пароль сохранён');
     }
   } catch (err) {
     $('settings-error').textContent = err.message;
@@ -856,6 +1000,8 @@ async function boot() {
   applySpeaker();
   if (isWeb) $('server-field').classList.add('hidden');
   $('server-url').value = store.get('server', 'http://localhost:3000');
+  $('server-url').onchange = () => loadProviders(normalizeServer($('server-url').value));
+  loadProviders(isWeb ? location.origin : normalizeServer($('server-url').value));
 
   const session = store.get('session', null);
   if (session && (!isWeb || session.base === location.origin)) {

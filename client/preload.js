@@ -5,4 +5,5 @@ contextBridge.exposeInMainWorld('desktop', {
   onHotkey: (callback) => ipcRenderer.on('hotkey', (_event, name) => callback(name)),
   attention: () => ipcRenderer.send('attention'),
   focus: () => ipcRenderer.send('focus'),
+  oauth: (authUrl) => ipcRenderer.invoke('oauth', authUrl),
 });
