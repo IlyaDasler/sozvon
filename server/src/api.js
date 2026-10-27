@@ -16,10 +16,12 @@ import {
   toPublicUser,
   toRoomMessage,
   toSelf,
+  uploads,
   users,
 } from './db.js';
 import { hub } from './hub.js';
 import { canonicalEmail } from './email-address.js';
+import { FILE_ID_RE, MAX_ATTACHMENTS, MAX_FILE_BYTES, cleanMime, cleanName, fileHeaders, kindOf, toAttachment } from './files.js';
 import { checkCode, mailEnabled, sendCode } from './mail.js';
 import { STATUSES, broadcastPresence, presenceOf } from './presence.js';
 import { ALL_PERMS, PERMS, cleanPerms, has, rankOf } from './perms.js';
@@ -110,6 +112,32 @@ const AVATAR_MAX_BYTES = 300 * 1024;
 const AVATAR_FILE_RE = /^[a-f0-9]{32}\.webp$/;
 fs.mkdirSync(AVATAR_DIR, { recursive: true });
 
+// Файлы вложений лежат рядом с базой под именем-id. Загрузку, которую за час так и не прикрепили, удаляем
+const FILES_DIR = path.join(config.dataDir, 'files');
+fs.mkdirSync(FILES_DIR, { recursive: true });
+setInterval(() => {
+  for (const id of uploads.stale(Date.now() - 60 * 60_000)) {
+    fs.rm(path.join(FILES_DIR, id), { force: true }, () => {});
+    uploads.remove(id);
+  }
+}, 10 * 60_000).unref();
+
+const MAX_TEXT = 2000;
+
+/** Сообщение из запроса: текст и вложения. Без текста можно, если есть вложения */
+function messageFrom(req) {
+  const text = str(req.body.text);
+  if (text.length > MAX_TEXT) throw new HttpError(400, `Сообщение должно быть не длиннее ${MAX_TEXT} символов`);
+  const ids = Array.isArray(req.body.attachmentIds) ? req.body.attachmentIds : [];
+  if (ids.length > MAX_ATTACHMENTS) throw new HttpError(400, `Можно прикрепить не больше ${MAX_ATTACHMENTS} файлов`);
+  if (!ids.every((id) => typeof id === 'string' && FILE_ID_RE.test(id)) || new Set(ids).size !== ids.length)
+    throw new HttpError(400, 'Неверные вложения');
+  if (!text && !ids.length) throw new HttpError(400, 'Напишите сообщение или прикрепите файл');
+  const rows = ids.length ? uploads.claim(ids, req.user.id) : [];
+  if (!rows) throw new HttpError(400, 'Вложение не найдено или уже отправлено — прикрепите файл заново');
+  return { text, attachments: rows.map(toAttachment) };
+}
+
 const isWebp = (buf) =>
   buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP';
 
@@ -164,7 +192,8 @@ function notifyRoom(roomId) {
 
 export function createApi() {
   const api = express.Router();
-  api.use(express.json({ limit: '16kb' }));
+  const json = express.json({ limit: '16kb' });
+  api.use((req, res, next) => (req.path === '/uploads' ? next() : json(req, res, next)));
 
   const handle = (fn) => async (req, res, next) => {
     try {
@@ -310,6 +339,16 @@ export function createApi() {
     });
   });
 
+  // Вложение по ссылке вида /api/files/<id>/<имя>; имя в адресе — только чтобы сохранялось с нормальным названием
+  api.get('/files/:id/:name', (req, res, next) => {
+    const row = FILE_ID_RE.test(req.params.id) && uploads.byId(req.params.id);
+    if (!row) return next(new HttpError(404, 'Файл не найден'));
+    res.set(fileHeaders(row));
+    res.sendFile(row.id, { root: FILES_DIR }, (err) => {
+      if (err && !res.headersSent) next(new HttpError(404, 'Файл не найден'));
+    });
+  });
+
   api.get('/oauth/providers', (_req, res) => res.json(enabledProviders()));
 
   api.get(
@@ -381,6 +420,21 @@ export function createApi() {
   );
 
   api.use(requireAuth);
+
+  // Загрузка вложения: тело запроса — сам файл, имя — в адресе (?name=), тип — в Content-Type
+  api.post(
+    '/uploads',
+    express.raw({ type: () => true, limit: MAX_FILE_BYTES }),
+    handle((req) => {
+      if (!Buffer.isBuffer(req.body) || !req.body.length) throw new HttpError(400, 'Пустой файл');
+      const id = crypto.randomBytes(16).toString('hex');
+      const mime = cleanMime(req.get('content-type'));
+      const row = { id, ownerId: req.user.id, name: cleanName(req.query.name), mime, size: req.body.length, kind: kindOf(mime) };
+      fs.writeFileSync(path.join(FILES_DIR, id), req.body);
+      uploads.add(row);
+      return toAttachment(row);
+    })
+  );
 
   api.get('/me', handle((req) => toSelf(req.user)));
 
@@ -537,9 +591,8 @@ export function createApi() {
     '/messages/:id',
     handle((req) => {
       const other = requireContact(req);
-      const text = str(req.body.text);
-      if (!text || text.length > 2000) throw new HttpError(400, 'Сообщение должно быть от 1 до 2000 символов');
-      const message = toMessage(messages.add(req.user.id, other.id, text));
+      const { text, ...extra } = messageFrom(req);
+      const message = toMessage(messages.add(req.user.id, other.id, text, extra));
       hub.send(other.id, { type: 'message', message });
       hub.send(req.user.id, { type: 'message', message });
       return message;
@@ -809,9 +862,8 @@ export function createApi() {
     handle((req) => {
       const room = requireRoom(req);
       requirePerm(req, room, PERMS.write, 'Вам нельзя писать в эту комнату');
-      const text = str(req.body.text);
-      if (!text || text.length > 2000) throw new HttpError(400, 'Сообщение должно быть от 1 до 2000 символов');
-      const message = toRoomMessage(roomMessages.add(room.id, req.user.id, text));
+      const { text, ...extra } = messageFrom(req);
+      const message = toRoomMessage(roomMessages.add(room.id, req.user.id, text, extra));
       for (const m of rooms.members(room.id)) hub.send(m.id, { type: 'room:message', message });
       return message;
     })
@@ -843,7 +895,7 @@ export function createApi() {
       status === 500
         ? 'Внутренняя ошибка сервера'
         : err.type === 'entity.too.large'
-          ? 'Слишком большой запрос'
+          ? 'Слишком большой файл: можно до 25 МБ'
           : err.type === 'entity.parse.failed'
             ? 'Неверный формат запроса'
             : err.message;
