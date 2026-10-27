@@ -1,0 +1,21 @@
+﻿{
+  "name": "sozvon-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "РЎРµСЂРІРµСЂ В«РЎРѕР·РІРѕРЅВ»: Р°РєРєР°СѓРЅС‚С‹, РґСЂСѓР·СЊСЏ, СЃРѕРѕР±С‰РµРЅРёСЏ Рё СЃРёРіРЅР°Р»РёРЅРі РґР»СЏ РіРѕР»РѕСЃРѕРІС‹С… Р·РІРѕРЅРєРѕРІ",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.3.0",
+    "ws": "^8.22.0"
+  }
+}

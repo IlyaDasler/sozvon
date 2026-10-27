@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src http: https: ws: wss:; media-src 'self' blob: mediastream:; img-src 'self' data:">
+  <title>Созвон</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Вход и регистрация -->
+  <section id="auth" class="screen auth hidden">
+    <form id="auth-form" class="auth-card" novalidate>
+      <div class="brand">
+        <img src="logo.svg" alt="" width="56" height="56">
+        <h1>Созвон</h1>
+      </div>
+      <p class="muted" id="auth-subtitle">Войдите, чтобы созвониться с друзьями</p>
+
+      <label class="field" id="server-field">
+        <span>Адрес сервера</span>
+        <input id="server-url" placeholder="http://localhost:3000" spellcheck="false">
+      </label>
+      <label class="field">
+        <span>Логин</span>
+        <input id="auth-username" autocomplete="username" spellcheck="false" required>
+      </label>
+      <label class="field hidden" id="display-field">
+        <span>Имя в профиле</span>
+        <input id="auth-display" maxlength="32" placeholder="Как вас называть">
+      </label>
+      <label class="field">
+        <span>Пароль</span>
+        <input id="auth-password" type="password" autocomplete="current-password" required>
+      </label>
+
+      <p class="error" id="auth-error"></p>
+      <button class="btn primary wide" id="auth-submit">Войти</button>
+      <p class="muted center small">
+        <span id="auth-switch-text">Нет аккаунта?</span>
+        <a href="#" id="auth-toggle">Зарегистрироваться</a>
+      </p>
+    </form>
+  </section>
+
+  <!-- Основной экран -->
+  <section id="main" class="screen main hidden">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <img src="logo.svg" alt="" width="24" height="24">
+        <span>Созвон</span>
+        <span class="conn-dot" id="conn-dot" title="Соединение с сервером"></span>
+      </div>
+
+      <form id="add-contact" class="add-contact">
+        <input id="add-contact-input" placeholder="Добавить друга по логину" spellcheck="false">
+        <button class="icon-btn" title="Добавить">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </form>
+      <p class="error small pad" id="add-contact-error"></p>
+
+      <div class="list-title">Друзья — <span id="contact-count">0</span></div>
+      <ul id="contact-list" class="contact-list"></ul>
+
+      <div class="me-panel">
+        <div class="avatar" id="me-avatar"></div>
+        <div class="me-info">
+          <div class="ellipsis" id="me-name"></div>
+          <div class="muted small ellipsis" id="me-username"></div>
+        </div>
+        <button class="icon-btn" id="mic-btn" title="Микрофон (Ctrl+Shift+M)"></button>
+        <button class="icon-btn" id="deafen-btn" title="Звук (Ctrl+Shift+D)"></button>
+        <button class="icon-btn" id="settings-btn" title="Настройки">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div id="empty-state" class="empty">
+        <img src="logo.svg" alt="" width="72" height="72">
+        <h2>Привет!</h2>
+        <p class="muted">Выберите друга слева или добавьте нового по его логину.<br>Ваш логин: <b id="empty-username"></b></p>
+      </div>
+
+      <div id="chat" class="chat hidden">
+        <header class="chat-head">
+          <div class="avatar" id="peer-avatar"></div>
+          <div class="peer-meta">
+            <div class="peer-name ellipsis" id="peer-name"></div>
+            <div class="muted small" id="peer-status"></div>
+          </div>
+          <div class="spacer"></div>
+          <button class="btn success" id="call-btn">
+            <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+            Позвонить
+          </button>
+          <button class="icon-btn" id="remove-contact-btn" title="Удалить из друзей">
+            <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+          </button>
+        </header>
+
+        <div id="call-panel" class="call-panel hidden">
+          <div class="call-people">
+            <div class="call-person">
+              <div class="avatar big" id="call-me-avatar"></div>
+              <span>Вы</span>
+            </div>
+            <div class="call-person">
+              <div class="avatar big" id="call-peer-avatar"></div>
+              <span id="call-peer-name"></span>
+            </div>
+          </div>
+          <div class="call-status" id="call-status"></div>
+          <div class="call-controls">
+            <button class="round-btn" id="call-mute" title="Микрофон (Ctrl+Shift+M)"></button>
+            <button class="round-btn" id="call-deafen" title="Звук (Ctrl+Shift+D)"></button>
+            <label class="volume" title="Громкость собеседника">
+              <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7"/></svg>
+              <input type="range" id="peer-volume" min="0" max="100" value="100">
+            </label>
+            <button class="round-btn hangup" id="hangup-btn" title="Завершить">
+              <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" transform="rotate(135 12 12)"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="messages" class="messages"></div>
+
+        <form id="message-form" class="composer">
+          <input id="message-input" placeholder="Написать сообщение" autocomplete="off" maxlength="2000">
+          <button class="btn primary">Отправить</button>
+        </form>
+      </div>
+    </main>
+  </section>
+
+  <!-- Входящий звонок -->
+  <div id="incoming" class="modal hidden">
+    <div class="modal-card incoming-card">
+      <div class="avatar huge pulse" id="incoming-avatar"></div>
+      <h3 id="incoming-name"></h3>
+      <p class="muted">Входящий звонок…</p>
+      <div class="row center">
+        <button class="btn danger" id="decline-btn">Отклонить</button>
+        <button class="btn success" id="accept-btn">Принять</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Настройки -->
+  <div id="settings" class="modal hidden">
+    <form class="modal-card settings-card" id="settings-form">
+      <h3>Настройки</h3>
+
+      <h4>Профиль</h4>
+      <label class="field">
+        <span>Имя</span>
+        <input id="set-display" maxlength="32">
+      </label>
+      <div class="field">
+        <span>Цвет аватара</span>
+        <div id="color-picker" class="colors"></div>
+      </div>
+
+      <h4>Звук</h4>
+      <label class="field">
+        <span>Микрофон</span>
+        <select id="set-mic"></select>
+      </label>
+      <label class="field">
+        <span>Динамики / наушники</span>
+        <select id="set-speaker"></select>
+      </label>
+      <label class="check"><input type="checkbox" id="set-ns"> Шумоподавление и эхоподавление</label>
+
+      <h4>Сменить пароль</h4>
+      <div class="row">
+        <label class="field grow"><span>Текущий</span><input type="password" id="set-cur-pass" autocomplete="current-password"></label>
+        <label class="field grow"><span>Новый</span><input type="password" id="set-new-pass" autocomplete="new-password"></label>
+      </div>
+
+      <p class="muted small">Горячие клавиши работают и в игре: <b>Ctrl+Shift+M</b> — микрофон, <b>Ctrl+Shift+D</b> — звук.</p>
+      <p class="error" id="settings-error"></p>
+
+      <div class="row">
+        <button type="button" class="btn danger-outline" id="logout-btn">Выйти</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="settings-cancel">Отмена</button>
+        <button class="btn primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <audio id="remote-audio" autoplay></audio>
+
+  <script src="api.js"></script>
+  <script src="call.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
