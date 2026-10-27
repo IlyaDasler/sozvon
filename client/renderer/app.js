@@ -1106,8 +1106,11 @@ function renderUpdate() {
   $('update-btn').textContent = s.state === 'ready' ? 'Обновить' : 'Подробнее';
   $('update-bar').title = `Версия ${s.version ?? ''}`;
 
-  // Раздел «О приложении» в настройках
+  // Версия и кнопки «Проверить обновления»: экран входа, шапка боковой панели, настройки
   $('app-version').textContent = s.current || '';
+  $('auth-version').textContent = s.current ? `Версия ${s.current}` : '';
+  $('auth-version-row').classList.toggle('hidden', !s.current);
+  $('sidebar-update-check').classList.toggle('spinning', s.state === 'checking' && manualCheck);
   $('update-status').textContent = UPDATE_TEXT[s.state]?.(s) ?? '';
   $('update-status').title = s.state === 'error' ? s.message || '' : '';
   $('update-check-btn').textContent =
@@ -1134,7 +1137,10 @@ function onUpdateStatus(s) {
   updateStatus = { ...updateStatus, ...s };
   const { state: st, version } = updateStatus;
   if (st === 'available' && (manualCheck || (modalShownFor !== version && !isSkipped(version)))) openUpdateModal();
-  if (st === 'available' || st === 'latest' || st === 'error') manualCheck = false;
+  if (manualCheck && st === 'latest') toast(`У вас последняя версия — ${updateStatus.current}`);
+  if (manualCheck && st === 'error') toast('Не удалось проверить обновления. Проверьте интернет');
+  if (manualCheck && st === 'unsupported') toast('Обновления работают только в установленной версии');
+  if (['available', 'latest', 'error', 'unsupported'].includes(st)) manualCheck = false;
   if (st === 'ready' && updateRequested) installUpdate();
   if (st === 'error' && updateRequested) {
     updateRequested = false;
@@ -1155,11 +1161,22 @@ if (window.desktop?.update) {
     closeUpdateModal();
   };
   $('update-btn').onclick = () => (updateStatus.state === 'ready' ? startUpdate() : openUpdateModal());
-  $('update-check-btn').onclick = () => {
+
+  // Ручная проверка: если новая версия уже известна — сразу показываем окно
+  const checkUpdatesManually = () => {
     if (updateStatus.state === 'ready') return startUpdate();
     if (updateStatus.state === 'available') return openUpdateModal();
+    if (updateStatus.state === 'checking' || updateStatus.state === 'downloading') return;
     manualCheck = true;
     window.desktop.update.check();
+    renderUpdate();
+  };
+  $('update-check-btn').onclick = checkUpdatesManually;
+  $('sidebar-update-check').classList.remove('hidden');
+  $('sidebar-update-check').onclick = checkUpdatesManually;
+  $('auth-update-check').onclick = (e) => {
+    e.preventDefault();
+    checkUpdatesManually();
   };
 }
 

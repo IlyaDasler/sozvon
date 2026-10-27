@@ -131,6 +131,9 @@ input:focus, select:focus { border-color: var(--accent); }
 .auth-card > .muted { margin: 0 0 22px; }
 .auth-card .btn.wide { margin-top: 6px; }
 .auth-card .center { margin: 16px 0 0; }
+.auth-card .auth-version { margin-top: 10px; font-size: 11px; }
+.icon-btn.spinning svg { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .divider { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; color: var(--muted); font-size: 12px; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
@@ -164,6 +167,7 @@ input:focus, select:focus { border-color: var(--accent); }
   border-bottom: 1px solid var(--line);
 }
 .conn-dot { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+.sidebar-head .icon-btn { width: 28px; height: 28px; margin-right: -6px; }
 .conn-dot.ok { background: var(--accent); }
 
 .add-contact { display: flex; gap: 6px; padding: 14px 14px 8px; }
