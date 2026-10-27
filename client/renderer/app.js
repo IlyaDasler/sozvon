@@ -3,6 +3,9 @@
 const $ = (id) => document.getElementById(id);
 const isWeb = location.protocol.startsWith('http');
 
+const DEFAULT_SERVER = 'http://135.106.226.12:3000';
+const LEGACY_SERVERS = ['http://localhost:3000', 'http://95.173.207.169:3000', 'http://92.241.13.52:3000'];
+
 const COLORS = ['#e5484d', '#f76b15', '#ffc53d', '#30a46c', '#12a594', '#0090ff', '#6e56cf', '#d6409f'];
 
 const ICONS = {
@@ -1053,11 +1056,17 @@ async function boot() {
   setAuthMode(false);
   applySpeaker();
   if (isWeb) $('server-field').classList.add('hidden');
-  $('server-url').value = store.get('server', 'http://localhost:3000');
+  // Старые адреса (локальный и домашний сервер) заменяем на общий сервер
+  const savedServer = store.get('server', DEFAULT_SERVER);
+  $('server-url').value = LEGACY_SERVERS.includes(savedServer) ? DEFAULT_SERVER : savedServer;
   $('server-url').onchange = () => loadProviders(normalizeServer($('server-url').value));
   loadProviders(isWeb ? location.origin : normalizeServer($('server-url').value));
 
-  const session = store.get('session', null);
+  let session = store.get('session', null);
+  if (session && !isWeb && LEGACY_SERVERS.includes(session.base)) {
+    store.set('session', null);
+    session = null;
+  }
   if (session && (!isWeb || session.base === location.origin)) {
     Api.base = session.base;
     Api.token = session.token;
