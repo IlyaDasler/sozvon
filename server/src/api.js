@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import express from 'express';
 import { config } from './config.js';
-import { hashPassword, signToken, verifyPassword, verifyToken } from './auth.js';
+import { hashPassword, signTicket, signToken, verifyPassword, verifyTicket, verifyToken } from './auth.js';
 import { contacts, identities, messages, toMessage, toPublicUser, toSelf, users } from './db.js';
 import { hub } from './hub.js';
 import { buildAuthUrl, enabledProviders, fetchProfile } from './oauth.js';
@@ -40,7 +40,7 @@ function rateLimit(req) {
     attempts.set(req.ip, { count: 1, reset: now + 60_000 });
     return;
   }
-  if (++entry.count > 10) throw new HttpError(429, 'Слишком много попыток, подождите минуту');
+  if (++entry.count > config.authRateLimit) throw new HttpError(429, 'Слишком много попыток, подождите минуту');
 }
 setInterval(() => {
   const now = Date.now();
@@ -48,6 +48,19 @@ setInterval(() => {
 }, 60_000).unref();
 
 const withOnline = (row) => ({ ...toPublicUser(row), online: hub.isOnline(row.id) });
+
+function createOAuthUser(provider, profile) {
+  // Логин профиля — из почты, а если почту не дали (Яндекс без права на email) — из логина сервиса
+  const username = makeUsername(profile.email || profile.login || '', provider);
+  const user = users.create({
+    username,
+    passwordHash: '',
+    displayName: (profile.name || username).slice(0, 32),
+    avatarColor: COLORS[crypto.randomInt(COLORS.length)],
+  });
+  identities.add(provider, profile.providerId, user.id, profile.email || '');
+  return { token: signToken(user.id), user: toSelf(user), created: true };
+}
 
 const PKCE_RE = /^[A-Za-z0-9_-]{16,128}$/;
 
@@ -207,22 +220,30 @@ export function createApi() {
         return { token: signToken(user.id), user: toSelf(user) };
       }
 
-      // Профиля ещё нет — создаём новый
-      if (config.inviteCode && str(req.body.inviteCode) !== config.inviteCode)
-        throw new HttpError(
-          403,
-          'Профиль не найден. Чтобы создать новый, откройте «Зарегистрироваться», введите код приглашения и нажмите кнопку ещё раз'
-        );
-      // Логин профиля — из почты, а если почту не дали (Яндекс без права на email) — из логина сервиса
-      const username = makeUsername(profile.email || profile.login || '', provider);
-      const user = users.create({
-        username,
-        passwordHash: '',
-        displayName: (profile.name || username).slice(0, 32),
-        avatarColor: COLORS[crypto.randomInt(COLORS.length)],
-      });
-      identities.add(provider, profile.providerId, user.id, profile.email);
-      return { token: signToken(user.id), user: toSelf(user), created: true };
+      // Профиля ещё нет. Без кода приглашения выдаём пропуск: код можно ввести, не входя в сервис заново
+      if (config.inviteCode && str(req.body.inviteCode) !== config.inviteCode) {
+        const err = new HttpError(403, 'Аккаунт подтверждён. Введите код приглашения, чтобы создать профиль');
+        err.extra = { needInvite: true, ticket: signTicket({ provider, ...profile }) };
+        throw err;
+      }
+      return createOAuthUser(provider, profile);
+    })
+  );
+
+  // Завершение регистрации через сервис: пропуск из предыдущего шага + код приглашения
+  api.post(
+    '/signup/complete',
+    handle((req) => {
+      rateLimit(req);
+      checkInvite(req.body.inviteCode);
+      const ticket = verifyTicket(req.body.ticket);
+      if (!ticket) throw new HttpError(400, 'Время на регистрацию истекло. Войдите через сервис ещё раз');
+      const existing = identities.find(ticket.provider, ticket.providerId);
+      if (existing) {
+        const user = users.byId(existing.user_id);
+        return { token: signToken(user.id), user: toSelf(user) };
+      }
+      return createOAuthUser(ticket.provider, ticket);
     })
   );
 
@@ -370,7 +391,7 @@ export function createApi() {
           : err.type === 'entity.parse.failed'
             ? 'Неверный формат запроса'
             : err.message;
-    res.status(status).json({ error: message });
+    res.status(status).json({ error: message, ...(status < 500 && err.extra) });
   });
 
   return api;
