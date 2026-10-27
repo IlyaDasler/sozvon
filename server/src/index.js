@@ -4,6 +4,7 @@ import express from 'express';
 import { config } from './config.js';
 import { createApi } from './api.js';
 import { attachSignaling } from './signaling.js';
+import { startEmbeddedTurn } from './turn.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -26,9 +27,12 @@ if (fs.existsSync(config.webDir)) app.use(express.static(config.webDir));
 
 const server = http.createServer(app);
 attachSignaling(server);
+if (config.turnEmbedded) startEmbeddedTurn();
 
 server.listen(config.port, () => {
   console.log(`Сервер «Созвон» запущен: http://localhost:${config.port}`);
   console.log(`Данные хранятся в ${config.dataDir}`);
+  if (config.turnEmbedded) console.log(`Встроенный TURN: UDP ${config.turnPort}, порты ${config.turnMinPort}–${config.turnMaxPort}`);
+  if (config.inviteCode) console.log('Регистрация только по коду приглашения');
   if (!config.turnUrls.length) console.log('TURN не настроен: звонки через строгий NAT могут не соединиться');
 });

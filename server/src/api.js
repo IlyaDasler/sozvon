@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { hashPassword, signToken, verifyPassword, verifyToken } from './auth.js';
 import { contacts, messages, toMessage, toPublicUser, users } from './db.js';
 import { hub } from './hub.js';
+import { registerTurnUser } from './turn.js';
 
 const USERNAME_RE = /^[a-z0-9_.]{3,24}$/;
 const COLOR_RE = /^#[0-9a-f]{6}$/i;
@@ -76,12 +77,14 @@ export function createApi() {
     return other;
   }
 
-  api.get('/health', (_req, res) => res.json({ ok: true, app: 'sozvon' }));
+  api.get('/health', (_req, res) => res.json({ ok: true, app: 'sozvon', inviteRequired: Boolean(config.inviteCode) }));
 
   api.post(
     '/register',
     handle((req) => {
       rateLimit(req);
+      if (config.inviteCode && str(req.body.inviteCode) !== config.inviteCode)
+        throw new HttpError(403, 'Неверный код приглашения. Спросите его у владельца сервера');
       const username = str(req.body.username).toLowerCase();
       const displayName = str(req.body.displayName) || username;
       if (!USERNAME_RE.test(username))
@@ -191,8 +194,10 @@ export function createApi() {
       const iceServers = [];
       if (config.stunUrls.length) iceServers.push({ urls: config.stunUrls });
       if (config.turnUrls.length && config.turnSecret) {
-        const username = `${Math.floor(Date.now() / 1000) + 24 * 3600}:${req.user.id}`;
+        const expires = Math.floor(Date.now() / 1000) + 24 * 3600;
+        const username = `${expires}:${req.user.id}`;
         const credential = crypto.createHmac('sha1', config.turnSecret).update(username).digest('base64');
+        registerTurnUser(username, credential, expires * 1000);
         iceServers.push({ urls: config.turnUrls, username, credential });
       }
       return { iceServers };

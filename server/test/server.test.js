@@ -48,7 +48,7 @@ function connect(token) {
 
 before(async () => {
   proc = spawn(process.execPath, ['src/index.js'], {
-    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir },
+    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, INVITE_CODE: 'friends' },
     stdio: 'pipe',
   });
   for (let i = 0; i < 50; i++) {
@@ -68,16 +68,19 @@ after(async () => {
 });
 
 test('регистрация, вход, друзья, сообщения и звонок', async () => {
-  const a = await api('POST', '/register', { username: 'Ilya', password: 'secret1', displayName: 'Илья' });
+  const invite = { inviteCode: 'friends' };
+  assert.equal((await api('POST', '/register', { username: 'ilya', password: 'secret1' })).status, 403);
+
+  const a = await api('POST', '/register', { username: 'Ilya', password: 'secret1', displayName: 'Илья', ...invite });
   assert.equal(a.status, 200);
   assert.equal(a.body.user.username, 'ilya');
 
-  assert.equal((await api('POST', '/register', { username: 'ilya', password: 'secret1' })).status, 409);
-  assert.equal((await api('POST', '/register', { username: 'x', password: 'secret1' })).status, 400);
+  assert.equal((await api('POST', '/register', { username: 'ilya', password: 'secret1', ...invite })).status, 409);
+  assert.equal((await api('POST', '/register', { username: 'x', password: 'secret1', ...invite })).status, 400);
   assert.equal((await api('POST', '/login', { username: 'ilya', password: 'wrong!' })).status, 401);
   assert.equal((await api('GET', '/me', null, 'garbage')).status, 401);
 
-  const b = await api('POST', '/register', { username: 'misha', password: 'secret2' });
+  const b = await api('POST', '/register', { username: 'misha', password: 'secret2', ...invite });
   const login = await api('POST', '/login', { username: 'ILYA', password: 'secret1' });
   assert.equal(login.status, 200);
   const ta = login.body.token;

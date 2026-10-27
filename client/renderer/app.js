@@ -115,6 +115,7 @@ function micErrorText(err) {
 function setAuthMode(register) {
   state.registerMode = register;
   $('display-field').classList.toggle('hidden', !register);
+  $('invite-field').classList.toggle('hidden', !register);
   $('auth-submit').textContent = register ? 'Создать аккаунт' : 'Войти';
   $('auth-subtitle').textContent = register
     ? 'Создайте аккаунт — это займёт полминуты'
@@ -151,7 +152,10 @@ $('auth-form').onsubmit = async (e) => {
   Api.token = '';
   try {
     const body = { username, password };
-    if (state.registerMode) body.displayName = $('auth-display').value.trim();
+    if (state.registerMode) {
+      body.displayName = $('auth-display').value.trim();
+      body.inviteCode = $('auth-invite').value.trim();
+    }
     const { token, user } = await Api.post(state.registerMode ? '/register' : '/login', body);
     Api.token = token;
     store.set('session', { base, token });
