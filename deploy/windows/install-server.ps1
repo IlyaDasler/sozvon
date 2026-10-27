@@ -1,4 +1,4 @@
-# Установка сервера «Созвон» на домашний ПК с Windows.
+﻿# Установка сервера «Созвон» на домашний ПК с Windows.
 # Копирует сервер в постоянную папку, включает встроенный TURN и автозапуск в фоне при входе в Windows.
 # Повторный запуск обновляет сервер, сохраняя базу и код приглашения.
 #
@@ -41,9 +41,12 @@ if (-not $PublicIp) {
 if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
   Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 }
+# Сначала цикл перезапуска (cmd), потом сам сервер (node), иначе cmd запустит его снова
 Get-CimInstance Win32_Process |
   Where-Object { $_.CommandLine -and $_.CommandLine.Contains($InstallDir) } |
+  Sort-Object { $_.Name -ne 'cmd.exe' } |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Start-Sleep -Seconds 1
 
 Write-Host "Копирую сервер в $InstallDir ..."
 $app = Join-Path $InstallDir 'app'
@@ -54,10 +57,12 @@ Copy-Item "$repo\server\package.json", "$repo\server\package-lock.json" $app
 Copy-Item -Recurse "$repo\client\renderer" "$app\web"
 
 Write-Host 'Устанавливаю зависимости...'
+# npm пишет предупреждения в поток ошибок, а Windows PowerShell 5.1 считает это сбоем,
+# поэтому запускаем через cmd и судим по коду возврата
 Push-Location $app
 try {
-  npm ci --omit=dev --no-audit --no-fund | Out-Null
-  if ($LASTEXITCODE) { throw 'npm ci завершился с ошибкой' }
+  $npmLog = cmd /c "npm ci --omit=dev --no-audit --no-fund --loglevel=error 2>&1"
+  if ($LASTEXITCODE) { throw "npm ci завершился с ошибкой:`n$($npmLog -join "`n")" }
 } finally { Pop-Location }
 
 # .cmd-файлы пишем в ASCII: cmd.exe плохо читает UTF-8
@@ -92,7 +97,8 @@ Set-Content -Encoding ascii -Path "$InstallDir\run.cmd" -Value @(
   'call "%~dp0config.cmd"'
   'call "%~dp0oauth.cmd"'
   ':loop'
-  "`"$node`" src\index.js >> `"%~dp0logs\server.log`" 2>&1"
+  # Полный путь к index.js нужен, чтобы процесс можно было найти и остановить по папке сервера
+  "`"$node`" `"%~dp0app\src\index.js`" >> `"%~dp0logs\server.log`" 2>&1"
   'timeout /t 5 /nobreak >nul'
   'goto loop'
 )
