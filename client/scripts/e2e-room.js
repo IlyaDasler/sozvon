@@ -1,7 +1,7 @@
 // Сквозной тест голосовой комнаты: три окна заходят в один канал, включают камеру, показывают экран,
 // меняют права ролями, переходят между каналами и банят.
 // Запуск (сервер должен работать): npx electron scripts/e2e-room.js [адрес сервера]
-const { api, register, js, waitFor, sleep, openClient, received, tilePlaying, screenshot, runTest } = require('./e2e-lib');
+const { api, befriend, register, js, waitFor, sleep, openClient, received, tilePlaying, screenshot, runTest } = require('./e2e-lib');
 
 // Видна ли кнопка целиком и не перекрыта ли чем-то
 const reachable = (sel) => `(() => {
@@ -22,8 +22,8 @@ runTest(async () => {
   const a = await register('ra', 'Аня');
   const b = await register('rb', 'Боря');
   const c = await register('rc', 'Вика');
-  await api('POST', '/contacts', { username: b.user.username }, a.token);
-  await api('POST', '/contacts', { username: c.user.username }, a.token);
+  await befriend(a, b);
+  await befriend(a, c);
 
   const winA = await openClient('ra', a);
   const winB = await openClient('rb', b);

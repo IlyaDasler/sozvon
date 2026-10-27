@@ -161,6 +161,7 @@ function openNotifTarget(open) {
   window.desktop?.focus();
   if (open?.contact && state.contacts.has(open.contact)) selectContact(open.contact);
   else if (open?.room && state.rooms.has(open.room)) selectRoom(open.room);
+  else if (open?.friends) showFriendsTab(open.friends);
 }
 
 function openNotifPanel() {
