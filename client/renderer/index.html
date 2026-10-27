@@ -270,9 +270,21 @@
       </div>
       <video id="cam-preview" class="cam-preview mirror hidden" autoplay playsinline muted></video>
 
-      <div id="identities-section" class="hidden">
-        <h4>Вход через сервисы</h4>
+      <div id="identities-section">
+        <h4>Способы входа</h4>
         <div id="identity-list" class="identity-list"></div>
+        <!-- Привязка почты: адрес, код из письма -->
+        <div id="email-link" class="email-link hidden">
+          <div class="row code-row">
+            <input id="link-email" type="email" placeholder="name@mail.ru" spellcheck="false">
+            <button type="button" class="btn" id="link-send">Отправить код</button>
+          </div>
+          <div class="row code-row">
+            <input id="link-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Код из письма">
+            <button type="button" class="btn primary" id="link-confirm">Привязать</button>
+          </div>
+          <span class="hint-text" id="link-hint"></span>
+        </div>
       </div>
 
       <h4 id="password-title">Сменить пароль</h4>
