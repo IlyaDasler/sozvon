@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { config } from './config.js';
+import { DEFAULT_PERMS, PERMS } from './perms.js';
 
 export const db = new DatabaseSync(path.join(config.dataDir, 'sozvon.db'));
 
@@ -69,11 +70,35 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS room_messages_room ON room_messages (room_id, id);
+
+  -- Роли комнаты: название, цвет и набор прав (см. perms.js)
+  CREATE TABLE IF NOT EXISTS room_roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL,
+    perms INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS room_roles_room ON room_roles (room_id);
+
+  CREATE TABLE IF NOT EXISTS room_bans (
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    by_id INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (room_id, user_id)
+  );
 `);
 
 // Миграции для баз, созданных старыми версиями
-const userColumns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-if (!userColumns.includes('avatar')) db.exec('ALTER TABLE users ADD COLUMN avatar TEXT');
+const columnsOf = (table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+if (!columnsOf('users').includes('avatar')) db.exec('ALTER TABLE users ADD COLUMN avatar TEXT');
+if (!columnsOf('rooms').includes('default_perms'))
+  db.exec(`ALTER TABLE rooms ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
+if (!columnsOf('room_members').includes('role_id')) db.exec('ALTER TABLE room_members ADD COLUMN role_id INTEGER');
+
+const ADMIN_ROLE = { name: 'Администратор', color: '#e5484d', perms: PERMS.admin };
 
 export const toPublicUser = (row) =>
   row && {
@@ -134,11 +159,30 @@ const q = {
   ownedRooms: db.prepare('SELECT COUNT(*) AS n FROM rooms WHERE owner_id = ?'),
   renameRoom: db.prepare('UPDATE rooms SET name = ? WHERE id = ?'),
   deleteRoom: db.prepare('DELETE FROM rooms WHERE id = ?'),
+  setDefaultPerms: db.prepare('UPDATE rooms SET default_perms = ? WHERE id = ?'),
   roomMembers: db.prepare(`
-    SELECT u.* FROM room_members m JOIN users u ON u.id = m.user_id
+    SELECT u.*, m.role_id FROM room_members m JOIN users u ON u.id = m.user_id
     WHERE m.room_id = ? ORDER BY m.created_at, u.id
   `),
+  roomMember: db.prepare('SELECT * FROM room_members WHERE room_id = ? AND user_id = ?'),
   isRoomMember: db.prepare('SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?'),
+  setMemberRole: db.prepare('UPDATE room_members SET role_id = ? WHERE room_id = ? AND user_id = ?'),
+  clearRole: db.prepare('UPDATE room_members SET role_id = NULL WHERE role_id = ?'),
+
+  roomRoles: db.prepare('SELECT * FROM room_roles WHERE room_id = ? ORDER BY id'),
+  roleById: db.prepare('SELECT * FROM room_roles WHERE id = ?'),
+  insertRole: db.prepare('INSERT INTO room_roles (room_id, name, color, perms, created_at) VALUES (?, ?, ?, ?, ?)'),
+  updateRole: db.prepare('UPDATE room_roles SET name = ?, color = ?, perms = ? WHERE id = ?'),
+  deleteRole: db.prepare('DELETE FROM room_roles WHERE id = ?'),
+  roomsWithoutRoles: db.prepare('SELECT id FROM rooms WHERE id NOT IN (SELECT room_id FROM room_roles)'),
+
+  roomBans: db.prepare(`
+    SELECT u.*, b.created_at AS banned_at FROM room_bans b JOIN users u ON u.id = b.user_id
+    WHERE b.room_id = ? ORDER BY b.created_at
+  `),
+  isBanned: db.prepare('SELECT 1 FROM room_bans WHERE room_id = ? AND user_id = ?'),
+  addBan: db.prepare('INSERT OR IGNORE INTO room_bans (room_id, user_id, by_id, created_at) VALUES (?, ?, ?, ?)'),
+  removeBan: db.prepare('DELETE FROM room_bans WHERE room_id = ? AND user_id = ?'),
   addRoomMember: db.prepare('INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) VALUES (?, ?, ?)'),
   removeRoomMember: db.prepare('DELETE FROM room_members WHERE room_id = ? AND user_id = ?'),
   // Все, с кем человек в одной комнате: им тоже нужны его статус «в сети» и новый профиль
@@ -212,15 +256,49 @@ export const rooms = {
     const now = Date.now();
     const id = Number(q.insertRoom.run(name, kind, ownerId, now).lastInsertRowid);
     q.addRoomMember.run(id, ownerId, now);
+    roles.create(id, ADMIN_ROLE);
     return rooms.byId(id);
   },
   rename: (id, name) => q.renameRoom.run(name, id),
+  setDefaultPerms: (id, perms) => q.setDefaultPerms.run(perms, id),
   remove: (id) => q.deleteRoom.run(id),
   members: (roomId) => q.roomMembers.all(roomId),
+  member: (roomId, userId) => q.roomMember.get(roomId, userId),
   isMember: (roomId, userId) => Boolean(q.isRoomMember.get(roomId, userId)),
   addMember: (roomId, userId) => q.addRoomMember.run(roomId, userId, Date.now()),
   removeMember: (roomId, userId) => q.removeRoomMember.run(roomId, userId),
+  setRole: (roomId, userId, roleId) => q.setMemberRole.run(roleId, roomId, userId),
+
+  /** Права участника (без учёта того, что создатель может всё) */
+  permsOf(room, userId) {
+    const member = q.roomMember.get(room.id, userId);
+    if (!member) return 0;
+    const role = member.role_id && q.roleById.get(member.role_id);
+    return role ? role.perms : room.default_perms;
+  },
+
+  bans: (roomId) => q.roomBans.all(roomId),
+  isBanned: (roomId, userId) => Boolean(q.isBanned.get(roomId, userId)),
+  ban: (roomId, userId, byId) => q.addBan.run(roomId, userId, byId, Date.now()),
+  unban: (roomId, userId) => q.removeBan.run(roomId, userId),
 };
+
+export const roles = {
+  of: (roomId) => q.roomRoles.all(roomId),
+  byId: (id) => q.roleById.get(id),
+  create(roomId, { name, color, perms }) {
+    const res = q.insertRole.run(roomId, name, color, perms, Date.now());
+    return roles.byId(Number(res.lastInsertRowid));
+  },
+  update: (id, { name, color, perms }) => q.updateRole.run(name, color, perms, id),
+  remove(id) {
+    q.clearRole.run(id);
+    q.deleteRole.run(id);
+  },
+};
+
+// В комнатах из версий без ролей создатель получает готовую роль администратора, которую можно раздать
+for (const { id } of q.roomsWithoutRoles.all()) roles.create(id, ADMIN_ROLE);
 
 /** id всех, кому важны обновления пользователя: друзья и соседи по комнатам */
 export function relatedUserIds(userId) {

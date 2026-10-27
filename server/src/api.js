@@ -9,6 +9,7 @@ import {
   identities,
   messages,
   relatedUserIds,
+  roles,
   roomMessages,
   rooms,
   toMessage,
@@ -18,6 +19,7 @@ import {
   users,
 } from './db.js';
 import { hub } from './hub.js';
+import { ALL_PERMS, PERMS, cleanPerms, has, rankOf } from './perms.js';
 import { buildAuthUrl, enabledProviders, fetchProfile } from './oauth.js';
 import { registerTurnUser } from './turn.js';
 import { voice } from './voice.js';
@@ -109,6 +111,7 @@ function notifyRelated(userId, message) {
 const ROOM_KINDS = ['voice', 'text'];
 const MAX_OWNED_ROOMS = 20;
 const MAX_ROOM_MEMBERS = 30;
+const MAX_ROLES = 20;
 
 function validateRoomName(name) {
   if (name.length < 1 || name.length > 40) throw new HttpError(400, 'Название комнаты — от 1 до 40 символов');
@@ -120,7 +123,10 @@ const toRoom = (row) => ({
   kind: row.kind,
   ownerId: row.owner_id,
   createdAt: row.created_at,
-  members: rooms.members(row.id).map(withOnline),
+  defaultPerms: row.default_perms,
+  roles: roles.of(row.id).map((r) => ({ id: r.id, name: r.name, color: r.color, perms: r.perms })),
+  members: rooms.members(row.id).map((m) => ({ ...withOnline(m), roleId: m.role_id })),
+  bans: rooms.bans(row.id).map((b) => ({ ...toPublicUser(b), bannedAt: b.banned_at })),
   voice: voice.participants(row.id),
 });
 
@@ -408,8 +414,27 @@ export function createApi() {
     return room;
   }
 
+  // Кто действует: его права и старшинство
+  function actor(req, room) {
+    const isOwner = room.owner_id === req.user.id;
+    const perms = isOwner ? ALL_PERMS : rooms.permsOf(room, req.user.id);
+    return { isOwner, perms, rank: rankOf(isOwner, perms) };
+  }
+
+  function requirePerm(req, room, perm, message) {
+    const who = actor(req, room);
+    if (!has(who.perms, perm)) throw new HttpError(403, message);
+    return who;
+  }
+
   function requireOwner(req, room) {
     if (room.owner_id !== req.user.id) throw new HttpError(403, 'Это может только создатель комнаты');
+  }
+
+  // Над участником может действовать только тот, кто старше по роли
+  function requireOutranks(who, room, userId) {
+    const target = rankOf(room.owner_id === userId, rooms.permsOf(room, userId));
+    if (who.rank <= target) throw new HttpError(403, 'Нельзя: у этого участника такие же или более высокие права');
   }
 
   // Добавлять в комнату можно только своих друзей
@@ -418,11 +443,29 @@ export function createApi() {
     const fresh = [...new Set(ids.map(Number))].filter((id) => !rooms.isMember(room.id, id));
     for (const id of fresh) {
       if (!contacts.has(req.user.id, id)) throw new HttpError(400, 'Добавлять в комнату можно только своих друзей');
+      if (rooms.isBanned(room.id, id)) throw new HttpError(400, `${users.byId(id).display_name} заблокирован в этой комнате`);
     }
     if (count + fresh.length > MAX_ROOM_MEMBERS)
       throw new HttpError(400, `В комнате может быть не больше ${MAX_ROOM_MEMBERS} человек`);
     for (const id of fresh) rooms.addMember(room.id, id);
     return fresh;
+  }
+
+  function roleFields(req, allowAdmin) {
+    const name = str(req.body.name);
+    if (name.length < 1 || name.length > 24) throw new HttpError(400, 'Название роли — от 1 до 24 символов');
+    const color = COLOR_RE.test(req.body.color) ? req.body.color : '#8b919c';
+    const perms = cleanPerms(req.body.perms);
+    if (perms & PERMS.admin && !allowAdmin) throw new HttpError(403, 'Право администратора раздаёт только создатель комнаты');
+    return { name, color, perms };
+  }
+
+  // Права поменялись — кто потерял доступ к голосу, того отключаем
+  function enforceVoice(room) {
+    for (const p of voice.participants(room.id)) {
+      const perms = room.owner_id === p.userId ? ALL_PERMS : rooms.permsOf(room, p.userId);
+      if (!has(perms, PERMS.connect)) voice.leave(room.id, p.userId, 'no-access');
+    }
   }
 
   api.get('/rooms', handle((req) => rooms.of(req.user.id).map(toRoom)));
@@ -446,14 +489,21 @@ export function createApi() {
     })
   );
 
+  // Название и права по умолчанию
   api.patch(
     '/rooms/:id',
     handle((req) => {
       const room = requireRoom(req);
-      requireOwner(req, room);
-      const name = str(req.body.name);
-      validateRoomName(name);
-      rooms.rename(room.id, name);
+      requirePerm(req, room, PERMS.manage, 'Нет права настраивать комнату');
+      if ('name' in req.body) {
+        const name = str(req.body.name);
+        validateRoomName(name);
+        rooms.rename(room.id, name);
+      }
+      if ('defaultPerms' in req.body) {
+        rooms.setDefaultPerms(room.id, cleanPerms(req.body.defaultPerms) & ~PERMS.admin);
+        enforceVoice(rooms.byId(room.id));
+      }
       return notifyRoom(room.id);
     })
   );
@@ -475,13 +525,21 @@ export function createApi() {
     '/rooms/:id/members',
     handle((req) => {
       const room = requireRoom(req);
+      requirePerm(req, room, PERMS.invite, 'Нет права приглашать в эту комнату');
       const ids = Array.isArray(req.body.userIds) ? req.body.userIds : [req.body.userId];
       addMembers(req, room, ids);
       return notifyRoom(room.id);
     })
   );
 
-  // Создатель убирает любого участника, остальные могут выйти сами
+  function removeFromRoom(room, userId, reason) {
+    if (voice.get(room.id, userId)) voice.leave(room.id, userId, reason);
+    rooms.removeMember(room.id, userId);
+    hub.send(userId, { type: 'room:removed', roomId: room.id, reason });
+    notifyRoom(room.id);
+  }
+
+  // Выйти может каждый сам; выгнать — тот, у кого есть право и кто старше по роли
   api.delete(
     '/rooms/:id/members/:userId',
     handle((req) => {
@@ -489,12 +547,110 @@ export function createApi() {
       const userId = Number(req.params.userId);
       if (userId === room.owner_id)
         throw new HttpError(400, 'Создатель не может выйти из своей комнаты — её можно только удалить');
-      if (userId !== req.user.id) requireOwner(req, room);
       if (!rooms.isMember(room.id, userId)) throw new HttpError(404, 'Этого человека нет в комнате');
-      if (voice.get(room.id, userId)) voice.leave(room.id, userId, 'removed');
-      rooms.removeMember(room.id, userId);
-      hub.send(userId, { type: 'room:removed', roomId: room.id });
-      notifyRoom(room.id);
+      if (userId !== req.user.id) requireOutranks(requirePerm(req, room, PERMS.kick, 'Нет права выгонять участников'), room, userId);
+      removeFromRoom(room, userId, userId === req.user.id ? 'left' : 'kicked');
+      return { ok: true };
+    })
+  );
+
+  // Роль участника: roleId или null — права по умолчанию
+  api.put(
+    '/rooms/:id/members/:userId/role',
+    handle((req) => {
+      const room = requireRoom(req);
+      const who = requirePerm(req, room, PERMS.manage, 'Нет права назначать роли');
+      const userId = Number(req.params.userId);
+      if (!rooms.isMember(room.id, userId)) throw new HttpError(404, 'Этого человека нет в комнате');
+      if (userId === room.owner_id) throw new HttpError(400, 'Создатель комнаты и так может всё');
+      if (userId !== req.user.id) requireOutranks(who, room, userId);
+      const roleId = req.body.roleId == null ? null : Number(req.body.roleId);
+      if (roleId !== null) {
+        const role = roles.byId(roleId);
+        if (!role || role.room_id !== room.id) throw new HttpError(404, 'Роль не найдена');
+        if (role.perms & PERMS.admin && !who.isOwner) throw new HttpError(403, 'Назначать администраторов может только создатель комнаты');
+      }
+      rooms.setRole(room.id, userId, roleId);
+      enforceVoice(room);
+      return notifyRoom(room.id);
+    })
+  );
+
+  api.post(
+    '/rooms/:id/roles',
+    handle((req) => {
+      const room = requireRoom(req);
+      const who = requirePerm(req, room, PERMS.manage, 'Нет права настраивать роли');
+      if (roles.of(room.id).length >= MAX_ROLES) throw new HttpError(400, `В комнате может быть не больше ${MAX_ROLES} ролей`);
+      roles.create(room.id, roleFields(req, who.isOwner));
+      return notifyRoom(room.id);
+    })
+  );
+
+  function requireRole(req, room, who) {
+    const role = roles.byId(Number(req.params.roleId));
+    if (!role || role.room_id !== room.id) throw new HttpError(404, 'Роль не найдена');
+    if (role.perms & PERMS.admin && !who.isOwner) throw new HttpError(403, 'Роль администратора меняет только создатель комнаты');
+    return role;
+  }
+
+  api.patch(
+    '/rooms/:id/roles/:roleId',
+    handle((req) => {
+      const room = requireRoom(req);
+      const who = requirePerm(req, room, PERMS.manage, 'Нет права настраивать роли');
+      const role = requireRole(req, room, who);
+      roles.update(role.id, roleFields(req, who.isOwner));
+      enforceVoice(room);
+      return notifyRoom(room.id);
+    })
+  );
+
+  api.delete(
+    '/rooms/:id/roles/:roleId',
+    handle((req) => {
+      const room = requireRoom(req);
+      const who = requirePerm(req, room, PERMS.manage, 'Нет права настраивать роли');
+      roles.remove(requireRole(req, room, who).id);
+      enforceVoice(room);
+      return notifyRoom(room.id);
+    })
+  );
+
+  // Бан: человек пропадает из комнаты, и вернуть его нельзя, пока не разбанят
+  api.post(
+    '/rooms/:id/bans',
+    handle((req) => {
+      const room = requireRoom(req);
+      const who = requirePerm(req, room, PERMS.ban, 'Нет права банить');
+      const userId = Number(req.body.userId);
+      if (userId === req.user.id) throw new HttpError(400, 'Себя забанить нельзя');
+      if (!rooms.isMember(room.id, userId)) throw new HttpError(404, 'Этого человека нет в комнате');
+      requireOutranks(who, room, userId);
+      rooms.ban(room.id, userId, req.user.id);
+      removeFromRoom(room, userId, 'banned');
+      return toRoom(rooms.byId(room.id));
+    })
+  );
+
+  api.delete(
+    '/rooms/:id/bans/:userId',
+    handle((req) => {
+      const room = requireRoom(req);
+      requirePerm(req, room, PERMS.ban, 'Нет права снимать бан');
+      rooms.unban(room.id, Number(req.params.userId));
+      return notifyRoom(room.id);
+    })
+  );
+
+  // Отключить от голосового канала, не выгоняя из комнаты
+  api.delete(
+    '/rooms/:id/voice/:userId',
+    handle((req) => {
+      const room = requireRoom(req);
+      const userId = Number(req.params.userId);
+      if (userId !== req.user.id) requireOutranks(requirePerm(req, room, PERMS.kick, 'Нет права отключать участников'), room, userId);
+      voice.leave(room.id, userId, 'disconnected');
       return { ok: true };
     })
   );
@@ -512,6 +668,7 @@ export function createApi() {
     '/rooms/:id/messages',
     handle((req) => {
       const room = requireRoom(req);
+      requirePerm(req, room, PERMS.write, 'Вам нельзя писать в эту комнату');
       const text = str(req.body.text);
       if (!text || text.length > 2000) throw new HttpError(400, 'Сообщение должно быть от 1 до 2000 символов');
       const message = toRoomMessage(roomMessages.add(room.id, req.user.id, text));

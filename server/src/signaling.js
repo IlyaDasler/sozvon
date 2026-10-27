@@ -3,9 +3,12 @@ import { WebSocketServer } from 'ws';
 import { verifyToken } from './auth.js';
 import { contacts, relatedUserIds, rooms, toPublicUser, users } from './db.js';
 import { hub } from './hub.js';
+import { ALL_PERMS, PERMS, has } from './perms.js';
 import { MAX_VOICE_PARTICIPANTS, voice } from './voice.js';
 
 const RING_TIMEOUT_MS = 45_000;
+
+const roomPerms = (room, uid) => (room.owner_id === uid ? ALL_PERMS : rooms.permsOf(room, uid));
 
 // callId -> { id, state: 'ringing' | 'active', caller: { uid, ws }, callee: { uid, ws }, timer }
 const calls = new Map();
@@ -84,6 +87,8 @@ const handlers = {
     const room = rooms.byId(roomId);
     const fail = (reason) => hub.sendTo(ws, { type: 'room:error', roomId, reason });
     if (!room || room.kind !== 'voice' || !rooms.isMember(roomId, user.id)) return fail('not-member');
+    const perms = roomPerms(room, user.id);
+    if (!has(perms, PERMS.connect)) return fail('no-access');
     if (inCall(user.id)) return fail('in-call');
     const others = voice.participants(roomId).filter((p) => p.userId !== user.id);
     if (others.length >= MAX_VOICE_PARTICIPANTS) return fail('full');
@@ -93,7 +98,7 @@ const handlers = {
     if (current !== null) voice.leave(current, user.id, voice.get(current, user.id).ws === ws ? null : 'moved');
 
     voice.join(roomId, user.id, ws, {
-      muted: Boolean(msg.muted),
+      muted: Boolean(msg.muted) || !has(perms, PERMS.speak),
       deafened: Boolean(msg.deafened),
     });
     // Новичок сам звонит каждому, кто уже в комнате, — так у двух сторон не бывает встречных предложений
@@ -120,6 +125,10 @@ const handlers = {
     const p = voice.get(roomId, user.id);
     if (p?.ws !== ws) return;
     for (const key of ['muted', 'deafened', 'video', 'screen']) if (key in msg) p[key] = Boolean(msg[key]);
+    // Без права говорить или показывать значки всегда «выключено» — остальные и так не слышат и не видят
+    const perms = roomPerms(rooms.byId(roomId), user.id);
+    if (!has(perms, PERMS.speak)) p.muted = true;
+    if (!has(perms, PERMS.video)) p.video = p.screen = false;
     voice.broadcast(roomId);
   },
 };
