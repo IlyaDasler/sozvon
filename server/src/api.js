@@ -19,6 +19,7 @@ import {
   users,
 } from './db.js';
 import { hub } from './hub.js';
+import { canonicalEmail } from './email-address.js';
 import { checkCode, mailEnabled, sendCode } from './mail.js';
 import { STATUSES, broadcastPresence, presenceOf } from './presence.js';
 import { ALL_PERMS, PERMS, cleanPerms, has, rankOf } from './perms.js';
@@ -45,7 +46,8 @@ function validatePassword(password) {
     throw new HttpError(400, 'Пароль должен быть от 6 до 128 символов');
 }
 
-const normEmail = (v) => str(v).toLowerCase();
+// Один ящик — один адрес (у Яндекса много доменов, см. email-address.js)
+const normEmail = canonicalEmail;
 
 function validateEmail(email) {
   if (email.length > 254 || !EMAIL_RE.test(email)) throw new HttpError(400, 'Проверьте адрес почты');
@@ -291,7 +293,7 @@ export function createApi() {
       rateLimit(req);
       // Войти можно и по почте, и по логину
       const login = str(req.body.username).toLowerCase();
-      const user = login.includes('@') ? users.byEmail(login) : users.byUsername(login);
+      const user = login.includes('@') ? users.byEmail(normEmail(login)) : users.byUsername(login);
       if (!user || typeof req.body.password !== 'string' || !verifyPassword(req.body.password, user.password_hash))
         throw new HttpError(401, 'Неверная почта, логин или пароль');
       return { token: signToken(user.id), user: toSelf(user) };
