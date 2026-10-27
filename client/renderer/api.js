@@ -27,6 +27,23 @@ const Api = {
     return data;
   },
 
+  // Отправка файла как есть (например, картинки аватарки)
+  async upload(method, path, blob) {
+    let res;
+    try {
+      res = await fetch(`${this.base}/api${path}`, {
+        method,
+        headers: { 'Content-Type': blob.type, Authorization: `Bearer ${this.token}` },
+        body: blob,
+      });
+    } catch {
+      throw new Error('Сервер недоступен. Проверьте интернет.');
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Ошибка сервера (${res.status})`);
+    return data;
+  },
+
   get: (path) => Api.request('GET', path),
   post: (path, body = {}) => Api.request('POST', path, body),
   patch: (path, body = {}) => Api.request('PATCH', path, body),

@@ -121,3 +121,46 @@ test('регистрация, вход, друзья, сообщения и зв
   assert.equal((await cb.next('presence')).online, false);
   cb.ws.close();
 });
+
+test('аватарка профиля', async () => {
+  const { body: reg } = await api('POST', '/register', { username: 'avatar_owner', password: 'secret1', inviteCode: 'friends' });
+  const { body: friend } = await api('POST', '/register', { username: 'avatar_friend', password: 'secret1', inviteCode: 'friends' });
+  await api('POST', '/contacts', { username: 'avatar_friend' }, reg.token);
+  assert.equal(reg.user.avatarUrl, null);
+
+  const upload = (buf, type = 'image/webp') =>
+    fetch(base + '/api/me/avatar', {
+      method: 'PUT',
+      headers: { 'Content-Type': type, Authorization: `Bearer ${reg.token}` },
+      body: buf,
+    });
+  const webp = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBPVP8 '), Buffer.alloc(64, 7)]);
+
+  // Не WebP, слишком большой файл и запрос без входа отклоняются
+  assert.equal((await upload(Buffer.from('not an image'))).status, 400);
+  assert.equal((await upload(Buffer.concat([webp, Buffer.alloc(400 * 1024)]))).status, 413);
+  assert.equal((await fetch(base + '/api/me/avatar', { method: 'PUT', body: webp, headers: { 'Content-Type': 'image/webp' } })).status, 401);
+
+  const res = await upload(webp);
+  assert.equal(res.status, 200);
+  const me = await res.json();
+  assert.match(me.avatarUrl, /^\/api\/avatars\/[a-f0-9]{32}\.webp$/);
+
+  // Картинка отдаётся без токена, а друг видит новую ссылку в списке друзей
+  const img = await fetch(base + me.avatarUrl);
+  assert.equal(img.status, 200);
+  assert.deepEqual(Buffer.from(await img.arrayBuffer()), webp);
+  const contacts = (await api('GET', '/contacts', null, friend.token)).body;
+  assert.equal(contacts.find((c) => c.username === 'avatar_owner').avatarUrl, me.avatarUrl);
+
+  // Новая загрузка удаляет старый файл, удаление аватарки — тоже
+  const second = await (await upload(webp)).json();
+  assert.notEqual(second.avatarUrl, me.avatarUrl);
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal((await fetch(base + me.avatarUrl)).status, 404);
+  const removed = await api('DELETE', '/me/avatar', null, reg.token);
+  assert.equal(removed.body.avatarUrl, null);
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal((await fetch(base + second.avatarUrl)).status, 404);
+  assert.equal((await fetch(base + '/api/avatars/..%2Fsozvon.db')).status, 404);
+});

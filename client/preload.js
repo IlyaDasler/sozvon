@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('desktop', {
     status: () => ipcRenderer.invoke('update:status'),
     onStatus: (callback) => ipcRenderer.on('update', (_event, status) => callback(status)),
     check: () => ipcRenderer.send('update:check'),
+    download: () => ipcRenderer.send('update:download'),
     install: () => ipcRenderer.send('update:install'),
   },
 });
