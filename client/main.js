@@ -40,11 +40,19 @@ function createWindow() {
 
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   win.on('focus', () => win.flashFrame(false));
+  // Ссылки из чата открываются в обычном браузере, а само окно никуда не уходит со своей страницы
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//.test(url)) shell.openExternal(url);
+    openOutside(url);
     return { action: 'deny' };
   });
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('file:')) return;
+    event.preventDefault();
+    openOutside(url);
+  });
 }
+
+const openOutside = (url) => /^(https?:\/\/|mailto:)/i.test(url) && shell.openExternal(url);
 
 app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) =>

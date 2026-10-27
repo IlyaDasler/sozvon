@@ -698,16 +698,23 @@ function renderMessageList(box, list, loaded, emptyText) {
       head.append(name, time);
       body.append(head);
     }
-    const text = document.createElement('div');
-    text.className = 'msg-text';
-    text.textContent = m.text;
-    text.title = formatTime(m.createdAt);
-    body.append(text);
+    body.append(messageContent(m));
     row.append(body);
     box.append(row);
     prev = m;
   }
   box.scrollTop = box.scrollHeight;
+}
+
+// Текст сообщения с разметкой; сообщение только из смайликов (до трёх) — крупно
+const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}(?:‍\p{Extended_Pictographic}|[️\u{1f3fb}-\u{1f3ff}])*\s*){1,3}$/u;
+
+function messageContent(m) {
+  const text = document.createElement('div');
+  text.className = `msg-text${EMOJI_ONLY.test(m.text.trim()) ? ' emoji-only' : ''}`;
+  text.title = formatTime(m.createdAt);
+  text.append(renderMarkdown(m.text));
+  return text;
 }
 
 function addMessage(m) {

@@ -194,7 +194,7 @@
         <div id="messages" class="messages"></div>
 
         <form id="message-form" class="composer">
-          <input id="message-input" placeholder="Написать сообщение" autocomplete="off" maxlength="2000">
+          <textarea id="message-input" rows="1" placeholder="Написать сообщение" maxlength="2000"></textarea>
           <button class="btn primary">Отправить</button>
         </form>
       </div>
@@ -215,7 +215,7 @@
         <div id="room-lobby" class="room-lobby hidden"></div>
         <div id="room-messages" class="messages"></div>
         <form id="room-message-form" class="composer">
-          <input id="room-message-input" placeholder="Написать в комнату" autocomplete="off" maxlength="2000">
+          <textarea id="room-message-input" rows="1" placeholder="Написать в комнату" maxlength="2000"></textarea>
           <button class="btn primary">Отправить</button>
         </form>
       </div>
@@ -501,11 +501,13 @@
 
   <div id="toast" class="toast hidden"></div>
 
+  <script src="markdown.js"></script>
   <script src="api.js"></script>
   <script src="call.js"></script>
   <script src="app.js"></script>
   <script src="voice-ui.js"></script>
   <script src="rooms.js"></script>
   <script src="notifications.js"></script>
+  <script src="composer.js"></script>
 </body>
 </html>
