@@ -114,6 +114,24 @@ async function run(serverEnv) {
   await win.webContents.executeJavaScript('closeSettings()');
   console.log('✔ аватарка загружена, обрезана до 256×256 и показана в профиле');
 
+  // Почта привязывается к профилю, как Яндекс: адрес, код из письма
+  {
+    const set = (id, value) => win.webContents.executeJavaScript(`document.getElementById('${id}').value = ${JSON.stringify(value)}; true`);
+    await win.webContents.executeJavaScript('openSettings()');
+    await waitFor(win, `[...document.querySelectorAll('.identity-row')].some((r) => r.textContent.includes('Почта') && r.textContent.includes('не привязана'))`, 'строка почты в настройках');
+    await win.webContents.executeJavaScript(`[...document.querySelectorAll('.identity-row')].find((r) => r.textContent.includes('Почта')).querySelector('button').click(); true`);
+    await set('link-email', 'Ivan@Mail.ru');
+    await win.webContents.executeJavaScript(`document.getElementById('link-send').click(); true`);
+    await waitFor(win, `document.getElementById('link-hint').textContent.includes('Код отправлен')`, 'письмо для привязки');
+    const lines = fs.readFileSync(MAIL_FILE, 'utf8').trim().split('\n').map(JSON.parse);
+    await set('link-code', lines.filter((l) => l.purpose === 'link').at(-1).code);
+    await win.webContents.executeJavaScript(`document.getElementById('link-confirm').click(); true`);
+    await waitFor(win, `state.me.email === 'ivan@mail.ru' && [...document.querySelectorAll('.identity-row')].some((r) => r.textContent.includes('ivan@mail.ru'))`, 'почта привязана');
+    await shot(win, 'settings-email');
+    await win.webContents.executeJavaScript('closeSettings()');
+    console.log('✔ почта привязывается к профилю в настройках по коду из письма');
+  }
+
   // Выходим и входим заново через Яндекс — должен открыться тот же профиль
   await win.webContents.executeJavaScript(`document.getElementById('logout-btn').click(); true`);
   await click(win, '.oauth-btn', 'Яндекс');

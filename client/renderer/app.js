@@ -67,6 +67,7 @@ const state = {
 
 const PROVIDER_STYLE = {
   yandex: { label: 'Я', bg: '#fc3f1d', fg: '#ffffff' },
+  email: { label: '@', bg: '#3e9cff', fg: '#ffffff' },
 };
 
 let socket = null;
@@ -204,7 +205,7 @@ function renderAuthFields() {
   $('username-field').classList.toggle('hidden', mode !== 'login');
   $('email-field').classList.toggle('hidden', mode === 'login');
   $('display-field').classList.toggle('hidden', !register);
-  $('code-field').classList.toggle('hidden', !reset && !(register && state.emailCodes));
+  $('code-field').classList.toggle('hidden', !reset && !register);
   $('password-field').classList.remove('hidden');
   $('invite-field').classList.toggle('hidden', !register || !state.inviteRequired);
   $('forgot-row').classList.toggle('hidden', mode !== 'login' || !state.emailCodes);
@@ -423,7 +424,7 @@ $('auth-form').onsubmit = async (e) => {
     if (mode !== 'login' && (!email || !password))
       return ($('auth-error').textContent = mode === 'reset' ? 'Введите почту и новый пароль' : 'Введите почту и пароль');
     // Кода ещё нет — сначала отправляем его на почту
-    if (!code && (mode === 'reset' || (mode === 'register' && state.emailCodes))) return sendEmailCode();
+    if (!code && mode !== 'login') return sendEmailCode();
   }
 
   const button = $('auth-submit');
@@ -442,9 +443,7 @@ $('auth-form').onsubmit = async (e) => {
       return;
     }
     if (mode === 'register') {
-      const body = { email, password, displayName: $('auth-display').value.trim(), inviteCode };
-      if (code) body.code = code;
-      finishLogin(base, await Api.post('/register', body));
+      finishLogin(base, await Api.post('/register', { email, password, displayName: $('auth-display').value.trim(), inviteCode, code }));
       return;
     }
     finishLogin(base, await Api.post('/login', { username, password }));
@@ -1016,7 +1015,7 @@ function renderColorPicker() {
 function renderIdentities() {
   const list = $('identity-list');
   list.replaceChildren();
-  $('identities-section').classList.toggle('hidden', !state.providers.length);
+  list.append(emailIdentityRow());
 
   for (const p of state.providers) {
     const linked = state.me.identities.find((i) => i.provider === p.id);
@@ -1050,6 +1049,96 @@ function renderIdentities() {
     list.append(row);
   }
 }
+
+// Почта: привязать (адрес + код из письма) или отвязать. По почте входят с паролем профиля
+function emailIdentityRow() {
+  const email = state.me.email;
+  const row = document.createElement('div');
+  row.className = 'identity-row';
+  const info = document.createElement('div');
+  const name = document.createElement('div');
+  name.textContent = 'Почта';
+  const sub = document.createElement('div');
+  sub.className = 'muted small ellipsis';
+  sub.textContent = email
+    ? state.me.hasPassword
+      ? email
+      : `${email} — чтобы входить по почте, задайте пароль ниже`
+    : 'не привязана';
+  info.append(name, sub);
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = email ? 'btn danger-outline' : 'btn';
+  button.textContent = email ? 'Отвязать' : 'Привязать';
+  button.onclick = async () => {
+    $('settings-error').textContent = '';
+    if (!email) {
+      const form = $('email-link');
+      form.classList.toggle('hidden');
+      $('link-hint').textContent = '';
+      $('link-code').value = '';
+      if (!form.classList.contains('hidden')) $('link-email').focus();
+      return;
+    }
+    if (!confirm(`Отвязать почту ${email}? Входить по ней будет нельзя.`)) return;
+    button.disabled = true;
+    try {
+      state.me = await Api.del('/me/email');
+      renderIdentities();
+    } catch (err) {
+      $('settings-error').textContent = err.message;
+      button.disabled = false;
+    }
+  };
+  row.append(providerBadge('email'), info, button);
+  return row;
+}
+
+let linkTimer = null;
+
+$('link-send').onclick = async () => {
+  const email = $('link-email').value.trim();
+  if (!email) return ($('settings-error').textContent = 'Введите почту');
+  const button = $('link-send');
+  button.disabled = true;
+  $('settings-error').textContent = '';
+  try {
+    await Api.post('/me/email/code', { email });
+  } catch (err) {
+    $('settings-error').textContent = err.message;
+    button.disabled = false;
+    return;
+  }
+  $('link-hint').textContent = `Код отправлен на ${email}. Если письма нет, проверьте папку «Спам».`;
+  $('link-code').focus();
+  let left = 60;
+  clearInterval(linkTimer);
+  const tick = () => {
+    button.textContent = left > 0 ? `Ещё раз через ${left} с` : 'Отправить ещё раз';
+    button.disabled = left > 0;
+    if (left-- <= 0) clearInterval(linkTimer);
+  };
+  tick();
+  linkTimer = setInterval(tick, 1000);
+};
+
+$('link-confirm').onclick = async () => {
+  const email = $('link-email').value.trim();
+  const code = $('link-code').value.trim();
+  if (!email || !code) return ($('settings-error').textContent = 'Введите почту и код из письма');
+  $('link-confirm').disabled = true;
+  $('settings-error').textContent = '';
+  try {
+    state.me = await Api.put('/me/email', { email, code });
+    $('email-link').classList.add('hidden');
+    renderIdentities();
+    toast('Почта привязана');
+  } catch (err) {
+    $('settings-error').textContent = err.message;
+  } finally {
+    $('link-confirm').disabled = false;
+  }
+};
 
 // ---------- Аватарка ----------
 
@@ -1125,6 +1214,8 @@ function renderPasswordSection() {
 }
 
 async function openSettings() {
+  $('email-link').classList.add('hidden');
+  $('link-email').value = '';
   renderIdentities();
   renderPasswordSection();
   renderAvatarEditor();

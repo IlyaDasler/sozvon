@@ -550,3 +550,4 @@ video.mirror { transform: scaleX(-1); }
 .code-row input { flex: 1; min-width: 0; }
 .code-row input:not(:placeholder-shown) { letter-spacing: .2em; }
 .code-row .btn { flex: none; }
+.email-link { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }

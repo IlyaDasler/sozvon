@@ -50,6 +50,10 @@ function validateEmail(email) {
   if (email.length > 254 || !EMAIL_RE.test(email)) throw new HttpError(400, 'Проверьте адрес почты');
 }
 
+function requireMail() {
+  if (!mailEnabled) throw new HttpError(503, 'Письма с кодами пока не отправляются: на сервере не настроена почта. Попробуйте позже');
+}
+
 function requireCode(purpose, email, code) {
   const result = checkCode(purpose, email, code);
   if (result === 'expired') throw new HttpError(400, 'Код устарел — запросите новый');
@@ -195,7 +199,7 @@ export function createApi() {
     '/register/code',
     handle(async (req) => {
       rateLimit(req);
-      if (!mailEnabled) throw new HttpError(400, 'Подтверждение почты на сервере не настроено');
+      requireMail();
       checkInvite(req.body.inviteCode);
       const email = normEmail(req.body.email);
       validateEmail(email);
@@ -210,7 +214,7 @@ export function createApi() {
     '/password/code',
     handle(async (req) => {
       rateLimit(req);
-      if (!mailEnabled) throw new HttpError(400, 'Восстановление пароля на сервере не настроено');
+      requireMail();
       const email = normEmail(req.body.email);
       validateEmail(email);
       if (users.byEmail(email)) await sendCode('reset', email);
@@ -240,7 +244,8 @@ export function createApi() {
     const displayName = str(req.body.displayName) || email.split('@')[0].slice(0, 32);
     validateDisplayName(displayName);
     if (users.byEmail(email)) throw new HttpError(409, 'Эта почта уже зарегистрирована — войдите или восстановите пароль');
-    if (mailEnabled) requireCode('register', email, req.body.code);
+    requireMail();
+    requireCode('register', email, req.body.code);
     const user = users.create({
       username: makeUsername(email, 'user'),
       passwordHash: hashPassword(req.body.password),
@@ -395,6 +400,45 @@ export function createApi() {
       const row = users.byId(req.user.id);
       notifyRelated(row.id, { type: 'user:updated', user: toPublicUser(row) });
       return toSelf(row);
+    })
+  );
+
+  api.post(
+    '/me/email/code',
+    handle(async (req) => {
+      rateLimit(req);
+      requireMail();
+      const email = normEmail(req.body.email);
+      validateEmail(email);
+      const owner = users.byEmail(email);
+      if (owner && owner.id !== req.user.id) throw new HttpError(409, 'Эта почта уже привязана к другому профилю');
+      await sendCode('link', email);
+      return { ok: true };
+    })
+  );
+
+  api.put(
+    '/me/email',
+    handle((req) => {
+      rateLimit(req);
+      const email = normEmail(req.body.email);
+      validateEmail(email);
+      const owner = users.byEmail(email);
+      if (owner && owner.id !== req.user.id) throw new HttpError(409, 'Эта почта уже привязана к другому профилю');
+      requireCode('link', email, req.body.code);
+      users.setEmail(req.user.id, email);
+      return toSelf(users.byId(req.user.id));
+    })
+  );
+
+  // Отвязать почту можно, если останется другой способ войти: логин с паролем или Яндекс
+  api.delete(
+    '/me/email',
+    handle((req) => {
+      if (!req.user.password_hash && !identities.of(req.user.id).length)
+        throw new HttpError(400, 'Сначала задайте пароль или привяжите Яндекс, иначе вы не сможете войти в профиль');
+      users.setEmail(req.user.id, null);
+      return toSelf(users.byId(req.user.id));
     })
   );
 
