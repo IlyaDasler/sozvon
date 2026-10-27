@@ -108,3 +108,15 @@ test('регистрация по почте с кодом, вход по поч
   assert.equal((await api('POST', '/login', { username: 'old@mail.ru', password: 'secret1' })).status, 401);
   assert.equal((await api('POST', '/login', { username: 'old_client', password: 'secret1' })).status, 200);
 });
+
+test('почта Яндекса: регистрация на ya.ru, вход по любому адресу того же ящика, второй профиль не завести', async () => {
+  assert.equal((await api('POST', '/register/code', { email: 'Petr.Sidorov@ya.ru' })).status, 200);
+  const code = lastCode('petr-sidorov@yandex.ru', 'register');
+  assert.match(code, /^\d{6}$/, 'код уходит на основной адрес ящика');
+  const reg = await api('POST', '/register', { email: 'petr.sidorov@ya.ru', password: 'secret1', displayName: 'Петя', code });
+  assert.equal(reg.status, 200);
+  assert.equal(reg.body.user.email, 'petr-sidorov@yandex.ru');
+  for (const login of ['petr.sidorov@yandex.com', 'Petr-Sidorov@yandex.ru', 'petr.sidorov@narod.ru'])
+    assert.equal((await api('POST', '/login', { username: login, password: 'secret1' })).status, 200, login);
+  assert.equal((await api('POST', '/register/code', { email: 'petr-sidorov@yandex.by' })).status, 409);
+});
