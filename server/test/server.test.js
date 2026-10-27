@@ -46,6 +46,12 @@ function connect(token) {
   };
 }
 
+// Дружба — через заявку: a зовёт, b принимает
+async function befriend(a, b) {
+  await api('POST', '/contacts', { username: b.user.username }, a.token);
+  await api('POST', `/friend-requests/${a.user.id}/accept`, null, b.token);
+}
+
 before(async () => {
   proc = spawn(process.execPath, ['src/index.js'], {
     env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, INVITE_CODE: 'friends', AUTH_RATE_LIMIT: '100' },
@@ -88,6 +94,8 @@ test('регистрация, вход, друзья, сообщения и зв
 
   const added = await api('POST', '/contacts', { username: 'misha' }, ta);
   assert.equal(added.status, 200);
+  assert.equal(added.body.friendship, 'pending');
+  assert.equal((await api('POST', `/friend-requests/${a.body.user.id}/accept`, null, tb)).status, 200);
   assert.equal((await api('GET', '/contacts', null, tb)).body[0].username, 'ilya');
 
   const ca = connect(ta);
@@ -125,7 +133,7 @@ test('регистрация, вход, друзья, сообщения и зв
 test('аватарка профиля', async () => {
   const { body: reg } = await api('POST', '/register', { username: 'avatar_owner', password: 'secret1', inviteCode: 'friends' });
   const { body: friend } = await api('POST', '/register', { username: 'avatar_friend', password: 'secret1', inviteCode: 'friends' });
-  await api('POST', '/contacts', { username: 'avatar_friend' }, reg.token);
+  await befriend(reg, friend);
   assert.equal(reg.user.avatarUrl, null);
 
   const upload = (buf, type = 'image/webp') =>
@@ -172,8 +180,8 @@ test('комнаты: участники, чат и голосовой кана�
   const friend = await reg('room_friend');
   const third = await reg('room_third');
   const stranger = await reg('room_stranger');
-  await api('POST', '/contacts', { username: 'room_friend' }, owner.token);
-  await api('POST', '/contacts', { username: 'room_third' }, owner.token);
+  await befriend(owner, friend);
+  await befriend(owner, third);
 
   // Создавать можно только с друзьями и с понятным названием и типом
   assert.equal((await api('POST', '/rooms', { name: '', kind: 'voice' }, owner.token)).status, 400);
@@ -262,8 +270,8 @@ test('комнаты: роли, права, кик и бан', async () => {
   const mod = await reg('role_mod');
   const guest = await reg('role_guest');
   const extra = await reg('role_extra');
-  for (const u of ['role_mod', 'role_guest', 'role_extra']) await api('POST', '/contacts', { username: u }, owner.token);
-  await api('POST', '/contacts', { username: 'role_extra' }, mod.token);
+  for (const u of [mod, guest, extra]) await befriend(owner, u);
+  await befriend(mod, extra);
 
   const room = (await api('POST', '/rooms', { name: 'Клан', kind: 'voice', memberIds: [mod.user.id, guest.user.id] }, owner.token)).body;
   // Создателю сразу доступна роль администратора
@@ -343,7 +351,7 @@ test('статусы: активен, неактивен, не беспокои�
     (await api('POST', '/register', { username, password: 'secret1', displayName: username, inviteCode: 'friends' })).body;
   const a = await reg('status_a');
   const b = await reg('status_b');
-  await api('POST', '/contacts', { username: 'status_b' }, a.token);
+  await befriend(a, b);
   assert.equal(a.user.status, 'online');
 
   const cb = connect(b.token);
@@ -392,7 +400,7 @@ test('профиль: «О себе», цвет баннера и дата ре�
     (await api('POST', '/register', { username, password: 'secret1', displayName: username, inviteCode: 'friends' })).body;
   const a = await reg('profile_a');
   const b = await reg('profile_b');
-  await api('POST', '/contacts', { username: 'profile_b' }, a.token);
+  await befriend(a, b);
   assert.equal(a.user.bio, '');
   assert.equal(a.user.bannerColor, null);
   assert.ok(a.user.memberSince > 0);
@@ -408,4 +416,136 @@ test('профиль: «О себе», цвет баннера и дата ре�
   const friend = (await api('GET', '/contacts', null, b.token)).body.find((c) => c.id === a.user.id);
   assert.equal(friend.bio, 'Люблю **CS2** и котов');
   assert.ok(friend.memberSince > 0);
+});
+
+test('друзья: заявки, принятие, отказ, отмена и блокировка', async () => {
+  const reg = async (username) =>
+    (await api('POST', '/register', { username, password: 'secret1', displayName: username, inviteCode: 'friends' })).body;
+  const a = await reg('req_a');
+  const b = await reg('req_b');
+  const c = await reg('req_c');
+  const d = await reg('req_d');
+  const cb = connect(b.token);
+  const ca = connect(a.token);
+  const cc = connect(c.token);
+  await Promise.all([cb.open, ca.open, cc.open]);
+  const requests = async (who) => (await api('GET', '/friend-requests', null, who.token)).body;
+  const ids = (list) => list.map((u) => u.id);
+  const friendIds = async (who) => ids((await api('GET', '/contacts', null, who.token)).body);
+
+  // Заявка не делает друзьями: приходит уведомление, писать пока нельзя
+  const sent = await api('POST', '/contacts', { username: 'req_b' }, a.token);
+  assert.equal(sent.status, 200);
+  assert.equal(sent.body.friendship, 'pending');
+  assert.equal(sent.body.id, b.user.id);
+  assert.equal((await cb.next('friend:request')).user.id, a.user.id);
+  assert.deepEqual(await friendIds(b), []);
+  assert.equal((await api('POST', `/messages/${b.user.id}`, { text: 'эй' }, a.token)).status, 404);
+  assert.deepEqual(ids((await requests(b)).incoming), [a.user.id]);
+  assert.deepEqual(ids((await requests(a)).outgoing), [b.user.id]);
+  // Статус «в сети» до дружбы не виден
+  assert.equal((await requests(b)).incoming[0].online, undefined);
+  assert.equal((await api('POST', '/contacts', { username: 'req_b' }, a.token)).status, 409);
+
+  // Принятие: оба в друзьях, отправитель узнаёт сразу
+  assert.equal((await api('POST', `/friend-requests/${a.user.id}/accept`, null, b.token)).status, 200);
+  assert.equal((await ca.next('contact:added')).user.id, b.user.id);
+  assert.deepEqual(await friendIds(a), [b.user.id]);
+  assert.deepEqual(await friendIds(b), [a.user.id]);
+  assert.deepEqual(await requests(b), { incoming: [], outgoing: [] });
+  assert.equal((await api('POST', '/contacts', { username: 'req_a' }, b.token)).status, 409);
+  // Принять можно только существующую заявку
+  assert.equal((await api('POST', `/friend-requests/${c.user.id}/accept`, null, b.token)).status, 404);
+
+  // Отказ: заявка пропадает у обоих, друзьями не становятся
+  await api('POST', '/contacts', { username: 'req_b' }, c.token);
+  await cb.next('friend:request');
+  assert.equal((await api('DELETE', `/friend-requests/${c.user.id}`, null, b.token)).status, 200);
+  assert.equal((await cc.next('friend:request:removed')).userId, b.user.id);
+  assert.deepEqual((await requests(c)).outgoing, []);
+  assert.deepEqual(await friendIds(c), []);
+
+  // Отмена своей заявки
+  await api('POST', '/contacts', { username: 'req_b' }, c.token);
+  await cb.next('friend:request');
+  assert.equal((await api('DELETE', `/friend-requests/${b.user.id}`, null, c.token)).status, 200);
+  assert.equal((await cb.next('friend:request:removed')).userId, c.user.id);
+  assert.deepEqual((await requests(b)).incoming, []);
+
+  // Встречные заявки — сразу дружба
+  await api('POST', '/contacts', { username: 'req_d' }, c.token);
+  const mutual = await api('POST', '/contacts', { username: 'req_c' }, d.token);
+  assert.equal(mutual.body.friendship, 'friends');
+  assert.deepEqual(await friendIds(c), [d.user.id]);
+
+  // Блокировка: заявка удаляется, новые не проходят, человек в списке заблокированных
+  await api('POST', '/contacts', { username: 'req_b' }, c.token);
+  await cb.next('friend:request');
+  assert.equal((await api('POST', '/blocks', { userId: c.user.id }, b.token)).status, 200);
+  assert.deepEqual((await requests(b)).incoming, []);
+  assert.deepEqual(ids((await api('GET', '/blocks', null, b.token)).body), [c.user.id]);
+  assert.equal((await api('POST', '/contacts', { username: 'req_b' }, c.token)).status, 403);
+  assert.equal((await api('POST', '/contacts', { username: 'req_c' }, b.token)).status, 403);
+  // Разблокировали — снова можно
+  assert.equal((await api('DELETE', `/blocks/${c.user.id}`, null, b.token)).status, 200);
+  assert.deepEqual((await api('GET', '/blocks', null, b.token)).body, []);
+  assert.equal((await api('POST', '/contacts', { username: 'req_b' }, c.token)).body.friendship, 'pending');
+
+  // Заблокировать друга — дружба пропадает у обоих
+  assert.equal((await api('POST', '/blocks', { userId: a.user.id }, b.token)).status, 200);
+  assert.equal((await ca.next('contact:removed')).userId, b.user.id);
+  assert.deepEqual(await friendIds(a), []);
+  assert.equal((await api('POST', '/blocks', { userId: b.user.id }, b.token)).status, 400);
+
+  for (const s of [ca, cb, cc]) s.ws.close();
+});
+
+test('комнаты: кик на время — только чтение, потом права возвращаются', async () => {
+  const reg = async (username) =>
+    (await api('POST', '/register', { username, password: 'secret1', displayName: username, inviteCode: 'friends' })).body;
+  const owner = await reg('to_owner');
+  const mod = await reg('to_mod');
+  const guest = await reg('to_guest');
+  await befriend(owner, mod);
+  await befriend(owner, guest);
+  let room = (await api('POST', '/rooms', { name: 'Тайм', kind: 'voice', memberIds: [mod.user.id, guest.user.id] }, owner.token)).body;
+  const modRole = (await api('POST', `/rooms/${room.id}/roles`, { name: 'Модер', perms: 15 | 32 }, owner.token)).body.roles.find((r) => r.name === 'Модер');
+  await api('PUT', `/rooms/${room.id}/members/${mod.user.id}/role`, { roleId: modRole.id }, owner.token);
+
+  const cg = connect(guest.token);
+  await cg.open;
+  cg.send({ type: 'room:join', roomId: room.id });
+  await cg.next('room:joined');
+
+  // Обычный участник кикнуть не может, создателя не кикнуть, длительность проверяется
+  assert.equal((await api('POST', `/rooms/${room.id}/timeouts`, { userId: mod.user.id, seconds: 60 }, guest.token)).status, 403);
+  assert.equal((await api('POST', `/rooms/${room.id}/timeouts`, { userId: owner.user.id, seconds: 60 }, mod.token)).status, 403);
+  assert.equal((await api('POST', `/rooms/${room.id}/timeouts`, { userId: guest.user.id, seconds: 0 }, mod.token)).status, 400);
+
+  // Кик на 2 секунды: выкидывает из голоса, писать нельзя, читать можно, участник остаётся в комнате
+  const kicked = await api('POST', `/rooms/${room.id}/timeouts`, { userId: guest.user.id, seconds: 2 }, mod.token);
+  assert.equal(kicked.status, 200);
+  const until = kicked.body.members.find((m) => m.id === guest.user.id).timeoutUntil;
+  assert.ok(until > Date.now() && until <= Date.now() + 2000);
+  assert.equal((await cg.next('room:left')).reason, 'no-access');
+  const write = await api('POST', `/rooms/${room.id}/messages`, { text: 'можно?' }, guest.token);
+  assert.equal(write.status, 403);
+  assert.match(write.body.error, /кик/i);
+  assert.equal((await api('GET', `/rooms/${room.id}/messages`, null, guest.token)).status, 200);
+  cg.send({ type: 'room:join', roomId: room.id });
+  assert.equal((await cg.next('room:error')).reason, 'no-access');
+  // Кикнутый модератор тоже никого не трогает
+  await api('POST', `/rooms/${room.id}/timeouts`, { userId: mod.user.id, seconds: 60 }, owner.token);
+  assert.equal((await api('DELETE', `/rooms/${room.id}/timeouts/${guest.user.id}`, null, mod.token)).status, 403);
+  // Создатель снимает кик досрочно
+  assert.equal((await api('DELETE', `/rooms/${room.id}/timeouts/${mod.user.id}`, null, owner.token)).status, 200);
+  room = (await api('GET', '/rooms', null, owner.token)).body.find((r) => r.id === room.id);
+  assert.equal(room.members.find((m) => m.id === mod.user.id).timeoutUntil, null);
+
+  // Время вышло — права роли вернулись сами
+  await new Promise((r) => setTimeout(r, 2100));
+  assert.equal((await api('POST', `/rooms/${room.id}/messages`, { text: 'я вернулся' }, guest.token)).status, 200);
+  room = (await api('GET', '/rooms', null, guest.token)).body.find((r) => r.id === room.id);
+  assert.equal(room.members.find((m) => m.id === guest.user.id).timeoutUntil, null);
+  cg.ws.close();
 });
