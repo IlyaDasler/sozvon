@@ -51,6 +51,9 @@
         <span id="auth-switch-text">Нет аккаунта?</span>
         <a href="#" id="auth-toggle">Зарегистрироваться</a>
       </p>
+      <p class="muted center small auth-version hidden" id="auth-version-row">
+        <span id="auth-version"></span> · <a href="#" id="auth-update-check">Проверить обновления</a>
+      </p>
     </form>
   </section>
 
@@ -61,6 +64,9 @@
         <img src="logo.svg" alt="" width="24" height="24">
         <span>Созвон</span>
         <span class="conn-dot" id="conn-dot" title="Соединение с сервером"></span>
+        <button class="icon-btn hidden" id="sidebar-update-check" title="Проверить обновления">
+          <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>
+        </button>
       </div>
 
       <form id="add-contact" class="add-contact">
