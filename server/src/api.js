@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import express from 'express';
 import { config } from './config.js';
 import { hashPassword, signToken, verifyPassword, verifyToken } from './auth.js';
@@ -48,6 +50,19 @@ setInterval(() => {
 const withOnline = (row) => ({ ...toPublicUser(row), online: hub.isOnline(row.id) });
 
 const PKCE_RE = /^[A-Za-z0-9_-]{16,128}$/;
+
+// Аватарки хранятся файлами рядом с базой; приложение заранее обрезает их до квадрата 256×256 в формате WebP
+const AVATAR_DIR = path.join(config.dataDir, 'avatars');
+const AVATAR_MAX_BYTES = 300 * 1024;
+const AVATAR_FILE_RE = /^[a-f0-9]{32}\.webp$/;
+fs.mkdirSync(AVATAR_DIR, { recursive: true });
+
+const isWebp = (buf) =>
+  buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP';
+
+function removeAvatarFile(id) {
+  if (id) fs.rm(path.join(AVATAR_DIR, `${id}.webp`), { force: true }, () => {});
+}
 
 // Логин для нового профиля из почты или имени: ivan.petrov@yandex.ru -> ivan.petrov, при совпадении добавляем цифры
 function makeUsername(email, fallback) {
@@ -136,6 +151,14 @@ export function createApi() {
 
   // ---------- Вход через Google / Яндекс / VK ----------
 
+  // Картинки открываются без токена (тег img его не передаёт), но имя файла случайное и меняется при каждой загрузке
+  api.get('/avatars/:file', (req, res, next) => {
+    if (!AVATAR_FILE_RE.test(req.params.file)) return next(new HttpError(404, 'Не найдено'));
+    res.sendFile(req.params.file, { root: AVATAR_DIR, maxAge: '365d', immutable: true }, (err) => {
+      if (err && !res.headersSent) next(new HttpError(404, 'Не найдено'));
+    });
+  });
+
   api.get('/oauth/providers', (_req, res) => res.json(enabledProviders()));
 
   api.get(
@@ -205,6 +228,32 @@ export function createApi() {
   api.use(requireAuth);
 
   api.get('/me', handle((req) => toSelf(req.user)));
+
+  api.put(
+    '/me/avatar',
+    express.raw({ type: 'image/webp', limit: AVATAR_MAX_BYTES }),
+    handle((req) => {
+      if (!Buffer.isBuffer(req.body) || !isWebp(req.body)) throw new HttpError(400, 'Нужна картинка в формате WebP');
+      const id = crypto.randomBytes(16).toString('hex');
+      fs.writeFileSync(path.join(AVATAR_DIR, `${id}.webp`), req.body);
+      removeAvatarFile(req.user.avatar);
+      users.updateAvatar(req.user.id, id);
+      const row = users.byId(req.user.id);
+      notifyContacts(row.id, { type: 'user:updated', user: toPublicUser(row) });
+      return toSelf(row);
+    })
+  );
+
+  api.delete(
+    '/me/avatar',
+    handle((req) => {
+      removeAvatarFile(req.user.avatar);
+      users.updateAvatar(req.user.id, null);
+      const row = users.byId(req.user.id);
+      notifyContacts(row.id, { type: 'user:updated', user: toPublicUser(row) });
+      return toSelf(row);
+    })
+  );
 
   api.delete(
     '/me/identities/:provider',
@@ -312,7 +361,15 @@ export function createApi() {
   api.use((err, _req, res, _next) => {
     const status = err.status || (err.type === 'entity.parse.failed' ? 400 : 500);
     if (status === 500) console.error(err);
-    res.status(status).json({ error: status === 500 ? 'Внутренняя ошибка сервера' : err.message });
+    const message =
+      status === 500
+        ? 'Внутренняя ошибка сервера'
+        : err.type === 'entity.too.large'
+          ? 'Слишком большой запрос'
+          : err.type === 'entity.parse.failed'
+            ? 'Неверный формат запроса'
+            : err.message;
+    res.status(status).json({ error: message });
   });
 
   return api;

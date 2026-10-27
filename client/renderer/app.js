@@ -64,9 +64,15 @@ function makeAvatar(user, online, className = '') {
   return el;
 }
 
+const AVATAR_URL_RE = /^\/api\/avatars\/[a-f0-9]{32}\.webp$/;
+
 function fillAvatar(el, user, online) {
-  el.style.background = user.avatarColor;
-  el.textContent = (user.displayName || user.username || '?').trim().charAt(0).toUpperCase();
+  // Именно backgroundColor: сокращённое background в инлайн-стиле сбросило бы background-size: cover у фото
+  el.style.backgroundColor = user.avatarColor;
+  const hasImage = AVATAR_URL_RE.test(user.avatarUrl || '');
+  el.classList.toggle('has-image', hasImage);
+  el.style.backgroundImage = hasImage ? `url("${Api.base}${user.avatarUrl}")` : '';
+  el.textContent = hasImage ? '' : (user.displayName || user.username || '?').trim().charAt(0).toUpperCase();
   if (online !== undefined) {
     const dot = document.createElement('span');
     dot.className = `status${online ? ' online' : ''}`;
@@ -894,6 +900,74 @@ function renderIdentities() {
   }
 }
 
+// ---------- Аватарка ----------
+
+const AVATAR_SIZE = 256;
+
+// Обрезаем по центру до квадрата, уменьшаем до 256×256 и сжимаем в WebP
+async function makeAvatarBlob(file) {
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error('Не получилось открыть картинку. Попробуйте JPG или PNG');
+  }
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = AVATAR_SIZE;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+  bitmap.close();
+  for (const quality of [0.85, 0.7, 0.5]) {
+    const blob = await new Promise((r) => canvas.toBlob(r, 'image/webp', quality));
+    if (blob && blob.size < 280 * 1024) return blob;
+  }
+  throw new Error('Картинка получилась слишком большой');
+}
+
+function applyMe(me) {
+  state.me = me;
+  renderMe();
+  renderAvatarEditor();
+  renderMessages();
+  renderCallPanel();
+}
+
+function renderAvatarEditor() {
+  const el = $('set-avatar');
+  el.replaceChildren();
+  fillAvatar(el, state.me);
+  $('avatar-remove-btn').classList.toggle('hidden', !state.me.avatarUrl);
+}
+
+async function uploadAvatar(file) {
+  $('settings-error').textContent = '';
+  $('avatar-upload-btn').disabled = true;
+  try {
+    applyMe(await Api.upload('PUT', '/me/avatar', await makeAvatarBlob(file)));
+    toast('Фото профиля обновлено');
+  } catch (err) {
+    $('settings-error').textContent = err.message;
+  } finally {
+    $('avatar-upload-btn').disabled = false;
+  }
+}
+
+$('avatar-upload-btn').onclick = () => $('avatar-input').click();
+$('avatar-input').onchange = (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (file) uploadAvatar(file);
+};
+$('avatar-remove-btn').onclick = async () => {
+  try {
+    applyMe(await Api.del('/me/avatar'));
+  } catch (err) {
+    $('settings-error').textContent = err.message;
+  }
+};
+
 function renderPasswordSection() {
   $('password-title').textContent = state.me.hasPassword ? 'Сменить пароль' : 'Задать пароль';
   $('cur-pass-field').classList.toggle('hidden', !state.me.hasPassword);
@@ -902,6 +976,7 @@ function renderPasswordSection() {
 async function openSettings() {
   renderIdentities();
   renderPasswordSection();
+  renderAvatarEditor();
   $('set-display').value = state.me.displayName;
   pickedColor = state.me.avatarColor;
   renderColorPicker();
@@ -964,10 +1039,16 @@ $('settings-form').onsubmit = async (e) => {
 
 // ---------- Обновления ----------
 
+// Новая версия → окно со списком изменений и кнопками «Обновить», «Позже», «Пропустить эту версию»
+
 let updateStatus = { state: 'idle' };
+let updateRequested = false; // нажали «Обновить»: после загрузки сразу ставим
+let manualCheck = false; // проверка из настроек показывает окно даже для пропущенной версии
+let modalShownFor = null; // версия, для которой окно уже показывали в этом запуске
 
 const UPDATE_TEXT = {
   checking: () => 'Проверяем обновления…',
+  available: (s) => `Доступна версия ${s.version}`,
   downloading: (s) => `Скачивается версия ${s.version} (${s.percent ?? 0}%)`,
   ready: (s) => `Версия ${s.version} скачана и готова к установке`,
   latest: () => 'У вас последняя версия',
@@ -975,45 +1056,111 @@ const UPDATE_TEXT = {
   unsupported: () => 'Обновления работают только в установленной версии',
 };
 
+const isSkipped = (version) => store.get('skippedUpdate', null) === version;
+const updateModalOpen = () => !$('update-modal').classList.contains('hidden');
+
+// Описание релиза приходит в HTML — превращаем в простой текст, ничего из него не выполняя
+function notesToText(html) {
+  const fallback = 'Исправления и улучшения.';
+  if (!html) return fallback;
+  const prepared = html.replace(/<li[^>]*>/gi, '• ').replace(/<\/(li|p|h[1-6]|ul|ol)>|<br\s*\/?>/gi, '\n');
+  const text = new DOMParser().parseFromString(prepared, 'text/html').body.textContent || '';
+  return text.replace(/\n{3,}/g, '\n\n').trim() || fallback;
+}
+
+function openUpdateModal() {
+  const s = updateStatus;
+  modalShownFor = s.version;
+  $('update-title').textContent = `Доступно обновление ${s.version}`;
+  $('update-current').textContent = `Сейчас у вас версия ${s.current}`;
+  $('update-notes').textContent = notesToText(s.notes);
+  $('update-error').textContent = '';
+  $('update-modal').classList.remove('hidden');
+  renderUpdate();
+}
+
+function closeUpdateModal() {
+  $('update-modal').classList.add('hidden');
+  renderUpdate();
+}
+
 function renderUpdate() {
   const s = updateStatus;
-  const ready = s.state === 'ready';
-  const showBar = ready || s.state === 'downloading';
-  $('update-bar').classList.toggle('hidden', !showBar);
-  document.body.classList.toggle('has-update', showBar);
-  $('update-btn').classList.toggle('hidden', !ready);
-  $('update-text').textContent = ready ? 'Обновление готово' : `Обновление: ${s.percent ?? 0}%`;
+  const busy = s.state === 'downloading' || (s.state === 'ready' && updateRequested);
+
+  // Окно обновления: во время загрузки вместо кнопок — прогресс
+  $('update-progress').classList.toggle('hidden', !busy);
+  $('update-actions').classList.toggle('hidden', busy);
+  $('update-progress-fill').style.width = `${s.state === 'ready' ? 100 : (s.percent ?? 0)}%`;
+  $('update-progress-text').textContent = s.state === 'ready' ? 'Перезапускаем…' : `Скачиваем… ${s.percent ?? 0}%`;
+
+  // Полоса внизу слева — если окно закрыли кнопкой «Позже»
+  const pending =
+    !updateModalOpen() &&
+    ((s.state === 'available' && !isSkipped(s.version)) || s.state === 'downloading' || s.state === 'ready');
+  $('update-bar').classList.toggle('hidden', !pending);
+  document.body.classList.toggle('has-update', pending);
+  $('update-text').textContent =
+    s.state === 'downloading' ? `Обновление: ${s.percent ?? 0}%` : s.state === 'ready' ? 'Обновление готово' : 'Доступно обновление';
+  $('update-btn').classList.toggle('hidden', s.state === 'downloading');
+  $('update-btn').textContent = s.state === 'ready' ? 'Обновить' : 'Подробнее';
   $('update-bar').title = `Версия ${s.version ?? ''}`;
 
+  // Раздел «О приложении» в настройках
   $('app-version').textContent = s.current || '';
   $('update-status').textContent = UPDATE_TEXT[s.state]?.(s) ?? '';
   $('update-status').title = s.state === 'error' ? s.message || '' : '';
-  $('update-check-btn').textContent = ready ? 'Перезапустить и обновить' : 'Проверить обновления';
+  $('update-check-btn').textContent =
+    s.state === 'ready' ? 'Перезапустить и обновить' : s.state === 'available' ? 'Обновить…' : 'Проверить обновления';
   $('update-check-btn').disabled = s.state === 'checking' || s.state === 'downloading';
 }
 
 function installUpdate() {
-  if (state.call && !confirm('Сейчас идёт звонок. Завершить его и перезапустить приложение для обновления?')) return;
   hangup();
   window.desktop.update.install();
 }
 
+function startUpdate() {
+  if (state.call && !confirm('Сейчас идёт звонок. После загрузки приложение перезапустится и звонок завершится. Продолжить?'))
+    return;
+  updateRequested = true;
+  $('update-error').textContent = '';
+  if (updateStatus.state === 'ready') return installUpdate();
+  window.desktop.update.download();
+  renderUpdate();
+}
+
+function onUpdateStatus(s) {
+  updateStatus = { ...updateStatus, ...s };
+  const { state: st, version } = updateStatus;
+  if (st === 'available' && (manualCheck || (modalShownFor !== version && !isSkipped(version)))) openUpdateModal();
+  if (st === 'available' || st === 'latest' || st === 'error') manualCheck = false;
+  if (st === 'ready' && updateRequested) installUpdate();
+  if (st === 'error' && updateRequested) {
+    updateRequested = false;
+    $('update-error').textContent = 'Не удалось скачать обновление. Проверьте интернет и попробуйте ещё раз.';
+  }
+  renderUpdate();
+}
+
 if (window.desktop?.update) {
   $('about-section').classList.remove('hidden');
-  window.desktop.update.onStatus((s) => {
-    updateStatus = { ...updateStatus, ...s };
-    renderUpdate();
-  });
-  window.desktop.update
-    .status()
-    .then((s) => {
-      updateStatus = { ...updateStatus, ...s };
-      renderUpdate();
-    })
-    .catch(() => {});
-  $('update-btn').onclick = installUpdate;
-  $('update-check-btn').onclick = () =>
-    updateStatus.state === 'ready' ? installUpdate() : window.desktop.update.check();
+  window.desktop.update.onStatus(onUpdateStatus);
+  window.desktop.update.status().then(onUpdateStatus).catch(() => {});
+
+  $('update-now').onclick = startUpdate;
+  $('update-later').onclick = closeUpdateModal;
+  $('update-skip').onclick = () => {
+    store.set('skippedUpdate', updateStatus.version);
+    closeUpdateModal();
+  };
+  $('update-btn').onclick = () => (updateStatus.state === 'ready' ? startUpdate() : openUpdateModal());
+  $('update-check-btn').onclick = () => {
+    if (updateStatus.state === 'ready') return startUpdate();
+    if (updateStatus.state === 'available') return openUpdateModal();
+    manualCheck = true;
+    window.desktop.update.check();
+  };
 }
 
 // ---------- Кнопки ----------
@@ -1055,10 +1202,8 @@ window.addEventListener('beforeunload', () => hangup());
 async function boot() {
   setAuthMode(false);
   applySpeaker();
-  if (isWeb) $('server-field').classList.add('hidden');
-  // Старые адреса (локальный и домашний сервер) заменяем на общий сервер
-  const savedServer = store.get('server', DEFAULT_SERVER);
-  $('server-url').value = LEGACY_SERVERS.includes(savedServer) ? DEFAULT_SERVER : savedServer;
+  // Пользователь адрес не вводит: всегда общий сервер
+  $('server-url').value = DEFAULT_SERVER;
   $('server-url').onchange = () => loadProviders(normalizeServer($('server-url').value));
   loadProviders(isWeb ? location.origin : normalizeServer($('server-url').value));
 

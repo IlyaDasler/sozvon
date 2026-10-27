@@ -25,7 +25,9 @@ async function waitFor(win, expr, what, timeout = 15000) {
 
 async function shot(win, name) {
   if (!process.env.E2E_SHOTS) return;
-  await sleep(800); // скрытое окно перерисовывается не сразу
+  // Скрытое окно перерисовывается не сразу — просим кадр явно
+  win.webContents.invalidate();
+  await sleep(1200);
   const image = await win.webContents.capturePage();
   fs.writeFileSync(path.join(process.env.E2E_SHOTS, `${name}.png`), image.toPNG());
 }
@@ -46,7 +48,8 @@ async function run(serverEnv) {
 
   const ses = session.fromPartition('e2e-oauth');
   const win = new BrowserWindow({
-    show: false,
+    // E2E_SHOW=1 — показать окно: скриншоты скрытого окна иногда отстают на кадр
+    show: process.env.E2E_SHOW === '1',
     width: 1100,
     height: 720,
     webPreferences: { session: ses, preload: path.join(__dirname, '..', 'preload.js'), contextIsolation: true },
@@ -77,9 +80,29 @@ async function run(serverEnv) {
   await win.webContents.executeJavaScript('openSettings()');
   await click(win, '.identity-row .btn', 'Привязать'); // первая непривязанная — Яндекс
   await waitFor(win, 'state.me.identities.length === 2', 'привязка Яндекса');
+  console.log('✔ Яндекс привязан в настройках');
+
+  // Аватарка: рисуем картинку 640×480 и загружаем тем же кодом, что и кнопка «Загрузить фото»
+  await win.webContents.executeJavaScript(`(async () => {
+    const c = document.createElement('canvas'); c.width = 640; c.height = 480;
+    const g = c.getContext('2d'); g.fillStyle = '#ff7a00'; g.fillRect(0, 0, 640, 480);
+    g.fillStyle = '#1b2a6b'; g.beginPath(); g.arc(320, 240, 170, 0, Math.PI * 2); g.fill();
+    const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+    await uploadAvatar(new File([blob], 'photo.png', { type: 'image/png' }));
+  })()`);
+  await waitFor(win, `/^\\/api\\/avatars\\/[a-f0-9]{32}\\.webp$/.test(state.me.avatarUrl || '')`, 'загрузка аватарки');
+  const avatarOk = await win.webContents.executeJavaScript(`(async () => {
+    const res = await fetch(Api.base + state.me.avatarUrl);
+    const bmp = await createImageBitmap(await res.blob());
+    const el = document.getElementById('set-avatar');
+    const css = getComputedStyle(el);
+    return res.ok && bmp.width === 256 && bmp.height === 256 && el.textContent === '' &&
+      css.backgroundImage.includes(state.me.avatarUrl) && css.backgroundSize === 'cover';
+  })()`);
+  if (!avatarOk) throw new Error('Аватарка не отдаётся или не 256×256');
   await shot(win, 'oauth-settings');
   await win.webContents.executeJavaScript('closeSettings()');
-  console.log('✔ Яндекс привязан в настройках');
+  console.log('✔ аватарка загружена, обрезана до 256×256 и показана в профиле');
 
   // Выходим и входим заново через Яндекс — должен открыться тот же профиль
   await win.webContents.executeJavaScript(`document.getElementById('logout-btn').click(); true`);

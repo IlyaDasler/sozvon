@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src http: https: ws: wss:; media-src 'self' blob: mediastream:; img-src 'self' data:">
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src http: https: ws: wss:; media-src 'self' blob: mediastream:; img-src 'self' data: blob: http: https:">
   <title>Созвон</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -19,7 +19,8 @@
       </div>
       <p class="muted" id="auth-subtitle">Войдите, чтобы созвониться с друзьями</p>
 
-      <label class="field" id="server-field">
+      <!-- Адрес сервера задан в приложении; поле скрыто и нужно только автотестам -->
+      <label class="field hidden" id="server-field">
         <span>Адрес сервера</span>
         <input id="server-url" placeholder="http://135.106.226.12:3000" spellcheck="false">
       </label>
@@ -165,6 +166,15 @@
       <h3>Настройки</h3>
 
       <h4>Профиль</h4>
+      <div class="avatar-edit">
+        <div class="avatar big" id="set-avatar"></div>
+        <div class="avatar-actions">
+          <button type="button" class="btn" id="avatar-upload-btn">Загрузить фото</button>
+          <button type="button" class="btn danger-outline hidden" id="avatar-remove-btn">Удалить фото</button>
+          <span class="muted small">JPG, PNG или WebP — обрежем до квадрата</span>
+        </div>
+        <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+      </div>
       <label class="field">
         <span>Имя</span>
         <input id="set-display" maxlength="32">
@@ -218,6 +228,27 @@
         <button class="btn primary">Сохранить</button>
       </div>
     </form>
+  </div>
+
+  <!-- Окно «Доступно обновление» со списком изменений -->
+  <div id="update-modal" class="modal hidden">
+    <div class="modal-card update-card">
+      <h3 id="update-title"></h3>
+      <p class="muted small" id="update-current"></p>
+      <h4>Что нового</h4>
+      <div class="update-notes" id="update-notes"></div>
+      <div class="update-progress hidden" id="update-progress">
+        <div class="progress-track"><div class="progress-fill" id="update-progress-fill"></div></div>
+        <span class="muted small" id="update-progress-text"></span>
+      </div>
+      <p class="error" id="update-error"></p>
+      <div class="row" id="update-actions">
+        <button type="button" class="btn" id="update-skip">Пропустить эту версию</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="update-later">Позже</button>
+        <button type="button" class="btn primary" id="update-now">Обновить</button>
+      </div>
+    </div>
   </div>
 
   <!-- Обновление: видно и на экране входа, и над профилем в боковой панели -->

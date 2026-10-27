@@ -76,14 +76,26 @@ function checkForUpdates() {
     setUpdateStatus({ state: 'unsupported' });
     return;
   }
+  // Пока качаем или уже скачали, повторно не проверяем
+  if (updateStatus.state === 'downloading' || updateStatus.state === 'ready') return;
   autoUpdater.checkForUpdates().catch(() => {}); // ошибка придёт через событие 'error'
 }
 
+// Описание релиза с GitHub приходит строкой HTML или списком по версиям
+function releaseNotes(info) {
+  const notes = info.releaseNotes;
+  if (Array.isArray(notes)) return notes.map((n) => n.note || '').join('\n');
+  return typeof notes === 'string' ? notes : '';
+}
+
 function setupUpdater() {
-  autoUpdater.autoDownload = true;
+  // Сами не качаем: сначала спрашиваем пользователя в окне обновления
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.on('checking-for-update', () => setUpdateStatus({ state: 'checking', message: '' }));
-  autoUpdater.on('update-available', (info) => setUpdateStatus({ state: 'downloading', version: info.version, percent: 0 }));
+  autoUpdater.on('update-available', (info) =>
+    setUpdateStatus({ state: 'available', version: info.version, notes: releaseNotes(info), percent: 0 })
+  );
   autoUpdater.on('download-progress', (p) => setUpdateStatus({ state: 'downloading', percent: Math.round(p.percent) }));
   autoUpdater.on('update-not-available', () => setUpdateStatus({ state: 'latest' }));
   autoUpdater.on('update-downloaded', (info) => setUpdateStatus({ state: 'ready', version: info.version }));
@@ -95,6 +107,11 @@ function setupUpdater() {
 
 ipcMain.handle('update:status', () => ({ ...updateStatus, current: app.getVersion() }));
 ipcMain.on('update:check', checkForUpdates);
+ipcMain.on('update:download', () => {
+  if (updateStatus.state !== 'available' && updateStatus.state !== 'error') return;
+  setUpdateStatus({ state: 'downloading', percent: 0 });
+  autoUpdater.downloadUpdate().catch(() => {}); // ошибка придёт через событие 'error'
+});
 // true, true — установить тихо и сразу запустить новую версию
 ipcMain.on('update:install', () => updateStatus.state === 'ready' && autoUpdater.quitAndInstall(true, true));
 

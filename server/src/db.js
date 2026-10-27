@@ -45,8 +45,18 @@ db.exec(`
   );
 `);
 
+// Миграции для баз, созданных старыми версиями
+const userColumns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+if (!userColumns.includes('avatar')) db.exec('ALTER TABLE users ADD COLUMN avatar TEXT');
+
 export const toPublicUser = (row) =>
-  row && { id: row.id, username: row.username, displayName: row.display_name, avatarColor: row.avatar_color };
+  row && {
+    id: row.id,
+    username: row.username,
+    displayName: row.display_name,
+    avatarColor: row.avatar_color,
+    avatarUrl: row.avatar ? `/api/avatars/${row.avatar}.webp` : null,
+  };
 
 export const toMessage = (row) => ({
   id: row.id,
@@ -64,6 +74,7 @@ const q = {
   ),
   updateProfile: db.prepare('UPDATE users SET display_name = ?, avatar_color = ? WHERE id = ?'),
   updatePassword: db.prepare('UPDATE users SET password_hash = ? WHERE id = ?'),
+  updateAvatar: db.prepare('UPDATE users SET avatar = ? WHERE id = ?'),
 
   listContacts: db.prepare(`
     SELECT u.* FROM contacts c JOIN users u ON u.id = c.contact_id
@@ -98,6 +109,7 @@ export const users = {
   },
   updateProfile: (id, displayName, avatarColor) => q.updateProfile.run(displayName, avatarColor, id),
   updatePassword: (id, passwordHash) => q.updatePassword.run(passwordHash, id),
+  updateAvatar: (id, avatar) => q.updateAvatar.run(avatar, id),
 };
 
 // Дружба взаимная: при добавлении записываем обе стороны
