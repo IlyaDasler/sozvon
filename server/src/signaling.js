@@ -1,15 +1,18 @@
 import crypto from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { verifyToken } from './auth.js';
-import { contacts, toPublicUser, users } from './db.js';
+import { contacts, relatedUserIds, rooms, toPublicUser, users } from './db.js';
 import { hub } from './hub.js';
+import { MAX_VOICE_PARTICIPANTS, voice } from './voice.js';
 
 const RING_TIMEOUT_MS = 45_000;
 
 // callId -> { id, state: 'ringing' | 'active', caller: { uid, ws }, callee: { uid, ws }, timer }
 const calls = new Map();
 
-const isBusy = (uid) => [...calls.values()].some((c) => c.caller.uid === uid || c.callee.uid === uid);
+const inCall = (uid) => [...calls.values()].some((c) => c.caller.uid === uid || c.callee.uid === uid);
+// Занят: в звонке один на один или сидит в голосовой комнате
+const isBusy = (uid) => inCall(uid) || voice.roomOf(uid) !== null;
 
 function endCall(call, reason) {
   if (!calls.delete(call.id)) return;
@@ -22,7 +25,7 @@ function endCall(call, reason) {
 }
 
 function notifyPresence(uid, online) {
-  for (const c of contacts.list(uid)) hub.send(c.id, { type: 'presence', userId: uid, online });
+  for (const id of relatedUserIds(uid)) hub.send(id, { type: 'presence', userId: uid, online });
 }
 
 const handlers = {
@@ -73,6 +76,52 @@ const handlers = {
     const target = call.caller.ws === ws ? call.callee.ws : call.callee.ws === ws ? call.caller.ws : null;
     hub.sendTo(target, { type: 'signal', callId: call.id, data: msg.data });
   },
+
+  // ---------- Голосовые комнаты ----------
+
+  'room:join'(ws, user, msg) {
+    const roomId = Number(msg.roomId);
+    const room = rooms.byId(roomId);
+    const fail = (reason) => hub.sendTo(ws, { type: 'room:error', roomId, reason });
+    if (!room || room.kind !== 'voice' || !rooms.isMember(roomId, user.id)) return fail('not-member');
+    if (inCall(user.id)) return fail('in-call');
+    const others = voice.participants(roomId).filter((p) => p.userId !== user.id);
+    if (others.length >= MAX_VOICE_PARTICIPANTS) return fail('full');
+
+    // В голосе можно быть только в одном месте: со старого устройства или из другой комнаты выходим
+    const current = voice.roomOf(user.id);
+    if (current !== null) voice.leave(current, user.id, voice.get(current, user.id).ws === ws ? null : 'moved');
+
+    voice.join(roomId, user.id, ws, {
+      muted: Boolean(msg.muted),
+      deafened: Boolean(msg.deafened),
+    });
+    // Новичок сам звонит каждому, кто уже в комнате, — так у двух сторон не бывает встречных предложений
+    hub.sendTo(ws, { type: 'room:joined', roomId, peers: others.map((p) => p.userId) });
+    voice.broadcast(roomId);
+  },
+
+  'room:leave'(ws, user, msg) {
+    const roomId = Number(msg.roomId);
+    if (voice.get(roomId, user.id)?.ws === ws) voice.leave(roomId, user.id);
+  },
+
+  // Пересылаем SDP и ICE-кандидаты конкретному участнику комнаты
+  'room:signal'(ws, user, msg) {
+    const roomId = Number(msg.roomId);
+    if (voice.get(roomId, user.id)?.ws !== ws) return;
+    const target = voice.get(roomId, Number(msg.to));
+    if (target) hub.sendTo(target.ws, { type: 'room:signal', roomId, from: user.id, data: msg.data });
+  },
+
+  // Микрофон, звук, камера и демонстрация экрана — чтобы все видели значки в списке комнаты
+  'room:state'(ws, user, msg) {
+    const roomId = Number(msg.roomId);
+    const p = voice.get(roomId, user.id);
+    if (p?.ws !== ws) return;
+    for (const key of ['muted', 'deafened', 'video', 'screen']) if (key in msg) p[key] = Boolean(msg[key]);
+    voice.broadcast(roomId);
+  },
 };
 
 function onConnection(ws, user) {
@@ -97,6 +146,7 @@ function onConnection(ws, user) {
     for (const call of calls.values()) {
       if (call.caller.ws === ws || call.callee.ws === ws) endCall(call, 'disconnected');
     }
+    voice.leaveSocket(ws);
     if (hub.remove(user.id, ws)) notifyPresence(user.id, false);
   });
 }

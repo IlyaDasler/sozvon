@@ -4,10 +4,23 @@ import path from 'node:path';
 import express from 'express';
 import { config } from './config.js';
 import { hashPassword, signTicket, signToken, verifyPassword, verifyTicket, verifyToken } from './auth.js';
-import { contacts, identities, messages, toMessage, toPublicUser, toSelf, users } from './db.js';
+import {
+  contacts,
+  identities,
+  messages,
+  relatedUserIds,
+  roomMessages,
+  rooms,
+  toMessage,
+  toPublicUser,
+  toRoomMessage,
+  toSelf,
+  users,
+} from './db.js';
 import { hub } from './hub.js';
 import { buildAuthUrl, enabledProviders, fetchProfile } from './oauth.js';
 import { registerTurnUser } from './turn.js';
+import { voice } from './voice.js';
 
 const USERNAME_RE = /^[a-z0-9_.]{3,24}$/;
 const COLOR_RE = /^#[0-9a-f]{6}$/i;
@@ -88,8 +101,34 @@ function makeUsername(email, fallback) {
   }
 }
 
-function notifyContacts(userId, message) {
-  for (const c of contacts.list(userId)) hub.send(c.id, message);
+// Друзьям и соседям по комнатам
+function notifyRelated(userId, message) {
+  for (const id of relatedUserIds(userId)) hub.send(id, message);
+}
+
+const ROOM_KINDS = ['voice', 'text'];
+const MAX_OWNED_ROOMS = 20;
+const MAX_ROOM_MEMBERS = 30;
+
+function validateRoomName(name) {
+  if (name.length < 1 || name.length > 40) throw new HttpError(400, 'Название комнаты — от 1 до 40 символов');
+}
+
+const toRoom = (row) => ({
+  id: row.id,
+  name: row.name,
+  kind: row.kind,
+  ownerId: row.owner_id,
+  createdAt: row.created_at,
+  members: rooms.members(row.id).map(withOnline),
+  voice: voice.participants(row.id),
+});
+
+// Свежие данные комнаты — всем её участникам
+function notifyRoom(roomId) {
+  const room = toRoom(rooms.byId(roomId));
+  for (const m of room.members) hub.send(m.id, { type: 'room:updated', room });
+  return room;
 }
 
 export function createApi() {
@@ -261,7 +300,7 @@ export function createApi() {
       removeAvatarFile(req.user.avatar);
       users.updateAvatar(req.user.id, id);
       const row = users.byId(req.user.id);
-      notifyContacts(row.id, { type: 'user:updated', user: toPublicUser(row) });
+      notifyRelated(row.id, { type: 'user:updated', user: toPublicUser(row) });
       return toSelf(row);
     })
   );
@@ -272,7 +311,7 @@ export function createApi() {
       removeAvatarFile(req.user.avatar);
       users.updateAvatar(req.user.id, null);
       const row = users.byId(req.user.id);
-      notifyContacts(row.id, { type: 'user:updated', user: toPublicUser(row) });
+      notifyRelated(row.id, { type: 'user:updated', user: toPublicUser(row) });
       return toSelf(row);
     })
   );
@@ -310,7 +349,7 @@ export function createApi() {
 
       users.updateProfile(user.id, displayName, avatarColor);
       const row = users.byId(user.id);
-      notifyContacts(user.id, { type: 'user:updated', user: toPublicUser(row) });
+      notifyRelated(user.id, { type: 'user:updated', user: toPublicUser(row) });
       return toSelf(row);
     })
   );
@@ -357,6 +396,126 @@ export function createApi() {
       const message = toMessage(messages.add(req.user.id, other.id, text));
       hub.send(other.id, { type: 'message', message });
       hub.send(req.user.id, { type: 'message', message });
+      return message;
+    })
+  );
+
+  // ---------- Комнаты ----------
+
+  function requireRoom(req) {
+    const room = rooms.byId(Number(req.params.id));
+    if (!room || !rooms.isMember(room.id, req.user.id)) throw new HttpError(404, 'Комната не найдена');
+    return room;
+  }
+
+  function requireOwner(req, room) {
+    if (room.owner_id !== req.user.id) throw new HttpError(403, 'Это может только создатель комнаты');
+  }
+
+  // Добавлять в комнату можно только своих друзей
+  function addMembers(req, room, ids) {
+    const count = rooms.members(room.id).length;
+    const fresh = [...new Set(ids.map(Number))].filter((id) => !rooms.isMember(room.id, id));
+    for (const id of fresh) {
+      if (!contacts.has(req.user.id, id)) throw new HttpError(400, 'Добавлять в комнату можно только своих друзей');
+    }
+    if (count + fresh.length > MAX_ROOM_MEMBERS)
+      throw new HttpError(400, `В комнате может быть не больше ${MAX_ROOM_MEMBERS} человек`);
+    for (const id of fresh) rooms.addMember(room.id, id);
+    return fresh;
+  }
+
+  api.get('/rooms', handle((req) => rooms.of(req.user.id).map(toRoom)));
+
+  api.post(
+    '/rooms',
+    handle((req) => {
+      const name = str(req.body.name);
+      const kind = req.body.kind;
+      validateRoomName(name);
+      if (!ROOM_KINDS.includes(kind)) throw new HttpError(400, 'Тип комнаты: голосовая или текстовая');
+      if (rooms.ownedCount(req.user.id) >= MAX_OWNED_ROOMS)
+        throw new HttpError(400, `Можно создать не больше ${MAX_OWNED_ROOMS} комнат`);
+      const memberIds = Array.isArray(req.body.memberIds) ? req.body.memberIds : [];
+      // Проверяем друзей до создания, чтобы не оставить пустую комнату при ошибке
+      if (memberIds.some((id) => !contacts.has(req.user.id, Number(id))))
+        throw new HttpError(400, 'Добавлять в комнату можно только своих друзей');
+      const room = rooms.create(req.user.id, name, kind);
+      addMembers(req, room, memberIds);
+      return notifyRoom(room.id);
+    })
+  );
+
+  api.patch(
+    '/rooms/:id',
+    handle((req) => {
+      const room = requireRoom(req);
+      requireOwner(req, room);
+      const name = str(req.body.name);
+      validateRoomName(name);
+      rooms.rename(room.id, name);
+      return notifyRoom(room.id);
+    })
+  );
+
+  api.delete(
+    '/rooms/:id',
+    handle((req) => {
+      const room = requireRoom(req);
+      requireOwner(req, room);
+      const members = rooms.members(room.id);
+      voice.closeRoom(room.id);
+      rooms.remove(room.id);
+      for (const m of members) hub.send(m.id, { type: 'room:removed', roomId: room.id });
+      return { ok: true };
+    })
+  );
+
+  api.post(
+    '/rooms/:id/members',
+    handle((req) => {
+      const room = requireRoom(req);
+      const ids = Array.isArray(req.body.userIds) ? req.body.userIds : [req.body.userId];
+      addMembers(req, room, ids);
+      return notifyRoom(room.id);
+    })
+  );
+
+  // Создатель убирает любого участника, остальные могут выйти сами
+  api.delete(
+    '/rooms/:id/members/:userId',
+    handle((req) => {
+      const room = requireRoom(req);
+      const userId = Number(req.params.userId);
+      if (userId === room.owner_id)
+        throw new HttpError(400, 'Создатель не может выйти из своей комнаты — её можно только удалить');
+      if (userId !== req.user.id) requireOwner(req, room);
+      if (!rooms.isMember(room.id, userId)) throw new HttpError(404, 'Этого человека нет в комнате');
+      if (voice.get(room.id, userId)) voice.leave(room.id, userId, 'removed');
+      rooms.removeMember(room.id, userId);
+      hub.send(userId, { type: 'room:removed', roomId: room.id });
+      notifyRoom(room.id);
+      return { ok: true };
+    })
+  );
+
+  api.get(
+    '/rooms/:id/messages',
+    handle((req) => {
+      const room = requireRoom(req);
+      const before = Number(req.query.before) || undefined;
+      return roomMessages.list(room.id, before).map(toRoomMessage);
+    })
+  );
+
+  api.post(
+    '/rooms/:id/messages',
+    handle((req) => {
+      const room = requireRoom(req);
+      const text = str(req.body.text);
+      if (!text || text.length > 2000) throw new HttpError(400, 'Сообщение должно быть от 1 до 2000 символов');
+      const message = toRoomMessage(roomMessages.add(room.id, req.user.id, text));
+      for (const m of rooms.members(room.id)) hub.send(m.id, { type: 'room:message', message });
       return message;
     })
   );

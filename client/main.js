@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, session, shell } = require('electron');
+const { app, BrowserWindow, desktopCapturer, globalShortcut, ipcMain, session, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { autoUpdater } = require('electron-updater');
@@ -8,7 +8,7 @@ const { listenForOAuth } = require('./oauth-loopback');
 const profileArg = process.argv.find((a) => a.startsWith('--profile='));
 if (profileArg) app.setPath('userData', path.join(app.getPath('appData'), `Sozvon-${profileArg.split('=')[1]}`));
 
-const ALLOWED_PERMISSIONS = ['media', 'notifications', 'speaker-selection'];
+const ALLOWED_PERMISSIONS = ['media', 'notifications', 'speaker-selection', 'display-capture'];
 
 let win;
 
@@ -45,6 +45,13 @@ app.whenReady().then(() => {
     callback(ALLOWED_PERMISSIONS.includes(permission))
   );
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => ALLOWED_PERMISSIONS.includes(permission));
+  // Демонстрация экрана: что показывать, человек выбирает в окне приложения, а сюда приходит готовый выбор
+  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    const choice = screenChoice;
+    screenChoice = null;
+    if (!choice) return callback({});
+    callback({ video: choice.source, ...(choice.audio && { audio: 'loopback' }) });
+  });
 
   createWindow();
   setupUpdater();
@@ -129,6 +136,26 @@ ipcMain.handle('oauth', async (_event, authUrl) => {
       win.focus();
     }
   }
+});
+
+// ---------- Демонстрация экрана ----------
+
+let screenSources = new Map();
+let screenChoice = null;
+
+ipcMain.handle('screen:sources', async () => {
+  const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 } });
+  screenSources = new Map(sources.map((s) => [s.id, s]));
+  return sources
+    .filter((s) => !s.thumbnail.isEmpty())
+    .map((s) => ({ id: s.id, name: s.name, screen: s.id.startsWith('screen:'), thumbnail: s.thumbnail.toDataURL() }));
+});
+
+// audio — передавать и звук компьютера (Windows умеет захватывать весь системный звук)
+ipcMain.handle('screen:choose', (_event, id, audio) => {
+  const source = screenSources.get(id);
+  screenChoice = source ? { source, audio: Boolean(audio) && process.platform === 'win32' } : null;
+  return Boolean(source);
 });
 
 ipcMain.on('attention', () => {
