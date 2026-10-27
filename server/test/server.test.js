@@ -48,7 +48,7 @@ function connect(token) {
 
 before(async () => {
   proc = spawn(process.execPath, ['src/index.js'], {
-    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, INVITE_CODE: 'friends' },
+    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, INVITE_CODE: 'friends', AUTH_RATE_LIMIT: '100' },
     stdio: 'pipe',
   });
   for (let i = 0; i < 50; i++) {
@@ -163,4 +163,94 @@ test('аватарка профиля', async () => {
   await new Promise((r) => setTimeout(r, 100));
   assert.equal((await fetch(base + second.avatarUrl)).status, 404);
   assert.equal((await fetch(base + '/api/avatars/..%2Fsozvon.db')).status, 404);
+});
+
+test('комнаты: участники, чат и голосовой канал', async () => {
+  const reg = async (username) =>
+    (await api('POST', '/register', { username, password: 'secret1', displayName: username, inviteCode: 'friends' })).body;
+  const owner = await reg('room_owner');
+  const friend = await reg('room_friend');
+  const third = await reg('room_third');
+  const stranger = await reg('room_stranger');
+  await api('POST', '/contacts', { username: 'room_friend' }, owner.token);
+  await api('POST', '/contacts', { username: 'room_third' }, owner.token);
+
+  // Создавать можно только с друзьями и с понятным названием и типом
+  assert.equal((await api('POST', '/rooms', { name: '', kind: 'voice' }, owner.token)).status, 400);
+  assert.equal((await api('POST', '/rooms', { name: 'Игры', kind: 'video' }, owner.token)).status, 400);
+  assert.equal(
+    (await api('POST', '/rooms', { name: 'Игры', kind: 'voice', memberIds: [stranger.user.id] }, owner.token)).status,
+    400
+  );
+
+  const cf = connect(friend.token);
+  await cf.open;
+  const created = await api('POST', '/rooms', { name: 'Игры', kind: 'voice', memberIds: [friend.user.id] }, owner.token);
+  assert.equal(created.status, 200);
+  const room = created.body;
+  assert.deepEqual(room.members.map((m) => m.username), ['room_owner', 'room_friend']);
+  assert.equal((await cf.next('room:updated')).room.id, room.id);
+
+  // Чужой комнату не видит
+  assert.equal((await api('GET', `/rooms/${room.id}/messages`, null, stranger.token)).status, 404);
+  assert.deepEqual((await api('GET', '/rooms', null, stranger.token)).body, []);
+
+  // Сообщения в комнате видят все участники
+  const sent = await api('POST', `/rooms/${room.id}/messages`, { text: 'Заходите в голос' }, owner.token);
+  assert.equal(sent.status, 200);
+  assert.equal((await cf.next('room:message')).message.text, 'Заходите в голос');
+  assert.equal((await api('GET', `/rooms/${room.id}/messages`, null, friend.token)).body.length, 1);
+
+  // Участник может добавить только своего друга; переименовать — только создатель
+  assert.equal((await api('POST', `/rooms/${room.id}/members`, { userId: third.user.id }, friend.token)).status, 400);
+  assert.equal((await api('PATCH', `/rooms/${room.id}`, { name: 'Мои' }, friend.token)).status, 403);
+  const renamed = await api('PATCH', `/rooms/${room.id}`, { name: 'Вечерние игры' }, owner.token);
+  assert.equal(renamed.body.name, 'Вечерние игры');
+
+  // Голосовой канал: новичок получает список тех, кто уже внутри, и сам начинает соединение
+  const co = connect(owner.token);
+  await co.open;
+  co.send({ type: 'room:join', roomId: room.id, muted: true });
+  assert.deepEqual((await co.next('room:joined')).peers, []);
+  const voiceUpdate = await cf.next('room:voice');
+  assert.deepEqual(voiceUpdate.participants.map((p) => [p.userId, p.muted]), [[owner.user.id, true]]);
+
+  cf.send({ type: 'room:join', roomId: room.id });
+  assert.deepEqual((await cf.next('room:joined')).peers, [owner.user.id]);
+  cf.send({ type: 'room:signal', roomId: room.id, to: owner.user.id, data: { sdp: { type: 'offer', sdp: 'x' } } });
+  const signal = await co.next('room:signal');
+  assert.equal(signal.from, friend.user.id);
+  assert.deepEqual(signal.data, { sdp: { type: 'offer', sdp: 'x' } });
+
+  // Пока человек в комнате, позвонить ему один на один нельзя — он занят
+  co.send({ type: 'call:invite', to: friend.user.id });
+  assert.equal((await co.next('call:unavailable')).reason, 'busy');
+
+  cf.send({ type: 'room:state', roomId: room.id, screen: true });
+  let state;
+  do state = await co.next('room:voice');
+  while (!state.participants.some((p) => p.screen));
+
+  // Текстовую комнату в голосе не открыть; чужую — тоже
+  const text = (await api('POST', '/rooms', { name: 'Болталка', kind: 'text' }, owner.token)).body;
+  const cs = connect(stranger.token);
+  await cs.open;
+  cs.send({ type: 'room:join', roomId: room.id });
+  assert.equal((await cs.next('room:error')).reason, 'not-member');
+  co.send({ type: 'room:join', roomId: text.id });
+  assert.equal((await co.next('room:error')).reason, 'not-member');
+
+  // Создатель убирает участника — того выкидывает из голоса и из комнаты
+  assert.equal((await api('DELETE', `/rooms/${room.id}/members/${owner.user.id}`, null, owner.token)).status, 400);
+  assert.equal((await api('DELETE', `/rooms/${room.id}/members/${friend.user.id}`, null, owner.token)).status, 200);
+  assert.equal((await cf.next('room:left')).reason, 'removed');
+  assert.equal((await cf.next('room:removed')).roomId, room.id);
+  assert.equal((await api('GET', `/rooms/${room.id}/messages`, null, friend.token)).status, 404);
+
+  // Удаление комнаты
+  assert.equal((await api('DELETE', `/rooms/${room.id}`, null, owner.token)).status, 200);
+  assert.equal((await co.next('room:left')).reason, 'removed');
+  assert.deepEqual((await api('GET', '/rooms', null, owner.token)).body.map((r) => r.name), ['Болталка']);
+
+  for (const c of [co, cf, cs]) c.ws.close();
 });

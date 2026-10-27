@@ -1,4 +1,4 @@
-// Интерфейс: вход, список друзей, чат и звонки
+// Интерфейс: вход, список друзей, чат и звонки. Комнаты — в rooms.js, панель разговора — в voice-ui.js
 
 const $ = (id) => document.getElementById(id);
 const isWeb = location.protocol.startsWith('http');
@@ -16,6 +16,14 @@ const ICONS = {
   micOff: '<svg viewBox="0 0 24 24"><path d="M2 2l20 20M9 9v1a3 3 0 0 0 5.1 2.1M15 9.3V5a3 3 0 0 0-5.9-.7M19 10a7 7 0 0 1-1.1 3.8M5 10a7 7 0 0 0 11.2 5.6M12 17v5"/></svg>',
   sound: '<svg viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z"/></svg>',
   soundOff: '<svg viewBox="0 0 24 24"><path d="M2 2l20 20M3 18v-6a9 9 0 0 1 14.5-7.1M20.4 8.6A9 9 0 0 1 21 12v6"/><path d="M3 19a2 2 0 0 0 2 2h1v-6H3z"/></svg>',
+  cam: '<svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>',
+  camOff: '<svg viewBox="0 0 24 24"><path d="M2 2l20 20M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.7 0H14a2 2 0 0 1 2 2v3.3l1 1L23 7v10"/></svg>',
+  screen: '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4M12 13V7M9 10l3-3 3 3"/></svg>',
+  screenStop: '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4M9.5 7.5l5 5M14.5 7.5l-5 5"/></svg>',
+  hash: '<svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>',
+  speaker: '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>',
+  volume: '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7"/></svg>',
+  expand: '<svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>',
 };
 
 const store = {
@@ -39,11 +47,16 @@ const state = {
   selectedId: null,
   history: new Map(), // id друга -> сообщения
   unread: new Map(),
-  call: null, // { call: VoiceCall, peerId }
+  call: null, // звонок один на один: { session: MediaSession, peerId, peer, callId, phase, connectedAt }
   incoming: null, // { callId, from }
+  rooms: new Map(), // id комнаты -> { id, name, kind, ownerId, members, voice }
+  selectedRoomId: null,
+  roomHistory: new Map(),
+  roomUnread: new Map(),
+  room: null, // голосовой канал комнаты: { session, roomId, joined, connectedAt }
   muted: store.get('muted', false),
   deafened: store.get('deafened', false),
-  settings: store.get('audio', { micId: '', speakerId: '', noiseSuppression: true }),
+  settings: { micId: '', speakerId: '', camId: '', noiseSuppression: true, ...store.get('audio', {}) },
   registerMode: false,
   providers: [], // способы входа, включённые на сервере: [{ id, name }]
   inviteRequired: true, // требует ли сервер код приглашения при регистрации
@@ -57,7 +70,6 @@ const PROVIDER_STYLE = {
 };
 
 let socket = null;
-let callTimer = null;
 const tone = new Tone();
 
 // ---------- Мелкие помощники ----------
@@ -124,11 +136,47 @@ function formatDuration(ms) {
   return s >= 3600 ? `${Math.floor(s / 3600)}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-function micErrorText(err) {
-  if (err.name === 'NotAllowedError')
-    return 'Нет доступа к микрофону. Разрешите его в Windows: Параметры → Конфиденциальность → Микрофон.';
-  if (err.name === 'NotFoundError') return 'Микрофон не найден. Подключите его и попробуйте снова.';
-  return err.message || 'Не удалось начать звонок';
+// 1 участник, 2 участника, 5 участников
+function plural(n, one, few, many) {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+
+// Человек по id: я, друг, участник одной из комнат или собеседник в звонке
+function userById(id) {
+  if (state.me?.id === id) return state.me;
+  if (state.contacts.has(id)) return state.contacts.get(id);
+  for (const room of state.rooms.values()) {
+    const m = room.members.find((u) => u.id === id);
+    if (m) return m;
+  }
+  if (state.call?.peerId === id) return state.call.peer;
+  return null;
+}
+
+// Статус «в сети» и профиль обновляем везде, где этот человек виден
+function updateUser(id, patch) {
+  const c = state.contacts.get(id);
+  if (c) Object.assign(c, patch);
+  for (const room of state.rooms.values()) {
+    const m = room.members.find((u) => u.id === id);
+    if (m) Object.assign(m, patch);
+  }
+  if (state.call?.peerId === id) Object.assign(state.call.peer, patch);
+  renderContacts();
+  renderRooms();
+  if (id === state.selectedId) {
+    renderChatHeader();
+    renderMessages();
+  }
+  if (state.selectedRoomId) {
+    renderRoomView();
+    renderRoomMessages();
+  }
+  renderVoice();
 }
 
 // ---------- Вход и регистрация ----------
@@ -332,7 +380,13 @@ function enterMain(user) {
     onStatus(ok) {
       $('conn-dot').classList.toggle('ok', ok);
       $('conn-dot').title = ok ? 'Подключено к серверу' : 'Нет связи с сервером, переподключаемся…';
-      if (ok) refreshContacts();
+      if (ok) {
+        refreshContacts();
+        refreshRooms();
+      } else if (state.call) {
+        finishCall('Связь с сервером прервалась, звонок завершён');
+      }
+      onVoiceSocketStatus(ok);
     },
     onUnauthorized: () => logout('Сессия истекла, войдите заново'),
   });
@@ -353,11 +407,23 @@ async function refreshContacts() {
 
 function logout(message) {
   hangup();
+  leaveRoomVoice();
   if (state.incoming) declineIncoming();
   socket?.close();
   socket = null;
   store.set('session', null);
-  Object.assign(state, { me: null, selectedId: null, contacts: new Map(), history: new Map(), unread: new Map() });
+  Object.assign(state, {
+    me: null,
+    selectedId: null,
+    contacts: new Map(),
+    history: new Map(),
+    unread: new Map(),
+    rooms: new Map(),
+    selectedRoomId: null,
+    roomHistory: new Map(),
+    roomUnread: new Map(),
+  });
+  for (const id of ['room-create', 'room-manage', 'screen-picker']) $(id).classList.add('hidden');
   closeSettings();
   setAuthMode(false);
   showScreen('auth');
@@ -458,16 +524,19 @@ $('remove-contact-btn').onclick = async () => {
 
 async function selectContact(id) {
   state.selectedId = id;
+  state.selectedRoomId = null;
   state.unread.delete(id);
   renderContacts();
+  renderRooms();
 
   const contact = state.contacts.get(id);
   $('empty-state').classList.toggle('hidden', Boolean(contact));
   $('chat').classList.toggle('hidden', !contact);
+  $('room-view').classList.add('hidden');
+  renderVoice();
   if (!contact) return;
 
   renderChatHeader();
-  renderCallPanel();
   renderMessages();
   $('message-input').focus();
 
@@ -496,22 +565,28 @@ function renderChatHeader() {
   const busy = Boolean(state.call || state.incoming);
   $('call-btn').classList.toggle('hidden', state.call?.peerId === c.id);
   $('call-btn').disabled = !c.online || busy;
-  $('call-btn').title = !c.online ? 'Друг не в сети' : busy ? 'Вы уже в звонке' : 'Голосовой звонок';
+  $('call-btn').title = !c.online ? 'Друг не в сети' : busy ? 'Вы уже в звонке' : 'Звонок — камеру и экран можно включить во время разговора';
 }
 
 // ---------- Сообщения ----------
 
 function renderMessages() {
-  const box = $('messages');
-  const list = state.history.get(state.selectedId) || [];
+  renderMessageList(
+    $('messages'),
+    state.history.get(state.selectedId) || [],
+    state.history.has(state.selectedId),
+    'Здесь пока пусто. Напишите что-нибудь или позвоните!'
+  );
+}
+
+// Лента сообщений: и для чата с другом, и для комнаты
+function renderMessageList(box, list, loaded, emptyText) {
   box.replaceChildren();
 
   if (!list.length) {
     const hint = document.createElement('div');
     hint.className = 'hint';
-    hint.textContent = state.history.has(state.selectedId)
-      ? 'Здесь пока пусто. Напишите что-нибудь или позвоните!'
-      : 'Загрузка…';
+    hint.textContent = loaded ? emptyText : 'Загрузка…';
     box.append(hint);
     return;
   }
@@ -526,7 +601,7 @@ function renderMessages() {
       sep.textContent = day;
       box.append(sep);
     }
-    const author = m.fromId === state.me.id ? state.me : state.contacts.get(m.fromId) || { displayName: '?', avatarColor: '#555' };
+    const author = userById(m.fromId) || { displayName: '?', avatarColor: '#555' };
     const continued = !newDay && prev.fromId === m.fromId && m.createdAt - prev.createdAt < 5 * 60_000;
 
     const row = document.createElement('div');
@@ -608,14 +683,8 @@ const UNAVAILABLE_REASONS = {
 
 function handleEvent(msg) {
   switch (msg.type) {
-    case 'presence': {
-      const c = state.contacts.get(msg.userId);
-      if (!c) return;
-      c.online = msg.online;
-      renderContacts();
-      if (msg.userId === state.selectedId) renderChatHeader();
-      return;
-    }
+    case 'presence':
+      return updateUser(msg.userId, { online: msg.online });
     case 'contact:added':
       state.contacts.set(msg.user.id, msg.user);
       renderContacts();
@@ -627,65 +696,47 @@ function handleEvent(msg) {
       if (state.selectedId === msg.userId) selectContact(null);
       else renderContacts();
       return;
-    case 'user:updated': {
-      const c = state.contacts.get(msg.user.id);
-      if (!c) return;
-      Object.assign(c, msg.user);
-      renderContacts();
-      if (msg.user.id === state.selectedId) {
-        renderChatHeader();
-        renderMessages();
-        renderCallPanel();
-      }
-      return;
-    }
+    case 'user:updated':
+      return updateUser(msg.user.id, msg.user);
     case 'message':
       return addMessage(msg.message);
     case 'call:incoming':
       return onIncoming(msg);
     case 'call:ringing':
-      if (state.call && !state.call.call.callId) state.call.call.callId = msg.callId;
+      if (state.call && !state.call.callId) state.call.callId = msg.callId;
       // Звонок отменили раньше, чем сервер успел его создать
       else socket.send({ type: 'call:hangup', callId: msg.callId });
       return;
     case 'call:accepted':
-      if (state.call?.call.callId !== msg.callId) return;
+      if (state.call?.callId !== msg.callId) return;
       tone.stop();
-      state.call.call.startOffer().catch((err) => {
-        console.error(err);
-        hangup('Не удалось установить соединение');
-      });
+      state.call.phase = 'connecting';
+      state.call.session.addPeer(state.call.peerId, true);
+      renderVoice();
       return;
     case 'call:unavailable':
-      if (state.call && !state.call.call.callId) finishCall(UNAVAILABLE_REASONS[msg.reason] || 'Не удалось позвонить');
+      if (state.call && !state.call.callId) finishCall(UNAVAILABLE_REASONS[msg.reason] || 'Не удалось позвонить');
       return;
     case 'call:ended':
       return onCallEnded(msg);
     case 'signal':
-      if (state.call?.call.callId === msg.callId) state.call.call.enqueueSignal(msg.data);
+      if (state.call?.callId === msg.callId) state.call.session.handleSignal(state.call.peerId, msg.data);
       return;
+    default:
+      if (msg.type.startsWith('room:')) handleRoomEvent(msg);
   }
 }
 
-// ---------- Звонки ----------
+// ---------- Звонки один на один ----------
 
-function newCall(peer) {
-  const call = new VoiceCall({
-    peer,
-    socket,
-    audioEl: $('remote-audio'),
-    onState: onCallState,
-    onSpeaking(who, speaking) {
-      const el = $(who === 'me' ? 'call-me-avatar' : 'call-peer-avatar');
-      el.classList.toggle('speaking', speaking);
-    },
-  });
-  call.muted = state.muted || state.deafened;
-  state.call = { call, peerId: peer.id };
-  $('peer-volume').value = store.get(`volume:${peer.id}`, 100);
-  $('remote-audio').volume = $('peer-volume').value / 100;
-  clearInterval(callTimer);
-  callTimer = setInterval(updateCallStatus, 1000);
+function newCall(peer, callId, phase) {
+  const call = { peerId: peer.id, peer: { ...peer }, callId, phase, connectedAt: null, failTimer: null };
+  // Сигналы уходят, только когда сервер уже выдал номер звонка
+  call.session = newSession((_id, data) => call.callId && socket?.send({ type: 'signal', callId: call.callId, data }));
+  state.call = call;
+  renderVoice();
+  renderChatHeader();
+  renderContacts();
   return call;
 }
 
@@ -693,16 +744,18 @@ async function startCall() {
   const peer = state.contacts.get(state.selectedId);
   if (!peer || state.call || state.incoming) return;
   if (!peer.online) return toast('Друг не в сети');
-
-  const call = newCall(peer);
-  call.setState('calling');
-  try {
-    await call.openMic(state.settings);
-    await call.createPeer();
-  } catch (err) {
-    return finishCall(micErrorText(err));
+  if (state.room) {
+    if (!confirm('Вы в голосовой комнате. Выйти из неё и позвонить?')) return;
+    leaveRoomVoice();
   }
-  if (state.call?.call !== call) return; // отменили, пока ждали микрофон
+
+  const call = newCall(peer, null, 'calling');
+  try {
+    await call.session.start(audioFlags());
+  } catch (err) {
+    return finishCall(mediaErrorText(err));
+  }
+  if (state.call !== call) return; // отменили, пока ждали микрофон
   if (!socket.send({ type: 'call:invite', to: peer.id })) return finishCall('Нет связи с сервером');
   tone.loop('ringback');
 }
@@ -719,7 +772,7 @@ function onIncoming({ callId, from }) {
   renderChatHeader();
   tone.loop('ring');
   window.desktop?.focus();
-  notify(`${peer.displayName} звонит`, 'Входящий голосовой звонок');
+  notify(`${peer.displayName} звонит`, 'Входящий звонок');
 }
 
 function hideIncoming() {
@@ -734,18 +787,17 @@ async function acceptIncoming() {
   if (!inc) return;
   hideIncoming();
   const peer = state.contacts.get(inc.from.id) || inc.from;
-  const call = newCall(peer);
-  call.callId = inc.callId;
-  call.setState('connecting');
+  const call = newCall(peer, inc.callId, 'connecting');
   selectContact(peer.id);
   try {
-    await call.openMic(state.settings);
-    await call.createPeer();
+    await call.session.start(audioFlags());
   } catch (err) {
     socket.send({ type: 'call:decline', callId: inc.callId });
-    return finishCall(micErrorText(err));
+    return finishCall(mediaErrorText(err));
   }
-  if (state.call?.call !== call) return;
+  if (state.call !== call) return;
+  // Предложение соединения пришлёт звонивший — ждём его
+  call.session.addPeer(peer.id, false);
   socket.send({ type: 'call:accept', callId: inc.callId });
 }
 
@@ -762,13 +814,13 @@ function onCallEnded({ callId, reason }) {
     if (reason !== 'answered-elsewhere') toast(`Пропущенный звонок от ${name}`);
     return;
   }
-  if (state.call?.call.callId === callId) finishCall(END_REASONS[reason] || 'Звонок завершён');
+  if (state.call?.callId === callId) finishCall(END_REASONS[reason] || 'Звонок завершён');
 }
 
 function hangup(message) {
   const c = state.call;
   if (!c) return;
-  if (c.call.callId) socket?.send({ type: 'call:hangup', callId: c.call.callId });
+  if (c.callId) socket?.send({ type: 'call:hangup', callId: c.callId });
   finishCall(message);
 }
 
@@ -776,57 +828,20 @@ function finishCall(message) {
   const c = state.call;
   if (!c) return;
   state.call = null;
-  clearInterval(callTimer);
-  c.call.close();
+  clearTimeout(c.failTimer);
+  c.session.close();
   tone.stop();
   tone.blip('end');
-  $('call-me-avatar').classList.remove('speaking');
-  $('call-peer-avatar').classList.remove('speaking');
-  renderCallPanel();
+  renderVoice();
   renderChatHeader();
   renderContacts();
   if (message) toast(message);
 }
 
-function onCallState(callState) {
-  if (callState === 'failed')
-    return hangup('Не удалось соединиться. Скорее всего, нужен TURN-сервер — см. README.');
-  renderChatHeader();
-  renderCallPanel();
-  renderContacts();
-}
-
-function renderCallPanel() {
-  const c = state.call;
-  const show = Boolean(c) && c.peerId === state.selectedId;
-  $('call-panel').classList.toggle('hidden', !show);
-  if (!show) return;
-  const peer = state.contacts.get(c.peerId) || c.call.peer;
-  $('call-me-avatar').replaceChildren();
-  fillAvatar($('call-me-avatar'), state.me);
-  $('call-peer-avatar').replaceChildren();
-  fillAvatar($('call-peer-avatar'), peer);
-  $('call-peer-name').textContent = peer.displayName;
-  updateCallStatus();
-}
-
-function updateCallStatus() {
-  const call = state.call?.call;
-  if (!call) return;
-  const text = {
-    calling: 'Вызов…',
-    connecting: 'Соединение…',
-    reconnecting: 'Связь прервалась, переподключаемся…',
-    connected: call.connectedAt ? formatDuration(Date.now() - call.connectedAt) : '',
-  }[call.state];
-  $('call-status').textContent = text ?? '';
-}
-
 // ---------- Микрофон и звук ----------
 
 function applyAudioState() {
-  state.call?.call.setMuted(state.muted || state.deafened);
-  $('remote-audio').muted = state.deafened;
+  activeSession()?.setMuted(state.muted || state.deafened, state.deafened);
   const micOff = state.muted || state.deafened;
   for (const id of ['mic-btn', 'call-mute']) {
     $(id).innerHTML = micOff ? ICONS.micOff : ICONS.mic;
@@ -857,14 +872,9 @@ function toggleDeafen() {
   applyAudioState();
 }
 
-async function applySpeaker() {
-  const audio = $('remote-audio');
-  if (!audio.setSinkId) return;
-  try {
-    await audio.setSinkId(state.settings.speakerId || '');
-  } catch (err) {
-    console.warn('Не удалось выбрать устройство вывода', err);
-  }
+function applySpeaker() {
+  tone.sinkId = state.settings.speakerId || '';
+  activeSession()?.setSink(tone.sinkId);
 }
 
 // ---------- Настройки ----------
@@ -873,8 +883,9 @@ let pickedColor = null;
 
 async function fillDeviceSelect(select, kind, selected) {
   let devices = await navigator.mediaDevices.enumerateDevices();
-  // Без разрешения на микрофон названия устройств пустые — запрашиваем его один раз
-  if (devices.some((d) => d.kind === kind && !d.label)) {
+  // Без разрешения на микрофон названия устройств пустые — запрашиваем его один раз.
+  // Камеру ради названий не включаем: они появятся после «Проверить камеру»
+  if (kind !== 'videoinput' && devices.some((d) => d.kind === kind && !d.label)) {
     try {
       const s = await navigator.mediaDevices.getUserMedia({ audio: true });
       s.getTracks().forEach((t) => t.stop());
@@ -882,9 +893,11 @@ async function fillDeviceSelect(select, kind, selected) {
     } catch {}
   }
   select.replaceChildren(new Option('По умолчанию', ''));
+  let n = 0;
   for (const d of devices) {
     if (d.kind !== kind || d.deviceId === 'default' || d.deviceId === 'communications') continue;
-    select.append(new Option(d.label || 'Устройство', d.deviceId));
+    n++;
+    select.append(new Option(d.label || (kind === 'videoinput' ? `Камера ${n}` : 'Устройство'), d.deviceId));
   }
   select.value = [...select.options].some((o) => o.value === selected) ? selected : '';
 }
@@ -974,7 +987,7 @@ function applyMe(me) {
   renderMe();
   renderAvatarEditor();
   renderMessages();
-  renderCallPanel();
+  renderVoice();
 }
 
 function renderAvatarEditor() {
@@ -1024,6 +1037,8 @@ async function openSettings() {
   pickedColor = state.me.avatarColor;
   renderColorPicker();
   $('set-ns').checked = state.settings.noiseSuppression;
+  $('mic-test-btn').textContent = 'Проверить микрофон';
+  $('mic-test-btn').disabled = false;
   $('set-cur-pass').value = '';
   $('set-new-pass').value = '';
   $('settings-error').textContent = '';
@@ -1032,14 +1047,124 @@ async function openSettings() {
   try {
     await fillDeviceSelect($('set-mic'), 'audioinput', state.settings.micId);
     await fillDeviceSelect($('set-speaker'), 'audiooutput', state.settings.speakerId);
+    await fillDeviceSelect($('set-cam'), 'videoinput', state.settings.camId);
   } catch (err) {
     console.warn(err);
   }
+  startMicMeter();
 }
 
 function closeSettings() {
   $('settings').classList.add('hidden');
+  stopMicMeter();
+  stopCamPreview();
 }
+
+// ---------- Проверка микрофона, динамиков и камеры ----------
+
+const settingsOpen = () => !$('settings').classList.contains('hidden');
+const formAudioSettings = () => ({ micId: $('set-mic').value, noiseSuppression: $('set-ns').checked });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+let micTest = null; // { stream, meter } — живая полоска громкости в настройках
+let micTestRequest = 0;
+
+// Полоска двигается, когда говоришь: сразу видно, что микрофон выбран правильный
+async function startMicMeter() {
+  const request = ++micTestRequest;
+  stopMicMeter();
+  $('mic-test-hint').textContent = '';
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(micConstraints(formAudioSettings()));
+    if (request !== micTestRequest || !settingsOpen()) return stream.getTracks().forEach((t) => t.stop());
+    const fill = $('mic-meter');
+    const meter = new LevelMeter(stream, null, (level) => {
+      fill.style.width = `${Math.round(level * 100)}%`;
+      fill.classList.toggle('loud', level > 0.9);
+    });
+    micTest = { stream, meter };
+  } catch (err) {
+    if (request === micTestRequest) $('mic-test-hint').textContent = mediaErrorText(err);
+  }
+}
+
+function stopMicMeter() {
+  micTest?.meter.stop();
+  micTest?.stream.getTracks().forEach((t) => t.stop());
+  micTest = null;
+  $('mic-meter').style.width = '0';
+}
+
+// Записываем 5 секунд и проигрываем — человек слышит себя так же, как его слышат друзья
+async function recordMicTest() {
+  if (!micTest) await startMicMeter();
+  if (!micTest) return;
+  const btn = $('mic-test-btn');
+  btn.disabled = true;
+  try {
+    const recorder = new MediaRecorder(micTest.stream);
+    const chunks = [];
+    recorder.ondataavailable = (e) => chunks.push(e.data);
+    const stopped = new Promise((r) => (recorder.onstop = r));
+    recorder.start();
+    for (let i = 5; i > 0; i--) {
+      btn.textContent = `Говорите… ${i}`;
+      await sleep(1000);
+    }
+    recorder.stop();
+    await stopped;
+    btn.textContent = 'Слушаем запись…';
+    const url = URL.createObjectURL(new Blob(chunks, { type: recorder.mimeType }));
+    const audio = new Audio(url);
+    if ($('set-speaker').value && audio.setSinkId) await audio.setSinkId($('set-speaker').value).catch(() => {});
+    const ended = new Promise((r) => (audio.onended = audio.onerror = r));
+    await audio.play();
+    await ended;
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    $('mic-test-hint').textContent = 'Не получилось записать: ' + err.message;
+  } finally {
+    btn.textContent = 'Проверить микрофон';
+    btn.disabled = false;
+  }
+}
+
+let camPreview = null;
+
+async function toggleCamPreview() {
+  if (camPreview) return stopCamPreview();
+  try {
+    camPreview = await navigator.mediaDevices.getUserMedia(cameraConstraints({ camId: $('set-cam').value }));
+    if (!settingsOpen()) return stopCamPreview();
+    $('cam-preview').srcObject = camPreview;
+    $('cam-preview').classList.remove('hidden');
+    $('cam-test-btn').textContent = 'Выключить';
+    // Теперь у камер есть названия
+    fillDeviceSelect($('set-cam'), 'videoinput', $('set-cam').value).catch(() => {});
+  } catch (err) {
+    camPreview = null;
+    $('mic-test-hint').textContent = mediaErrorText(err, 'камера');
+  }
+}
+
+function stopCamPreview() {
+  camPreview?.getTracks().forEach((t) => t.stop());
+  camPreview = null;
+  $('cam-preview').srcObject = null;
+  $('cam-preview').classList.add('hidden');
+  $('cam-test-btn').textContent = 'Проверить камеру';
+}
+
+$('set-mic').onchange = startMicMeter;
+$('set-ns').onchange = startMicMeter;
+$('mic-test-btn').onclick = recordMicTest;
+$('speaker-test-btn').onclick = () => tone.blip('test', $('set-speaker').value, 0.15);
+$('cam-test-btn').onclick = toggleCamPreview;
+$('set-cam').onchange = () => {
+  if (!camPreview) return;
+  stopCamPreview();
+  toggleCamPreview();
+};
 
 $('settings-form').onsubmit = async (e) => {
   e.preventDefault();
@@ -1059,7 +1184,7 @@ $('settings-form').onsubmit = async (e) => {
       state.me = await Api.patch('/me', body);
       renderMe();
       renderMessages();
-      renderCallPanel();
+      renderVoice();
       if (body.newPassword) toast('Пароль сохранён');
     }
   } catch (err) {
@@ -1071,12 +1196,15 @@ $('settings-form').onsubmit = async (e) => {
   state.settings = {
     micId: $('set-mic').value,
     speakerId: $('set-speaker').value,
+    camId: $('set-cam').value,
     noiseSuppression: $('set-ns').checked,
   };
   store.set('audio', state.settings);
   applySpeaker();
   const micChanged = prev.micId !== state.settings.micId || prev.noiseSuppression !== state.settings.noiseSuppression;
-  if (micChanged && state.call) state.call.call.switchMic(state.settings).catch((err) => toast(micErrorText(err)));
+  const session = activeSession();
+  if (session) session.settings = state.settings;
+  if (micChanged && session) session.switchMic(state.settings).catch((err) => toast(mediaErrorText(err)));
   closeSettings();
 };
 
@@ -1163,11 +1291,12 @@ function renderUpdate() {
 
 function installUpdate() {
   hangup();
+  leaveRoomVoice();
   window.desktop.update.install();
 }
 
 function startUpdate() {
-  if (state.call && !confirm('Сейчас идёт звонок. После загрузки приложение перезапустится и звонок завершится. Продолжить?'))
+  if (activeSession() && !confirm('Сейчас идёт звонок. После загрузки приложение перезапустится и звонок завершится. Продолжить?'))
     return;
   updateRequested = true;
   $('update-error').textContent = '';
@@ -1226,7 +1355,6 @@ if (window.desktop?.update) {
 // ---------- Кнопки ----------
 
 $('call-btn').onclick = startCall;
-$('hangup-btn').onclick = () => hangup();
 $('accept-btn').onclick = acceptIncoming;
 $('decline-btn').onclick = declineIncoming;
 $('mic-btn').onclick = toggleMute;
@@ -1237,15 +1365,13 @@ $('settings-btn').onclick = openSettings;
 $('settings-cancel').onclick = closeSettings;
 $('logout-btn').onclick = () => logout();
 
-$('peer-volume').oninput = (e) => {
-  $('remote-audio').volume = e.target.value / 100;
-  if (state.call) store.set(`volume:${state.call.peerId}`, Number(e.target.value));
-};
-
 window.desktop?.onHotkey((name) => (name === 'toggle-mute' ? toggleMute() : toggleDeafen()));
 
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !$('settings').classList.contains('hidden')) closeSettings();
+  if (e.key !== 'Escape') return;
+  if (settingsOpen()) closeSettings();
+  for (const id of ['room-create', 'room-manage']) $(id).classList.add('hidden');
+  if (!$('screen-picker').classList.contains('hidden')) closeScreenPicker();
 });
 
 window.addEventListener('focus', () => {
@@ -1255,7 +1381,10 @@ window.addEventListener('focus', () => {
   }
 });
 
-window.addEventListener('beforeunload', () => hangup());
+window.addEventListener('beforeunload', () => {
+  hangup();
+  leaveRoomVoice();
+});
 
 // ---------- Запуск ----------
 
@@ -1289,4 +1418,4 @@ async function boot() {
   showScreen('auth');
 }
 
-boot();
+window.addEventListener('DOMContentLoaded', boot);

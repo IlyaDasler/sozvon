@@ -1,4 +1,5 @@
-// Звонок один на один через WebRTC, звуки вызова и индикатор «говорит»
+// Звонки через WebRTC: звук, камера и демонстрация экрана, звуки вызова и индикатор «говорит».
+// Один и тот же код работает и для звонка один на один, и для голосовой комнаты (там каждый соединён с каждым).
 
 // Звуки генерируются на лету, без аудиофайлов. Паттерн: [начало, длительность, частота]
 const PATTERNS = {
@@ -7,6 +8,9 @@ const PATTERNS = {
   end: [[0, 0.12, 660], [0.14, 0.18, 440]],
   mute: [[0, 0.07, 520]],
   unmute: [[0, 0.07, 880]],
+  join: [[0, 0.1, 587], [0.1, 0.14, 880]],
+  leave: [[0, 0.1, 880], [0.1, 0.14, 587]],
+  test: [[0, 0.25, 523], [0.3, 0.25, 659], [0.6, 0.25, 784], [0.9, 0.45, 1047]],
 };
 
 function playPattern(ctx, pattern, volume = 0.12) {
@@ -25,16 +29,27 @@ function playPattern(ctx, pattern, volume = 0.12) {
   }
 }
 
+// Звуки играют в выбранные в настройках динамики
+function newAudioContext(sinkId) {
+  if (sinkId) {
+    try {
+      return new AudioContext({ sinkId });
+    } catch {}
+  }
+  return new AudioContext();
+}
+
 class Tone {
   constructor() {
     this.ctx = null;
     this.timer = null;
+    this.sinkId = '';
   }
 
   /** Повторяющийся сигнал: 'ring' — входящий, 'ringback' — исходящий */
   loop(kind) {
     this.stop();
-    this.ctx = new AudioContext();
+    this.ctx = newAudioContext(this.sinkId);
     const beep = () => playPattern(this.ctx, PATTERNS[kind]);
     beep();
     this.timer = setInterval(beep, kind === 'ring' ? 2000 : 4000);
@@ -47,21 +62,26 @@ class Tone {
     this.ctx = null;
   }
 
-  /** Короткий одиночный звук: 'end', 'mute', 'unmute' */
-  blip(kind) {
-    const ctx = new AudioContext();
-    playPattern(ctx, PATTERNS[kind], 0.08);
-    setTimeout(() => ctx.close(), 1000);
+  /** Короткий одиночный звук: 'end', 'mute', 'unmute', 'join', 'leave', 'test' */
+  blip(kind, sinkId = this.sinkId, volume = 0.08) {
+    const ctx = newAudioContext(sinkId);
+    playPattern(ctx, PATTERNS[kind], volume);
+    setTimeout(() => ctx.close(), 2000);
   }
 }
 
-// Следит за громкостью потока и сообщает, когда человек начинает и перестаёт говорить
+// Следит за громкостью потока и сообщает, когда человек начинает и перестаёт говорить.
+// onLevel (необязательно) получает громкость 0..1 — для полоски проверки микрофона
+let meterCtx = null;
+
 class LevelMeter {
-  constructor(stream, onChange) {
-    this.ctx = new AudioContext();
-    const analyser = this.ctx.createAnalyser();
+  constructor(stream, onChange, onLevel) {
+    meterCtx ??= new AudioContext();
+    if (meterCtx.state === 'suspended') meterCtx.resume();
+    const analyser = meterCtx.createAnalyser();
     analyser.fftSize = 512;
-    this.ctx.createMediaStreamSource(stream).connect(analyser);
+    this.source = meterCtx.createMediaStreamSource(stream);
+    this.source.connect(analyser);
     const data = new Float32Array(analyser.fftSize);
     let speaking = false;
     let lastLoud = 0;
@@ -70,16 +90,18 @@ class LevelMeter {
       analyser.getFloatTimeDomainData(data);
       let sum = 0;
       for (const v of data) sum += v * v;
+      const rms = Math.sqrt(sum / data.length);
+      onLevel?.(Math.min(1, rms * 6));
       const now = performance.now();
-      if (Math.sqrt(sum / data.length) > 0.015) lastLoud = now;
+      if (rms > 0.015) lastLoud = now;
       const next = now - lastLoud < 300;
-      if (next !== speaking) onChange((speaking = next));
+      if (next !== speaking) onChange?.((speaking = next));
     }, 60);
   }
 
   stop() {
     clearInterval(this.timer);
-    this.ctx.close();
+    this.source.disconnect();
   }
 }
 
@@ -94,122 +116,493 @@ function micConstraints(settings) {
   };
 }
 
-class VoiceCall {
-  constructor({ peer, socket, audioEl, onState, onSpeaking }) {
-    this.peer = peer;
-    this.socket = socket;
-    this.audioEl = audioEl;
-    this.onState = onState;
-    this.onSpeaking = onSpeaking;
+function cameraConstraints(settings) {
+  return {
+    video: {
+      deviceId: settings.camId ? { ideal: settings.camId } : undefined,
+      width: { ideal: 640 },
+      height: { ideal: 360 },
+      frameRate: { ideal: 24, max: 30 },
+    },
+  };
+}
 
-    this.callId = null;
-    this.state = 'idle';
-    this.connectedAt = null;
-    this.pc = null;
-    this.localStream = null;
-    this.localMeter = null;
-    this.remoteMeter = null;
-    this.pendingCandidates = [];
-    this.signalQueue = Promise.resolve();
+// Режимы демонстрации экрана: плавность для игр или чёткость для текста
+const SCREEN_MODES = {
+  motion: { width: 1280, height: 720, frameRate: 30, bitrate: 2_500_000, hint: 'motion', degradation: 'maintain-framerate' },
+  detail: { width: 1920, height: 1080, frameRate: 15, bitrate: 3_000_000, hint: 'detail', degradation: 'maintain-resolution' },
+};
+
+// Каждое соединение несёт четыре «слота» в одном и том же порядке. Включить камеру или экран —
+// значит просто подставить дорожку в готовый слот, без пересогласования соединения
+const SLOTS = ['mic', 'cam', 'screen', 'screenAudio'];
+const SLOT_KIND = { mic: 'audio', cam: 'video', screen: 'video', screenAudio: 'audio' };
+
+// Голос в Opus — 64 кбит/с вместо 32 по умолчанию, с защитой от потерь пакетов
+const tuneSdp = (sdp) =>
+  sdp.replace(/a=fmtp:(\d+) (.*useinbandfec=1.*)/g, (line, pt, params) =>
+    params.includes('maxaveragebitrate') ? line : `a=fmtp:${pt} ${params};maxaveragebitrate=64000`
+  );
+
+// Свои микрофон, камера и экран — общие для всех соединений звонка
+class LocalMedia {
+  constructor(onChange) {
+    this.tracks = { mic: null, cam: null, screen: null, screenAudio: null };
     this.muted = false;
-  }
-
-  setState(state) {
-    this.state = state;
-    this.onState(state);
+    this.screenMode = 'motion';
+    this.onChange = onChange;
   }
 
   async openMic(settings) {
-    this.localStream = await navigator.mediaDevices.getUserMedia(micConstraints(settings));
-    this.setMuted(this.muted);
-    this.localMeter = new LevelMeter(this.localStream, (s) => this.onSpeaking('me', s));
-  }
-
-  // Смена микрофона прямо во время звонка, без переподключения
-  async switchMic(settings) {
     const stream = await navigator.mediaDevices.getUserMedia(micConstraints(settings));
     const track = stream.getAudioTracks()[0];
-    const sender = this.pc?.getSenders().find((s) => s.track?.kind === 'audio');
-    if (sender) await sender.replaceTrack(track);
-    this.localStream?.getTracks().forEach((t) => t.stop());
-    this.localMeter?.stop();
-    this.localStream = stream;
-    this.setMuted(this.muted);
-    this.localMeter = new LevelMeter(stream, (s) => this.onSpeaking('me', s));
+    track.enabled = !this.muted;
+    this.replace('mic', track);
   }
 
-  async createPeer() {
-    const { iceServers } = await Api.get('/ice').catch(() => ({ iceServers: [] }));
-    const pc = (this.pc = new RTCPeerConnection({ iceServers }));
-    for (const track of this.localStream.getTracks()) pc.addTrack(track, this.localStream);
-
-    pc.onicecandidate = (e) => e.candidate && this.signal({ candidate: e.candidate });
-
-    pc.ontrack = (e) => {
-      const stream = e.streams[0] || new MediaStream([e.track]);
-      this.audioEl.srcObject = stream;
-      this.audioEl.play().catch(() => {});
-      this.remoteMeter?.stop();
-      this.remoteMeter = new LevelMeter(stream, (s) => this.onSpeaking('peer', s));
-    };
-
-    pc.onconnectionstatechange = () => {
-      switch (pc.connectionState) {
-        case 'connected':
-          this.connectedAt ??= Date.now();
-          this.setState('connected');
-          break;
-        case 'disconnected':
-          this.setState('reconnecting');
-          break;
-        case 'failed':
-          this.setState('failed');
-          break;
-      }
-    };
+  async startCamera(settings) {
+    const stream = await navigator.mediaDevices.getUserMedia(cameraConstraints(settings));
+    const track = stream.getVideoTracks()[0];
+    track.contentHint = 'motion';
+    track.onended = () => this.replace('cam', null);
+    this.replace('cam', track);
   }
 
-  signal(data) {
-    this.socket.send({ type: 'signal', callId: this.callId, data });
+  stopCamera() {
+    this.replace('cam', null);
   }
 
-  async startOffer() {
-    this.setState('connecting');
-    await this.pc.setLocalDescription(await this.pc.createOffer());
-    this.signal({ sdp: this.pc.localDescription });
+  async startScreen({ mode = 'motion', audio = false } = {}) {
+    const m = SCREEN_MODES[mode] || SCREEN_MODES.motion;
+    const limits = { width: { max: m.width }, height: { max: m.height }, frameRate: { max: m.frameRate } };
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: limits, audio });
+    const video = stream.getVideoTracks()[0];
+    video.contentHint = m.hint;
+    await video.applyConstraints(limits).catch(() => {});
+    // «Остановить показ» из системы или закрытое окно — заканчиваем демонстрацию
+    video.onended = () => this.stopScreen();
+    this.screenMode = mode;
+    this.replace('screenAudio', stream.getAudioTracks()[0] || null);
+    this.replace('screen', video);
   }
 
-  // Сигналы обрабатываем строго по очереди, иначе кандидаты могут обогнать SDP
-  enqueueSignal(data) {
-    this.signalQueue = this.signalQueue.then(() => this.handleSignal(data)).catch((err) => console.error(err));
+  stopScreen() {
+    this.replace('screenAudio', null);
+    this.replace('screen', null);
   }
 
-  async handleSignal(data) {
-    if (!this.pc) return;
-    if (data.sdp) {
-      await this.pc.setRemoteDescription(data.sdp);
-      if (data.sdp.type === 'offer') {
-        await this.pc.setLocalDescription(await this.pc.createAnswer());
-        this.signal({ sdp: this.pc.localDescription });
-      }
-      for (const c of this.pendingCandidates.splice(0)) await this.pc.addIceCandidate(c).catch(() => {});
-    } else if (data.candidate) {
-      if (this.pc.remoteDescription) await this.pc.addIceCandidate(data.candidate).catch(() => {});
-      else this.pendingCandidates.push(data.candidate);
+  replace(slot, track) {
+    // Звонок уже завершили, пока открывалось устройство, — сразу его отпускаем
+    if (this.closed) return track?.stop();
+    const old = this.tracks[slot];
+    if (old === track) return;
+    if (old) {
+      old.onended = null;
+      old.stop();
     }
+    this.tracks[slot] = track;
+    this.onChange(slot);
   }
 
   setMuted(muted) {
     this.muted = muted;
-    this.localStream?.getAudioTracks().forEach((t) => (t.enabled = !muted));
+    if (this.tracks.mic) this.tracks.mic.enabled = !muted;
   }
 
   close() {
-    this.localMeter?.stop();
-    this.remoteMeter?.stop();
-    this.pc?.close();
-    this.localStream?.getTracks().forEach((t) => t.stop());
-    this.audioEl.srcObject = null;
-    this.pc = null;
+    this.closed = true;
+    for (const slot of SLOTS) {
+      if (this.tracks[slot]) this.tracks[slot].onended = null;
+      this.tracks[slot]?.stop();
+      this.tracks[slot] = null;
+    }
+  }
+}
+
+// Соединение с одним собеседником. Предложение (offer) делает только initiator, второй лишь отвечает —
+// поэтому встречных предложений не бывает
+class PeerLink {
+  constructor({ iceServers, initiator, local, send, onTrack, onState, onMedia }) {
+    this.initiator = initiator;
+    this.local = local;
+    this.send = send;
+    this.onMedia = onMedia;
+    this.bound = false;
+    this.pending = [];
+    this.queue = Promise.resolve();
+    this.prev = { lost: 0, received: 0 };
+    this.id = Math.random().toString(36).slice(2, 10);
+    // Все дорожки в одном «потоке» — так их правильно разберут и версии приложения до 1.5
+    this.msid = new MediaStream();
+
+    const pc = (this.pc = new RTCPeerConnection({ iceServers }));
+    pc.onicecandidate = (e) => e.candidate && send({ candidate: e.candidate });
+    pc.ontrack = (e) => {
+      const slot = SLOTS[pc.getTransceivers().indexOf(e.transceiver)];
+      if (slot) onTrack(slot, e.track);
+    };
+    pc.onconnectionstatechange = () => {
+      const st = pc.connectionState;
+      if (st === 'connected') for (const slot of SLOTS) this.tune(slot);
+      // Сеть сменилась или оборвалась — пробуем заново подобрать маршрут
+      if (st === 'failed' && initiator) pc.restartIce();
+      onState(st);
+    };
+
+    if (initiator) {
+      for (const slot of SLOTS)
+        pc.addTransceiver(local.tracks[slot] || SLOT_KIND[slot], { direction: 'sendrecv', streams: [this.msid] });
+      this.bound = true;
+      pc.onnegotiationneeded = () => this.enqueue(() => this.offer());
+    }
+  }
+
+  async offer() {
+    const offer = await this.pc.createOffer();
+    await this.pc.setLocalDescription({ type: 'offer', sdp: tuneSdp(offer.sdp) });
+    this.send({ sdp: this.pc.localDescription });
+  }
+
+  // Сигналы обрабатываем строго по очереди, иначе кандидаты могут обогнать SDP
+  enqueue(task) {
+    this.queue = this.queue.then(task).catch((err) => console.error(err));
+  }
+
+  signal(data) {
+    this.enqueue(() => this.handle(data));
+  }
+
+  async handle(data) {
+    const pc = this.pc;
+    if (pc.signalingState === 'closed') return;
+    if (data.sdp) {
+      if (data.sdp.type === 'offer') {
+        if (this.initiator) return;
+        await pc.setRemoteDescription(data.sdp);
+        this.bind();
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription({ type: 'answer', sdp: tuneSdp(answer.sdp) });
+        this.send({ sdp: pc.localDescription });
+      } else {
+        await pc.setRemoteDescription(data.sdp);
+      }
+      for (const c of this.pending.splice(0)) await pc.addIceCandidate(c).catch(() => {});
+    } else if (data.candidate) {
+      if (pc.remoteDescription) await pc.addIceCandidate(data.candidate).catch(() => {});
+      else this.pending.push(data.candidate);
+    } else if (data.media) {
+      this.onMedia(data.media);
+    }
+  }
+
+  transceiver(slot) {
+    const t = this.pc.getTransceivers()[SLOTS.indexOf(slot)];
+    return t && t.receiver.track.kind === SLOT_KIND[slot] ? t : null;
+  }
+
+  // Отвечающая сторона получает слоты из предложения и кладёт в них свои дорожки
+  bind() {
+    for (const slot of SLOTS) {
+      const t = this.transceiver(slot);
+      if (!t) continue;
+      t.direction = 'sendrecv';
+      t.sender.setStreams?.(this.msid);
+      t.sender.replaceTrack(this.local.tracks[slot] || null).catch(() => {});
+    }
+    this.bound = true;
+  }
+
+  async updateTrack(slot) {
+    const t = this.bound && this.transceiver(slot);
+    if (!t) return;
+    await t.sender.replaceTrack(this.local.tracks[slot] || null).catch(() => {});
+    this.tune(slot);
+  }
+
+  // Ограничения скорости: голос важнее всего, экран — до 2,5–3 Мбит/с, камера — до 0,8
+  async tune(slot) {
+    const t = this.transceiver(slot);
+    if (!t || !this.local.tracks[slot]) return;
+    const params = t.sender.getParameters();
+    const enc = params.encodings?.[0];
+    if (!enc) return;
+    if (slot === 'mic') {
+      enc.priority = enc.networkPriority = 'high';
+    } else if (slot === 'cam') {
+      enc.maxBitrate = 800_000;
+    } else if (slot === 'screen') {
+      const mode = SCREEN_MODES[this.local.screenMode];
+      enc.maxBitrate = mode.bitrate;
+      params.degradationPreference = mode.degradation;
+    } else {
+      return;
+    }
+    try {
+      await t.sender.setParameters(params);
+    } catch {
+      delete params.degradationPreference;
+      await t.sender.setParameters(params).catch(() => {});
+    }
+  }
+
+  /** Качество связи: пинг, потери пакетов голоса за последний интервал, джиттер, идёт ли через TURN */
+  async stats() {
+    const report = await this.pc.getStats();
+    let rtt = null;
+    let pairLocal = null;
+    let lost = 0;
+    let received = 0;
+    let jitter = 0;
+    report.forEach((s) => {
+      if (s.type === 'candidate-pair' && s.nominated && s.state === 'succeeded') {
+        if (s.currentRoundTripTime != null) rtt = Math.round(s.currentRoundTripTime * 1000);
+        pairLocal = s.localCandidateId;
+      }
+      if (s.type === 'inbound-rtp' && s.kind === 'audio') {
+        lost += s.packetsLost || 0;
+        received += s.packetsReceived || 0;
+        jitter = Math.max(jitter, Math.round((s.jitter || 0) * 1000));
+      }
+    });
+    const dLost = Math.max(0, lost - this.prev.lost);
+    const dReceived = Math.max(0, received - this.prev.received);
+    this.prev = { lost, received };
+    const loss = dLost + dReceived ? (dLost / (dLost + dReceived)) * 100 : 0;
+    const relay = pairLocal ? report.get(pairLocal)?.candidateType === 'relay' : false;
+    return { rtt, loss, jitter, relay };
+  }
+
+  close() {
+    this.pc.close();
+  }
+}
+
+/** Оценка связи для значка: 3 — отлично, 2 — нормально, 1 — плохо */
+function qualityLevel(q) {
+  if (!q || q.rtt == null) return 0;
+  if (q.rtt > 400 || q.loss > 8) return 1;
+  if (q.rtt > 180 || q.loss > 2 || q.jitter > 40) return 2;
+  return 3;
+}
+
+function qualityText(q) {
+  if (!q || q.rtt == null) return 'Соединение…';
+  const parts = [`пинг ${q.rtt} мс`, `потери ${q.loss < 0.1 ? 0 : q.loss.toFixed(1)}%`, `джиттер ${q.jitter} мс`];
+  if (q.relay) parts.push('через сервер');
+  return parts.join(' · ');
+}
+
+// Звонок целиком: свои устройства плюс соединения со всеми собеседниками
+class MediaSession {
+  constructor({ settings, sendSignal, onChange, onSpeaking, onPeerState, onStats, volumeOf }) {
+    this.settings = settings;
+    this.volumeOf = volumeOf;
+    this.sendSignal = sendSignal;
+    this.onChange = onChange;
+    this.onSpeaking = onSpeaking;
+    this.onPeerState = onPeerState;
+    this.onStats = onStats;
+    this.local = new LocalMedia((slot) => this.onLocal(slot));
+    this.peers = new Map(); // id собеседника -> { link, tracks, media, audio, meter, speaking, state, quality }
+    this.iceServers = [];
+    this.deafened = false;
+    this.volumes = {};
+    this.sinkId = settings.speakerId || '';
+    this.meter = null;
+    this.closed = false;
+    this.statsTimer = setInterval(() => this.collectStats(), 2000);
+  }
+
+  async start({ muted, deafened }) {
+    this.local.muted = muted;
+    this.deafened = deafened;
+    const [{ iceServers }] = await Promise.all([
+      Api.get('/ice').catch(() => ({ iceServers: [] })),
+      this.local.openMic(this.settings),
+    ]);
+    this.iceServers = iceServers;
+  }
+
+  mediaState() {
+    return {
+      muted: this.local.muted,
+      deafened: this.deafened,
+      video: Boolean(this.local.tracks.cam),
+      screen: Boolean(this.local.tracks.screen),
+    };
+  }
+
+  broadcastMedia() {
+    for (const id of this.peers.keys()) this.sendSignal(id, { media: this.mediaState() });
+  }
+
+  onLocal(slot) {
+    if (this.closed) return;
+    if (slot === 'mic') {
+      this.meter?.stop();
+      const track = this.local.tracks.mic;
+      this.meter = track && new LevelMeter(new MediaStream([track]), (s) => this.onSpeaking('me', s));
+    }
+    for (const peer of this.peers.values()) peer.link.updateTrack(slot);
+    if (slot !== 'mic') this.broadcastMedia();
+    this.onChange();
+  }
+
+  addPeer(id, initiator) {
+    this.removePeer(id);
+    const peer = {
+      id,
+      tracks: {},
+      media: { muted: false, deafened: false, video: false, screen: false },
+      audio: {},
+      meter: null,
+      speaking: false,
+      state: 'new',
+      quality: null,
+    };
+    peer.link = new PeerLink({
+      iceServers: this.iceServers,
+      initiator,
+      local: this.local,
+      send: (data) => this.sendSignal(id, { ...data, link: peer.link.id }),
+      onTrack: (slot, track) => this.onRemoteTrack(peer, slot, track),
+      onState: (st) => {
+        peer.state = st;
+        if (st === 'connected') this.sendSignal(id, { media: this.mediaState() });
+        this.onPeerState?.(id, st);
+        this.onChange();
+      },
+      onMedia: (media) => {
+        peer.media = { ...peer.media, ...media };
+        this.onChange();
+      },
+    });
+    this.peers.set(id, peer);
+    return peer;
+  }
+
+  removePeer(id) {
+    const peer = this.peers.get(id);
+    if (!peer) return;
+    this.peers.delete(id);
+    peer.link.close();
+    peer.meter?.stop();
+    for (const el of Object.values(peer.audio)) {
+      el.pause();
+      el.srcObject = null;
+    }
+    if (peer.speaking) this.onSpeaking(id, false);
+    this.onChange();
+  }
+
+  // У каждого соединения свой номер (link). Если собеседник переподключился и прислал новое предложение,
+  // старое соединение с ним выбрасываем; сигналы от уже закрытого соединения игнорируем
+  handleSignal(id, data) {
+    let peer = this.peers.get(id);
+    const isOffer = data.sdp?.type === 'offer';
+    if (peer && data.link && peer.remoteLink && peer.remoteLink !== data.link) {
+      if (!isOffer) return;
+      peer = null;
+    }
+    if (!peer) {
+      if (!isOffer) return;
+      peer = this.addPeer(id, false);
+    }
+    if (data.link) peer.remoteLink = data.link;
+    peer.link.signal(data);
+  }
+
+  onRemoteTrack(peer, slot, track) {
+    peer.tracks[slot] = track;
+    if (SLOT_KIND[slot] === 'audio') {
+      let el = peer.audio[slot];
+      if (!el) el = peer.audio[slot] = new Audio();
+      el.autoplay = true;
+      el.srcObject = new MediaStream([track]);
+      this.applyPeerAudio(peer);
+      el.play().catch(() => {});
+      if (slot === 'mic') {
+        peer.meter?.stop();
+        peer.meter = new LevelMeter(el.srcObject, (s) => {
+          peer.speaking = s;
+          this.onSpeaking(peer.id, s);
+        });
+      }
+    }
+    this.onChange();
+  }
+
+  applyPeerAudio(peer) {
+    const volume = this.volumes[peer.id] ?? this.volumeOf?.(peer.id) ?? 1;
+    for (const el of Object.values(peer.audio)) {
+      el.volume = volume;
+      el.muted = this.deafened;
+      if (el.setSinkId && el.sinkId !== this.sinkId) el.setSinkId(this.sinkId).catch(() => {});
+    }
+  }
+
+  setVolume(id, volume) {
+    this.volumes[id] = volume;
+    const peer = this.peers.get(id);
+    if (peer) this.applyPeerAudio(peer);
+  }
+
+  setSink(sinkId) {
+    this.sinkId = sinkId || '';
+    for (const peer of this.peers.values()) this.applyPeerAudio(peer);
+  }
+
+  setMuted(muted, deafened) {
+    this.local.setMuted(muted);
+    this.deafened = deafened;
+    for (const peer of this.peers.values()) this.applyPeerAudio(peer);
+    this.broadcastMedia();
+    this.onChange();
+  }
+
+  async switchMic(settings) {
+    this.settings = settings;
+    await this.local.openMic(settings);
+  }
+
+  async toggleCamera() {
+    if (this.local.tracks.cam) this.local.stopCamera();
+    else await this.local.startCamera(this.settings);
+  }
+
+  startScreen(options) {
+    return this.local.startScreen(options);
+  }
+
+  stopScreen() {
+    this.local.stopScreen();
+  }
+
+  async collectStats() {
+    for (const peer of this.peers.values()) {
+      if (peer.state !== 'connected') continue;
+      try {
+        peer.quality = await peer.link.stats();
+      } catch {}
+    }
+    if (!this.closed) this.onStats?.();
+  }
+
+  /** Самое плохое соединение — по нему показываем значок качества связи */
+  worstQuality() {
+    let worst = null;
+    for (const peer of this.peers.values()) {
+      if (!peer.quality) continue;
+      if (!worst || qualityLevel(peer.quality) < qualityLevel(worst)) worst = peer.quality;
+    }
+    return worst;
+  }
+
+  close() {
+    this.closed = true;
+    clearInterval(this.statsTimer);
+    for (const id of [...this.peers.keys()]) this.removePeer(id);
+    this.meter?.stop();
+    this.local.close();
   }
 }
