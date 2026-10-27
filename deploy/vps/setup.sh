@@ -25,7 +25,7 @@ fi
 
 log 'Ставлю пакеты'
 apt-get update -qq
-apt-get install -y -qq nodejs npm coturn git ufw >/dev/null
+apt-get install -y -qq nodejs npm coturn git ufw caddy >/dev/null
 
 node -e 'const [a,b]=process.versions.node.split(".").map(Number); if (a<22||(a===22&&b<13)) { console.error("Нужен Node.js 22.13+, а стоит "+process.version); process.exit(1) }'
 
@@ -45,6 +45,8 @@ mkdir -p "$DATA_DIR" && chown sozvon:sozvon "$DATA_DIR" && chmod 700 "$DATA_DIR"
 PUBLIC_IP=${PUBLIC_IP_OVERRIDE:-$(ip -4 route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')}
 TURN_SECRET=${TURN_SECRET:-$(openssl rand -hex 32)}
 INVITE_CODE=${INVITE_CODE:-$(tr -dc 'abcdefghjkmnpqrstuvwxyz23456789' </dev/urandom | head -c 8)}
+# Домен для HTTPS. Если своего нет — бесплатный адрес sslip.io, который сам указывает на IP сервера
+DOMAIN=${DOMAIN:-${PUBLIC_IP//./-}.sslip.io}
 
 log 'Записываю настройки'
 umask 077
@@ -53,6 +55,7 @@ PORT=3000
 DATA_DIR=$DATA_DIR
 WEB_DIR=$APP_DIR/client/renderer
 PUBLIC_IP=$PUBLIC_IP
+DOMAIN=$DOMAIN
 INVITE_CODE=$INVITE_CODE
 TURN_SECRET=$TURN_SECRET
 STUN_URLS=stun:$PUBLIC_IP:3478
@@ -122,8 +125,20 @@ EOF
 systemctl daemon-reload
 systemctl enable -q sozvon && systemctl restart sozvon
 
+log "Настраиваю HTTPS для $DOMAIN (Caddy сам получит и будет продлевать сертификат Let's Encrypt)"
+cat > /etc/caddy/Caddyfile <<EOF
+$DOMAIN {
+	encode gzip
+	reverse_proxy localhost:3000
+}
+EOF
+systemctl enable -q caddy && systemctl reload-or-restart caddy
+
 log 'Настраиваю брандмауэр'
 ufw allow OpenSSH >/dev/null
+ufw allow 80/tcp >/dev/null
+ufw allow 443/tcp >/dev/null
+# 3000 оставлен для приложений до версии 1.4.0, которые ходят напрямую по http
 ufw allow 3000/tcp >/dev/null
 ufw allow 3478 >/dev/null
 ufw allow 49160:49200/udp >/dev/null
@@ -135,8 +150,14 @@ for i in $(seq 1 20); do
 done
 curl -fsS http://localhost:3000/api/health >/dev/null || { journalctl -u sozvon -n 30 --no-pager; exit 1; }
 
+for i in $(seq 1 60); do
+  curl -fsS "https://$DOMAIN/api/health" >/dev/null 2>&1 && break
+  sleep 2
+done
+curl -fsS "https://$DOMAIN/api/health" >/dev/null || { echo 'HTTPS не поднялся:'; journalctl -u caddy -n 20 --no-pager; exit 1; }
+
 log 'Готово'
-echo "  Адрес сервера:     http://$PUBLIC_IP:3000"
+echo "  Адрес сервера:     https://$DOMAIN"
 echo "  Код приглашения:   $INVITE_CODE"
 echo "  Настройки и ключи: $ENV_FILE (после правки: systemctl restart sozvon)"
 echo "  Журнал:            journalctl -u sozvon -f"
