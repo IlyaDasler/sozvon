@@ -329,3 +329,15 @@ test('комнаты: роли, права, кик и бан', async () => {
 
   cg.ws.close();
 });
+
+test('регистрация по почте без подтверждения, если сервер не отправляет письма', async () => {
+  assert.equal((await api('GET', '/health')).body.emailCodes, false);
+  assert.equal((await api('POST', '/register/code', { email: 'petr@mail.ru', inviteCode: 'friends' })).status, 400);
+  const reg = await api('POST', '/register', { email: 'Petr@Mail.ru', password: 'secret1', inviteCode: 'friends' });
+  assert.equal(reg.status, 200);
+  assert.equal(reg.body.user.email, 'petr@mail.ru');
+  assert.equal(reg.body.user.displayName, 'petr');
+  // Код приглашения по-прежнему нужен, если сервер его требует
+  assert.equal((await api('POST', '/register', { email: 'x@mail.ru', password: 'secret1' })).status, 403);
+  assert.equal((await api('POST', '/login', { username: 'petr@mail.ru', password: 'secret1' })).status, 200);
+});

@@ -133,8 +133,8 @@ ipcMain.on('update:install', () => {
   autoUpdater.quitAndInstall(false, true);
 });
 
-// Вход через Google / Яндекс / VK: страница входа присылает ответ на localhost.
-// Яндекс и VK — в окне приложения, которое закрывается само; Google — в обычном браузере
+// Вход через Яндекс: страница входа открывается в окне приложения, присылает ответ на localhost
+// и окно закрывается само
 let pendingOAuth = null;
 ipcMain.handle('oauth', async (_event, authUrl) => {
   pendingOAuth?.close();

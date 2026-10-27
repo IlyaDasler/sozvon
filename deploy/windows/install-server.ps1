@@ -82,17 +82,18 @@ Set-Content -Encoding ascii -Path $configFile -Value @(
   'set "WEB_DIR=%~dp0app\web"'
 )
 
-# Ключи входа через Google / Яндекс / VK. Файл создаётся один раз и дальше не перезаписывается
+# Ключи входа через Яндекс и почтовый ящик для писем. Файл создаётся один раз и дальше не перезаписывается
 $oauthFile = Join-Path $InstallDir 'oauth.cmd'
 if (-not (Test-Path $oauthFile)) {
   Set-Content -Encoding ascii -Path $oauthFile -Value @(
     '@echo off'
-    'rem Keys for sign-in with Google / Yandex / VK (see README). Fill in, then rerun install-server.ps1'
-    'set "GOOGLE_CLIENT_ID="'
-    'set "GOOGLE_CLIENT_SECRET="'
+    'rem Yandex sign-in keys and SMTP mailbox for e-mail codes (see README). Fill in, then rerun install-server.ps1'
     'set "YANDEX_CLIENT_ID="'
     'set "YANDEX_CLIENT_SECRET="'
-    'set "VK_CLIENT_ID="'
+    'set "SMTP_HOST="'
+    'set "SMTP_PORT=465"'
+    'set "SMTP_USER="'
+    'set "SMTP_PASS="'
   )
 }
 

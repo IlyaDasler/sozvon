@@ -1,4 +1,4 @@
-// Сквозной тест входа через Google / Яндекс / VK в интерфейсе приложения.
+// Сквозной тест входа через Яндекс и регистрации по почте в интерфейсе приложения.
 // Поднимает свой сервер и поддельные сервисы входа; браузер пользователя заменяет обычный HTTP-запрос.
 // Запуск: npx electron scripts/e2e-oauth.js   (E2E_SHOTS=папка — сохранить скриншоты)
 const { app, BrowserWindow, ipcMain, session } = require('electron');
@@ -10,6 +10,8 @@ const { pathToFileURL } = require('node:url');
 const { listenForOAuth } = require('../oauth-loopback');
 
 const PORT = 3200;
+// Письма с кодами сервер пишет в этот файл вместо отправки
+const MAIL_FILE = path.join(os.tmpdir(), `sozvon-e2e-mail-${process.pid}.jsonl`);
 const SERVER = `http://localhost:${PORT}`;
 const serverDir = path.join(__dirname, '..', '..', 'server');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -59,12 +61,14 @@ async function run(serverEnv) {
     `localStorage.clear(); document.getElementById('server-url').value = '${SERVER}';
      document.getElementById('server-url').dispatchEvent(new Event('change')); true`
   );
-  await waitFor(win, `document.querySelectorAll('.oauth-btn').length === 3`, 'кнопки входа');
+  await waitFor(win, `document.querySelectorAll('.oauth-btn').length === 1`, 'кнопка Яндекса');
+  if (await win.webContents.executeJavaScript(`[...document.querySelectorAll('.oauth-btn')].some((b) => /Google|VK/.test(b.textContent))`))
+    throw new Error('Кнопки Google или VK всё ещё на экране');
   await shot(win, 'oauth-login');
-  console.log('✔ на экране входа есть кнопки Google, Яндекс и VK');
+  console.log('✔ на экране входа только Яндекс, Google и VK убраны');
 
-  // Вход через сервис без профиля: приложение просит только код приглашения, повторно входить не нужно
-  await click(win, '.oauth-btn', 'Google');
+  // Вход через Яндекс без профиля: приложение просит только код приглашения, повторно входить не нужно
+  await click(win, '.oauth-btn', 'Яндекс');
   await waitFor(
     win,
     `Boolean(state.pendingSignup) && document.getElementById('auth-subtitle').textContent.includes('подтверждён') &&
@@ -73,7 +77,7 @@ async function run(serverEnv) {
     'экран ввода кода приглашения'
   );
   await shot(win, 'oauth-pending');
-  console.log('✔ после входа через Google приложение просит только код приглашения');
+  console.log('✔ после входа через Яндекс приложение просит только код приглашения');
 
   await win.webContents.executeJavaScript(`document.getElementById('auth-invite').value = 'wrong'; true`);
   await click(win, '#auth-submit', 'Создать профиль');
@@ -85,14 +89,10 @@ async function run(serverEnv) {
   await waitFor(win, `!document.getElementById('main').classList.contains('hidden')`, 'вход в приложение');
   const me = await win.webContents.executeJavaScript('state.me');
   if (me.username !== 'ivan.petrov' || me.displayName !== 'Иван Петров') throw new Error(`Не тот профиль: ${JSON.stringify(me)}`);
-  console.log(`✔ регистрация через Google: профиль «${me.displayName}», логин ${me.username}`);
-
-  await win.webContents.executeJavaScript('openSettings()');
-  await click(win, '.identity-row .btn', 'Привязать'); // первая непривязанная — Яндекс
-  await waitFor(win, 'state.me.identities.length === 2', 'привязка Яндекса');
-  console.log('✔ Яндекс привязан в настройках');
+  console.log(`✔ регистрация через Яндекс: профиль «${me.displayName}», логин ${me.username}`);
 
   // Аватарка: рисуем картинку 640×480 и загружаем тем же кодом, что и кнопка «Загрузить фото»
+  await win.webContents.executeJavaScript('openSettings()');
   await win.webContents.executeJavaScript(`(async () => {
     const c = document.createElement('canvas'); c.width = 640; c.height = 480;
     const g = c.getContext('2d'); g.fillStyle = '#ff7a00'; g.fillRect(0, 0, 640, 480);
@@ -120,13 +120,49 @@ async function run(serverEnv) {
   await waitFor(win, `state.me?.username === 'ivan.petrov'`, 'вход через Яндекс');
   console.log('✔ вход через Яндекс открывает тот же профиль');
 
-  // VK: другой человек, другой профиль
+  // Регистрация по своей почте: код приходит в письме (здесь — в файл), его вводят и создают аккаунт
+  const set = (id, value) => win.webContents.executeJavaScript(`document.getElementById('${id}').value = ${JSON.stringify(value)}; true`);
+  const lastCode = (purpose) => {
+    const lines = fs.existsSync(MAIL_FILE) ? fs.readFileSync(MAIL_FILE, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse) : [];
+    return lines.filter((l) => l.purpose === purpose).at(-1)?.code;
+  };
   await win.webContents.executeJavaScript(`document.getElementById('logout-btn').click(); true`);
   await click(win, '#auth-toggle', 'Зарегистрироваться');
-  await win.webContents.executeJavaScript(`document.getElementById('auth-invite').value = 'friends'; true`);
-  await click(win, '.oauth-btn', 'VK');
-  await waitFor(win, `state.me?.username === 'maria'`, 'регистрация через VK');
-  console.log('✔ регистрация через VK создаёт отдельный профиль');
+  await waitFor(
+    win,
+    `!document.getElementById('email-field').classList.contains('hidden') && !document.getElementById('code-field').classList.contains('hidden') &&
+     document.getElementById('username-field').classList.contains('hidden')`,
+    'поля регистрации по почте'
+  );
+  await set('auth-email', 'Anna@Mail.ru');
+  await set('auth-display', 'Аня');
+  await set('auth-password', 'secret1');
+  await set('auth-invite', 'friends');
+  await click(win, '#auth-submit', 'Создать аккаунт'); // кода ещё нет — отправляет его
+  await waitFor(win, `document.getElementById('code-hint').textContent.includes('Код отправлен')`, 'письмо с кодом');
+  await shot(win, 'email-register');
+  await set('auth-code', lastCode('register'));
+  await click(win, '#auth-submit', 'Создать аккаунт');
+  await waitFor(win, `state.me?.email === 'anna@mail.ru' && state.me.displayName === 'Аня'`, 'регистрация по почте');
+  console.log(`✔ регистрация по почте с кодом из письма: логин ${await win.webContents.executeJavaScript('state.me.username')}`);
+
+  // Вход по почте и смена забытого пароля
+  await win.webContents.executeJavaScript(`document.getElementById('logout-btn').click(); true`);
+  await set('auth-username', 'anna@mail.ru');
+  await click(win, '#auth-forgot', 'Забыли пароль');
+  await waitFor(win, `state.authMode === 'reset' && document.getElementById('auth-email').value === 'anna@mail.ru'`, 'экран смены пароля');
+  await set('auth-password', 'newpass1');
+  await click(win, '#auth-submit', 'Сменить пароль');
+  await waitFor(win, `document.getElementById('code-hint').textContent.includes('Код отправлен')`, 'письмо для смены пароля');
+  await set('auth-code', lastCode('reset'));
+  await click(win, '#auth-submit', 'Сменить пароль');
+  await waitFor(win, `state.me?.email === 'anna@mail.ru'`, 'вход после смены пароля');
+  await win.webContents.executeJavaScript(`document.getElementById('logout-btn').click(); true`);
+  await set('auth-username', 'anna@mail.ru');
+  await set('auth-password', 'newpass1');
+  await click(win, '#auth-submit', 'Войти');
+  await waitFor(win, `state.me?.email === 'anna@mail.ru'`, 'вход по почте с новым паролем');
+  console.log('✔ «Забыли пароль?» меняет пароль по коду из письма, вход по почте работает');
 }
 
 app.whenReady().then(async () => {
@@ -141,6 +177,7 @@ app.whenReady().then(async () => {
       DATA_DIR: dataDir,
       INVITE_CODE: 'friends',
       AUTH_RATE_LIMIT: '100',
+      MAIL_TEST_FILE: MAIL_FILE,
       ...oauthEnv(mock.address().port),
     },
     stdio: 'ignore',
@@ -158,5 +195,6 @@ app.whenReady().then(async () => {
   mock.close();
   await sleep(500);
   fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 5 });
+  fs.rmSync(MAIL_FILE, { force: true });
   app.exit(code);
 });

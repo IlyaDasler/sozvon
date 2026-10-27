@@ -1,4 +1,4 @@
-// Принимает ответ сервиса входа (Google / Яндекс / VK) на http://localhost:<порт>/callback.
+// Принимает ответ сервиса входа (Яндекс) на http://localhost:<порт>/callback.
 // Адрес берётся из параметра redirect_uri ссылки входа, которую выдал сервер.
 const http = require('node:http');
 const { BrowserWindow, shell } = require('electron');
@@ -67,20 +67,18 @@ async function listenForOAuth(authUrl) {
   return { result, close: () => reject(new Error('Вход отменён')) };
 }
 
-// Яндекс и VK открываем в окне приложения — после входа оно закрывается само.
-// Google вход во встроенных окнах запрещает, поэтому для него — обычный браузер
-const IN_APP_OAUTH_HOSTS = ['oauth.yandex.ru', 'oauth.yandex.com', 'id.vk.com', 'id.vk.ru'];
+// Яндекс открываем в окне приложения — после входа оно закрывается само
+const IN_APP_OAUTH_HOSTS = ['oauth.yandex.ru', 'oauth.yandex.com'];
 
 const opensInApp = (authUrl) => IN_APP_OAUTH_HOSTS.includes(new URL(authUrl).hostname);
 
 /** Окно входа внутри приложения: закрывается само, как только сервис вернул ответ */
 function openOAuthWindow(authUrl, pending, parent) {
-  const title = new URL(authUrl).hostname.includes('yandex') ? 'Вход через Яндекс' : 'Вход через VK';
   const auth = new BrowserWindow({
     parent,
     width: 520,
     height: 720,
-    title,
+    title: 'Вход через Яндекс',
     autoHideMenuBar: true,
     backgroundColor: '#ffffff',
     // Отдельный сохраняемый профиль: в следующий раз Яндекс уже помнит вход

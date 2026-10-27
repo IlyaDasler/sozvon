@@ -61,19 +61,20 @@ after(async () => {
   fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 5 });
 });
 
-test('регистрация, вход и привязка через Google, Яндекс и VK', async () => {
+test('вход и регистрация через Яндекс; Google и VK отключены', async () => {
   const providers = (await api('GET', '/oauth/providers')).body;
-  assert.deepEqual(providers.map((p) => p.id), ['google', 'yandex', 'vk']);
+  assert.deepEqual(providers.map((p) => p.id), ['yandex']);
 
-  const { body: link } = await api('GET', `/oauth/google/url?state=${'s'.repeat(22)}&challenge=${'c'.repeat(43)}`);
+  const { body: link } = await api('GET', `/oauth/yandex/url?state=${'s'.repeat(22)}&challenge=${'c'.repeat(43)}`);
   const authUrl = new URL(link.url);
-  assert.equal(authUrl.searchParams.get('redirect_uri'), 'http://127.0.0.1:47615/callback');
+  assert.equal(authUrl.searchParams.get('redirect_uri'), 'http://localhost:47615/callback');
   assert.equal(authUrl.searchParams.get('code_challenge_method'), 'S256');
-  assert.equal((await api('GET', '/oauth/google/url?state=x&challenge=y')).status, 400);
-  assert.equal((await api('GET', `/oauth/github/url?state=${'s'.repeat(22)}&challenge=${'c'.repeat(43)}`)).status, 404);
+  assert.equal((await api('GET', '/oauth/yandex/url?state=x&challenge=y')).status, 400);
+  for (const gone of ['google', 'vk'])
+    assert.equal((await api('GET', `/oauth/${gone}/url?state=${'s'.repeat(22)}&challenge=${'c'.repeat(43)}`)).status, 404);
 
   // Без кода приглашения профиль не создаётся, но приходит пропуск — повторно входить в сервис не нужно
-  const pending = await oauth('google');
+  const pending = await oauth('yandex');
   assert.equal(pending.status, 403);
   assert.equal(pending.body.needInvite, true);
   const { ticket } = pending.body;
@@ -90,32 +91,22 @@ test('регистрация, вход и привязка через Google, Я
   assert.equal(ivan.username, 'ivan.petrov');
   assert.equal(ivan.displayName, 'Иван Петров');
   assert.equal(ivan.hasPassword, false);
-  assert.deepEqual(ivan.identities, [{ provider: 'google', email: 'ivan.petrov@gmail.com' }]);
+  assert.deepEqual(ivan.identities, [{ provider: 'yandex', email: 'ivan.petrov@yandex.ru' }]);
 
   // Повторный вход попадает в тот же профиль, код больше не нужен
-  const again = await oauth('google');
+  const again = await oauth('yandex');
   assert.equal(again.body.user.id, ivan.id);
   assert.equal(again.body.created, undefined);
   const token = again.body.token;
 
-  // Привязываем Яндекс и входим через него
-  const linked = await oauth('yandex', { mode: 'link' }, token);
-  assert.equal(linked.status, 200);
-  assert.equal(linked.body.identities.length, 2);
-  assert.equal((await oauth('yandex')).body.user.id, ivan.id);
-  assert.equal((await oauth('yandex', { mode: 'link' })).status, 401);
-
-  // VK создаёт отдельный профиль, и его нельзя привязать к Ивану
-  const maria = await oauth('vk', { inviteCode: 'friends', deviceId: 'device-1' });
-  assert.equal(maria.status, 200);
-  assert.equal(maria.body.user.username, 'maria');
-  assert.equal((await oauth('vk', { mode: 'link', deviceId: 'device-1' }, token)).status, 409);
+  // Этот Яндекс нельзя привязать к другому профилю
+  const other = await api('POST', '/register', { username: 'other_user', password: 'secret1', inviteCode: 'friends' });
+  assert.equal((await oauth('yandex', { mode: 'link' }, other.body.token)).status, 409);
 
   // Неверный код от сервиса — ошибка, а не падение сервера
-  assert.equal((await oauth('google', { code: 'wrong' })).status, 502);
+  assert.equal((await oauth('yandex', { code: 'wrong' })).status, 502);
 
   // Без пароля нельзя отвязать последний способ входа
-  assert.equal((await api('DELETE', '/me/identities/google', null, token)).status, 200);
   assert.equal((await api('DELETE', '/me/identities/yandex', null, token)).status, 400);
   const withPassword = await api('PATCH', '/me', { newPassword: 'secret1' }, token);
   assert.equal(withPassword.body.hasPassword, true);

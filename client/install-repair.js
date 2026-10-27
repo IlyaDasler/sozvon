@@ -49,25 +49,38 @@ function repairShortcuts(dirs = shortcutDirs(), exe = process.execPath) {
   return fixed;
 }
 
-// Копии, установленные «для всех пользователей»: по записям об удалении программ в реестре (папку берём из команды удаления)
-function findMachineCopies() {
+// Старые копии, которые больше не обновляются:
+//  - machine — установленные «для всех пользователей» (запись об удалении в HKLM), убираем их деинсталлятором;
+//  - folder — копия в папке, куда без прав администратора не записать (например, Program Files):
+//    установщик поставил новую версию в папку пользователя и запомнил старый путь в HKCU\Software\Sozvon.
+//    Её деинсталлятор не запускаем (он удалил бы и ярлыки новой версии) — просто удаляем папку
+function findOldCopies() {
   const script = `
     $ErrorActionPreference = 'SilentlyContinue'
     [Console]::OutputEncoding = [Text.Encoding]::UTF8
     $keys = 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',
             'HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'
-    @(Get-ItemProperty $keys | Where-Object { $_.UninstallString -like '*Uninstall Sozvon.exe*' } |
-      ForEach-Object { $_.UninstallString }) | ConvertTo-Json -Compress`;
+    @{
+      machine = @(Get-ItemProperty $keys | Where-Object { $_.UninstallString -like '*Uninstall Sozvon.exe*' } |
+        ForEach-Object { $_.UninstallString })
+      moved = (Get-ItemProperty 'HKCU:\\Software\\Sozvon').OldInstallLocation
+    } | ConvertTo-Json -Compress`;
   return new Promise((resolve) => {
     execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true, timeout: 15000 }, (err, out) => {
       if (err) return resolve([]);
       try {
-        // "C:\Program Files\Sozvon\Uninstall Sozvon.exe" /allusers -> папка программы
-        const list = [].concat(JSON.parse(out.trim() || '[]'))
-          .map((cmd) => /^"?(.*?)\\Uninstall Sozvon\.exe/i.exec(cmd || '')?.[1])
-          .filter(Boolean);
+        const data = JSON.parse(out.trim() || '{}');
         const here = path.dirname(process.execPath);
-        resolve(list.filter((dir) => !samePath(dir, here) && fs.existsSync(path.join(dir, 'Uninstall Sozvon.exe'))));
+        const isCopy = (dir) => dir && !samePath(dir, here) && fs.existsSync(path.join(dir, 'Sozvon.exe'));
+        const copies = [];
+        // "C:\Program Files\Sozvon\Uninstall Sozvon.exe" /allusers -> папка программы
+        for (const cmd of [].concat(data.machine || [])) {
+          const dir = /^"?(.*?)\\Uninstall Sozvon\.exe/i.exec(cmd || '')?.[1];
+          if (isCopy(dir) && fs.existsSync(path.join(dir, 'Uninstall Sozvon.exe'))) copies.push({ dir, kind: 'machine' });
+        }
+        if (isCopy(data.moved) && fs.existsSync(path.join(data.moved, 'resources'))) copies.push({ dir: data.moved, kind: 'folder' });
+        else if (data.moved) forgetMovedCopy();
+        resolve(copies);
       } catch {
         resolve([]);
       }
@@ -75,15 +88,24 @@ function findMachineCopies() {
   });
 }
 
+const forgetMovedCopy = () =>
+  execFile('reg.exe', ['delete', 'HKCU\\Software\\Sozvon', '/v', 'OldInstallLocation', '/f'], { windowsHide: true }, () => {});
+
 // Удаление старой копии требует прав администратора — Windows спросит подтверждение.
-// Путь передаём через переменную окружения, чтобы его не пришлось вставлять в текст команды
-function uninstallCopy(dir) {
-  const script = `Start-Process -FilePath $env:SOZVON_UNINSTALLER -ArgumentList '/S','/allusers' -Verb RunAs -Wait`;
+// Путь передаём через переменную окружения, а в команду для окна администратора — закодированным
+function removeCopy({ dir, kind }) {
+  const script =
+    kind === 'machine'
+      ? `Start-Process -FilePath (Join-Path $env:SOZVON_OLD_DIR 'Uninstall Sozvon.exe') -ArgumentList '/S','/allusers' -Verb RunAs -Wait`
+      : `$d = $env:SOZVON_OLD_DIR -replace "'", "''"
+         $cmd = "Remove-Item -LiteralPath '$d' -Recurse -Force"
+         $b = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
+         Start-Process powershell.exe -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '-NoProfile','-EncodedCommand',$b`;
   return new Promise((resolve, reject) => {
     execFile(
       'powershell.exe',
       ['-NoProfile', '-NonInteractive', '-Command', script],
-      { windowsHide: true, env: { ...process.env, SOZVON_UNINSTALLER: path.join(dir, 'Uninstall Sozvon.exe') } },
+      { windowsHide: true, env: { ...process.env, SOZVON_OLD_DIR: dir } },
       (err) => (err ? reject(err) : resolve())
     );
   });
@@ -92,40 +114,49 @@ function uninstallCopy(dir) {
 const dismissedFile = () => path.join(app.getPath('userData'), 'old-copy-dismissed.json');
 
 async function offerRemoveOldCopy(parent) {
-  const copies = await findMachineCopies();
+  const copies = await findOldCopies();
   let dismissed = [];
   try {
     dismissed = JSON.parse(fs.readFileSync(dismissedFile(), 'utf8'));
   } catch {}
-  const dir = copies.find((d) => !dismissed.includes(d.toLowerCase()));
-  if (!dir || !parent || parent.isDestroyed()) return;
+  const copy = copies.find((c) => !dismissed.includes(c.dir.toLowerCase()));
+  if (!copy || !parent || parent.isDestroyed()) return;
 
+  const why =
+    copy.kind === 'machine'
+      ? `Раньше Созвон был установлен «для всех пользователей» в папку:\n${copy.dir}`
+      : `Раньше Созвон стоял в папке, куда без прав администратора нельзя ставить обновления:\n${copy.dir}`;
   const { response, checkboxChecked } = await dialog.showMessageBox(parent, {
     type: 'question',
     title: 'Созвон',
     message: 'Найдена старая копия Созвона',
     detail:
-      `Раньше Созвон был установлен «для всех пользователей» в папку:\n${dir}\n\n` +
-      'Теперь он стоит только для вас, а старая копия больше не обновляется: из-за неё может запускаться старая версия ' +
-      'или появляться ошибка «Отсутствует ярлык». Удалить её? Windows попросит подтверждение. Ваш вход и настройки останутся.',
+      `${why}\n\nТеперь он стоит только для вас и обновляется без прав администратора, а старая копия больше не обновляется: ` +
+      'из-за неё может запускаться старая версия. Удалить её? Windows попросит подтверждение. Ваш вход и настройки останутся.',
     buttons: ['Удалить старую копию', 'Не сейчас'],
     defaultId: 0,
     cancelId: 1,
     checkboxLabel: 'Больше не спрашивать',
   });
   if (response !== 0) {
-    if (checkboxChecked) fs.writeFileSync(dismissedFile(), JSON.stringify([...dismissed, dir.toLowerCase()]));
+    if (checkboxChecked) fs.writeFileSync(dismissedFile(), JSON.stringify([...dismissed, copy.dir.toLowerCase()]));
     return;
   }
   try {
-    await uninstallCopy(dir);
-  } catch {
-    dialog.showMessageBox(parent, { type: 'warning', title: 'Созвон', message: 'Старую копию удалить не получилось', detail: 'Её можно удалить вручную: Параметры → Приложения → Установленные приложения → Созвон.' });
+    await removeCopy(copy);
+  } catch {}
+  if (fs.existsSync(path.join(copy.dir, 'Sozvon.exe'))) {
+    dialog.showMessageBox(parent, {
+      type: 'warning',
+      title: 'Созвон',
+      message: 'Старую копию удалить не получилось',
+      detail: `Удалите папку вручную:\n${copy.dir}`,
+    });
     return;
   }
+  if (copy.kind === 'folder') forgetMovedCopy();
   // Закреплённые ярлыки старой копии теперь ведут в никуда — перенаправляем их на эту
   repairShortcuts();
-  if (fs.existsSync(path.join(dir, 'Sozvon.exe'))) return;
   dialog.showMessageBox(parent, { type: 'info', title: 'Созвон', message: 'Старая копия удалена', detail: 'Ярлыки теперь открывают новую версию.' });
 }
 
