@@ -3,7 +3,7 @@ import http from 'node:http';
 
 export const PROFILES = {
   google: { sub: 'g-1', email: 'ivan.petrov@gmail.com', email_verified: true, name: 'Иван Петров' },
-  yandex: { id: 'y-1', default_email: 'ivan@yandex.ru', display_name: 'Ваня' },
+  yandex: { id: 'y-1', login: 'vanya.ivanov', default_email: 'ivan@yandex.ru', display_name: 'Ваня' },
   vk: { user: { user_id: '42', first_name: 'Мария', last_name: 'К', email: 'maria@vk.com' } },
 };
 

@@ -213,7 +213,8 @@ export function createApi() {
           403,
           'Профиль не найден. Чтобы создать новый, откройте «Зарегистрироваться», введите код приглашения и нажмите кнопку ещё раз'
         );
-      const username = makeUsername(profile.email, provider);
+      // Логин профиля — из почты, а если почту не дали (Яндекс без права на email) — из логина сервиса
+      const username = makeUsername(profile.email || profile.login || '', provider);
       const user = users.create({
         username,
         passwordHash: '',
