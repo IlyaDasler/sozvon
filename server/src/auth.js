@@ -10,7 +10,7 @@ export function hashPassword(password) {
 }
 
 export function verifyPassword(password, stored) {
-  // У профилей, созданных через Google / Яндекс / VK, пароля может не быть
+  // У профилей, созданных через Яндекс, пароля может не быть
   if (!stored) return false;
   const [, salt, hash] = stored.split('$');
   const expected = Buffer.from(hash, 'base64');
