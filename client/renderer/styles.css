@@ -402,7 +402,6 @@ video.mirror { transform: scaleX(-1); }
 .member-row .btn { height: 30px; padding: 0 10px; font-size: 13px; }
 .role-select { height: 30px; padding: 0 6px; font-size: 13px; max-width: 150px; }
 
-.modal-card.manage-card { width: min(680px, calc(100% - 32px)); }
 .tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
 .tab {
   padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
@@ -410,17 +409,6 @@ video.mirror { transform: scaleX(-1); }
 }
 .tab:hover { color: var(--text); }
 .tab.active { color: var(--text); border-bottom-color: var(--accent); }
-.manage-card section > .member-list { margin-top: 4px; }
-.role-list { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
-.role-card { padding: 12px; border-radius: 10px; background: var(--bg-3); }
-.role-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.role-head input:not([type]) { flex: 1; min-width: 0; height: 32px; }
-.role-head input[type=color] { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 6px; background: none; cursor: pointer; }
-.perm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 2px 12px; }
-.perm-grid .check { margin: 0; padding: 3px 0; }
-.perm-grid .dim { opacity: .45; }
-.role-card .row { margin-top: 8px; }
-.role-card .btn { height: 30px; padding: 0 12px; font-size: 13px; }
 .btn.on { box-shadow: inset 0 0 0 2px var(--accent); color: var(--accent); }
 
 /* ---------- Выбор экрана ---------- */
@@ -818,3 +806,109 @@ video.mirror { transform: scaleX(-1); }
 .friend-add-row:focus-within { border-color: var(--accent); }
 .friend-add-row input { flex: 1; min-width: 0; border: 0 !important; background: none !important; padding: 0 !important; }
 .ok-text { color: var(--ok); }
+
+/* ---------- Комнаты: кнопки в списке ---------- */
+
+.room-tools { display: inline-flex; gap: 2px; flex: none; width: 46px; }
+.room-tool {
+  width: 22px; height: 22px; padding: 0; border: 0; border-radius: 4px; display: grid; place-items: center;
+  background: none; color: var(--muted); cursor: pointer; opacity: .55; transition: opacity .1s, background .1s;
+}
+.room-tool svg { width: 15px; height: 15px; }
+.room-row:hover .room-tool, .room-row.active .room-tool { opacity: 1; }
+.room-tool:hover { background: var(--bg-5); color: var(--text); }
+.voice-users { padding-left: 90px; }
+
+/* ---------- Настройки комнаты ---------- */
+
+.modal-card.rs-card { width: min(920px, calc(100% - 32px)); height: min(640px, calc(100% - 32px)); padding: 0; display: flex; overflow: hidden; }
+.rs-nav { width: 210px; flex: none; display: flex; flex-direction: column; gap: 2px; padding: 20px 10px; background: var(--bg-deep); overflow-y: auto; }
+.rs-room { padding: 0 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+.rs-nav button {
+  display: flex; align-items: center; gap: 6px; padding: 7px 10px; border: 0; border-radius: 4px;
+  background: none; color: var(--text-2); font: inherit; font-weight: 500; text-align: left; cursor: pointer;
+}
+.rs-nav button:hover { background: var(--bg-3); color: var(--text); }
+.rs-nav button.active { background: var(--bg-4); color: var(--text); }
+.rs-count { margin-left: auto; font-size: 12px; color: var(--muted); }
+.rs-sep { height: 1px; margin: 8px 10px; background: var(--line); }
+.rs-nav .rs-danger { color: var(--danger); }
+.rs-nav .rs-danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+.rs-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rs-head { display: flex; align-items: center; padding: 20px 20px 8px 28px; }
+.rs-head h3 { flex: 1; margin: 0; font-size: 20px; }
+.rs-main > .error { padding: 0 28px; }
+.rs-body { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 28px 24px; }
+.rs-body h4 { margin: 20px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-2); }
+.rs-row { display: flex; align-items: flex-end; gap: 10px; }
+.rs-row .field { margin-bottom: 0; }
+.rs-row .btn { height: 40px; flex: none; }
+.rs-row > .friend-search { flex: 1; height: 36px !important; }
+.rs-row > .btn.primary { height: 36px; }
+.rs-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 18px; }
+.rs-facts > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 8px; background: var(--bg-3); }
+.rs-my-perms { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 12px; font-size: 13px; }
+.rs-my-perms li::before { display: inline-block; width: 18px; font-weight: 700; }
+.rs-my-perms li.yes::before { content: '✓'; color: var(--ok); }
+.rs-my-perms li.no { color: var(--muted); }
+.rs-my-perms li.no::before { content: '✕'; color: var(--danger); }
+
+.rs-roles { display: flex; gap: 16px; align-items: flex-start; margin-top: 12px; }
+.rs-role-list { width: 200px; flex: none; display: flex; flex-direction: column; gap: 2px; }
+.rs-role-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 0; border-radius: 4px;
+  background: none; color: var(--text-2); font: inherit; text-align: left; cursor: pointer;
+}
+.rs-role-item:hover { background: var(--bg-3); color: var(--text); }
+.rs-role-item.active { background: var(--bg-4); color: var(--text); }
+.role-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.rs-role-list .rs-create { margin-top: 6px; height: 32px; }
+.rs-role-editor { flex: 1; min-width: 0; padding: 16px; border-radius: 8px; background: var(--bg-3); }
+.rs-role-editor h4:first-child { margin-top: 0; }
+.rs-role-editor input[type=color] { width: 48px; height: 40px; padding: 2px; border: 0; border-radius: 4px; background: var(--bg-deep); cursor: pointer; }
+.perm-list { display: flex; flex-direction: column; }
+.perm-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.perm-item:last-child { border-bottom: 0; }
+.perm-item.dim { opacity: .45; }
+.switch {
+  appearance: none; width: 40px; height: 24px; flex: none; margin: 0; border-radius: 12px; position: relative;
+  background: var(--muted); cursor: pointer; transition: background .15s;
+}
+.switch::after {
+  content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; transition: transform .15s;
+}
+.switch:checked { background: var(--ok); }
+.switch:checked::after { transform: translateX(16px); }
+.switch:disabled { opacity: .5; cursor: default; }
+.rs-holders { margin-bottom: 8px; }
+.chip-x { margin-left: 2px; padding: 0 2px; border: 0; background: none; color: var(--muted); font-size: 14px; line-height: 1; cursor: pointer; }
+.chip-x:hover { color: var(--danger); }
+.rs-actions { margin-top: 16px; }
+
+.member-info { display: flex; flex-direction: column; gap: 3px; }
+.member-name { font-weight: 600; }
+.member-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.tag { padding: 0 6px; border-radius: 4px; background: var(--bg-5); font-size: 11px; font-weight: 600; line-height: 18px; color: var(--text-2); }
+.tag.owner { background: color-mix(in srgb, #f0b232 22%, transparent); color: #f0b232; }
+.tag.live { background: color-mix(in srgb, var(--ok) 20%, transparent); color: var(--ok); }
+.tag.kicked { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+.btn.warn-outline { background: transparent; color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
+.btn.warn-outline:hover { background: color-mix(in srgb, var(--warn) 12%, transparent); }
+
+/* ---------- Пригласить и кикнуть ---------- */
+
+.invite-card h3, .kick-card h3 { font-size: 18px; margin-bottom: 12px; }
+.invite-card .friend-search { margin-bottom: 10px; }
+.invite-list { max-height: 360px; overflow-y: auto; margin-bottom: 14px; }
+.error-text { color: var(--danger); }
+.kick-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+.kick-option { display: flex; align-items: center; justify-content: center; padding: 10px; border-radius: 8px; background: var(--bg-3); cursor: pointer; font-weight: 600; }
+.kick-option input { position: absolute; opacity: 0; pointer-events: none; }
+.kick-option:has(input:checked) { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); box-shadow: inset 0 0 0 2px var(--warn); }
+
+@media (max-width: 760px) {
+  .rs-nav { width: 160px; }
+  .rs-roles { flex-direction: column; }
+  .rs-role-list { width: 100%; }
+}

@@ -453,46 +453,53 @@
     </form>
   </div>
 
-  <!-- Участники, роли и баны комнаты -->
+  <!-- Настройки комнаты: обзор, роли и права, участники, баны -->
   <div id="room-manage" class="modal hidden">
-    <div class="modal-card room-card manage-card">
-      <h3 id="rm-title"></h3>
-      <div class="tabs" id="rm-tabs">
-        <button type="button" class="tab active" data-tab="members">Участники</button>
-        <button type="button" class="tab" data-tab="roles">Роли и права</button>
-        <button type="button" class="tab" data-tab="bans">Баны<span id="rm-ban-count"></span></button>
-      </div>
-
-      <section data-pane="members">
-        <form class="row rename-row" id="rm-rename">
-          <label class="field grow"><span>Название</span><input id="rm-name" maxlength="40"></label>
-          <button class="btn">Сохранить</button>
-        </form>
-        <div class="member-list" id="rm-members"></div>
-        <div id="rm-invite">
-          <h4>Добавить друзей</h4>
-          <div class="friend-list" id="rm-friends"></div>
-          <button type="button" class="btn" id="rm-add">Добавить отмеченных</button>
-        </div>
+    <div class="modal-card rs-card">
+      <nav class="rs-nav" id="rs-nav">
+        <div class="rs-room ellipsis" id="rs-room-name"></div>
+        <button type="button" data-tab="overview">Обзор</button>
+        <button type="button" data-tab="roles">Роли и права</button>
+        <button type="button" data-tab="members">Участники</button>
+        <button type="button" data-tab="bans">Баны <span class="rs-count" id="rm-ban-count"></span></button>
+        <div class="rs-sep"></div>
+        <button type="button" class="rs-danger" id="rm-leave"></button>
+      </nav>
+      <section class="rs-main">
+        <header class="rs-head">
+          <h3 id="rs-title"></h3>
+          <button type="button" class="icon-btn" id="rm-close" title="Закрыть (Esc)"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </header>
+        <p class="error" id="rm-error"></p>
+        <div class="rs-body" id="rs-body"></div>
       </section>
-
-      <section data-pane="roles" class="hidden">
-        <p class="hint-text">Создатель комнаты может всё. Остальным права даёт роль, а без роли действуют права «всех участников». Выгонять, банить и менять роли можно только тех, у кого прав меньше.</p>
-        <div class="role-list" id="rm-roles"></div>
-        <button type="button" class="btn" id="rm-role-new">+ Новая роль</button>
-      </section>
-
-      <section data-pane="bans" class="hidden">
-        <div class="member-list" id="rm-bans"></div>
-      </section>
-
-      <p class="error" id="rm-error"></p>
-      <div class="row">
-        <button type="button" class="btn danger-outline" id="rm-leave"></button>
-        <div class="spacer"></div>
-        <button type="button" class="btn" id="rm-close">Готово</button>
-      </div>
     </div>
+  </div>
+
+  <!-- Пригласить друзей в комнату -->
+  <div id="room-invite" class="modal hidden">
+    <div class="modal-card invite-card">
+      <h3 id="ri-title"></h3>
+      <input id="ri-search" class="friend-search" placeholder="Поиск друзей" spellcheck="false">
+      <p class="error" id="ri-error"></p>
+      <div class="member-list invite-list" id="ri-list"></div>
+      <div class="row"><div class="spacer"></div><button type="button" class="btn" id="ri-close">Готово</button></div>
+    </div>
+  </div>
+
+  <!-- Кик на время -->
+  <div id="room-kick" class="modal hidden">
+    <form class="modal-card kick-card" id="kick-form">
+      <h3 id="kick-title"></h3>
+      <p class="muted" id="kick-hint"></p>
+      <div class="kick-options" id="kick-options"></div>
+      <p class="error" id="kick-error"></p>
+      <div class="row">
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="kick-cancel">Отмена</button>
+        <button class="btn danger" id="kick-submit">Кикнуть</button>
+      </div>
+    </form>
   </div>
 
   <!-- Выбор экрана для демонстрации -->
@@ -554,6 +561,7 @@
   <script src="app.js"></script>
   <script src="voice-ui.js"></script>
   <script src="rooms.js"></script>
+  <script src="room-settings.js"></script>
   <script src="friends.js"></script>
   <script src="notifications.js"></script>
   <script src="composer.js"></script>
