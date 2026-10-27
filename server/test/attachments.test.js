@@ -59,6 +59,7 @@ test('картинка, видео и файл: загрузка, отправк
   const b = await reg('files_b');
   const c = await reg('files_c');
   await api('POST', '/contacts', { username: 'files_b' }, a.token);
+  await api('POST', `/friend-requests/${a.user.id}/accept`, null, b.token);
 
   assert.equal((await upload(null, 'x.png', 'image/png', PNG)).status, 401, 'без входа не загрузить');
 

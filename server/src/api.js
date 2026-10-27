@@ -5,7 +5,9 @@ import express from 'express';
 import { config } from './config.js';
 import { hashPassword, signTicket, signToken, verifyPassword, verifyTicket, verifyToken } from './auth.js';
 import {
+  blocks,
   contacts,
+  friendRequests,
   identities,
   messages,
   relatedUserIds,
@@ -173,6 +175,7 @@ const ROOM_KINDS = ['voice', 'text'];
 const MAX_OWNED_ROOMS = 20;
 const MAX_ROOM_MEMBERS = 30;
 const MAX_ROLES = 20;
+const MAX_TIMEOUT_SECONDS = 28 * 24 * 3600;
 
 function validateRoomName(name) {
   if (name.length < 1 || name.length > 40) throw new HttpError(400, 'Название комнаты — от 1 до 40 символов');
@@ -186,7 +189,11 @@ const toRoom = (row) => ({
   createdAt: row.created_at,
   defaultPerms: row.default_perms,
   roles: roles.of(row.id).map((r) => ({ id: r.id, name: r.name, color: r.color, perms: r.perms })),
-  members: rooms.members(row.id).map((m) => ({ ...withOnline(m), roleId: m.role_id })),
+  members: rooms.members(row.id).map((m) => ({
+    ...withOnline(m),
+    roleId: m.role_id,
+    timeoutUntil: m.timeout_until > Date.now() ? m.timeout_until : null,
+  })),
   bans: rooms.bans(row.id).map((b) => ({ ...toPublicUser(b), bannedAt: b.banned_at })),
   voice: voice.participants(row.id),
 });
@@ -578,15 +585,84 @@ export function createApi() {
 
   api.get('/contacts', handle((req) => contacts.list(req.user.id).map(withOnline)));
 
+  const toRequest = (row) => ({ ...toPublicUser(row), requestedAt: row.requested_at });
+
+  // Добавить в друзья — значит отправить заявку. Если он уже звал вас, вы сразу друзья
   api.post(
     '/contacts',
     handle((req) => {
       const other = users.byUsername(str(req.body.username).toLowerCase());
       if (!other) throw new HttpError(404, 'Пользователь с таким логином не найден');
       if (other.id === req.user.id) throw new HttpError(400, 'Нельзя добавить самого себя');
-      contacts.add(req.user.id, other.id);
-      hub.send(other.id, { type: 'contact:added', user: withOnline(req.user) });
-      return withOnline(other);
+      if (blocks.has(req.user.id, other.id)) throw new HttpError(403, 'Вы заблокировали этого человека — сначала разблокируйте');
+      if (blocks.has(other.id, req.user.id)) throw new HttpError(403, 'Этому человеку нельзя отправить заявку');
+      if (contacts.has(req.user.id, other.id)) throw new HttpError(409, 'Вы уже друзья');
+      if (friendRequests.has(other.id, req.user.id)) return acceptFriend(req.user, other);
+      if (friendRequests.has(req.user.id, other.id)) throw new HttpError(409, 'Заявка уже отправлена — ждём ответа');
+      friendRequests.add(req.user.id, other.id);
+      hub.send(other.id, { type: 'friend:request', user: toRequest({ ...req.user, requested_at: Date.now() }) });
+      return { ...toPublicUser(other), friendship: 'pending' };
+    })
+  );
+
+  function acceptFriend(me, other) {
+    contacts.add(me.id, other.id);
+    hub.send(other.id, { type: 'contact:added', user: withOnline(me) });
+    hub.send(me.id, { type: 'contact:added', user: withOnline(other), accepted: true });
+    return { ...withOnline(other), friendship: 'friends' };
+  }
+
+  api.get(
+    '/friend-requests',
+    handle((req) => ({
+      incoming: friendRequests.incoming(req.user.id).map(toRequest),
+      outgoing: friendRequests.outgoing(req.user.id).map(toRequest),
+    }))
+  );
+
+  api.post(
+    '/friend-requests/:userId/accept',
+    handle((req) => {
+      const other = users.byId(Number(req.params.userId));
+      if (!other || !friendRequests.has(other.id, req.user.id)) throw new HttpError(404, 'Заявка не найдена');
+      return acceptFriend(req.user, other);
+    })
+  );
+
+  // Отклонить входящую или отменить свою — заявка пропадает у обоих
+  api.delete(
+    '/friend-requests/:userId',
+    handle((req) => {
+      const otherId = Number(req.params.userId);
+      friendRequests.remove(otherId, req.user.id);
+      friendRequests.remove(req.user.id, otherId);
+      hub.send(otherId, { type: 'friend:request:removed', userId: req.user.id });
+      return { ok: true };
+    })
+  );
+
+  api.get('/blocks', handle((req) => blocks.of(req.user.id).map((row) => ({ ...toPublicUser(row), blockedAt: row.blocked_at }))));
+
+  api.post(
+    '/blocks',
+    handle((req) => {
+      const other = users.byId(Number(req.body.userId));
+      if (!other) throw new HttpError(404, 'Пользователь не найден');
+      if (other.id === req.user.id) throw new HttpError(400, 'Себя заблокировать нельзя');
+      const wasFriend = contacts.has(req.user.id, other.id);
+      const hadRequest = friendRequests.has(other.id, req.user.id) || friendRequests.has(req.user.id, other.id);
+      blocks.add(req.user.id, other.id);
+      if (wasFriend) hub.send(other.id, { type: 'contact:removed', userId: req.user.id });
+      if (hadRequest) hub.send(other.id, { type: 'friend:request:removed', userId: req.user.id });
+      return { ...toPublicUser(other), blockedAt: Date.now() };
+    })
+  );
+
+  api.delete(
+    '/blocks/:userId',
+    handle((req) => {
+      blocks.remove(req.user.id, Number(req.params.userId));
+      return { ok: true };
     })
   );
 
@@ -638,7 +714,12 @@ export function createApi() {
 
   function requirePerm(req, room, perm, message) {
     const who = actor(req, room);
-    if (!has(who.perms, perm)) throw new HttpError(403, message);
+    if (!has(who.perms, perm)) {
+      // Время окончания клиент показывает сам — в часовом поясе человека
+      if (!who.isOwner && rooms.timeoutOf(room.id, req.user.id))
+        throw new HttpError(403, 'Вас кикнули на время — пока можно только читать чат');
+      throw new HttpError(403, message);
+    }
     return who;
   }
 
@@ -648,7 +729,7 @@ export function createApi() {
 
   // Над участником может действовать только тот, кто старше по роли
   function requireOutranks(who, room, userId) {
-    const target = rankOf(room.owner_id === userId, rooms.permsOf(room, userId));
+    const target = rankOf(room.owner_id === userId, rooms.rolePermsOf(room, userId));
     if (who.rank <= target) throw new HttpError(403, 'Нельзя: у этого участника такие же или более высокие права');
   }
 
@@ -854,6 +935,38 @@ export function createApi() {
       const room = requireRoom(req);
       requirePerm(req, room, PERMS.ban, 'Нет права снимать бан');
       rooms.unban(room.id, Number(req.params.userId));
+      return notifyRoom(room.id);
+    })
+  );
+
+  // Кик на время: участник остаётся в комнате, но только читает чат; потом права роли возвращаются сами
+  api.post(
+    '/rooms/:id/timeouts',
+    handle((req) => {
+      const room = requireRoom(req);
+      const who = requirePerm(req, room, PERMS.kick, 'Нет права кикать участников');
+      const userId = Number(req.body.userId);
+      const seconds = Number(req.body.seconds);
+      if (!Number.isInteger(seconds) || seconds < 1 || seconds > MAX_TIMEOUT_SECONDS)
+        throw new HttpError(400, 'Кикнуть можно не больше чем на 4 недели');
+      if (userId === req.user.id) throw new HttpError(400, 'Себя кикнуть нельзя');
+      if (!rooms.isMember(room.id, userId)) throw new HttpError(404, 'Этого человека нет в комнате');
+      requireOutranks(who, room, userId);
+      rooms.setTimeout(room.id, userId, Date.now() + seconds * 1000);
+      enforceVoice(room);
+      return notifyRoom(room.id);
+    })
+  );
+
+  api.delete(
+    '/rooms/:id/timeouts/:userId',
+    handle((req) => {
+      const room = requireRoom(req);
+      const who = requirePerm(req, room, PERMS.kick, 'Нет права снимать кик');
+      const userId = Number(req.params.userId);
+      if (!rooms.isMember(room.id, userId)) throw new HttpError(404, 'Этого человека нет в комнате');
+      requireOutranks(who, room, userId);
+      rooms.setTimeout(room.id, userId, null);
       return notifyRoom(room.id);
     })
   );
