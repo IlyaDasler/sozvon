@@ -186,6 +186,19 @@ input:focus, select:focus { border-color: var(--accent); }
 }
 .in-call-tag { color: var(--accent); }
 
+.update-bar {
+  position: fixed; left: 8px; bottom: 64px; z-index: 5;
+  width: 264px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 8px 8px 10px; border-radius: 8px;
+  background: #183528; color: var(--accent);
+  box-shadow: 0 6px 20px rgba(0,0,0,.35);
+  font-size: 13px; font-weight: 600;
+}
+body.has-update .contact-list { padding-bottom: 56px; }
+.update-bar span { flex: 1; min-width: 0; }
+.update-bar .btn { height: 28px; padding: 0 10px; font-size: 12px; }
+
 .me-panel {
   display: flex; align-items: center; gap: 6px;
   padding: 10px; background: #1a1c20; border-top: 1px solid var(--line);

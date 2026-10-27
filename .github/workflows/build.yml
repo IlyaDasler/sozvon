@@ -41,8 +41,12 @@ jobs:
         with:
           name: Sozvon-Setup
           path: client/dist/*.exe
-      # При пуше тега vX.Y.Z установщик прикрепляется к релизу
+      # При пуше тега vX.Y.Z установщик прикрепляется к релизу.
+      # latest.yml и .blockmap нужны автообновлению: по ним приложение узнаёт о новой версии
       - if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: client/dist/*.exe
+          files: |
+            client/dist/*.exe
+            client/dist/*.exe.blockmap
+            client/dist/latest.yml

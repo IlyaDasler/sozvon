@@ -196,6 +196,18 @@
         <label class="field grow"><span>Новый</span><input type="password" id="set-new-pass" autocomplete="new-password"></label>
       </div>
 
+      <div id="about-section" class="hidden">
+        <h4>О приложении</h4>
+        <div class="row">
+          <div>
+            <div>Версия <b id="app-version"></b></div>
+            <div class="muted small" id="update-status"></div>
+          </div>
+          <div class="spacer"></div>
+          <button type="button" class="btn" id="update-check-btn">Проверить обновления</button>
+        </div>
+      </div>
+
       <p class="muted small">Горячие клавиши работают и в игре: <b>Ctrl+Shift+M</b> — микрофон, <b>Ctrl+Shift+D</b> — звук.</p>
       <p class="error" id="settings-error"></p>
 
@@ -206,6 +218,13 @@
         <button class="btn primary">Сохранить</button>
       </div>
     </form>
+  </div>
+
+  <!-- Обновление: видно и на экране входа, и над профилем в боковой панели -->
+  <div id="update-bar" class="update-bar hidden">
+    <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+    <span id="update-text" class="ellipsis"></span>
+    <button class="btn primary" id="update-btn" title="Перезапустить приложение с новой версией">Обновить</button>
   </div>
 
   <div id="toast" class="toast hidden"></div>

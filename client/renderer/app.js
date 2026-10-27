@@ -959,6 +959,60 @@ $('settings-form').onsubmit = async (e) => {
   closeSettings();
 };
 
+// ---------- Обновления ----------
+
+let updateStatus = { state: 'idle' };
+
+const UPDATE_TEXT = {
+  checking: () => 'Проверяем обновления…',
+  downloading: (s) => `Скачивается версия ${s.version} (${s.percent ?? 0}%)`,
+  ready: (s) => `Версия ${s.version} скачана и готова к установке`,
+  latest: () => 'У вас последняя версия',
+  error: () => 'Не удалось проверить обновления',
+  unsupported: () => 'Обновления работают только в установленной версии',
+};
+
+function renderUpdate() {
+  const s = updateStatus;
+  const ready = s.state === 'ready';
+  const showBar = ready || s.state === 'downloading';
+  $('update-bar').classList.toggle('hidden', !showBar);
+  document.body.classList.toggle('has-update', showBar);
+  $('update-btn').classList.toggle('hidden', !ready);
+  $('update-text').textContent = ready ? 'Обновление готово' : `Обновление: ${s.percent ?? 0}%`;
+  $('update-bar').title = `Версия ${s.version ?? ''}`;
+
+  $('app-version').textContent = s.current || '';
+  $('update-status').textContent = UPDATE_TEXT[s.state]?.(s) ?? '';
+  $('update-status').title = s.state === 'error' ? s.message || '' : '';
+  $('update-check-btn').textContent = ready ? 'Перезапустить и обновить' : 'Проверить обновления';
+  $('update-check-btn').disabled = s.state === 'checking' || s.state === 'downloading';
+}
+
+function installUpdate() {
+  if (state.call && !confirm('Сейчас идёт звонок. Завершить его и перезапустить приложение для обновления?')) return;
+  hangup();
+  window.desktop.update.install();
+}
+
+if (window.desktop?.update) {
+  $('about-section').classList.remove('hidden');
+  window.desktop.update.onStatus((s) => {
+    updateStatus = { ...updateStatus, ...s };
+    renderUpdate();
+  });
+  window.desktop.update
+    .status()
+    .then((s) => {
+      updateStatus = { ...updateStatus, ...s };
+      renderUpdate();
+    })
+    .catch(() => {});
+  $('update-btn').onclick = installUpdate;
+  $('update-check-btn').onclick = () =>
+    updateStatus.state === 'ready' ? installUpdate() : window.desktop.update.check();
+}
+
 // ---------- Кнопки ----------
 
 $('call-btn').onclick = startCall;
