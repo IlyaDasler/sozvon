@@ -713,3 +713,53 @@ video.mirror { transform: scaleX(-1); }
 .image-viewer img { max-width: 100%; max-height: calc(100% - 40px); object-fit: contain; border-radius: 4px; }
 .image-viewer-bar { display: flex; gap: 16px; align-items: center; max-width: 100%; color: #fff; font-size: 13px; }
 .image-viewer-bar a { color: #fff; text-decoration: underline; cursor: pointer; }
+
+/* ---------- Карточка профиля ---------- */
+
+[data-profile] { cursor: pointer; }
+.msg-head b[data-profile]:hover, .peer-name[data-profile]:hover, .me-info:hover > div:first-child { text-decoration: underline; }
+.profile-card {
+  position: fixed; z-index: 60; width: 300px; max-height: calc(100vh - 16px); overflow-y: auto;
+  border-radius: 8px; background: var(--bg-deep); box-shadow: var(--shadow), 0 0 0 1px var(--line);
+}
+.pc-banner { height: 92px; border-radius: 8px 8px 0 0; background: var(--banner); }
+.profile-card .pc-avatar.avatar { position: absolute; top: 44px; left: 16px; width: 88px; height: 88px; font-size: 34px; box-shadow: 0 0 0 6px var(--bg-deep); }
+.profile-card .pc-avatar .status { width: 28px; height: 28px; right: -2px; bottom: -2px; border: 5px solid var(--bg-deep); }
+.pc-edit { position: absolute; top: 100px; right: 12px; }
+.pc-edit svg { width: 18px; height: 18px; }
+.pc-body { margin: 52px 12px 12px; padding: 12px; border-radius: 8px; background: var(--bg-2); }
+.pc-name { font-size: 20px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.pc-login { color: var(--text-2); font-size: 14px; }
+.pc-status { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--text-2); font-size: 13px; }
+.pc-status .status-dot { width: 10px; height: 10px; }
+.pc-voice {
+  display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 10px; padding: 6px 8px;
+  border: 0; border-radius: 4px; background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left;
+}
+.pc-voice:hover { background: color-mix(in srgb, var(--ok) 26%, transparent); }
+.pc-voice svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; }
+.pc-divider { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
+.pc-section + .pc-section { margin-top: 12px; }
+.pc-section h5 { margin: 0 0 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; color: var(--text); }
+.pc-text, .pc-bio { font-size: 14px; color: var(--text-2); }
+.pc-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.pc-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px;
+  background: var(--bg-4); font-size: 12px; font-weight: 500;
+}
+.pc-chip::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--chip, var(--muted)); }
+.pc-chip.link { cursor: pointer; }
+.pc-chip.link:hover { background: var(--bg-5); }
+.pc-note {
+  width: 100%; resize: vertical; min-height: 36px; padding: 6px 8px; border: 0; border-radius: 4px;
+  background: transparent; color: var(--text); font: inherit; font-size: 13px;
+}
+.pc-note:hover, .pc-note:focus { background: var(--bg-deep); outline: none; }
+.pc-actions { display: flex; gap: 8px; margin-top: 12px; }
+.pc-actions .btn { flex: 1; }
+.color.auto { position: relative; }
+.color.auto::after { content: 'A'; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+#set-bio { width: 100%; padding: 8px 12px; resize: vertical; border: 1px solid transparent; border-radius: 4px; background: var(--bg-deep); color: var(--text); font: inherit; outline: none; }
+#set-bio:focus { border-color: var(--accent); }
+.field > span em { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 400; }

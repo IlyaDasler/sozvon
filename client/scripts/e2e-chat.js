@@ -108,4 +108,38 @@ runTest(async () => {
     throw new Error('Превью ушло, хотя его убрали');
   site.close();
   console.log('✔ превью ссылки показывается и отправляется, крестик убирает его');
+
+  // Профиль: Аня пишет «О себе» и выбирает баннер в настройках, Боря видит это в карточке по щелчку на аватарку
+  await js(winA, `openSettings()`);
+  await js(
+    winA,
+    `(() => {
+      document.getElementById('set-bio').value = 'Играю в **CS2** по вечерам';
+      document.querySelectorAll('#banner-picker .color')[3].click();
+      document.getElementById('settings-form').requestSubmit();
+      return true;
+    })()`
+  );
+  await waitFor(winA, `state.me.bio === 'Играю в **CS2** по вечерам' && Boolean(state.me.bannerColor)`, 'профиль сохранён');
+  await waitFor(winB, `state.contacts.get(${a.user.id})?.bio === 'Играю в **CS2** по вечерам'`, 'профиль Ани дошёл до Бори без перезахода');
+  await js(winB, `[...document.querySelectorAll('#messages .msg:not(.cont) .avatar[data-profile]')].at(-1).click(); true`);
+  await waitFor(
+    winB,
+    `(() => {
+      const card = document.getElementById('profile-card');
+      return !card.classList.contains('hidden') && card.querySelector('.pc-name')?.textContent === 'Аня' &&
+        card.querySelector('.pc-bio strong')?.textContent === 'CS2' && Boolean(card.querySelector('.pc-banner').style.getPropertyValue('--banner')) &&
+        [...card.querySelectorAll('.pc-actions .btn')].map((b) => b.textContent).join() === 'Написать,Позвонить';
+    })()`,
+    'карточка Ани у Бори'
+  );
+  await js(winB, `(() => { const n = document.querySelector('.pc-note'); n.value = 'знакомы с универа'; n.dispatchEvent(new Event('input')); return true; })()`);
+  await screenshot(winB, 'profile-card');
+  await js(winB, `document.body.click(); true`);
+  await waitFor(winB, `document.getElementById('profile-card').classList.contains('hidden')`, 'карточка закрылась');
+  await js(winB, `document.getElementById('me-info').click(); true`);
+  await waitFor(winB, `document.querySelector('#profile-card .pc-edit') && document.querySelector('#profile-card .pc-name').textContent === 'Боря'`, 'своя карточка');
+  await js(winB, `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); document.getElementById('peer-avatar').click(); true`);
+  await waitFor(winB, `document.querySelector('#profile-card .pc-note')?.value === 'знакомы с универа'`, 'заметка сохранилась');
+  console.log('✔ карточка профиля: «О себе» с разметкой, баннер, заметка, своя карточка');
 });
