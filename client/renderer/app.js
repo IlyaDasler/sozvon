@@ -515,6 +515,7 @@ function renderMe() {
   $('me-status-btn').title = `Статус: ${STATUS[myStatus()].label}. Нажмите, чтобы сменить`;
   renderNotifBadge();
   $('me-name').textContent = me.displayName;
+  $('me-info').dataset.profile = me.id;
   // Под именем — логин, а если статус не «Активен» — сам статус, чтобы было видно, что он включён
   $('me-username').textContent = myStatus() === 'online' ? `@${me.username}` : STATUS[myStatus()].label;
   $('empty-username').textContent = me.username;
@@ -637,6 +638,8 @@ function renderChatHeader() {
   if (!c) return;
   const av = $('peer-avatar');
   av.replaceChildren();
+  av.dataset.profile = c.id;
+  $('peer-name').dataset.profile = c.id;
   fillAvatar(av, c, presenceOf(c));
   $('peer-name').textContent = c.displayName;
   $('peer-status').textContent = `@${c.username} · ${STATUS[presenceOf(c)].sub.toLowerCase()}`;
@@ -684,7 +687,9 @@ function renderMessageList(box, list, loaded, emptyText) {
 
     const row = document.createElement('div');
     row.className = `msg${continued ? ' cont' : ''}`;
-    row.append(makeAvatar(author));
+    const avatar = makeAvatar(author);
+    if (author.id) avatar.dataset.profile = author.id;
+    row.append(avatar);
     const body = document.createElement('div');
     body.className = 'msg-body';
     if (!continued) {
@@ -693,6 +698,7 @@ function renderMessageList(box, list, loaded, emptyText) {
       const name = document.createElement('b');
       name.textContent = author.displayName;
       name.style.color = author.avatarColor;
+      if (author.id) name.dataset.profile = author.id;
       const time = document.createElement('time');
       time.textContent = formatTime(m.createdAt);
       head.append(name, time);
@@ -952,6 +958,7 @@ function applySpeaker() {
 // ---------- Настройки ----------
 
 let pickedColor = null;
+let pickedBanner = null;
 
 async function fillDeviceSelect(select, kind, selected) {
   let devices = await navigator.mediaDevices.enumerateDevices();
@@ -974,20 +981,29 @@ async function fillDeviceSelect(select, kind, selected) {
   select.value = [...select.options].some((o) => o.value === selected) ? selected : '';
 }
 
-function renderColorPicker() {
-  const box = $('color-picker');
+/** Ряд кружков с цветами; null — «как у аватара» */
+function colorChoices(box, colors, current, onPick) {
   box.replaceChildren();
-  for (const color of COLORS) {
+  for (const color of colors) {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = `color${color === pickedColor ? ' selected' : ''}`;
-    b.style.background = color;
-    b.onclick = () => {
-      pickedColor = color;
-      renderColorPicker();
-    };
+    b.className = `color${color === current ? ' selected' : ''}${color ? '' : ' auto'}`;
+    b.style.background = color || pickedColor;
+    if (!color) b.title = 'Как у аватара';
+    b.onclick = () => onPick(color);
     box.append(b);
   }
+}
+
+function renderColorPicker() {
+  colorChoices($('color-picker'), COLORS, pickedColor, (color) => {
+    pickedColor = color;
+    renderColorPicker();
+  });
+  colorChoices($('banner-picker'), [null, ...COLORS], pickedBanner, (color) => {
+    pickedBanner = color;
+    renderColorPicker();
+  });
 }
 
 function renderIdentities() {
@@ -1201,6 +1217,8 @@ async function openSettings() {
   renderAvatarEditor();
   $('set-display').value = state.me.displayName;
   pickedColor = state.me.avatarColor;
+  pickedBanner = state.me.bannerColor || null;
+  $('set-bio').value = state.me.bio || '';
   renderColorPicker();
   $('set-ns').checked = state.settings.noiseSuppression;
   $('mic-test-btn').textContent = 'Проверить микрофон';
@@ -1380,6 +1398,9 @@ $('settings-form').onsubmit = async (e) => {
   const displayName = $('set-display').value.trim();
   if (displayName !== state.me.displayName) body.displayName = displayName;
   if (pickedColor !== state.me.avatarColor) body.avatarColor = pickedColor;
+  if (pickedBanner !== (state.me.bannerColor || null)) body.bannerColor = pickedBanner;
+  const bio = $('set-bio').value.trim();
+  if (bio !== (state.me.bio || '')) body.bio = bio;
   if ($('set-new-pass').value) {
     body.currentPassword = $('set-cur-pass').value;
     body.newPassword = $('set-new-pass').value;

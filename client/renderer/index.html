@@ -137,7 +137,7 @@
 
       <div class="me-panel">
         <button type="button" class="me-status-btn" id="me-status-btn"><div class="avatar" id="me-avatar"></div></button>
-        <div class="me-info">
+        <div class="me-info" id="me-info" title="Мой профиль">
           <div class="ellipsis" id="me-name"></div>
           <div class="muted small ellipsis" id="me-username"></div>
         </div>
@@ -259,6 +259,14 @@
         <span>Цвет аватара</span>
         <div id="color-picker" class="colors"></div>
       </div>
+      <div class="field">
+        <span>Цвет баннера</span>
+        <div id="banner-picker" class="colors"></div>
+      </div>
+      <label class="field">
+        <span>О себе <em class="muted small">— можно с разметкой, до 190 символов</em></span>
+        <textarea id="set-bio" maxlength="190" rows="3" placeholder="Во что играете, когда вас звать"></textarea>
+      </label>
 
       <h4>Оформление</h4>
       <div class="theme-grid" id="theme-grid"></div>
@@ -504,6 +512,8 @@
   </div>
 
   <!-- Картинка из чата крупно -->
+  <div class="profile-card hidden" id="profile-card"></div>
+
   <div id="image-viewer" class="image-viewer hidden">
     <img id="image-viewer-img" alt="">
     <div class="image-viewer-bar">
@@ -524,5 +534,6 @@
   <script src="composer.js"></script>
   <script src="chat-content.js"></script>
   <script src="appearance.js"></script>
+  <script src="profile-card.js"></script>
 </body>
 </html>
