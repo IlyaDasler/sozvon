@@ -83,6 +83,18 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS room_roles_room ON room_roles (room_id);
 
+  -- Загруженные файлы: пока used = 0, файл ещё не прикреплён ни к одному сообщению
+  CREATE TABLE IF NOT EXISTS uploads (
+    id TEXT PRIMARY KEY,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    used INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS room_bans (
     room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -98,6 +110,12 @@ if (!columnsOf('users').includes('avatar')) db.exec('ALTER TABLE users ADD COLUM
 // Почта для входа (в нижнем регистре); у старых профилей её нет
 if (!columnsOf('users').includes('email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT');
 // Выбранный статус: online, idle, dnd, invisible (см. presence.js)
+// Вложения и предпросмотр ссылки хранятся в сообщении как JSON
+for (const table of ['messages', 'room_messages']) {
+  const cols = columnsOf(table);
+  if (!cols.includes('attachments')) db.exec(`ALTER TABLE ${table} ADD COLUMN attachments TEXT`);
+  if (!cols.includes('preview')) db.exec(`ALTER TABLE ${table} ADD COLUMN preview TEXT`);
+}
 if (!columnsOf('users').includes('status')) db.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'online'");
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE email IS NOT NULL');
 if (!columnsOf('rooms').includes('default_perms'))
@@ -115,11 +133,21 @@ export const toPublicUser = (row) =>
     avatarUrl: row.avatar ? `/api/avatars/${row.avatar}.webp` : null,
   };
 
+const parseJson = (value, fallback) => {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 export const toMessage = (row) => ({
   id: row.id,
   fromId: row.from_id,
   toId: row.to_id,
   text: row.text,
+  attachments: parseJson(row.attachments, []),
+  preview: parseJson(row.preview, null),
   createdAt: row.created_at,
 });
 
@@ -151,7 +179,7 @@ const q = {
   ),
   removeIdentity: db.prepare('DELETE FROM identities WHERE user_id = ? AND provider = ?'),
 
-  insertMessage: db.prepare('INSERT INTO messages (from_id, to_id, text, created_at) VALUES (?, ?, ?, ?)'),
+  insertMessage: db.prepare('INSERT INTO messages (from_id, to_id, text, attachments, preview, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
   messageById: db.prepare('SELECT * FROM messages WHERE id = ?'),
   messagesBetween: db.prepare(`
     SELECT * FROM messages
@@ -200,7 +228,15 @@ const q = {
     WHERE a.user_id = ? AND b.user_id != a.user_id
   `),
 
-  insertRoomMessage: db.prepare('INSERT INTO room_messages (room_id, from_id, text, created_at) VALUES (?, ?, ?, ?)'),
+  insertRoomMessage: db.prepare(
+    'INSERT INTO room_messages (room_id, from_id, text, attachments, preview, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ),
+
+  insertUpload: db.prepare('INSERT INTO uploads (id, owner_id, name, mime, size, kind, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'),
+  uploadById: db.prepare('SELECT * FROM uploads WHERE id = ?'),
+  useUpload: db.prepare('UPDATE uploads SET used = 1 WHERE id = ?'),
+  staleUploads: db.prepare('SELECT id FROM uploads WHERE used = 0 AND created_at < ?'),
+  deleteUpload: db.prepare('DELETE FROM uploads WHERE id = ?'),
   roomMessageById: db.prepare('SELECT * FROM room_messages WHERE id = ?'),
   roomMessages: db.prepare('SELECT * FROM room_messages WHERE room_id = ? AND id < ? ORDER BY id DESC LIMIT ?'),
 };
@@ -254,8 +290,8 @@ export const toSelf = (row) => ({
 });
 
 export const messages = {
-  add(fromId, toId, text) {
-    const res = q.insertMessage.run(fromId, toId, text, Date.now());
+  add(fromId, toId, text, { attachments = [], preview = null } = {}) {
+    const res = q.insertMessage.run(fromId, toId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), Date.now());
     return q.messageById.get(Number(res.lastInsertRowid));
   },
   between(a, b, beforeId = Number.MAX_SAFE_INTEGER, limit = 50) {
@@ -333,15 +369,41 @@ export const toRoomMessage = (row) => ({
   roomId: row.room_id,
   fromId: row.from_id,
   text: row.text,
+  attachments: parseJson(row.attachments, []),
+  preview: parseJson(row.preview, null),
   createdAt: row.created_at,
 });
 
 export const roomMessages = {
-  add(roomId, fromId, text) {
-    const res = q.insertRoomMessage.run(roomId, fromId, text, Date.now());
+  add(roomId, fromId, text, { attachments = [], preview = null } = {}) {
+    const res = q.insertRoomMessage.run(roomId, fromId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), Date.now());
     return q.roomMessageById.get(Number(res.lastInsertRowid));
   },
   list(roomId, beforeId = Number.MAX_SAFE_INTEGER, limit = 50) {
     return q.roomMessages.all(roomId, beforeId, limit).reverse();
   },
+};
+
+export const uploads = {
+  add: ({ id, ownerId, name, mime, size, kind }) => q.insertUpload.run(id, ownerId, name, mime, size, kind, Date.now()),
+  byId: (id) => q.uploadById.get(id),
+
+  /** Прикрепляет загрузки к сообщению: все должны быть своими и ещё не прикреплёнными. Иначе — null и ничего не меняется */
+  claim(ids, ownerId) {
+    const rows = ids.map((id) => q.uploadById.get(id));
+    if (rows.some((row) => !row || row.owner_id !== ownerId || row.used)) return null;
+    db.exec('BEGIN');
+    try {
+      for (const row of rows) q.useUpload.run(row.id);
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+    return rows;
+  },
+
+  /** Загрузки, которые так и не прикрепили, старше времени cutoff */
+  stale: (cutoff) => q.staleUploads.all(cutoff).map((row) => row.id),
+  remove: (id) => q.deleteUpload.run(id),
 };
