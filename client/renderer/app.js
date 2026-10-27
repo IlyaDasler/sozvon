@@ -502,7 +502,7 @@ function logout(message) {
     requests: { incoming: [], outgoing: [] },
     blocked: [],
   });
-  for (const id of ['room-create', 'room-manage', 'screen-picker']) $(id).classList.add('hidden');
+  for (const id of ['room-create', 'room-manage', 'room-invite', 'room-kick', 'screen-picker']) $(id).classList.add('hidden');
   closeSettings();
   setAuthMode(false);
   showScreen('auth');
@@ -1597,7 +1597,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   closeFullView();
   if (settingsOpen()) closeSettings();
-  for (const id of ['room-create', 'room-manage']) $(id).classList.add('hidden');
+  for (const id of ['room-create', 'room-manage', 'room-invite', 'room-kick']) $(id).classList.add('hidden');
   if (!$('screen-picker').classList.contains('hidden')) closeScreenPicker();
 });
 

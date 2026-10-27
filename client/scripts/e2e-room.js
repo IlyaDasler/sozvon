@@ -12,6 +12,18 @@ const reachable = (sel) => `(() => {
 })()`;
 
 // Щелчок по комнате в списке слева
+// Кнопка у комнаты в списке слева — не заходя в комнату
+const roomTool = (win, id, kind) =>
+  js(
+    win,
+    `[...document.querySelectorAll('#room-list .room-row')].find((r) => r.querySelector('.name').textContent === roomById(${id}).name).querySelector('.room-tool.${kind}').click(); true`
+  );
+const memberButton = (win, name, label) =>
+  js(
+    win,
+    `window.confirm = () => true; [...[...document.querySelectorAll('#rm-members .member-row')].find((r) => r.textContent.includes(${JSON.stringify(name)})).querySelectorAll('button')].find((x) => x.textContent === ${JSON.stringify(label)}).click(); true`
+  );
+
 const clickRoom = (win, id) =>
   js(
     win,
@@ -165,13 +177,29 @@ runTest(async () => {
   await js(winA, `Api.patch('/rooms/${roomId}', { defaultPerms: 31 }).then(() => true)`);
   console.log('✔ права ролей: без права говорить человека не слышно, роль возвращает голос');
 
-  // Окно управления: вкладка ролей
-  await js(winA, `openRoomManage('roles'); true`);
-  await waitFor(winA, `document.querySelectorAll('#rm-roles .role-card').length === 3`, 'карточки ролей');
+  // Настройки комнаты открываются шестерёнкой в списке, не заходя в комнату
+  await js(winA, `selectContact(null)`);
+  await roomTool(winA, roomId, 'settings');
+  await waitFor(winA, `!document.getElementById('room-manage').classList.contains('hidden') && document.getElementById('rs-room-name').textContent === roomById(${roomId}).name`, 'настройки комнаты');
+  if (await js(winA, `state.selectedRoomId !== null`)) throw new Error('Шестерёнка открыла саму комнату');
+  await js(winA, `document.querySelector('#rs-nav [data-tab="roles"]').click(); true`);
+  await waitFor(winA, `document.querySelectorAll('#rs-body .rs-role-item').length === 3 && Boolean(document.querySelector('#rm-role-editor .switch'))`, 'роли и переключатели прав');
+  // Роль «Голос»: переключатели показывают её права, назначить можно прямо отсюда
+  await js(winA, `[...document.querySelectorAll('#rs-body .rs-role-item')].find((b) => b.textContent.includes('Голос')).click(); true`);
+  await waitFor(winA, `document.querySelector('#rm-role-editor [data-perm="speak"]')?.checked === true && document.querySelector('#rm-role-editor [data-perm="kick"]')?.checked === false`, 'права роли «Голос»');
   await screenshot(winA, 'room-roles');
-  await js(winA, `openRoomManage('members'); true`);
+  await js(winA, `document.querySelector('#rs-nav [data-tab="members"]').click(); true`);
+  await waitFor(winA, `document.querySelectorAll('#rm-members .member-row').length === 3`, 'участники');
   await screenshot(winA, 'room-members');
   await js(winA, `document.getElementById('rm-close').click(); true`);
+
+  // Приглашение — тоже из списка: друзья, кто уже в комнате, отмечены
+  await roomTool(winA, roomId, 'invite');
+  await waitFor(winA, `!document.getElementById('room-invite').classList.contains('hidden') && document.getElementById('ri-list').textContent.includes('Уже в комнате')`, 'окно приглашения');
+  await screenshot(winA, 'room-invite');
+  await js(winA, `document.getElementById('ri-close').click(); true`);
+  await js(winA, `selectRoom(${roomId}); true`);
+  console.log('✔ настройки и приглашение открываются кнопками у комнаты, роли с переключателями прав');
 
   // Второй голосовой канал: Боря переходит туда одним щелчком и так же возвращается
   const second = await js(
@@ -194,6 +222,24 @@ runTest(async () => {
   await waitFor(winB, 'micMonitor === null', 'прослушка выключилась вместе с настройками');
   console.log('✔ «Слушать себя» работает');
 
+  // Кик на время: Вика остаётся в комнате, но только читает; кик снимают — права роли возвращаются
+  await js(winA, `openRoomManage(${roomId}, 'members'); true`);
+  await memberButton(winA, 'Вика', 'Кик');
+  await waitFor(winA, `!document.getElementById('room-kick').classList.contains('hidden') && document.querySelectorAll('#kick-options input').length === 6`, 'выбор времени кика');
+  await js(winA, `document.querySelector('#kick-options input[value="60"]').click(); document.getElementById('kick-form').requestSubmit(); true`);
+  await waitFor(winC, `state.room === null && timeoutOf(roomById(${roomId})) > Date.now()`, 'Вику кикнули и отключили от голоса');
+  await js(winC, `selectRoom(${roomId}); true`);
+  await waitFor(winC, `document.getElementById('room-message-input').disabled && document.getElementById('room-message-input').placeholder.startsWith('Вас кикнули до')`, 'Вика только читает');
+  await waitFor(winA, `[...document.querySelectorAll('#rm-members .member-row')].find((r) => r.textContent.includes('Вика'))?.querySelector('.tag.kicked')`, 'отметка кика в списке');
+  await screenshot(winA, 'room-kick');
+  await screenshot(winC, 'room-kicked');
+  await memberButton(winA, 'Вика', 'Снять кик');
+  await waitFor(winC, `!document.getElementById('room-message-input').disabled && can(roomById(${roomId}), PERMS.write)`, 'Вика снова пишет');
+  await js(winA, `document.getElementById('rm-close').click(); true`);
+  await js(winC, `openRoom(${roomId}); true`);
+  await waitFor(winC, `state.room?.roomId === ${roomId} && state.room.joined`, 'Вика вернулась в голос');
+  console.log('✔ кик на время: только чтение и без голоса, после снятия права роли вернулись');
+
   // Вика выходит — у остальных её плитка пропадает
   await js(winC, 'leaveRoomVoice()');
   for (const [win] of [[winA], [winB]])
@@ -207,12 +253,9 @@ runTest(async () => {
   console.log('✔ человек в комнате для звонков «занят»');
 
   // Бан из окна управления: Боря пропадает из комнаты и из голоса
-  await js(winA, `window.confirm = () => true; selectRoom(${roomId}); openRoomManage(); true`);
-  await js(
-    winA,
-    `[...[...document.querySelectorAll('#rm-members .member-row')].find((r) => r.textContent.includes('Боря')).querySelectorAll('button')].find((x) => x.textContent === 'Бан').click(); true`
-  );
+  await js(winA, `selectRoom(${roomId}); openRoomManage(${roomId}, 'members'); true`);
+  await memberButton(winA, 'Боря', 'Бан');
   await waitFor(winB, `!state.rooms.has(${roomId}) && state.room === null`, 'Боря забанен и отключён');
-  await waitFor(winA, `roomById(${roomId}).bans.length === 1 && document.getElementById('rm-ban-count').textContent === ' (1)'`, 'бан в списке');
+  await waitFor(winA, `roomById(${roomId}).bans.length === 1 && document.getElementById('rm-ban-count').textContent === '1'`, 'бан в списке');
   console.log('✔ бан убирает человека из комнаты и из голоса');
 });
