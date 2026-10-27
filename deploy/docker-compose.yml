@@ -1,0 +1,61 @@
+# Запуск на VPS:  cd deploy && cp .env.example .env && nano .env && docker compose up -d
+# С HTTPS (нужен домен): docker compose --profile https up -d
+
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      STUN_URLS: "stun:${PUBLIC_IP}:3478"
+      TURN_URLS: "turn:${PUBLIC_IP}:3478?transport=udp,turn:${PUBLIC_IP}:3478?transport=tcp"
+      TURN_SECRET: ${TURN_SECRET}
+    volumes:
+      - sozvon-data:/data
+
+  # TURN-сервер пересылает голос, когда друзья не могут соединиться напрямую (NAT, мобильный интернет)
+  turn:
+    image: coturn/coturn:4.6
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - -n
+      - --log-file=stdout
+      - --listening-port=3478
+      - --fingerprint
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SECRET}
+      - --realm=sozvon
+      - --external-ip=${PUBLIC_IP}
+      - --min-port=49160
+      - --max-port=49200
+      - --no-cli
+      - --no-tls
+      - --no-dtls
+      # Не даём использовать TURN для доступа во внутренние сети сервера
+      - --no-multicast-peers
+      - --denied-peer-ip=0.0.0.0-0.255.255.255
+      - --denied-peer-ip=10.0.0.0-10.255.255.255
+      - --denied-peer-ip=100.64.0.0-100.127.255.255
+      - --denied-peer-ip=127.0.0.0-127.255.255.255
+      - --denied-peer-ip=169.254.0.0-169.254.255.255
+      - --denied-peer-ip=172.16.0.0-172.31.255.255
+      - --denied-peer-ip=192.168.0.0-192.168.255.255
+
+  caddy:
+    image: caddy:2
+    profiles: ["https"]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    command: caddy reverse-proxy --from ${DOMAIN} --to server:3000
+    volumes:
+      - caddy-data:/data
+
+volumes:
+  sozvon-data:
+  caddy-data:
