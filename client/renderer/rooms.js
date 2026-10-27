@@ -170,7 +170,7 @@ function selectRoom(id) {
 
   renderRoomView();
   renderRoomMessages();
-  $('room-message-input').focus();
+  roomComposer.focus();
   if (!state.roomHistory.has(room.id)) loadRoomHistory(room.id);
 }
 
@@ -199,9 +199,7 @@ function renderRoomView() {
 
   // Писать в чат можно не всем
   const canWrite = can(room, PERMS.write);
-  $('room-message-input').disabled = !canWrite;
-  $('room-message-input').placeholder = canWrite ? 'Написать в комнату' : 'Вам нельзя писать в этой комнате';
-  $('room-message-form').querySelector('button').disabled = !canWrite;
+  roomComposer.setDisabled(!canWrite, canWrite ? 'Написать в комнату' : 'Вам нельзя писать в этой комнате');
 
   // Кто сидит в голосе, пока ты сам не подключился
   const lobby = $('room-lobby');
@@ -253,24 +251,9 @@ function addRoomMessage(m) {
     if (!viewing) state.roomUnread.set(m.roomId, (state.roomUnread.get(m.roomId) || 0) + 1);
     renderRooms();
     const room = roomById(m.roomId);
-    notify(room?.name || 'Комната', `${userById(m.fromId)?.displayName || '?'}: ${m.text}`, { kind: 'room', open: { room: m.roomId } });
+    notify(room?.name || 'Комната', `${userById(m.fromId)?.displayName || '?'}: ${messageSummary(m)}`, { kind: 'room', open: { room: m.roomId } });
   }
 }
-
-$('room-message-form').onsubmit = async (e) => {
-  e.preventDefault();
-  const input = $('room-message-input');
-  const text = input.value.trim();
-  const id = state.selectedRoomId;
-  if (!text || !id) return;
-  input.value = '';
-  try {
-    addRoomMessage(await Api.post(`/rooms/${id}/messages`, { text }));
-  } catch (err) {
-    input.value = text;
-    toast(err.message);
-  }
-};
 
 // ---------- События с сервера ----------
 
