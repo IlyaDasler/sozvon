@@ -1,14 +1,38 @@
-﻿; Перед установкой и удалением закрываем запущенный Созвон сами, без окна «Не удалось закрыть Sozvon»:
-; сначала просим закрыться (как крестик окна), через полторы секунды — принудительно.
-; Только процессы текущего пользователя.
+﻿; Перед установкой и удалением освобождаем папку Созвона сами (build/free-files.ps1): закрываем всё,
+; что запущено из неё, ждём, пока антивирус отпустит файлы, а запущенный от администратора Созвон
+; закрываем с подтверждением Windows. Иначе старый деинсталлятор не может перенести занятые файлы,
+; и установщик показывает «Не удалось закрыть Sozvon».
 !macro customCheckAppRunning
   DetailPrint "Закрываем Созвон…"
-  nsExec::Exec `"$SYSDIR\cmd.exe" /C taskkill /IM "${APP_EXECUTABLE_FILENAME}" /FI "USERNAME eq %USERNAME%"`
+  InitPluginsDir
+  File /oname=$PLUGINSDIR\free-files.ps1 "${BUILD_RESOURCES_DIR}\free-files.ps1"
+
+  freeFiles:
+  nsExec::Exec `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\free-files.ps1" -Dir "$INSTDIR" -Exe "${APP_EXECUTABLE_FILENAME}" -Report "$PLUGINSDIR\lockers.txt"`
   Pop $0
-  Sleep 1500
-  nsExec::Exec `"$SYSDIR\cmd.exe" /C taskkill /F /IM "${APP_EXECUTABLE_FILENAME}" /FI "USERNAME eq %USERNAME%"`
-  Pop $0
-  Sleep 700
+  ${if} $0 == 3
+    StrCpy $2 ""
+    ClearErrors
+    FileOpen $1 "$PLUGINSDIR\lockers.txt" r
+    ${ifNot} ${Errors}
+      FileReadUTF16LE $1 $2
+      FileClose $1
+    ${endIf}
+    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Файлы Созвона сейчас заняты программой: $2.$\r$\n$\r$\nЗакройте её (или перезагрузите компьютер) и нажмите «Повтор»." /SD IDCANCEL IDRETRY freeFiles
+    Quit
+  ${elseIf} $0 != 0
+    ; PowerShell недоступен — закрываем по имени, как раньше
+    nsExec::Exec `"$SYSDIR\cmd.exe" /C taskkill /F /IM "${APP_EXECUTABLE_FILENAME}"`
+    Pop $0
+    Sleep 1500
+  ${endIf}
+!macroend
+
+; Удаление старых файлов без «всё или ничего»: файл, который не удалось удалить, просто перезапишется новой версией.
+; Стандартный способ переносит все файлы и при одном занятом прерывает обновление
+!macro customRemoveFiles
+  SetOutPath $TEMP
+  RMDir /r $INSTDIR
 !macroend
 
 ; Обновление всегда идёт с видимым окошком «Установка…», даже если старая версия приложения попросила

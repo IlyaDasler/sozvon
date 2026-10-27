@@ -1422,6 +1422,7 @@ window.desktop?.onHotkey((name) => (name === 'toggle-mute' ? toggleMute() : togg
 
 window.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
+  closeFullView();
   if (settingsOpen()) closeSettings();
   for (const id of ['room-create', 'room-manage']) $(id).classList.add('hidden');
   if (!$('screen-picker').classList.contains('hidden')) closeScreenPicker();

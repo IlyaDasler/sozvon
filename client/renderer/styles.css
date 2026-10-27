@@ -451,11 +451,34 @@ video.mirror { transform: scaleX(-1); }
 }
 .source:hover { background: var(--bg-4); }
 .source.selected { box-shadow: inset 0 0 0 2px var(--accent); }
-.source img { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #000; border-radius: 6px; }
-.source span { font-size: 12px; }
 .screen-options { margin-top: 16px; }
 .screen-options .check { margin-bottom: 8px; }
 .screen-card .row { margin-top: 12px; }
+
+/* ---------- Трансляция во весь экран ---------- */
+
+.fullview { position: fixed; inset: 0; z-index: 30; background: #000; }
+.fullview video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.fullview-bar {
+  position: absolute; left: 0; right: 0; top: 0;
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+  background: linear-gradient(180deg, rgba(0,0,0,.75), rgba(0,0,0,0));
+  opacity: 0; transition: opacity .2s; pointer-events: none;
+}
+.fullview.show-bar .fullview-bar { opacity: 1; pointer-events: auto; }
+.fullview.show-bar { cursor: default; }
+.fullview:not(.show-bar) { cursor: none; }
+.fullview-bar .btn { height: 32px; font-size: 13px; }
+
+/* Выбор экрана: превью, значок и название окна */
+.source-preview { width: 100%; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; background: #000; display: grid; place-items: center; }
+.source-preview img { width: 100%; height: 100%; object-fit: contain; }
+.source-preview.empty { color: var(--muted); font-size: 12px; text-align: center; padding: 8px; background: var(--bg-2); }
+.source-name { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12px; }
+.source-icon { width: 16px; height: 16px; flex: none; }
+#screen-tabs { align-items: center; }
+#screen-tabs .icon-btn { width: 30px; height: 30px; }
+.tile:not(.has-video) .tile-btn { display: none; }
 
 /* ---------- Проверка звука и камеры ---------- */
 
