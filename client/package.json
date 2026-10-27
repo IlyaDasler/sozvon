@@ -9,7 +9,8 @@
   "scripts": {
     "start": "electron .",
     "icon": "node scripts/make-icon.js",
-    "dist": "node scripts/make-icon.js && electron-builder --win --x64 --publish never && node scripts/check-package.js"
+    "dist": "node scripts/make-icon.js && electron-builder --win --x64 --publish never && node scripts/check-package.js",
+    "test": "node --test test/*.test.js"
   },
   "build": {
     "appId": "ru.ilyadasler.sozvon",
