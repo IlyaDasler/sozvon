@@ -221,6 +221,7 @@ function renderRoomView() {
       const p = document.createElement('div');
       p.className = 'lobby-person';
       p.dataset.voiceUser = u.id;
+      p.dataset.profile = u.id;
       const n = document.createElement('span');
       n.className = 'ellipsis';
       n.textContent = u.displayName;
@@ -549,6 +550,7 @@ function renderManageMembers(room) {
     row.className = 'member-row';
     const info = document.createElement('div');
     info.className = 'grow ellipsis';
+    info.dataset.profile = m.id;
     const name = document.createElement('div');
     name.className = 'ellipsis';
     name.textContent = m.id === state.me.id ? `${m.displayName} (вы)` : m.displayName;
