@@ -386,3 +386,26 @@ test('статусы: активен, неактивен, не беспокои�
   await presence('online');
   for (const c of [ca2, cb]) c.ws.close();
 });
+
+test('профиль: «О себе», цвет баннера и дата регистрации видны друзьям', async () => {
+  const reg = async (username) =>
+    (await api('POST', '/register', { username, password: 'secret1', displayName: username, inviteCode: 'friends' })).body;
+  const a = await reg('profile_a');
+  const b = await reg('profile_b');
+  await api('POST', '/contacts', { username: 'profile_b' }, a.token);
+  assert.equal(a.user.bio, '');
+  assert.equal(a.user.bannerColor, null);
+  assert.ok(a.user.memberSince > 0);
+
+  const me = await api('PATCH', '/me', { bio: '  Люблю **CS2** и котов  ', bannerColor: '#5865F2' }, a.token);
+  assert.equal(me.status, 200);
+  assert.deepEqual([me.body.bio, me.body.bannerColor], ['Люблю **CS2** и котов', '#5865f2']);
+  assert.equal((await api('PATCH', '/me', { bio: 'x'.repeat(191) }, a.token)).status, 400);
+  assert.equal((await api('PATCH', '/me', { bannerColor: 'red' }, a.token)).status, 400);
+  // Пустой цвет — баннер по цвету аватара
+  assert.equal((await api('PATCH', '/me', { bannerColor: null }, a.token)).body.bannerColor, null);
+
+  const friend = (await api('GET', '/contacts', null, b.token)).body.find((c) => c.id === a.user.id);
+  assert.equal(friend.bio, 'Люблю **CS2** и котов');
+  assert.ok(friend.memberSince > 0);
+});
