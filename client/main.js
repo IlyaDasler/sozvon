@@ -1,5 +1,7 @@
 const { app, BrowserWindow, globalShortcut, ipcMain, session, shell } = require('electron');
+const fs = require('node:fs');
 const path = require('node:path');
+const { autoUpdater } = require('electron-updater');
 const { listenForOAuth } = require('./oauth-loopback');
 
 // --profile=имя запускает отдельный экземпляр со своим входом (удобно, чтобы проверить звонок на одном ПК)
@@ -45,11 +47,56 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => ALLOWED_PERMISSIONS.includes(permission));
 
   createWindow();
+  setupUpdater();
 
   // Глобальные клавиши работают, даже когда в фокусе игра
   globalShortcut.register('CommandOrControl+Shift+M', () => win?.webContents.send('hotkey', 'toggle-mute'));
   globalShortcut.register('CommandOrControl+Shift+D', () => win?.webContents.send('hotkey', 'toggle-deafen'));
 });
+
+// ---------- Автообновление ----------
+// Новая версия скачивается в фоне с GitHub Releases; ставится по кнопке или при следующем закрытии приложения.
+
+const UPDATE_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
+let updateStatus = { state: 'idle' };
+
+function setUpdateStatus(status) {
+  updateStatus = { ...updateStatus, ...status };
+  win?.webContents.send('update', updateStatus);
+  try {
+    fs.appendFileSync(
+      path.join(app.getPath('userData'), 'update.log'),
+      `${new Date().toISOString()} ${JSON.stringify(updateStatus)}\n`
+    );
+  } catch {}
+}
+
+function checkForUpdates() {
+  if (!app.isPackaged) {
+    setUpdateStatus({ state: 'unsupported' });
+    return;
+  }
+  autoUpdater.checkForUpdates().catch(() => {}); // ошибка придёт через событие 'error'
+}
+
+function setupUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('checking-for-update', () => setUpdateStatus({ state: 'checking', message: '' }));
+  autoUpdater.on('update-available', (info) => setUpdateStatus({ state: 'downloading', version: info.version, percent: 0 }));
+  autoUpdater.on('download-progress', (p) => setUpdateStatus({ state: 'downloading', percent: Math.round(p.percent) }));
+  autoUpdater.on('update-not-available', () => setUpdateStatus({ state: 'latest' }));
+  autoUpdater.on('update-downloaded', (info) => setUpdateStatus({ state: 'ready', version: info.version }));
+  autoUpdater.on('error', (err) => setUpdateStatus({ state: 'error', message: err.message }));
+
+  checkForUpdates();
+  setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
+}
+
+ipcMain.handle('update:status', () => ({ ...updateStatus, current: app.getVersion() }));
+ipcMain.on('update:check', checkForUpdates);
+// true, true — установить тихо и сразу запустить новую версию
+ipcMain.on('update:install', () => updateStatus.state === 'ready' && autoUpdater.quitAndInstall(true, true));
 
 // Вход через Google / Яндекс / VK: открываем страницу входа в обычном браузере и ждём ответ на localhost
 let pendingOAuth = null;

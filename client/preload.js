@@ -6,4 +6,10 @@ contextBridge.exposeInMainWorld('desktop', {
   attention: () => ipcRenderer.send('attention'),
   focus: () => ipcRenderer.send('focus'),
   oauth: (authUrl) => ipcRenderer.invoke('oauth', authUrl),
+  update: {
+    status: () => ipcRenderer.invoke('update:status'),
+    onStatus: (callback) => ipcRenderer.on('update', (_event, status) => callback(status)),
+    check: () => ipcRenderer.send('update:check'),
+    install: () => ipcRenderer.send('update:install'),
+  },
 });
