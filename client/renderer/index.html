@@ -69,16 +69,38 @@
         </button>
       </div>
 
-      <form id="add-contact" class="add-contact">
-        <input id="add-contact-input" placeholder="Добавить друга по логину" spellcheck="false">
-        <button class="icon-btn" title="Добавить">
-          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        </button>
-      </form>
-      <p class="error small pad" id="add-contact-error"></p>
+      <div class="sidebar-scroll">
+        <div class="list-title with-action">
+          <span>Комнаты</span>
+          <button class="icon-btn" id="new-room-btn" title="Создать комнату">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+        <ul id="room-list" class="contact-list room-list"></ul>
 
-      <div class="list-title">Друзья — <span id="contact-count">0</span></div>
-      <ul id="contact-list" class="contact-list"></ul>
+        <div class="list-title">Друзья — <span id="contact-count">0</span></div>
+        <form id="add-contact" class="add-contact">
+          <input id="add-contact-input" placeholder="Добавить друга по логину" spellcheck="false">
+          <button class="icon-btn" title="Добавить">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </form>
+        <p class="error small pad" id="add-contact-error"></p>
+        <ul id="contact-list" class="contact-list"></ul>
+      </div>
+
+      <!-- «На связи»: видно из любого места, пока идёт звонок или ты в голосовой комнате -->
+      <div class="voice-panel hidden" id="voice-panel">
+        <div class="voice-info">
+          <div class="voice-state-row"><span class="q-bars" id="voice-quality"></span><span id="voice-state">Подключение…</span></div>
+          <a href="#" class="small ellipsis" id="voice-where" title="Перейти к разговору"></a>
+        </div>
+        <button class="icon-btn" id="voice-cam"></button>
+        <button class="icon-btn" id="voice-screen"></button>
+        <button class="icon-btn leave" id="voice-leave" title="Отключиться">
+          <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" transform="rotate(135 12 12)"/></svg>
+        </button>
+      </div>
 
       <div class="me-panel">
         <div class="avatar" id="me-avatar"></div>
@@ -98,7 +120,7 @@
       <div id="empty-state" class="empty">
         <img src="logo.svg" alt="" width="72" height="72">
         <h2>Привет!</h2>
-        <p class="muted">Выберите друга слева или добавьте нового по его логину.<br>Ваш логин: <b id="empty-username"></b></p>
+        <p class="muted">Выберите друга или комнату слева. Друга можно добавить по его логину.<br>Ваш логин: <b id="empty-username"></b></p>
       </div>
 
       <div id="chat" class="chat hidden">
@@ -118,25 +140,19 @@
           </button>
         </header>
 
+        <!-- Панель разговора: общая для звонка и голосовой комнаты, переносится туда, где идёт разговор -->
         <div id="call-panel" class="call-panel hidden">
-          <div class="call-people">
-            <div class="call-person">
-              <div class="avatar big" id="call-me-avatar"></div>
-              <span>Вы</span>
-            </div>
-            <div class="call-person">
-              <div class="avatar big" id="call-peer-avatar"></div>
-              <span id="call-peer-name"></span>
-            </div>
+          <div class="stage" id="stage"></div>
+          <div class="call-status-row">
+            <span class="call-status" id="call-status"></span>
+            <span class="q-bars hidden" id="call-quality"></span>
+            <span class="muted small hidden" id="call-quality-text"></span>
           </div>
-          <div class="call-status" id="call-status"></div>
           <div class="call-controls">
             <button class="round-btn" id="call-mute" title="Микрофон (Ctrl+Shift+M)"></button>
             <button class="round-btn" id="call-deafen" title="Звук (Ctrl+Shift+D)"></button>
-            <label class="volume" title="Громкость собеседника">
-              <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7"/></svg>
-              <input type="range" id="peer-volume" min="0" max="100" value="100">
-            </label>
+            <button class="round-btn" id="call-cam"></button>
+            <button class="round-btn" id="call-screen"></button>
             <button class="round-btn hangup" id="hangup-btn" title="Завершить">
               <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" transform="rotate(135 12 12)"/></svg>
             </button>
@@ -147,6 +163,31 @@
 
         <form id="message-form" class="composer">
           <input id="message-input" placeholder="Написать сообщение" autocomplete="off" maxlength="2000">
+          <button class="btn primary">Отправить</button>
+        </form>
+      </div>
+
+      <!-- Комната -->
+      <div id="room-view" class="chat hidden">
+        <header class="chat-head">
+          <span class="room-icon big" id="room-icon"></span>
+          <div class="peer-meta">
+            <div class="peer-name ellipsis" id="room-title"></div>
+            <div class="muted small ellipsis" id="room-sub"></div>
+          </div>
+          <div class="spacer"></div>
+          <button class="btn success" id="room-join-btn" title="Подключиться к голосовому каналу">
+            <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
+            Подключиться
+          </button>
+          <button class="icon-btn" id="room-manage-btn" title="Участники и настройки комнаты">
+            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>
+          </button>
+        </header>
+        <div id="room-lobby" class="room-lobby hidden"></div>
+        <div id="room-messages" class="messages"></div>
+        <form id="room-message-form" class="composer">
+          <input id="room-message-input" placeholder="Написать в комнату" autocomplete="off" maxlength="2000">
           <button class="btn primary">Отправить</button>
         </form>
       </div>
@@ -200,6 +241,23 @@
         <select id="set-speaker"></select>
       </label>
       <label class="check"><input type="checkbox" id="set-ns"> Шумоподавление и эхоподавление</label>
+      <div class="field">
+        <span>Проверка звука</span>
+        <div class="meter" title="Громкость микрофона"><div class="meter-fill" id="mic-meter"></div></div>
+        <div class="row wrap">
+          <button type="button" class="btn" id="mic-test-btn">Проверить микрофон</button>
+          <button type="button" class="btn" id="speaker-test-btn">Проверить динамики</button>
+        </div>
+        <span class="hint-text">Скажите что-нибудь — полоска должна двигаться. «Проверить микрофон» запишет 5 секунд и проиграет запись: вы услышите себя так, как вас слышат друзья.</span>
+        <p class="error" id="mic-test-hint"></p>
+      </div>
+
+      <h4>Камера</h4>
+      <div class="row">
+        <label class="field grow"><span>Камера</span><select id="set-cam"></select></label>
+        <button type="button" class="btn cam-test" id="cam-test-btn">Проверить камеру</button>
+      </div>
+      <video id="cam-preview" class="cam-preview mirror hidden" autoplay playsinline muted></video>
 
       <div id="identities-section" class="hidden">
         <h4>Вход через сервисы</h4>
@@ -264,11 +322,93 @@
     <button class="btn primary" id="update-btn" title="Перезапустить приложение с новой версией">Обновить</button>
   </div>
 
+  <!-- Новая комната -->
+  <div id="room-create" class="modal hidden">
+    <form class="modal-card room-card" id="room-create-form">
+      <h3>Новая комната</h3>
+      <div class="kind-choice">
+        <label class="kind">
+          <input type="radio" name="room-kind" value="voice" checked>
+          <span class="kind-body">
+            <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
+            <b>Голосовая</b>
+            <span class="muted small">Общий разговор, камеры, демонстрация экрана и чат</span>
+          </span>
+        </label>
+        <label class="kind">
+          <input type="radio" name="room-kind" value="text">
+          <span class="kind-body">
+            <svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>
+            <b>Текстовая</b>
+            <span class="muted small">Только переписка для компании</span>
+          </span>
+        </label>
+      </div>
+      <label class="field">
+        <span>Название</span>
+        <input id="room-name" maxlength="40" placeholder="Например: Вечерние катки">
+      </label>
+      <div class="field">
+        <span>Позвать друзей</span>
+        <div class="friend-list" id="room-friends"></div>
+      </div>
+      <p class="error" id="room-create-error"></p>
+      <div class="row">
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="room-create-cancel">Отмена</button>
+        <button class="btn primary" id="room-create-submit">Создать</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Участники и настройки комнаты -->
+  <div id="room-manage" class="modal hidden">
+    <div class="modal-card room-card">
+      <h3 id="rm-title"></h3>
+      <form class="row rename-row" id="rm-rename">
+        <label class="field grow"><span>Название</span><input id="rm-name" maxlength="40"></label>
+        <button class="btn">Сохранить</button>
+      </form>
+      <h4>Участники</h4>
+      <div class="member-list" id="rm-members"></div>
+      <h4>Добавить друзей</h4>
+      <div class="friend-list" id="rm-friends"></div>
+      <button type="button" class="btn" id="rm-add">Добавить отмеченных</button>
+      <p class="error" id="rm-error"></p>
+      <div class="row">
+        <button type="button" class="btn danger-outline" id="rm-leave"></button>
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="rm-close">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Выбор экрана для демонстрации -->
+  <div id="screen-picker" class="modal hidden">
+    <div class="modal-card screen-card">
+      <h3>Что показать?</h3>
+      <div class="screen-sources" id="screen-sources"></div>
+      <div class="screen-options">
+        <label class="check"><input type="radio" name="screen-mode" value="motion" checked> Плавно — для игр и видео (720p, 30 кадров/с)</label>
+        <label class="check"><input type="radio" name="screen-mode" value="detail"> Чётко — для текста и кода (1080p, 15 кадров/с)</label>
+        <label class="check"><input type="checkbox" id="screen-audio"> Передавать звук компьютера</label>
+        <span class="hint-text">Со звуком компьютера друзья услышат и игру, и собственные голоса из ваших динамиков — лучше слушать разговор в наушниках.</span>
+      </div>
+      <p class="error" id="screen-error"></p>
+      <div class="row">
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="screen-cancel">Отмена</button>
+        <button type="button" class="btn primary" id="screen-start" disabled>Начать показ</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
-  <audio id="remote-audio" autoplay></audio>
 
   <script src="api.js"></script>
   <script src="call.js"></script>
   <script src="app.js"></script>
+  <script src="voice-ui.js"></script>
+  <script src="rooms.js"></script>
 </body>
 </html>

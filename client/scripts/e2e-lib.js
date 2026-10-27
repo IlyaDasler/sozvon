@@ -1,0 +1,133 @@
+// Общее для сквозных тестов: окна приложения с виртуальными микрофоном и камерой, вход, ожидание условий
+const { app, BrowserWindow, desktopCapturer, ipcMain, session } = require('electron');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const SERVER = process.argv.find((a) => /^https?:\/\//.test(a)) || 'http://localhost:3000';
+
+app.commandLine.appendSwitch('use-fake-device-for-media-stream');
+app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function api(method, url, body, token) {
+  const res = await fetch(`${SERVER}/api${url}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
+    body: body && JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error);
+  return data;
+}
+
+async function register(name, displayName) {
+  const suffix = Date.now().toString(36).slice(-5);
+  // E2E_INVITE — код приглашения, если сервер его требует
+  return api('POST', '/register', {
+    username: `e2e_${name}_${suffix}`,
+    password: 'test123',
+    displayName,
+    inviteCode: process.env.E2E_INVITE,
+  });
+}
+
+const js = (win, code) => win.webContents.executeJavaScript(code);
+
+async function waitFor(win, expr, what, timeout = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    if (await js(win, expr)) return;
+    await sleep(200);
+  }
+  throw new Error(`Не дождались: ${what}`);
+}
+
+// Выбор экрана — как в main.js приложения: список источников и выбранный источник для getDisplayMedia
+let screenSources = new Map();
+let screenChoice = null;
+let windowCount = 0;
+ipcMain.handle('screen:sources', async () => {
+  const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 } });
+  screenSources = new Map(sources.map((s) => [s.id, s]));
+  return sources.map((s) => ({ id: s.id, name: s.name, screen: s.id.startsWith('screen:'), thumbnail: s.thumbnail.toDataURL() }));
+});
+ipcMain.handle('screen:choose', (_e, id) => {
+  screenChoice = screenSources.get(id) || null;
+  return Boolean(screenChoice);
+});
+ipcMain.handle('update:status', () => ({ state: 'idle', current: 'e2e' }));
+
+async function openClient(name, auth) {
+  const ses = session.fromPartition(`e2e-${name}`);
+  ses.setPermissionRequestHandler((_wc, _p, cb) => cb(true));
+  ses.setDisplayMediaRequestHandler((_req, cb) => {
+    const source = screenChoice;
+    screenChoice = null;
+    cb(source ? { video: source } : {});
+  });
+  const win = new BrowserWindow({
+    show: process.env.E2E_SHOW === '1',
+    width: 1100,
+    height: 720,
+    x: 40 + 60 * windowCount,
+    y: 40 + 40 * windowCount++,
+    webPreferences: {
+      session: ses,
+      preload: path.join(__dirname, '..', 'preload.js'),
+      backgroundThrottling: false,
+      autoplayPolicy: 'no-user-gesture-required',
+    },
+  });
+  await win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  await js(win, `localStorage.setItem('session', ${JSON.stringify(JSON.stringify({ base: SERVER, token: auth.token }))}); location.reload()`);
+  await sleep(500);
+  await waitFor(win, `document.getElementById('conn-dot').classList.contains('ok')`, `${name}: подключение`);
+  return win;
+}
+
+// Сколько байт пришло от каждого собеседника: { id: { audio, video } }
+const received = (win) =>
+  js(
+    win,
+    `(async () => {
+      const out = {};
+      for (const p of activeSession().peers.values()) {
+        const stats = await p.link.pc.getStats();
+        const r = { audio: 0, video: 0 };
+        stats.forEach((s) => { if (s.type === 'inbound-rtp') r[s.kind] += s.bytesReceived; });
+        out[p.id] = r;
+      }
+      return out;
+    })()`
+  );
+
+// Видео в плитке действительно показывает кадры
+const tilePlaying = (win, key) =>
+  `(() => { const v = document.querySelector('.tile[data-key="${key}"] video'); return Boolean(v && v.srcObject && v.videoWidth > 0 && !v.paused); })()`;
+
+async function screenshot(win, name) {
+  if (!process.env.E2E_SHOTS) return;
+  try {
+    const image = await win.webContents.capturePage();
+    fs.writeFileSync(path.join(process.env.E2E_SHOTS, `${name}.png`), image.toPNG());
+  } catch (err) {
+    // Пока идёт захват экрана, Electron иногда не может снять окно — тест от этого не падает
+    console.warn(`  (скриншот ${name} не получился: ${err.message})`);
+  }
+}
+
+function runTest(run) {
+  app.whenReady().then(async () => {
+    try {
+      await run();
+      console.log('\nВсе проверки пройдены');
+      app.exit(0);
+    } catch (err) {
+      console.error('✖', err.message, process.env.E2E_DEBUG ? err.stack : '');
+      app.exit(1);
+    }
+  });
+}
+
+module.exports = { SERVER, api, register, js, waitFor, sleep, openClient, received, tilePlaying, screenshot, runTest };

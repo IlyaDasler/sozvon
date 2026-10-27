@@ -6,6 +6,10 @@ contextBridge.exposeInMainWorld('desktop', {
   attention: () => ipcRenderer.send('attention'),
   focus: () => ipcRenderer.send('focus'),
   oauth: (authUrl) => ipcRenderer.invoke('oauth', authUrl),
+  screen: {
+    sources: () => ipcRenderer.invoke('screen:sources'),
+    choose: (id, audio) => ipcRenderer.invoke('screen:choose', id, audio),
+  },
   update: {
     status: () => ipcRenderer.invoke('update:status'),
     onStatus: (callback) => ipcRenderer.on('update', (_event, status) => callback(status)),
