@@ -243,7 +243,7 @@ test('комнаты: участники, чат и голосовой кана�
   // Создатель убирает участника — того выкидывает из голоса и из комнаты
   assert.equal((await api('DELETE', `/rooms/${room.id}/members/${owner.user.id}`, null, owner.token)).status, 400);
   assert.equal((await api('DELETE', `/rooms/${room.id}/members/${friend.user.id}`, null, owner.token)).status, 200);
-  assert.equal((await cf.next('room:left')).reason, 'removed');
+  assert.equal((await cf.next('room:left')).reason, 'kicked');
   assert.equal((await cf.next('room:removed')).roomId, room.id);
   assert.equal((await api('GET', `/rooms/${room.id}/messages`, null, friend.token)).status, 404);
 
@@ -253,4 +253,79 @@ test('комнаты: участники, чат и голосовой кана�
   assert.deepEqual((await api('GET', '/rooms', null, owner.token)).body.map((r) => r.name), ['Болталка']);
 
   for (const c of [co, cf, cs]) c.ws.close();
+});
+
+test('комнаты: роли, права, кик и бан', async () => {
+  const reg = async (username) =>
+    (await api('POST', '/register', { username, password: 'secret1', displayName: username, inviteCode: 'friends' })).body;
+  const owner = await reg('role_owner');
+  const mod = await reg('role_mod');
+  const guest = await reg('role_guest');
+  const extra = await reg('role_extra');
+  for (const u of ['role_mod', 'role_guest', 'role_extra']) await api('POST', '/contacts', { username: u }, owner.token);
+  await api('POST', '/contacts', { username: 'role_extra' }, mod.token);
+
+  const room = (await api('POST', '/rooms', { name: 'Клан', kind: 'voice', memberIds: [mod.user.id, guest.user.id] }, owner.token)).body;
+  // Создателю сразу доступна роль администратора
+  const admin = room.roles.find((r) => r.name === 'Администратор');
+  assert.ok(admin);
+  assert.equal(room.defaultPerms, 31);
+
+  // Обычный участник роли не раздаёт, никого не выгоняет и не банит
+  assert.equal((await api('POST', `/rooms/${room.id}/roles`, { name: 'Модер', perms: 32 }, guest.token)).status, 403);
+  assert.equal((await api('DELETE', `/rooms/${room.id}/members/${mod.user.id}`, null, guest.token)).status, 403);
+  assert.equal((await api('POST', `/rooms/${room.id}/bans`, { userId: mod.user.id }, guest.token)).status, 403);
+
+  // Создатель заводит роль модератора и назначает её
+  const withRole = (await api('POST', `/rooms/${room.id}/roles`, { name: 'Модератор', color: '#0090ff', perms: 32 | 64 | 128 | 15 }, owner.token)).body;
+  const modRole = withRole.roles.find((r) => r.name === 'Модератор');
+  assert.equal((await api('PUT', `/rooms/${room.id}/members/${mod.user.id}/role`, { roleId: modRole.id }, owner.token)).status, 200);
+
+  // Модератор не может раздать админку и не может тронуть создателя
+  assert.equal((await api('PUT', `/rooms/${room.id}/members/${guest.user.id}/role`, { roleId: admin.id }, mod.token)).status, 403);
+  assert.equal((await api('POST', `/rooms/${room.id}/roles`, { name: 'Супер', perms: 256 }, mod.token)).status, 403);
+  assert.equal((await api('POST', `/rooms/${room.id}/bans`, { userId: owner.user.id }, mod.token)).status, 403);
+  // У модератора нет права звать друзей — роль его не даёт
+  assert.equal((await api('POST', `/rooms/${room.id}/members`, { userId: extra.user.id }, mod.token)).status, 403);
+
+  // Права по умолчанию: гостю запрещаем писать и говорить
+  assert.equal((await api('PATCH', `/rooms/${room.id}`, { defaultPerms: 1 | 4 }, mod.token)).status, 200);
+  assert.equal((await api('POST', `/rooms/${room.id}/messages`, { text: 'привет' }, guest.token)).status, 403);
+  const cg = connect(guest.token);
+  await cg.open;
+  cg.send({ type: 'room:join', roomId: room.id });
+  await cg.next('room:joined');
+  cg.send({ type: 'room:state', roomId: room.id, muted: false });
+  let v;
+  do v = await cg.next('room:voice');
+  while (!v.participants.length);
+  assert.equal(v.participants[0].muted, true);
+
+  // Без права заходить в голос — отключает сразу
+  await api('PATCH', `/rooms/${room.id}`, { defaultPerms: 0 }, owner.token);
+  assert.equal((await cg.next('room:left')).reason, 'no-access');
+  cg.send({ type: 'room:join', roomId: room.id });
+  assert.equal((await cg.next('room:error')).reason, 'no-access');
+  await api('PATCH', `/rooms/${room.id}`, { defaultPerms: 31 }, owner.token);
+
+  // Бан: человек пропадает из комнаты, и добавить его обратно нельзя, пока не разбанят
+  const banned = await api('POST', `/rooms/${room.id}/bans`, { userId: guest.user.id }, mod.token);
+  assert.equal(banned.status, 200);
+  assert.deepEqual(banned.body.bans.map((b) => b.id), [guest.user.id]);
+  assert.equal((await cg.next('room:removed')).reason, 'banned');
+  assert.equal((await api('GET', `/rooms/${room.id}/messages`, null, guest.token)).status, 404);
+  assert.equal((await api('POST', `/rooms/${room.id}/members`, { userId: guest.user.id }, owner.token)).status, 400);
+  assert.equal((await api('DELETE', `/rooms/${room.id}/bans/${guest.user.id}`, null, owner.token)).status, 200);
+  assert.equal((await api('POST', `/rooms/${room.id}/members`, { userId: guest.user.id }, owner.token)).status, 200);
+
+  // Кик модератором
+  assert.equal((await api('DELETE', `/rooms/${room.id}/members/${guest.user.id}`, null, mod.token)).status, 200);
+
+  // Удалили роль — модератор снова обычный участник
+  await api('DELETE', `/rooms/${room.id}/roles/${modRole.id}`, null, owner.token);
+  const after = (await api('GET', '/rooms', null, mod.token)).body.find((r) => r.id === room.id);
+  assert.equal(after.members.find((m) => m.id === mod.user.id).roleId, null);
+  assert.equal((await api('PATCH', `/rooms/${room.id}`, { name: 'Мой клан' }, mod.token)).status, 403);
+
+  cg.ws.close();
 });

@@ -3,7 +3,7 @@ const { app, BrowserWindow, desktopCapturer, ipcMain, session } = require('elect
 const fs = require('node:fs');
 const path = require('node:path');
 
-const SERVER = process.argv.find((a) => /^https?:\/\//.test(a)) || 'http://localhost:3000';
+const SERVER = process.argv.find((a) => /^https?:\/\//.test(a)) || 'http://127.0.0.1:3000'; // localhost клиент считает старым адресом и сбрасывает вход
 
 app.commandLine.appendSwitch('use-fake-device-for-media-stream');
 app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
@@ -78,6 +78,10 @@ async function openClient(name, auth) {
       backgroundThrottling: false,
       autoplayPolicy: 'no-user-gesture-required',
     },
+  });
+  // Ошибки страницы — в вывод теста, иначе падение видно только как «не дождались»
+  win.webContents.on('console-message', (e) => {
+    if (e.level === 'error') console.error(`  [${name}] ${e.message} (${path.basename(e.sourceId || '')}:${e.lineNumber})`);
   });
   await win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
   await js(win, `localStorage.setItem('session', ${JSON.stringify(JSON.stringify({ base: SERVER, token: auth.token }))}); location.reload()`);

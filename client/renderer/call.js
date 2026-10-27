@@ -109,7 +109,8 @@ function micConstraints(settings) {
   return {
     audio: {
       deviceId: settings.micId ? { ideal: settings.micId } : undefined,
-      echoCancellation: settings.noiseSuppression,
+      // Эхоподавление нужно всегда, иначе без наушников друзья слышат сами себя
+      echoCancellation: true,
       noiseSuppression: settings.noiseSuppression,
       autoGainControl: true,
     },
@@ -154,6 +155,9 @@ class LocalMedia {
   }
 
   async openMic(settings) {
+    // Пока старый микрофон открыт, Chrome отдаёт новый с той же обработкой звука —
+    // и шумоподавление не переключилось бы. Поэтому старый закрываем заранее
+    this.tracks.mic?.stop();
     const stream = await navigator.mediaDevices.getUserMedia(micConstraints(settings));
     const track = stream.getAudioTracks()[0];
     track.enabled = !this.muted;
@@ -394,9 +398,11 @@ function qualityText(q) {
 
 // Звонок целиком: свои устройства плюс соединения со всеми собеседниками
 class MediaSession {
-  constructor({ settings, sendSignal, onChange, onSpeaking, onPeerState, onStats, volumeOf }) {
+  // allowed(id) -> { speak, video }: что собеседнику разрешено в комнате; без права его не слышно и не видно
+  constructor({ settings, sendSignal, onChange, onSpeaking, onPeerState, onStats, volumeOf, allowed }) {
     this.settings = settings;
     this.volumeOf = volumeOf;
+    this.allowed = allowed;
     this.sendSignal = sendSignal;
     this.onChange = onChange;
     this.onSpeaking = onSpeaking;
@@ -534,9 +540,10 @@ class MediaSession {
 
   applyPeerAudio(peer) {
     const volume = this.volumes[peer.id] ?? this.volumeOf?.(peer.id) ?? 1;
-    for (const el of Object.values(peer.audio)) {
+    const allowed = this.allowed?.(peer.id) ?? { speak: true, video: true };
+    for (const [slot, el] of Object.entries(peer.audio)) {
       el.volume = volume;
-      el.muted = this.deafened;
+      el.muted = this.deafened || !(slot === 'mic' ? allowed.speak : allowed.video);
       if (el.setSinkId && el.sinkId !== this.sinkId) el.setSinkId(this.sinkId).catch(() => {});
     }
   }
@@ -545,6 +552,12 @@ class MediaSession {
     this.volumes[id] = volume;
     const peer = this.peers.get(id);
     if (peer) this.applyPeerAudio(peer);
+  }
+
+  /** Права в комнате поменялись — заново решаем, кого слышно */
+  applyAllowed() {
+    for (const peer of this.peers.values()) this.applyPeerAudio(peer);
+    this.onChange();
   }
 
   setSink(sinkId) {

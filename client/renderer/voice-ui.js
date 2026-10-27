@@ -6,7 +6,8 @@ const speaking = new Map(); // 'me' или id собеседника -> гово
 let focusedTile = null; // плитка, развёрнутая на всю панель (по клику)
 let voiceTimer = null;
 
-const audioFlags = () => ({ muted: state.muted || state.deafened, deafened: state.deafened });
+// Без права говорить в комнате микрофон выключен, что бы ни стояло на кнопке
+const audioFlags = () => ({ muted: state.muted || state.deafened || forcedMute(), deafened: state.deafened });
 
 function newSession(sendSignal) {
   return new MediaSession({
@@ -16,10 +17,11 @@ function newSession(sendSignal) {
       renderVoice();
       sendRoomState();
     },
-    onSpeaking: setSpeaking,
+    onSpeaking: (who, on) => setSpeaking(who, on && (who === 'me' || voiceAllowed(who).speak)),
     onPeerState,
     onStats: renderVoiceStatus,
     volumeOf: (id) => store.get(`volume:${id}`, 100) / 100,
+    allowed: voiceAllowed,
   });
 }
 
@@ -66,18 +68,19 @@ function voiceTiles() {
 
   for (const p of session.peers.values()) {
     const user = userById(p.id) || { id: p.id, displayName: '…', avatarColor: '#555' };
+    const allowed = voiceAllowed(p.id);
     tiles.push({
       key: `u${p.id}`,
       id: p.id,
       user,
-      video: p.media.video ? p.tracks.cam : null,
-      muted: p.media.muted,
+      video: p.media.video && allowed.video ? p.tracks.cam : null,
+      muted: p.media.muted || !allowed.speak,
       deafened: p.media.deafened,
       speaking: p.speaking,
       quality: p.quality,
       connecting: p.state !== 'connected',
     });
-    if (p.media.screen && p.tracks.screen)
+    if (p.media.screen && p.tracks.screen && allowed.video)
       tiles.push({ key: `u${p.id}:screen`, id: p.id, user, screen: true, video: p.tracks.screen, quality: p.quality });
   }
 
@@ -179,14 +182,15 @@ function renderStage() {
   stage.classList.toggle('has-focus', Boolean(focus));
   stage.classList.toggle('has-video', tiles.some((t) => t.video));
 
+  // Плитки двигаем, только если порядок поменялся: перенос элемента сбивает щелчок и выводит его из полноэкранного режима
   const existing = new Map([...stage.children].map((el) => [el.dataset.key, el]));
-  for (const t of tiles) {
+  tiles.forEach((t, i) => {
     let el = existing.get(t.key);
     existing.delete(t.key);
     if (!el) el = createTile(t);
     updateTile(el, t, t.key === focus);
-    stage.append(el);
-  }
+    if (stage.children[i] !== el) stage.insertBefore(el, stage.children[i] || null);
+  });
   for (const el of existing.values()) el.remove();
 }
 
@@ -237,6 +241,7 @@ function renderVoice() {
     $(id).title = screen ? 'Остановить демонстрацию' : 'Показать экран';
   }
   $('hangup-btn').title = state.room ? 'Выйти из голосового канала' : 'Завершить звонок';
+  renderNoiseButton();
 
   // Панель «На связи» над профилем — видна из любого места приложения
   $('voice-panel').classList.toggle('hidden', !session);
@@ -322,9 +327,12 @@ function onPeerState(id, st) {
 
 // ---------- Камера и экран ----------
 
+const noVideoRight = () => !voiceAllowed(state.me.id).video && (toast('В этой комнате вам нельзя включать камеру и показывать экран'), true);
+
 async function toggleCamera() {
   const session = activeSession();
   if (!session) return;
+  if (!session.local.tracks.cam && noVideoRight()) return;
   try {
     await session.toggleCamera();
   } catch (err) {
@@ -336,6 +344,7 @@ function toggleScreen() {
   const session = activeSession();
   if (!session) return;
   if (session.local.tracks.screen) return session.stopScreen();
+  if (noVideoRight()) return;
   openScreenPicker();
 }
 
@@ -428,6 +437,27 @@ async function startScreenShare() {
   }
 }
 
+// ---------- Шумоподавление ----------
+
+function renderNoiseButton() {
+  const on = state.settings.noiseSuppression;
+  $('call-ns').innerHTML = on ? ICONS.noise : ICONS.noiseOff;
+  $('call-ns').classList.toggle('on', on);
+  $('call-ns').title = on ? 'Шумоподавление включено — нажмите, чтобы выключить' : 'Шумоподавление выключено — нажмите, чтобы включить';
+}
+
+/** Включает или выключает шумоподавление сразу, без переподключения к разговору */
+async function setNoiseSuppression(on) {
+  state.settings = { ...state.settings, noiseSuppression: on };
+  store.set('audio', state.settings);
+  renderNoiseButton();
+  if ($('set-ns')) $('set-ns').checked = on;
+  const session = activeSession();
+  if (session) await session.switchMic(state.settings).catch((err) => toast(mediaErrorText(err)));
+  toast(on ? 'Шумоподавление включено' : 'Шумоподавление выключено');
+}
+
+$('call-ns').onclick = () => setNoiseSuppression(!state.settings.noiseSuppression);
 $('call-cam').onclick = toggleCamera;
 $('voice-cam').onclick = toggleCamera;
 $('call-screen').onclick = toggleScreen;
