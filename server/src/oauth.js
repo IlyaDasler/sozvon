@@ -24,7 +24,8 @@ const PROVIDERS = {
     authUrl: 'https://oauth.yandex.ru/authorize',
     tokenUrl: 'https://oauth.yandex.ru/token',
     userUrl: 'https://login.yandex.ru/info?format=json',
-    scope: 'login:email login:info',
+    // Без scope Яндекс выдаёт ровно те права, что отмечены в настройках приложения (почта — по желанию)
+    scope: '',
     redirectUri: 'http://localhost:47615/callback',
     extra: { force_confirm: 'yes' },
   },
@@ -77,7 +78,7 @@ export function buildAuthUrl(id, state, codeChallenge) {
     response_type: 'code',
     client_id: p.clientId,
     redirect_uri: p.redirectUri,
-    scope: p.scope,
+    ...(p.scope && { scope: p.scope }),
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
@@ -146,6 +147,7 @@ export async function fetchProfile(id, { code, codeVerifier, deviceId, state }) 
     return {
       providerId: String(info.id),
       email: info.default_email || '',
+      login: info.login || '',
       name: info.display_name || info.real_name || info.login || '',
     };
   }
