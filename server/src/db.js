@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { config } from './config.js';
+import { canonicalEmail } from './email-address.js';
 import { DEFAULT_PERMS, PERMS } from './perms.js';
 
 export const db = new DatabaseSync(path.join(config.dataDir, 'sozvon.db'));
@@ -310,6 +311,12 @@ export const roles = {
     q.deleteRole.run(id);
   },
 };
+
+// Адреса из версий до 1.8 приводим к одному виду (у Яндекса много доменов). Если такой ящик уже у другого профиля, не трогаем
+for (const { id, email } of db.prepare('SELECT id, email FROM users WHERE email IS NOT NULL').all()) {
+  const canonical = canonicalEmail(email);
+  if (canonical !== email && !q.userByEmail.get(canonical)) q.setEmail.run(canonical, id);
+}
 
 // В комнатах из версий без ролей создатель получает готовую роль администратора, которую можно раздать
 for (const { id } of q.roomsWithoutRoles.all()) roles.create(id, ADMIN_ROLE);
