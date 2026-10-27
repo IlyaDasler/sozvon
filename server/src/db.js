@@ -94,6 +94,9 @@ db.exec(`
 // Миграции для баз, созданных старыми версиями
 const columnsOf = (table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
 if (!columnsOf('users').includes('avatar')) db.exec('ALTER TABLE users ADD COLUMN avatar TEXT');
+// Почта для входа (в нижнем регистре); у старых профилей её нет
+if (!columnsOf('users').includes('email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE email IS NOT NULL');
 if (!columnsOf('rooms').includes('default_perms'))
   db.exec(`ALTER TABLE rooms ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
 if (!columnsOf('room_members').includes('role_id')) db.exec('ALTER TABLE room_members ADD COLUMN role_id INTEGER');
@@ -120,6 +123,8 @@ export const toMessage = (row) => ({
 const q = {
   userById: db.prepare('SELECT * FROM users WHERE id = ?'),
   userByName: db.prepare('SELECT * FROM users WHERE username = ?'),
+  userByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
+  setEmail: db.prepare('UPDATE users SET email = ? WHERE id = ?'),
   insertUser: db.prepare(
     'INSERT INTO users (username, password_hash, display_name, avatar_color, created_at) VALUES (?, ?, ?, ?, ?)'
   ),
@@ -199,8 +204,10 @@ const q = {
 export const users = {
   byId: (id) => q.userById.get(id),
   byUsername: (username) => q.userByName.get(username),
-  create({ username, passwordHash, displayName, avatarColor }) {
+  byEmail: (email) => q.userByEmail.get(email),
+  create({ username, passwordHash, displayName, avatarColor, email }) {
     const res = q.insertUser.run(username, passwordHash, displayName, avatarColor, Date.now());
+    if (email) q.setEmail.run(email, Number(res.lastInsertRowid));
     return users.byId(Number(res.lastInsertRowid));
   },
   updateProfile: (id, displayName, avatarColor) => q.updateProfile.run(displayName, avatarColor, id),
@@ -234,6 +241,7 @@ export const identities = {
 // Данные о себе: публичный профиль плюс способы входа
 export const toSelf = (row) => ({
   ...toPublicUser(row),
+  email: row.email || null,
   hasPassword: Boolean(row.password_hash),
   identities: identities.of(row.id).map((i) => ({ provider: i.provider, email: i.email })),
 });

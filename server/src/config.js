@@ -28,6 +28,15 @@ export const config = {
   publicIp,
   // Код приглашения: если задан, зарегистрироваться можно только с ним
   inviteCode: process.env.INVITE_CODE || '',
+  // Почтовый ящик для писем с кодами (подтверждение почты при регистрации, сброс пароля).
+  // Без него регистрация по почте работает без подтверждения
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: Number(process.env.SMTP_PORT) || 465,
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || '',
+  },
   // Сколько попыток входа и регистрации в минуту разрешено с одного адреса
   authRateLimit: Number(process.env.AUTH_RATE_LIMIT) || 10,
   stunUrls: list(

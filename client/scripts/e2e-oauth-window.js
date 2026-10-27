@@ -1,4 +1,4 @@
-// Окно входа внутри приложения (Яндекс, VK): после ответа сервиса закрывается само,
+// Окно входа через Яндекс внутри приложения: после ответа сервиса закрывается само,
 // а если его закрыть до входа — вход отменяется. Сервис входа поддельный, на этом же компьютере.
 // Запуск: npx electron scripts/e2e-oauth-window.js
 const { app, BrowserWindow } = require('electron');
@@ -14,9 +14,8 @@ app.on('window-all-closed', () => {}); // не выходить, когда ок
 
 app.whenReady().then(async () => {
   try {
-    if (!opensInApp('https://oauth.yandex.ru/authorize?x=1') || opensInApp('https://accounts.google.com/o/oauth2/v2/auth'))
-      throw new Error('Неверно выбрано, где открывать вход');
-    console.log('✔ Яндекс и VK — в окне приложения, Google — в браузере');
+    if (!opensInApp('https://oauth.yandex.ru/authorize?x=1')) throw new Error('Вход через Яндекс должен открываться в окне приложения');
+    console.log('✔ вход через Яндекс открывается в окне приложения');
 
     // Поддельный сервис: /authorize показывает кнопку «Войти», она ведёт на адрес возврата с кодом
     const provider = http

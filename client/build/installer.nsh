@@ -41,6 +41,27 @@
   ${if} ${isUpdated}
     SetSilent normal
   ${endIf}
+
+  ; Старая копия могла стоять в папке, куда без прав администратора не записать (например, Program Files —
+  ; её когда-то выбирали в установщике «с вопросами»). Тогда старый деинсталлятор не может убрать файлы,
+  ; и установщик показывает «Не удалось закрыть Sozvon». Ставим в обычную папку пользователя, а старую копию
+  ; не трогаем: приложение потом предложит её удалить (путь сохраняем в Software\Sozvon\OldInstallLocation)
+  ; (папку может быть нельзя даже просмотреть, поэтому проверяем попыткой создать файл)
+  ${if} $INSTDIR != "$LOCALAPPDATA\Programs\${APP_FILENAME}"
+    ClearErrors
+    FileOpen $0 "$INSTDIR\.sozvon-write-test" w
+    ${if} ${Errors}
+      WriteRegStr HKCU "Software\Sozvon" "OldInstallLocation" "$INSTDIR"
+      DeleteRegValue HKCU "${UNINSTALL_REGISTRY_KEY}" "UninstallString"
+      !ifdef UNINSTALL_REGISTRY_KEY_2
+        DeleteRegValue HKCU "${UNINSTALL_REGISTRY_KEY_2}" "UninstallString"
+      !endif
+      StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${APP_FILENAME}"
+    ${else}
+      FileClose $0
+      Delete "$INSTDIR\.sozvon-write-test"
+    ${endIf}
+  ${endIf}
 !macroend
 
 ; После установки Созвон запускаем прямо по пути к exe, а не через ярлык в меню «Пуск»:

@@ -25,17 +25,29 @@
         <input id="server-url" placeholder="https://135-106-226-12.sslip.io" spellcheck="false">
       </label>
       <label class="field" id="username-field">
-        <span>Логин</span>
+        <span>Почта или логин</span>
         <input id="auth-username" autocomplete="username" spellcheck="false" required>
+      </label>
+      <label class="field hidden" id="email-field">
+        <span>Почта</span>
+        <input id="auth-email" type="email" autocomplete="email" spellcheck="false" placeholder="name@mail.ru">
       </label>
       <label class="field hidden" id="display-field">
         <span>Имя в профиле</span>
         <input id="auth-display" maxlength="32" placeholder="Как вас называть">
       </label>
       <label class="field" id="password-field">
-        <span>Пароль</span>
+        <span id="password-label">Пароль</span>
         <input id="auth-password" type="password" autocomplete="current-password" required>
       </label>
+      <div class="field hidden" id="code-field">
+        <span>Код из письма</span>
+        <div class="row code-row">
+          <input id="auth-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 цифр">
+          <button type="button" class="btn" id="auth-send-code">Отправить код</button>
+        </div>
+        <span class="hint-text" id="code-hint"></span>
+      </div>
       <label class="field hidden" id="invite-field">
         <span>Код приглашения</span>
         <input id="auth-invite" spellcheck="false" placeholder="Если сервер его требует">
@@ -43,6 +55,7 @@
 
       <p class="error" id="auth-error"></p>
       <button class="btn primary wide" id="auth-submit">Войти</button>
+      <p class="muted center small hidden" id="forgot-row"><a href="#" id="auth-forgot">Забыли пароль?</a></p>
       <div id="oauth-block" class="oauth hidden">
         <div class="divider"><span>или</span></div>
         <div id="oauth-buttons" class="oauth-buttons"></div>
