@@ -1,0 +1,110 @@
+/* Темы оформления. Все цвета интерфейса берутся отсюда: тема — это только набор значений.
+   Слои фона от тёмного к светлому: --bg-deep (меню, нижняя панель), --bg-2 (боковая панель),
+   --bg (чат), --bg-3 (поля ввода, карточки), --bg-4 (выбранное), --bg-5 (наведение).
+   Цвета статусов (--ok, --idle, --danger) от темы почти не зависят — «в сети» всегда зелёный. */
+
+:root,
+[data-theme='sozvon'] {
+  --bg-deep: #1e1f22;
+  --bg: #313338;
+  --bg-2: #2b2d31;
+  --bg-3: #383a40;
+  --bg-4: #404249;
+  --bg-5: #4e5058;
+  --line: #3f4147;
+  --line-strong: #4e5058;
+  --text: #f2f3f5;
+  --text-2: #dbdee1;
+  --muted: #949ba4;
+  --accent: #5865f2;
+  --accent-hover: #4752c4;
+  --on-accent: #ffffff;
+  --link: #00a8fc;
+  --ok: #23a55a;
+  --idle: #f0b232;
+  --warn: #f0b232;
+  --danger: #f23f43;
+  --danger-hover: #da373c;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --header-shadow: 0 1px 0 rgba(4, 4, 5, 0.2), 0 1.5px 0 rgba(6, 6, 7, 0.05), 0 2px 0 rgba(4, 4, 5, 0.05);
+  color-scheme: dark;
+}
+
+/* Полночь: настоящий чёрный — для OLED-экранов и игр ночью */
+[data-theme='midnight'] {
+  --bg-deep: #000000;
+  --bg: #0b0b0d;
+  --bg-2: #111114;
+  --bg-3: #1a1a1e;
+  --bg-4: #24242a;
+  --bg-5: #2e2e35;
+  --line: #222228;
+  --line-strong: #34343c;
+  --text: #f2f3f5;
+  --text-2: #d6d8dc;
+  --muted: #8e939b;
+  --accent: #5865f2;
+  --accent-hover: #4752c4;
+  --header-shadow: 0 1px 0 #1c1c22;
+}
+
+[data-theme='light'] {
+  --bg-deep: #e3e5e8;
+  --bg: #ffffff;
+  --bg-2: #f2f3f5;
+  --bg-3: #ebedef;
+  --bg-4: #dfe1e5;
+  --bg-5: #d4d7dc;
+  --line: #dcdee2;
+  --line-strong: #c4c9ce;
+  --text: #060607;
+  --text-2: #313338;
+  --muted: #5c5e66;
+  --accent: #5865f2;
+  --accent-hover: #4752c4;
+  --link: #006ce7;
+  --ok: #1f8b4c;
+  --danger: #da373c;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  --header-shadow: 0 1px 0 rgba(6, 6, 7, 0.08), 0 2px 0 rgba(6, 6, 7, 0.03);
+  color-scheme: light;
+}
+
+/* Лес: зелёный Созвон, каким он был до 1.8 */
+[data-theme='forest'] {
+  --bg-deep: #141519;
+  --bg: #17181c;
+  --bg-2: #1e2025;
+  --bg-3: #26292f;
+  --bg-4: #30343b;
+  --bg-5: #3a3f47;
+  --line: #2f3238;
+  --line-strong: #4f545c;
+  --text: #e8eaed;
+  --text-2: #c7cad1;
+  --muted: #9aa0a8;
+  --accent: #2fc98a;
+  --accent-hover: #25a873;
+  --on-accent: #0b2a1d;
+  --link: #4ea1ff;
+  --ok: #2fc98a;
+}
+
+/* Сумерки: фиолетовые тона */
+[data-theme='dusk'] {
+  --bg-deep: #17141f;
+  --bg: #221d2e;
+  --bg-2: #1c1826;
+  --bg-3: #2c2639;
+  --bg-4: #372f47;
+  --bg-5: #42395a;
+  --line: #342d44;
+  --line-strong: #4a4060;
+  --text: #f1edf8;
+  --text-2: #d8d0e6;
+  --muted: #a397b8;
+  --accent: #a970ff;
+  --accent-hover: #9156ee;
+  --on-accent: #ffffff;
+  --link: #7cc4ff;
+}

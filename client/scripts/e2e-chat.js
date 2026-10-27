@@ -1,5 +1,6 @@
 // Сквозной тест чата: разметка, ссылки, смайлики, файлы и картинки, предпросмотр ссылок.
-// Запуск (сервер должен работать): npx electron scripts/e2e-chat.js [адрес сервера]
+// Запуск (сервер должен работать, для превью — с LINK_PREVIEW_ALLOW_PRIVATE=1): npx electron scripts/e2e-chat.js [адрес сервера]
+const http = require('node:http');
 const { api, register, js, waitFor, openClient, screenshot, runTest } = require('./e2e-lib');
 
 // Последнее сообщение в открытом чате
@@ -40,4 +41,71 @@ runTest(async () => {
   console.log('✔ теги и опасные ссылки из сообщения остаются текстом');
 
   await screenshot(winB, 'chat-markdown');
+
+  // Смайлик из панели: попадает в поле, сообщение из одного смайлика — крупно
+  await js(winA, `document.querySelector('#message-form .composer-btn.emoji').click(); true`);
+  await waitFor(winA, `!document.querySelector('.emoji-popover').classList.contains('hidden')`, 'панель смайликов');
+  await js(winA, `document.querySelector('.emoji-tab[data-group="Смайлы"]').click(); [...document.querySelectorAll('.emoji-popover .emoji')].find((b) => b.textContent === '😂').click(); true`);
+  if ((await js(winA, `document.getElementById('message-input').value`)) !== '😂') throw new Error('Смайлик не вставился');
+  await js(winA, `document.getElementById('message-form').requestSubmit(); true`);
+  await waitFor(winB, `${lastMsg}?.classList.contains('emoji-only') && ${lastMsg}.textContent === '😂'`, 'крупный смайлик у Бори');
+  console.log('✔ смайлики из панели, сообщение из смайлика — крупно');
+
+  // Картинка и файл: загрузка с ходом, отправка вместе с текстом, у собеседника — картинка и карточка файла
+  await js(
+    winA,
+    `(async () => {
+      const c = document.createElement('canvas'); c.width = 320; c.height = 200;
+      const g = c.getContext('2d'); g.fillStyle = '#5865f2'; g.fillRect(0, 0, 320, 200);
+      const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+      dmComposer.addFiles([new File([blob], 'картинка.png', { type: 'image/png' }), new File(['привет из файла'], 'заметки.txt', { type: 'text/plain' })]);
+      return true;
+    })()`
+  );
+  await waitFor(winA, `dmComposer.files.length === 2 && dmComposer.files.every((f) => f.attachment)`, 'загрузка файлов');
+  await screenshot(winA, 'chat-files-pending');
+  await send(winA, 'Смотри, что нашёл');
+  await waitFor(
+    winB,
+    `(() => {
+      const m = [...document.querySelectorAll('#messages .msg-content')].at(-1);
+      const img = m?.querySelector('.msg-images img');
+      return img?.complete && img.naturalWidth === 320 && m.querySelector('.file-card')?.textContent.includes('заметки.txt') &&
+        m.querySelector('.msg-text')?.textContent === 'Смотри, что нашёл';
+    })()`,
+    'картинка и файл у Бори'
+  );
+  if (await js(winA, `dmComposer.files.length !== 0`)) throw new Error('Вложения не убрались из поля после отправки');
+  const fileText = await js(winB, `fetch([...document.querySelectorAll('#messages .file-card a')].at(-1).href).then((r) => r.text())`);
+  if (fileText !== 'привет из файла') throw new Error('Файл скачивается не тот');
+  await js(winB, `[...document.querySelectorAll('#messages .msg-images img')].at(-1).click(); true`);
+  await waitFor(winB, `!document.getElementById('image-viewer').classList.contains('hidden')`, 'картинка крупно');
+  await screenshot(winB, 'chat-files');
+  await js(winB, `document.getElementById('image-viewer').click(); true`);
+  console.log('✔ картинки и файлы отправляются, картинка открывается крупно, файл скачивается');
+
+  // Превью ссылки: появляется в поле ввода, уходит с сообщением; крестик убирает его — уходит только ссылка
+  const site = http.createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end('<title>Тестовая страница</title><meta property="og:description" content="Описание для превью">');
+  });
+  await new Promise((r) => site.listen(0, '127.0.0.1', r));
+  const page = `http://127.0.0.1:${site.address().port}/page`;
+  const typeText = (text) =>
+    js(winA, `(() => { const a = document.getElementById('message-input'); a.value = ${JSON.stringify(text)}; a.dispatchEvent(new Event('input')); return true; })()`);
+  await typeText(`глянь ${page}`);
+  await waitFor(winA, `document.querySelector('#message-form .composer-preview .link-card-title')?.textContent === 'Тестовая страница'`, 'превью в поле ввода');
+  await screenshot(winA, 'chat-preview-composer');
+  await js(winA, `document.getElementById('message-form').requestSubmit(); true`);
+  await waitFor(winB, `[...document.querySelectorAll('#messages .msg-content')].at(-1)?.querySelector('.link-card-desc')?.textContent === 'Описание для превью'`, 'превью у Бори');
+  await typeText(`ещё раз ${page}`);
+  await waitFor(winA, `Boolean(document.querySelector('#message-form .composer-preview .link-card'))`, 'превью снова');
+  await js(winA, `document.querySelector('#message-form .composer-preview .file-remove').click(); true`);
+  await waitFor(winA, `document.querySelector('#message-form .composer-preview').classList.contains('hidden')`, 'превью убрано');
+  await js(winA, `document.getElementById('message-form').requestSubmit(); true`);
+  await waitFor(winB, `[...document.querySelectorAll('#messages .msg-content')].at(-1)?.textContent.startsWith('ещё раз')`, 'сообщение без превью');
+  if (await js(winB, `Boolean([...document.querySelectorAll('#messages .msg-content')].at(-1).querySelector('.link-card'))`))
+    throw new Error('Превью ушло, хотя его убрали');
+  site.close();
+  console.log('✔ превью ссылки показывается и отправляется, крестик убирает его');
 });

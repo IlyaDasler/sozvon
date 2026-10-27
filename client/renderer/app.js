@@ -616,7 +616,7 @@ async function selectContact(id) {
 
   renderChatHeader();
   renderMessages();
-  $('message-input').focus();
+  dmComposer.focus();
 
   if (!state.history.has(id)) {
     try {
@@ -706,17 +706,6 @@ function renderMessageList(box, list, loaded, emptyText) {
   box.scrollTop = box.scrollHeight;
 }
 
-// Текст сообщения с разметкой; сообщение только из смайликов (до трёх) — крупно
-const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}(?:‍\p{Extended_Pictographic}|[️\u{1f3fb}-\u{1f3ff}])*\s*){1,3}$/u;
-
-function messageContent(m) {
-  const text = document.createElement('div');
-  text.className = `msg-text${EMOJI_ONLY.test(m.text.trim()) ? ' emoji-only' : ''}`;
-  text.title = formatTime(m.createdAt);
-  text.append(renderMarkdown(m.text));
-  return text;
-}
-
 function addMessage(m) {
   const peerId = m.fromId === state.me.id ? m.toId : m.fromId;
   const list = state.history.get(peerId);
@@ -732,24 +721,9 @@ function addMessage(m) {
   if (!visible) {
     if (peerId !== state.selectedId) state.unread.set(peerId, (state.unread.get(peerId) || 0) + 1);
     renderContacts();
-    notify(state.contacts.get(peerId)?.displayName || 'Новое сообщение', m.text, { kind: 'message', open: { contact: peerId } });
+    notify(state.contacts.get(peerId)?.displayName || 'Новое сообщение', messageSummary(m), { kind: 'message', open: { contact: peerId } });
   }
 }
-
-$('message-form').onsubmit = async (e) => {
-  e.preventDefault();
-  const input = $('message-input');
-  const text = input.value.trim();
-  const to = state.selectedId;
-  if (!text || !to) return;
-  input.value = '';
-  try {
-    addMessage(await Api.post(`/messages/${to}`, { text }));
-  } catch (err) {
-    input.value = text;
-    toast(err.message);
-  }
-};
 
 // ---------- События с сервера ----------
 
@@ -1218,6 +1192,7 @@ function renderPasswordSection() {
 }
 
 async function openSettings() {
+  renderThemePicker();
   renderNotifySettings();
   $('email-link').classList.add('hidden');
   $('link-email').value = '';
