@@ -3,7 +3,10 @@
 const $ = (id) => document.getElementById(id);
 const isWeb = location.protocol.startsWith('http');
 
-const DEFAULT_SERVER = 'http://135.106.226.12:3000';
+const DEFAULT_SERVER = 'https://135-106-226-12.sslip.io';
+// Тот же сервер по старому адресу без HTTPS: вход переносим на новый адрес, токен остаётся действительным
+const SAME_SERVER_OLD = 'http://135.106.226.12:3000';
+// Прежние серверы (локальный и домашний): сохранённый вход сбрасываем
 const LEGACY_SERVERS = ['http://localhost:3000', 'http://95.173.207.169:3000', 'http://92.241.13.52:3000'];
 
 const COLORS = ['#e5484d', '#f76b15', '#ffc53d', '#30a46c', '#12a594', '#0090ff', '#6e56cf', '#d6409f'];
@@ -161,15 +164,21 @@ function providerBadge(id) {
   return el;
 }
 
+let providersRequest = 0;
+
 async function loadProviders(base) {
-  state.providers = [];
+  // Учитываем только ответ на последний запрос: более ранний мог прийти позже и затереть список
+  const request = ++providersRequest;
+  let providers = [];
   // Вход через сервисы работает только в приложении: браузерной версии некуда принять ответ
   if (window.desktop?.oauth && base) {
     try {
       const res = await fetch(`${base}/api/oauth/providers`, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) state.providers = await res.json();
+      if (res.ok) providers = await res.json();
     } catch {}
   }
+  if (request !== providersRequest) return;
+  state.providers = providers;
   renderOAuthButtons();
 }
 
@@ -1225,6 +1234,10 @@ async function boot() {
   loadProviders(isWeb ? location.origin : normalizeServer($('server-url').value));
 
   let session = store.get('session', null);
+  if (session && !isWeb && session.base === SAME_SERVER_OLD) {
+    session = { ...session, base: DEFAULT_SERVER };
+    store.set('session', session);
+  }
   if (session && !isWeb && LEGACY_SERVERS.includes(session.base)) {
     store.set('session', null);
     session = null;
