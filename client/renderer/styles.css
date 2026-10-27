@@ -158,11 +158,6 @@ input:focus, select:focus { border-color: var(--accent); }
 .sidebar-head .icon-btn { width: 28px; height: 28px; margin-right: -6px; }
 .conn-dot.ok { background: var(--ok); }
 
-.add-contact { display: flex; gap: 6px; padding: 14px 14px 8px; }
-.add-contact input { flex: 1; min-width: 0; height: 34px; }
-.add-contact .icon-btn { width: 34px; height: 34px; background: var(--bg-4); color: var(--text); }
-.add-contact .icon-btn:hover { background: var(--accent); color: var(--on-accent); }
-
 .list-title { padding: 10px 16px 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 
 .sidebar-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
@@ -763,3 +758,63 @@ video.mirror { transform: scaleX(-1); }
 #set-bio { width: 100%; padding: 8px 12px; resize: vertical; border: 1px solid transparent; border-radius: 4px; background: var(--bg-deep); color: var(--text); font: inherit; outline: none; }
 #set-bio:focus { border-color: var(--accent); }
 .field > span em { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+/* ---------- Раздел «Друзья» ---------- */
+
+.friends-nav { width: calc(100% - 16px); margin: 8px 8px 0; border: 0; background: none; font: inherit; text-align: left; }
+.friends-nav .room-icon svg { width: 20px; height: 20px; }
+.friends-nav .name { color: var(--text-2); font-weight: 600; }
+.friends-nav.active .name, .friends-nav:hover .name { color: var(--text); }
+.friends-nav .badge, .friend-tabs .badge { background: var(--danger); }
+.friends-view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.friends-head { gap: 8px; }
+.friends-title { display: inline-flex; align-items: center; gap: 8px; color: var(--text); flex: none; }
+.friends-title svg { width: 22px; height: 22px; color: var(--muted); }
+.head-divider { width: 1px; height: 24px; background: var(--line-strong); margin: 0 8px; flex: none; }
+.friend-tabs { display: flex; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.friend-tabs button {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  height: 26px; padding: 0 9px; border: 0; border-radius: 4px; background: none;
+  color: var(--text-2); font-weight: 500; cursor: pointer;
+}
+.friend-tabs button:hover { background: var(--bg-4); color: var(--text); }
+.friend-tabs button.active { background: var(--bg-5); color: var(--text); }
+.friend-tabs .add-tab { background: var(--ok); color: #fff; font-weight: 600; }
+.friend-tabs .add-tab:hover { background: var(--ok); filter: brightness(1.1); color: #fff; }
+.friend-tabs .add-tab.active { background: none; color: var(--ok); }
+.friend-tabs .badge { min-width: 18px; height: 18px; font-size: 11px; }
+.friends-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px 20px 30px; }
+.friends-body .list-title { padding: 16px 0 8px; }
+.friend-search { width: 100%; height: 34px !important; }
+.friends-empty { text-align: center; margin: 48px auto; max-width: 360px; }
+.friend-row {
+  display: flex; align-items: center; gap: 12px; padding: 10px 10px; margin: 0 -10px;
+  border-top: 1px solid var(--line); border-radius: 8px;
+}
+.friend-row:hover { background: var(--bg-3); border-top-color: transparent; }
+.friend-row:hover + .friend-row { border-top-color: transparent; }
+.friend-row.clickable { cursor: pointer; }
+.friend-info { flex: 1; min-width: 0; }
+.friend-name { font-weight: 600; color: var(--text); }
+.friend-login { font-weight: 400; color: var(--muted); font-size: 13px; opacity: 0; transition: opacity .1s; }
+.friend-row:hover .friend-login { opacity: 1; }
+.friend-actions { display: flex; gap: 8px; flex: none; }
+.friend-btn {
+  width: 36px; height: 36px; border-radius: 50%; border: 0; display: grid; place-items: center;
+  background: var(--bg-2); color: var(--text-2); cursor: pointer;
+}
+.friend-row:hover .friend-btn { background: var(--bg-deep); }
+.friend-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.friend-btn:hover:not(:disabled) { color: var(--text); }
+.friend-btn.ok:hover:not(:disabled) { color: var(--ok); }
+.friend-btn.danger:hover:not(:disabled) { color: var(--danger); }
+.friend-btn:disabled { opacity: .4; cursor: default; }
+.friend-add { max-width: 640px; }
+.friend-add h3 { margin: 4px 0 8px; font-size: 16px; text-transform: uppercase; letter-spacing: .02em; }
+.friend-add-row {
+  display: flex; align-items: center; gap: 10px; margin: 16px 0 8px; padding: 4px 4px 4px 12px;
+  border-radius: 8px; background: var(--bg-deep); border: 1px solid var(--line);
+}
+.friend-add-row:focus-within { border-color: var(--accent); }
+.friend-add-row input { flex: 1; min-width: 0; border: 0 !important; background: none !important; padding: 0 !important; }
+.ok-text { color: var(--ok); }
