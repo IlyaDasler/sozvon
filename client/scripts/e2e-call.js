@@ -67,6 +67,16 @@ async function run() {
   const winB = await openClient('b', b);
   console.log('✔ оба клиента вошли и подключились');
 
+  // E2E_RELAY=1 — пускать звук только через TURN, чтобы проверить ретранслятор
+  if (process.env.E2E_RELAY === '1') {
+    for (const win of [winA, winB]) {
+      await win.webContents.executeJavaScript(`{
+        const Orig = RTCPeerConnection;
+        window.RTCPeerConnection = function (cfg) { return new Orig({ ...cfg, iceTransportPolicy: 'relay' }); };
+      } true`);
+    }
+  }
+
   await winA.webContents.executeJavaScript(`selectContact(${b.user.id}).then(() => startCall())`);
   await waitFor(winB, `!document.getElementById('incoming').classList.contains('hidden')`, 'входящий звонок у Б');
   console.log('✔ у Б появился входящий звонок');

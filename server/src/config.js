@@ -17,12 +17,25 @@ function loadSecret() {
   return fs.readFileSync(file, 'utf8').trim();
 }
 
+const publicIp = process.env.PUBLIC_IP || '';
+const turnEmbedded = process.env.TURN_EMBEDDED === '1';
+const turnPort = Number(process.env.TURN_PORT) || 3478;
+
 export const config = {
   port: Number(process.env.PORT) || 3000,
   dataDir,
   secret: loadSecret(),
-  stunUrls: list(process.env.STUN_URLS ?? 'stun:stun.l.google.com:19302'),
-  turnUrls: list(process.env.TURN_URLS),
-  turnSecret: process.env.TURN_SECRET || '',
+  publicIp,
+  // Код приглашения: если задан, зарегистрироваться можно только с ним
+  inviteCode: process.env.INVITE_CODE || '',
+  stunUrls: list(
+    process.env.STUN_URLS ?? (turnEmbedded && publicIp ? `stun:${publicIp}:${turnPort}` : 'stun:stun.l.google.com:19302')
+  ),
+  turnUrls: list(process.env.TURN_URLS ?? (turnEmbedded && publicIp ? `turn:${publicIp}:${turnPort}?transport=udp` : '')),
+  turnSecret: process.env.TURN_SECRET || (turnEmbedded ? loadSecret() : ''),
+  turnEmbedded,
+  turnPort,
+  turnMinPort: Number(process.env.TURN_MIN_PORT) || 49160,
+  turnMaxPort: Number(process.env.TURN_MAX_PORT) || 49200,
   webDir: path.resolve(process.env.WEB_DIR || path.join(here, '..', '..', 'client', 'renderer')),
 };
