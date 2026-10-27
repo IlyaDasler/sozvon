@@ -57,7 +57,7 @@ app.whenReady().then(() => {
 // ---------- Автообновление ----------
 // Новая версия скачивается в фоне с GitHub Releases; ставится по кнопке или при следующем закрытии приложения.
 
-const UPDATE_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
+// Обновления проверяем один раз при запуске, дальше — только по кнопке «Проверить обновления»
 let updateStatus = { state: 'idle' };
 
 function setUpdateStatus(status) {
@@ -102,7 +102,6 @@ function setupUpdater() {
   autoUpdater.on('error', (err) => setUpdateStatus({ state: 'error', message: err.message }));
 
   checkForUpdates();
-  setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
 }
 
 ipcMain.handle('update:status', () => ({ ...updateStatus, current: app.getVersion() }));
