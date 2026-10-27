@@ -63,15 +63,25 @@ async function run(serverEnv) {
   await shot(win, 'oauth-login');
   console.log('✔ на экране входа есть кнопки Google, Яндекс и VK');
 
-  // Без кода приглашения новый профиль не создаётся
+  // Вход через сервис без профиля: приложение просит только код приглашения, повторно входить не нужно
   await click(win, '.oauth-btn', 'Google');
-  await waitFor(win, `document.getElementById('auth-error').textContent.includes('код приглашения')`, 'ошибка про код');
-  console.log('✔ без кода приглашения профиль не создаётся');
+  await waitFor(
+    win,
+    `Boolean(state.pendingSignup) && document.getElementById('auth-subtitle').textContent.includes('подтверждён') &&
+     document.getElementById('username-field').classList.contains('hidden') &&
+     !document.getElementById('invite-field').classList.contains('hidden')`,
+    'экран ввода кода приглашения'
+  );
+  await shot(win, 'oauth-pending');
+  console.log('✔ после входа через Google приложение просит только код приглашения');
 
-  await click(win, '#auth-toggle', 'Зарегистрироваться');
+  await win.webContents.executeJavaScript(`document.getElementById('auth-invite').value = 'wrong'; true`);
+  await click(win, '#auth-submit', 'Создать профиль');
+  await waitFor(win, `document.getElementById('auth-error').textContent.includes('Неверный код')`, 'ошибка неверного кода');
+  console.log('✔ с неверным кодом профиль не создаётся');
+
   await win.webContents.executeJavaScript(`document.getElementById('auth-invite').value = 'friends'; true`);
-  await shot(win, 'oauth-register');
-  await click(win, '.oauth-btn', 'Google');
+  await click(win, '#auth-submit', 'Создать профиль');
   await waitFor(win, `!document.getElementById('main').classList.contains('hidden')`, 'вход в приложение');
   const me = await win.webContents.executeJavaScript('state.me');
   if (me.username !== 'ivan.petrov' || me.displayName !== 'Иван Петров') throw new Error(`Не тот профиль: ${JSON.stringify(me)}`);
@@ -125,7 +135,14 @@ app.whenReady().then(async () => {
   const mock = await startMockOAuth();
   const server = spawn('node', ['src/index.js'], {
     cwd: serverDir,
-    env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir, INVITE_CODE: 'friends', ...oauthEnv(mock.address().port) },
+    env: {
+      ...process.env,
+      PORT: String(PORT),
+      DATA_DIR: dataDir,
+      INVITE_CODE: 'friends',
+      AUTH_RATE_LIMIT: '100',
+      ...oauthEnv(mock.address().port),
+    },
     stdio: 'ignore',
   });
   let code = 0;

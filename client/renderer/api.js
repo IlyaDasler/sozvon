@@ -22,6 +22,7 @@ const Api = {
     if (!res.ok) {
       const err = new Error(data.error || `Ошибка сервера (${res.status})`);
       err.status = res.status;
+      err.data = data;
       throw err;
     }
     return data;

@@ -34,7 +34,14 @@ const oauth = (provider, extra = {}, token) =>
 before(async () => {
   mock = await startMockOAuth();
   proc = spawn(process.execPath, ['src/index.js'], {
-    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, INVITE_CODE: 'friends', ...oauthEnv(mock.address().port) },
+    env: {
+      ...process.env,
+      PORT: String(port),
+      DATA_DIR: dataDir,
+      INVITE_CODE: 'friends',
+      AUTH_RATE_LIMIT: '100',
+      ...oauthEnv(mock.address().port),
+    },
     stdio: 'pipe',
   });
   for (let i = 0; i < 50; i++) {
@@ -65,10 +72,16 @@ test('регистрация, вход и привязка через Google, Я
   assert.equal((await api('GET', '/oauth/google/url?state=x&challenge=y')).status, 400);
   assert.equal((await api('GET', `/oauth/github/url?state=${'s'.repeat(22)}&challenge=${'c'.repeat(43)}`)).status, 404);
 
-  // Новый профиль без кода приглашения не создаётся
-  assert.equal((await oauth('google')).status, 403);
+  // Без кода приглашения профиль не создаётся, но приходит пропуск — повторно входить в сервис не нужно
+  const pending = await oauth('google');
+  assert.equal(pending.status, 403);
+  assert.equal(pending.body.needInvite, true);
+  const { ticket } = pending.body;
+  assert.equal((await api('GET', '/me', null, ticket)).status, 401, 'пропуск — не токен входа');
+  assert.equal((await api('POST', '/signup/complete', { ticket, inviteCode: 'wrong' })).status, 403);
+  assert.equal((await api('POST', '/signup/complete', { ticket: ticket.replace(/.$/, 'A'), inviteCode: 'friends' })).status, 400);
 
-  const created = await oauth('google', { inviteCode: 'friends' });
+  const created = await api('POST', '/signup/complete', { ticket, inviteCode: 'friends' });
   assert.equal(created.status, 200);
   assert.equal(created.body.created, true);
   const ivan = created.body.user;
