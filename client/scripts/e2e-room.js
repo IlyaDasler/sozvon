@@ -82,11 +82,27 @@ runTest(async () => {
   await sleep(1000);
   await screenshot(winB, 'room-camera');
 
-  // Боря показывает экран через окно выбора
-  await js(winB, 'toggleScreen()');
+  // Боря показывает экран через окно выбора: вкладки «Весь экран» и «Окно приложения»
+  await js(winB, `store.set('screenTab', 'screen'); toggleScreen()`);
   await waitFor(winB, `document.querySelectorAll('#screen-sources .source.selected').length === 1`, 'выбор экрана');
+  await js(winB, `document.querySelector('#screen-tabs [data-tab="window"]').click(); true`);
+  await waitFor(winB, `document.querySelector('#screen-tabs [data-tab="window"]').classList.contains('active') && document.querySelectorAll('#screen-sources .source').length > 0`, 'вкладка с окнами приложений');
+  await js(winB, `document.querySelector('#screen-tabs [data-tab="screen"]').click(); true`);
+  await waitFor(winB, `document.querySelectorAll('#screen-sources .source.selected').length === 1 && !document.getElementById('screen-start').disabled`, 'экран снова выбран');
+  console.log('✔ в окне выбора есть вкладки «Весь экран» и «Окно приложения»');
   await js(winB, `document.getElementById('screen-start').click(); true`);
   await waitFor(winB, `Boolean(activeSession().local.tracks.screen)`, 'демонстрация у Бори');
+  // Режим «плавно»: 720p, 60 кадров/с, до 5 Мбит/с
+  await waitFor(
+    winB,
+    `(() => {
+      const c = activeSession().local.tracks.screen.getConstraints();
+      const p = [...activeSession().peers.values()][0].link.transceiver('screen').sender.getParameters().encodings[0];
+      return c.frameRate?.ideal === 60 && c.height?.max === 720 && p.maxFramerate === 60 && p.maxBitrate === 5000000;
+    })()`,
+    'настройки качества 720p60'
+  );
+  console.log('✔ демонстрация в режиме 720p, 60 кадров/с');
   for (const [win, u] of [[winA, a], [winC, c]]) {
     await waitFor(win, tilePlaying(win, `u${b.user.id}:screen`), `экран Бори у ${u.user.displayName}`, 20000);
     const focused = await js(win, `document.querySelector('.tile[data-key="u${b.user.id}:screen"]').classList.contains('focused')`);
@@ -99,13 +115,21 @@ runTest(async () => {
   const fullBtn = `document.querySelector('.tile[data-key="u${b.user.id}:screen"] .tile-btn')`;
   if (!(await js(winA, reachable(fullBtn)))) throw new Error('Кнопка «во весь экран» перекрыта или вне экрана');
   await winA.webContents.executeJavaScript(`${fullBtn}.click()`, true);
-  await waitFor(winA, `document.fullscreenElement?.dataset.key === 'u${b.user.id}:screen'`, 'трансляция во весь экран');
-  await sleep(500);
-  if (!(await js(winA, `document.fullscreenElement?.dataset.key === 'u${b.user.id}:screen'`)))
-    throw new Error('Полноэкранный режим сам выключился');
-  await js(winA, 'document.exitFullscreen()');
-  await waitFor(winA, '!document.fullscreenElement', 'выход из полноэкранного режима');
-  console.log('✔ трансляцию можно развернуть во весь экран');
+  const inFull = `(() => {
+    const v = document.getElementById('fullview-video');
+    const r = v.getBoundingClientRect();
+    return document.fullscreenElement?.id === 'fullview' && fullView === 'u${b.user.id}:screen' &&
+      v.videoWidth > 0 && !v.paused && r.width === innerWidth && r.height === innerHeight;
+  })()`;
+  await waitFor(winA, inFull, 'трансляция во весь экран');
+  await sleep(800);
+  if (!(await js(winA, inFull))) throw new Error('Полноэкранный режим сам выключился');
+  if (!winA.isFullScreen()) throw new Error('Окно приложения не ушло в полноэкранный режим');
+  await screenshot(winA, 'room-fullview');
+  // Выход — кнопкой на панели
+  await js(winA, `document.getElementById('fullview-exit').click(); true`);
+  await waitFor(winA, `!document.fullscreenElement && fullView === null && document.getElementById('fullview').classList.contains('hidden')`, 'выход из полноэкранного режима');
+  console.log('✔ трансляция открывается на весь монитор и закрывается кнопкой');
 
   // Маленькое окно: кнопки разговора видны и не перекрыты плитками
   winA.setSize(820, 540);

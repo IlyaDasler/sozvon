@@ -124,12 +124,11 @@ function createTile(t) {
 
   const full = document.createElement('button');
   full.className = 'tile-btn';
-  full.title = 'Во весь экран';
+  full.title = 'Во весь экран (двойной щелчок)';
   full.innerHTML = ICONS.expand;
   full.onclick = (e) => {
     e.stopPropagation();
-    if (document.fullscreenElement) document.exitFullscreen();
-    else el.requestFullscreen().catch(() => {});
+    openFullView(t.key);
   };
   tools.append(full);
 
@@ -137,8 +136,13 @@ function createTile(t) {
     focusedTile = focusedTile === t.key ? null : t.key;
     renderStage();
   };
-  el.ondblclick = () => full.click();
+  el.ondblclick = () => openFullView(t.key);
   return el;
+}
+
+function tileName(t) {
+  const name = t.user.displayName || t.user.username || '';
+  return t.isMe ? (t.screen ? 'Ваш экран' : 'Вы') : t.screen ? `Экран: ${name}` : name;
 }
 
 function updateTile(el, t, focused) {
@@ -161,8 +165,7 @@ function updateTile(el, t, focused) {
   const avatar = el.querySelector('.tile-avatar');
   avatar.replaceChildren(makeAvatar(t.user, undefined, 'big'));
 
-  const name = t.user.displayName || t.user.username || '';
-  el.querySelector('.tile-name').textContent = t.isMe ? (t.screen ? 'Ваш экран' : 'Вы') : t.screen ? `Экран: ${name}` : name;
+  el.querySelector('.tile-name').textContent = tileName(t);
 
   const icons = el.querySelector('.tile-icons');
   icons.replaceChildren();
@@ -192,7 +195,61 @@ function renderStage() {
     if (stage.children[i] !== el) stage.insertBefore(el, stage.children[i] || null);
   });
   for (const el of existing.values()) el.remove();
+  updateFullView();
 }
+
+// ---------- Просмотр во весь экран ----------
+// Трансляция (или камера) открывается в отдельном проигрывателе на весь монитор:
+// окно приложения уходит в полноэкранный режим Windows. Выход — Esc, двойной щелчок или кнопка
+
+let fullView = null; // ключ плитки, которую смотрим
+let fullViewBarTimer = null;
+
+function openFullView(key) {
+  if (!voiceTiles().some((t) => t.key === key && t.video)) return;
+  fullView = key;
+  $('fullview').classList.remove('hidden');
+  updateFullView();
+  showFullViewBar();
+  // Не получилось — проигрыватель всё равно закрывает всё окно приложения
+  $('fullview').requestFullscreen().catch(() => {});
+}
+
+function closeFullView() {
+  if (!fullView) return;
+  fullView = null;
+  clearTimeout(fullViewBarTimer);
+  $('fullview').classList.add('hidden');
+  $('fullview-video').srcObject = null;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+}
+
+function updateFullView() {
+  if (!fullView) return;
+  const t = voiceTiles().find((x) => x.key === fullView);
+  if (!t?.video) return closeFullView(); // показ закончился или человек вышел
+  const video = $('fullview-video');
+  if (video.srcObject?.getVideoTracks()[0] !== t.video) video.srcObject = new MediaStream([t.video]);
+  if (video.paused) video.play().catch(() => {});
+  video.classList.toggle('mirror', Boolean(t.isMe && !t.screen));
+  $('fullview-name').textContent = tileName(t);
+  const size = video.videoWidth ? `${video.videoWidth}×${video.videoHeight}` : '';
+  $('fullview-info').textContent = [size, t.quality && qualityText(t.quality)].filter(Boolean).join(' · ');
+}
+
+// Панель с названием и кнопкой выхода видна при движении мыши и прячется через 2,5 секунды
+function showFullViewBar() {
+  $('fullview').classList.add('show-bar');
+  clearTimeout(fullViewBarTimer);
+  fullViewBarTimer = setTimeout(() => $('fullview').classList.remove('show-bar'), 2500);
+}
+
+$('fullview').onmousemove = showFullViewBar;
+$('fullview-video').ondblclick = closeFullView;
+$('fullview-exit').onclick = closeFullView;
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && fullView) closeFullView();
+});
 
 function setSpeaking(who, isSpeaking) {
   speaking.set(who, isSpeaking);
@@ -223,6 +280,7 @@ function renderVoice() {
   panel.classList.toggle('hidden', !host);
   if (host) renderStage();
   if (!session) {
+    closeFullView();
     $('stage').replaceChildren();
     speaking.clear();
     focusedTile = null;
@@ -298,6 +356,7 @@ function renderVoiceStatus() {
     }
   }
 
+  updateFullView();
   $('voice-state').textContent = connected ? 'На связи' : 'Подключение…';
   $('voice-state').classList.toggle('ok', connected);
   setQualityBars($('voice-quality'), connected ? q : null);
@@ -366,53 +425,95 @@ async function openScreenPicker() {
   $('screen-error').textContent = '';
   $('screen-audio').checked = store.get('screenAudio', false);
   for (const r of document.querySelectorAll('input[name="screen-mode"]')) r.checked = r.value === store.get('screenMode', 'motion');
-  $('screen-sources').innerHTML = '<p class="muted">Загрузка…</p>';
   $('screen-picker').classList.remove('hidden');
+  await loadScreenSources(store.get('screenTab', 'screen'));
+}
 
-  let sources;
+// Две вкладки: «Весь экран» (мониторы) и «Окно приложения» (игра, браузер, любая программа)
+let screenSourceList = [];
+let screenTab = 'screen';
+
+async function loadScreenSources(tab = screenTab) {
+  $('screen-sources').innerHTML = '<p class="muted">Загрузка…</p>';
   try {
-    sources = await window.desktop.screen.sources();
+    screenSourceList = await window.desktop.screen.sources();
   } catch (err) {
+    screenSourceList = [];
     $('screen-sources').replaceChildren();
     $('screen-error').textContent = 'Не удалось получить список экранов: ' + cleanError(err);
     return;
   }
+  showScreenTab(tab);
+}
+
+function showScreenTab(tab) {
+  screenTab = tab;
+  store.set('screenTab', tab);
+  const screens = screenSourceList.filter((s) => s.screen);
+  const windows = screenSourceList.filter((s) => !s.screen);
+  $('screen-count-screen').textContent = screens.length ? `(${screens.length})` : '';
+  $('screen-count-window').textContent = windows.length ? `(${windows.length})` : '';
+  for (const t of document.querySelectorAll('#screen-tabs .tab')) t.classList.toggle('active', t.dataset.tab === tab);
+
+  const list = tab === 'screen' ? screens : windows;
   const box = $('screen-sources');
   box.replaceChildren();
-  for (const [title, list] of [
-    ['Экраны', sources.filter((s) => s.screen)],
-    ['Окна', sources.filter((s) => !s.screen)],
-  ]) {
-    if (!list.length) continue;
-    const h = document.createElement('h4');
-    h.textContent = title;
-    const grid = document.createElement('div');
-    grid.className = 'source-grid';
-    for (const s of list) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'source';
+  if (!list.length) {
+    const p = document.createElement('p');
+    p.className = 'muted';
+    p.textContent = tab === 'screen' ? 'Экраны не найдены.' : 'Открытых окон нет. Запустите игру или программу и нажмите «Обновить список».';
+    box.append(p);
+  }
+  const grid = document.createElement('div');
+  grid.className = 'source-grid';
+  for (const s of list) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'source';
+    b.classList.toggle('selected', s.id === pickedSource);
+    const preview = document.createElement('div');
+    preview.className = 'source-preview';
+    if (s.thumbnail) {
       const img = document.createElement('img');
       img.src = s.thumbnail;
       img.alt = '';
-      const name = document.createElement('span');
-      name.className = 'ellipsis';
-      name.textContent = s.name;
-      b.title = s.name;
-      b.append(img, name);
-      b.onclick = () => {
-        pickedSource = s.id;
-        for (const el of box.querySelectorAll('.source')) el.classList.toggle('selected', el === b);
-        $('screen-start').disabled = false;
-      };
-      b.ondblclick = () => $('screen-start').click();
-      grid.append(b);
+      preview.append(img);
+    } else {
+      // Свёрнутое окно: картинки нет, показываем значок приложения
+      preview.classList.add('empty');
+      preview.textContent = 'Окно свёрнуто — разверните его, иначе друзья увидят чёрный экран';
     }
-    box.append(h, grid);
+    const caption = document.createElement('span');
+    caption.className = 'source-name';
+    if (s.icon) {
+      const icon = document.createElement('img');
+      icon.src = s.icon;
+      icon.alt = '';
+      icon.className = 'source-icon';
+      caption.append(icon);
+    }
+    const name = document.createElement('span');
+    name.className = 'ellipsis';
+    name.textContent = s.name;
+    caption.append(name);
+    b.title = s.name;
+    b.append(preview, caption);
+    b.onclick = () => {
+      pickedSource = s.id;
+      for (const el of box.querySelectorAll('.source')) el.classList.toggle('selected', el === b);
+      $('screen-start').disabled = false;
+    };
+    b.ondblclick = () => $('screen-start').click();
+    grid.append(b);
   }
+  box.append(grid);
+  $('screen-start').disabled = !screenSourceList.some((s) => s.id === pickedSource);
   // Один экран — сразу выбран
-  if (sources.filter((s) => s.screen).length === 1) box.querySelector('.source')?.click();
+  if (tab === 'screen' && screens.length === 1 && !pickedSource) box.querySelector('.source')?.click();
 }
+
+for (const t of document.querySelectorAll('#screen-tabs .tab')) t.onclick = () => showScreenTab(t.dataset.tab);
+$('screen-refresh').onclick = () => loadScreenSources();
 
 function closeScreenPicker() {
   $('screen-picker').classList.add('hidden');
