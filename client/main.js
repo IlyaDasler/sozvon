@@ -2,7 +2,8 @@ const { app, BrowserWindow, desktopCapturer, globalShortcut, ipcMain, session, s
 const fs = require('node:fs');
 const path = require('node:path');
 const { autoUpdater } = require('electron-updater');
-const { listenForOAuth } = require('./oauth-loopback');
+const { listenForOAuth, openOAuthWindow, opensInApp } = require('./oauth-loopback');
+const { offerRemoveOldCopy, repairShortcuts } = require('./install-repair');
 
 // --profile=имя запускает отдельный экземпляр со своим входом (удобно, чтобы проверить звонок на одном ПК)
 const profileArg = process.argv.find((a) => a.startsWith('--profile='));
@@ -55,6 +56,10 @@ app.whenReady().then(() => {
 
   createWindow();
   setupUpdater();
+  if (app.isPackaged && process.platform === 'win32') {
+    repairShortcuts();
+    win.webContents.once('did-finish-load', () => setTimeout(() => offerRemoveOldCopy(win).catch(() => {}), 3000));
+  }
 
   // Глобальные клавиши работают, даже когда в фокусе игра
   globalShortcut.register('CommandOrControl+Shift+M', () => win?.webContents.send('hotkey', 'toggle-mute'));
@@ -118,22 +123,25 @@ ipcMain.on('update:download', () => {
   setUpdateStatus({ state: 'downloading', percent: 0 });
   autoUpdater.downloadUpdate().catch(() => {}); // ошибка придёт через событие 'error'
 });
-// true, true — установить тихо и сразу запустить новую версию.
-// Окно закрываем заранее: установщик не должен застать Созвон ещё запущенным
+// false, true — установщик показывает окошко с ходом установки (без вопросов) и сам запускает новую версию.
+// Без окошка казалось, что ничего не происходит, люди жали на ярлык посреди установки и получали «Отсутствует ярлык».
+// Окно приложения закрываем заранее: установщик не должен застать Созвон ещё запущенным
 ipcMain.on('update:install', () => {
   if (updateStatus.state !== 'ready') return;
   app.removeAllListeners('window-all-closed');
   win?.destroy();
-  autoUpdater.quitAndInstall(true, true);
+  autoUpdater.quitAndInstall(false, true);
 });
 
-// Вход через Google / Яндекс / VK: открываем страницу входа в обычном браузере и ждём ответ на localhost
+// Вход через Google / Яндекс / VK: страница входа присылает ответ на localhost.
+// Яндекс и VK — в окне приложения, которое закрывается само; Google — в обычном браузере
 let pendingOAuth = null;
 ipcMain.handle('oauth', async (_event, authUrl) => {
   pendingOAuth?.close();
   const pending = (pendingOAuth = await listenForOAuth(authUrl));
   try {
-    await shell.openExternal(authUrl);
+    if (opensInApp(authUrl)) openOAuthWindow(authUrl, pending, win);
+    else await shell.openExternal(authUrl);
     return await pending.result;
   } finally {
     if (pendingOAuth === pending) pendingOAuth = null;
