@@ -253,7 +253,7 @@ function addRoomMessage(m) {
     if (!viewing) state.roomUnread.set(m.roomId, (state.roomUnread.get(m.roomId) || 0) + 1);
     renderRooms();
     const room = roomById(m.roomId);
-    notify(room?.name || 'Комната', `${userById(m.fromId)?.displayName || '?'}: ${m.text}`);
+    notify(room?.name || 'Комната', `${userById(m.fromId)?.displayName || '?'}: ${m.text}`, { kind: 'room', open: { room: m.roomId } });
   }
 }
 
@@ -282,7 +282,7 @@ function handleRoomEvent(msg) {
       state.rooms.set(room.id, room);
       if (isNew && room.ownerId !== state.me.id) {
         toast(`Вас добавили в комнату «${room.name}»`);
-        notify('Новая комната', `Вас добавили в «${room.name}»`);
+        notify('Новая комната', `Вас добавили в «${room.name}»`, { kind: 'room-invite', open: { room: room.id } });
       }
       renderRooms();
       if (state.selectedRoomId === room.id) renderRoomView();
@@ -302,8 +302,11 @@ function handleRoomEvent(msg) {
       }
       renderRooms();
       if (!room || msg.reason === 'left') return;
-      if (msg.reason === 'banned') toast(`Вас забанили в комнате «${room.name}»`);
-      else if (msg.reason === 'kicked') toast(`Вас выгнали из комнаты «${room.name}»`);
+      if (msg.reason === 'banned' || msg.reason === 'kicked') {
+        const text = msg.reason === 'banned' ? `Вас забанили в комнате «${room.name}»` : `Вас выгнали из комнаты «${room.name}»`;
+        toast(text);
+        notify('Комната', text, { kind: 'room-removed' });
+      }
       else if (room.ownerId !== state.me.id) toast(`Комната «${room.name}» вам больше недоступна`);
       return;
     }
@@ -572,7 +575,7 @@ function renderManageMembers(room) {
     sub.className = 'muted small ellipsis';
     sub.textContent = `@${m.username} · ${m.id === room.ownerId ? 'создатель' : role?.name || 'без роли'}${inVoice.has(m.id) ? ' · в голосе' : ''}`;
     info.append(name, sub);
-    row.append(makeAvatar(m, m.online), info);
+    row.append(makeAvatar(m, presenceOf(m)), info);
 
     const mine = m.id === state.me.id;
     const above = !mine && outranks(room, m.id);

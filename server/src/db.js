@@ -96,6 +96,8 @@ const columnsOf = (table) => db.prepare(`PRAGMA table_info(${table})`).all().map
 if (!columnsOf('users').includes('avatar')) db.exec('ALTER TABLE users ADD COLUMN avatar TEXT');
 // Почта для входа (в нижнем регистре); у старых профилей её нет
 if (!columnsOf('users').includes('email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT');
+// Выбранный статус: online, idle, dnd, invisible (см. presence.js)
+if (!columnsOf('users').includes('status')) db.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'online'");
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE email IS NOT NULL');
 if (!columnsOf('rooms').includes('default_perms'))
   db.exec(`ALTER TABLE rooms ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
@@ -125,6 +127,7 @@ const q = {
   userByName: db.prepare('SELECT * FROM users WHERE username = ?'),
   userByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
   setEmail: db.prepare('UPDATE users SET email = ? WHERE id = ?'),
+  setStatus: db.prepare('UPDATE users SET status = ? WHERE id = ?'),
   insertUser: db.prepare(
     'INSERT INTO users (username, password_hash, display_name, avatar_color, created_at) VALUES (?, ?, ?, ?, ?)'
   ),
@@ -206,6 +209,7 @@ export const users = {
   byUsername: (username) => q.userByName.get(username),
   byEmail: (email) => q.userByEmail.get(email),
   setEmail: (id, email) => q.setEmail.run(email, id),
+  setStatus: (id, status) => q.setStatus.run(status, id),
   create({ username, passwordHash, displayName, avatarColor, email }) {
     const res = q.insertUser.run(username, passwordHash, displayName, avatarColor, Date.now());
     if (email) q.setEmail.run(email, Number(res.lastInsertRowid));
@@ -243,6 +247,7 @@ export const identities = {
 export const toSelf = (row) => ({
   ...toPublicUser(row),
   email: row.email || null,
+  status: row.status || 'online',
   hasPassword: Boolean(row.password_hash),
   identities: identities.of(row.id).map((i) => ({ provider: i.provider, email: i.email })),
 });

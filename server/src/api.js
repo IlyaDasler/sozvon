@@ -20,6 +20,7 @@ import {
 } from './db.js';
 import { hub } from './hub.js';
 import { checkCode, mailEnabled, sendCode } from './mail.js';
+import { STATUSES, broadcastPresence, presenceOf } from './presence.js';
 import { ALL_PERMS, PERMS, cleanPerms, has, rankOf } from './perms.js';
 import { buildAuthUrl, enabledProviders, fetchProfile } from './oauth.js';
 import { registerTurnUser } from './turn.js';
@@ -80,7 +81,11 @@ setInterval(() => {
   for (const [ip, entry] of attempts) if (entry.reset < now) attempts.delete(ip);
 }, 60_000).unref();
 
-const withOnline = (row) => ({ ...toPublicUser(row), online: hub.isOnline(row.id) });
+// Как человека видят другие: статус (online, idle, dnd, offline) и online — для версий до 1.7.3
+const withOnline = (row) => {
+  const status = presenceOf(row.id, row.status);
+  return { ...toPublicUser(row), online: status !== 'offline', status };
+};
 
 function createOAuthUser(provider, profile) {
   // Логин профиля — из почты, а если почту не дали (Яндекс без права на email) — из логина сервиса
@@ -400,6 +405,19 @@ export function createApi() {
       const row = users.byId(req.user.id);
       notifyRelated(row.id, { type: 'user:updated', user: toPublicUser(row) });
       return toSelf(row);
+    })
+  );
+
+  // Свой статус: активен, неактивен, не беспокоить, невидимый. Другие устройства узнают о нём сразу
+  api.put(
+    '/me/status',
+    handle((req) => {
+      const status = str(req.body.status);
+      if (!STATUSES.includes(status)) throw new HttpError(400, 'Неизвестный статус');
+      users.setStatus(req.user.id, status);
+      hub.send(req.user.id, { type: 'me:status', status });
+      broadcastPresence(req.user.id);
+      return toSelf(users.byId(req.user.id));
     })
   );
 
