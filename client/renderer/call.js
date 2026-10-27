@@ -129,9 +129,11 @@ function cameraConstraints(settings) {
 }
 
 // Режимы демонстрации экрана: плавность для игр или чёткость для текста
+// motion — 720p 60 кадров/с (игры, видео): при нехватке скорости держим плавность;
+// detail — 1080p 30 кадров/с (текст, фильмы): держим чёткость
 const SCREEN_MODES = {
-  motion: { width: 1280, height: 720, frameRate: 30, bitrate: 2_500_000, hint: 'motion', degradation: 'maintain-framerate' },
-  detail: { width: 1920, height: 1080, frameRate: 15, bitrate: 3_000_000, hint: 'detail', degradation: 'maintain-resolution' },
+  motion: { width: 1280, height: 720, frameRate: 60, bitrate: 5_000_000, hint: 'motion', degradation: 'maintain-framerate' },
+  detail: { width: 1920, height: 1080, frameRate: 30, bitrate: 6_000_000, hint: 'detail', degradation: 'maintain-resolution' },
 };
 
 // Каждое соединение несёт четыре «слота» в одном и том же порядке. Включить камеру или экран —
@@ -178,7 +180,7 @@ class LocalMedia {
 
   async startScreen({ mode = 'motion', audio = false } = {}) {
     const m = SCREEN_MODES[mode] || SCREEN_MODES.motion;
-    const limits = { width: { max: m.width }, height: { max: m.height }, frameRate: { max: m.frameRate } };
+    const limits = { width: { max: m.width }, height: { max: m.height }, frameRate: { ideal: m.frameRate, max: m.frameRate } };
     const stream = await navigator.mediaDevices.getDisplayMedia({ video: limits, audio });
     const video = stream.getVideoTracks()[0];
     video.contentHint = m.hint;
@@ -323,7 +325,7 @@ class PeerLink {
     this.tune(slot);
   }
 
-  // Ограничения скорости: голос важнее всего, экран — до 2,5–3 Мбит/с, камера — до 0,8
+  // Ограничения скорости: голос важнее всего, экран — до 5–6 Мбит/с, камера — до 0,8
   async tune(slot) {
     const t = this.transceiver(slot);
     if (!t || !this.local.tracks[slot]) return;
@@ -337,6 +339,8 @@ class PeerLink {
     } else if (slot === 'screen') {
       const mode = SCREEN_MODES[this.local.screenMode];
       enc.maxBitrate = mode.bitrate;
+      enc.maxFramerate = mode.frameRate;
+      enc.scaleResolutionDownBy = 1;
       params.degradationPreference = mode.degradation;
     } else {
       return;

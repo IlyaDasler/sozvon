@@ -157,12 +157,23 @@ ipcMain.handle('oauth', async (_event, authUrl) => {
 let screenSources = new Map();
 let screenChoice = null;
 
+// Экраны и окна приложений. Свёрнутые окна приходят без картинки — их не прячем, показываем значок приложения
 ipcMain.handle('screen:sources', async () => {
-  const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 } });
+  const sources = await desktopCapturer.getSources({
+    types: ['screen', 'window'],
+    thumbnailSize: { width: 400, height: 225 },
+    fetchWindowIcons: true,
+  });
   screenSources = new Map(sources.map((s) => [s.id, s]));
   return sources
-    .filter((s) => !s.thumbnail.isEmpty())
-    .map((s) => ({ id: s.id, name: s.name, screen: s.id.startsWith('screen:'), thumbnail: s.thumbnail.toDataURL() }));
+    .filter((s) => s.name && (s.id.startsWith('screen:') || s.name !== win?.getTitle()))
+    .map((s) => ({
+      id: s.id,
+      name: s.name,
+      screen: s.id.startsWith('screen:'),
+      thumbnail: s.thumbnail.isEmpty() ? null : s.thumbnail.toDataURL(),
+      icon: s.appIcon && !s.appIcon.isEmpty() ? s.appIcon.toDataURL() : null,
+    }));
 });
 
 // audio — передавать и звук компьютера (Windows умеет захватывать весь системный звук)

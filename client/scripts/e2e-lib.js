@@ -48,9 +48,17 @@ let screenSources = new Map();
 let screenChoice = null;
 let windowCount = 0;
 ipcMain.handle('screen:sources', async () => {
-  const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 } });
+  const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 400, height: 225 }, fetchWindowIcons: true });
   screenSources = new Map(sources.map((s) => [s.id, s]));
-  return sources.map((s) => ({ id: s.id, name: s.name, screen: s.id.startsWith('screen:'), thumbnail: s.thumbnail.toDataURL() }));
+  return sources
+    .filter((s) => s.name)
+    .map((s) => ({
+      id: s.id,
+      name: s.name,
+      screen: s.id.startsWith('screen:'),
+      thumbnail: s.thumbnail.isEmpty() ? null : s.thumbnail.toDataURL(),
+      icon: s.appIcon && !s.appIcon.isEmpty() ? s.appIcon.toDataURL() : null,
+    }));
 });
 ipcMain.handle('screen:choose', (_e, id) => {
   screenChoice = screenSources.get(id) || null;
