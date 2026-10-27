@@ -31,10 +31,16 @@ if (-not $InviteCode) {
   $alphabet = 'abcdefghjkmnpqrstuvwxyz23456789'.ToCharArray()
   $InviteCode = -join (1..8 | ForEach-Object { $alphabet | Get-Random })
 }
-if (-not $PublicIp) { $PublicIp = $previous['PUBLIC_IP'] }
+# Адрес ПК в домашней сети: адаптер с обычным шлюзом (у VPN-туннелей его обычно нет)
+$localIp = (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway } | Select-Object -First 1).IPv4Address.IPAddress
+
+# Внешний IP определяем каждый раз заново: он мог смениться.
+# Запрос привязан к домашнему адресу, поэтому идёт мимо VPN, и мы получаем настоящий IP, а не адрес VPN-сервера
 if (-not $PublicIp) {
-  Write-Host 'Определяю внешний IP...'
-  $PublicIp = (Invoke-RestMethod -Uri 'https://api.ipify.org' -TimeoutSec 15).Trim()
+  Write-Host 'Определяю внешний IP (мимо VPN)...'
+  $PublicIp = & $node -e "require('https').get({ host: 'api.ipify.org', localAddress: '$localIp', timeout: 15000 }, (r) => { let d = ''; r.on('data', (c) => (d += c)); r.on('end', () => console.log(d.trim())); }).on('error', () => process.exit(1))"
+  if ($LASTEXITCODE -or -not $PublicIp) { throw 'Не удалось определить внешний IP. Укажите его сами: -PublicIp 1.2.3.4' }
+  $PublicIp = "$PublicIp".Trim()
 }
 
 # Останавливаем уже запущенный сервер
@@ -124,11 +130,11 @@ foreach ($i in 1..20) {
 }
 if (-not $ok) { throw "Сервер не ответил. Смотрите журнал: $InstallDir\logs\server.log" }
 
-$localIp = (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway } | Select-Object -First 1).IPv4Address.IPAddress
 Write-Host ''
 Write-Host 'Сервер «Созвон» запущен и будет стартовать сам при входе в Windows.' -ForegroundColor Green
 Write-Host "  Адрес для друзей:   http://${PublicIp}:$Port"
 Write-Host "  Адрес в домашней сети: http://${localIp}:$Port"
+Write-Host "  Адрес на этом ПК:   http://localhost:$Port"
 Write-Host "  Код приглашения:    $InviteCode"
 Write-Host "  Папка сервера:      $InstallDir"
 Write-Host ''
