@@ -118,8 +118,14 @@ ipcMain.on('update:download', () => {
   setUpdateStatus({ state: 'downloading', percent: 0 });
   autoUpdater.downloadUpdate().catch(() => {}); // ошибка придёт через событие 'error'
 });
-// true, true — установить тихо и сразу запустить новую версию
-ipcMain.on('update:install', () => updateStatus.state === 'ready' && autoUpdater.quitAndInstall(true, true));
+// true, true — установить тихо и сразу запустить новую версию.
+// Окно закрываем заранее: установщик не должен застать Созвон ещё запущенным
+ipcMain.on('update:install', () => {
+  if (updateStatus.state !== 'ready') return;
+  app.removeAllListeners('window-all-closed');
+  win?.destroy();
+  autoUpdater.quitAndInstall(true, true);
+});
 
 // Вход через Google / Яндекс / VK: открываем страницу входа в обычном браузере и ждём ответ на localhost
 let pendingOAuth = null;

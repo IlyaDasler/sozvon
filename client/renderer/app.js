@@ -23,6 +23,8 @@ const ICONS = {
   hash: '<svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>',
   speaker: '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>',
   volume: '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7"/></svg>',
+  noise: '<svg viewBox="0 0 24 24"><path d="M2 12h2M6 8v8M10 5v14M14 8v8M18 10v4M22 12h0"/></svg>',
+  noiseOff: '<svg viewBox="0 0 24 24"><path d="M2 12h2M6 8v8M10 5v14M14 8v8M18 10v4M3 3l18 18"/></svg>',
   expand: '<svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>',
 };
 
@@ -841,21 +843,28 @@ function finishCall(message) {
 // ---------- Микрофон и звук ----------
 
 function applyAudioState() {
-  activeSession()?.setMuted(state.muted || state.deafened, state.deafened);
-  const micOff = state.muted || state.deafened;
+  const { muted: micOff, deafened } = audioFlags();
+  activeSession()?.setMuted(micOff, deafened);
   for (const id of ['mic-btn', 'call-mute']) {
     $(id).innerHTML = micOff ? ICONS.micOff : ICONS.mic;
     $(id).classList.toggle('off', micOff);
+    $(id).title = forcedMute()
+      ? 'В этой комнате вам нельзя говорить'
+      : micOff
+        ? 'Включить микрофон (Ctrl+Shift+M)'
+        : 'Выключить микрофон (Ctrl+Shift+M)';
   }
   for (const id of ['deafen-btn', 'call-deafen']) {
-    $(id).innerHTML = state.deafened ? ICONS.soundOff : ICONS.sound;
-    $(id).classList.toggle('off', state.deafened);
+    $(id).innerHTML = deafened ? ICONS.soundOff : ICONS.sound;
+    $(id).classList.toggle('off', deafened);
+    $(id).title = deafened ? 'Включить звук (Ctrl+Shift+D)' : 'Выключить звук — вы перестанете слышать остальных (Ctrl+Shift+D)';
   }
   store.set('muted', state.muted);
   store.set('deafened', state.deafened);
 }
 
 function toggleMute() {
+  if (forcedMute()) return toast('В этой комнате вам нельзя говорить');
   if (state.deafened) {
     state.deafened = false;
     state.muted = false;
@@ -1072,6 +1081,7 @@ let micTestRequest = 0;
 // Полоска двигается, когда говоришь: сразу видно, что микрофон выбран правильный
 async function startMicMeter() {
   const request = ++micTestRequest;
+  const listening = Boolean(micMonitor);
   stopMicMeter();
   $('mic-test-hint').textContent = '';
   try {
@@ -1083,16 +1093,48 @@ async function startMicMeter() {
       fill.classList.toggle('loud', level > 0.9);
     });
     micTest = { stream, meter };
+    if (listening) startMicMonitor();
   } catch (err) {
     if (request === micTestRequest) $('mic-test-hint').textContent = mediaErrorText(err);
   }
 }
 
 function stopMicMeter() {
+  stopMicMonitor();
   micTest?.meter.stop();
   micTest?.stream.getTracks().forEach((t) => t.stop());
   micTest = null;
   $('mic-meter').style.width = '0';
+}
+
+// «Слушать себя»: микрофон сразу звучит в выбранных наушниках — слышно и качество, и шумоподавление
+let micMonitor = null; // { ctx, source }
+
+function startMicMonitor() {
+  if (!micTest) return;
+  stopMicMonitor();
+  const ctx = newAudioContext($('set-speaker').value);
+  const source = ctx.createMediaStreamSource(micTest.stream);
+  source.connect(ctx.destination);
+  ctx.resume().catch(() => {});
+  micMonitor = { ctx, source };
+  $('mic-monitor-btn').textContent = 'Перестать слушать';
+  $('mic-monitor-btn').classList.add('on');
+}
+
+function stopMicMonitor() {
+  if (!micMonitor) return;
+  micMonitor.source.disconnect();
+  micMonitor.ctx.close();
+  micMonitor = null;
+  $('mic-monitor-btn').textContent = 'Слушать себя';
+  $('mic-monitor-btn').classList.remove('on');
+}
+
+async function toggleMicMonitor() {
+  if (micMonitor) return stopMicMonitor();
+  if (!micTest) await startMicMeter();
+  startMicMonitor();
 }
 
 // Записываем 5 секунд и проигрываем — человек слышит себя так же, как его слышат друзья
@@ -1101,6 +1143,7 @@ async function recordMicTest() {
   if (!micTest) return;
   const btn = $('mic-test-btn');
   btn.disabled = true;
+  stopMicMonitor(); // иначе запись наложится на живой звук
   try {
     const recorder = new MediaRecorder(micTest.stream);
     const chunks = [];
@@ -1156,7 +1199,13 @@ function stopCamPreview() {
 }
 
 $('set-mic').onchange = startMicMeter;
-$('set-ns').onchange = startMicMeter;
+// Шумоподавление переключается сразу — и в разговоре тоже
+$('set-ns').onchange = () => {
+  setNoiseSuppression($('set-ns').checked);
+  startMicMeter();
+};
+$('set-speaker').onchange = () => micMonitor && startMicMonitor();
+$('mic-monitor-btn').onclick = toggleMicMonitor;
 $('mic-test-btn').onclick = recordMicTest;
 $('speaker-test-btn').onclick = () => tone.blip('test', $('set-speaker').value, 0.15);
 $('cam-test-btn').onclick = toggleCamPreview;

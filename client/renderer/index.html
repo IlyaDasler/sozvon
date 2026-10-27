@@ -151,6 +151,7 @@
           <div class="call-controls">
             <button class="round-btn" id="call-mute" title="Микрофон (Ctrl+Shift+M)"></button>
             <button class="round-btn" id="call-deafen" title="Звук (Ctrl+Shift+D)"></button>
+            <button class="round-btn" id="call-ns"></button>
             <button class="round-btn" id="call-cam"></button>
             <button class="round-btn" id="call-screen"></button>
             <button class="round-btn hangup" id="hangup-btn" title="Завершить">
@@ -176,10 +177,6 @@
             <div class="muted small ellipsis" id="room-sub"></div>
           </div>
           <div class="spacer"></div>
-          <button class="btn success" id="room-join-btn" title="Подключиться к голосовому каналу">
-            <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
-            Подключиться
-          </button>
           <button class="icon-btn" id="room-manage-btn" title="Участники и настройки комнаты">
             <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>
           </button>
@@ -240,15 +237,16 @@
         <span>Динамики / наушники</span>
         <select id="set-speaker"></select>
       </label>
-      <label class="check"><input type="checkbox" id="set-ns"> Шумоподавление и эхоподавление</label>
+      <label class="check"><input type="checkbox" id="set-ns"> Шумоподавление — убирает фоновый шум, клавиатуру и вентилятор</label>
       <div class="field">
         <span>Проверка звука</span>
         <div class="meter" title="Громкость микрофона"><div class="meter-fill" id="mic-meter"></div></div>
         <div class="row wrap">
+          <button type="button" class="btn" id="mic-monitor-btn">Слушать себя</button>
           <button type="button" class="btn" id="mic-test-btn">Проверить микрофон</button>
           <button type="button" class="btn" id="speaker-test-btn">Проверить динамики</button>
         </div>
-        <span class="hint-text">Скажите что-нибудь — полоска должна двигаться. «Проверить микрофон» запишет 5 секунд и проиграет запись: вы услышите себя так, как вас слышат друзья.</span>
+        <span class="hint-text">Скажите что-нибудь — полоска должна двигаться. «Слушать себя» сразу выводит микрофон в выбранные наушники: слышно качество и как работает шумоподавление (без наушников может засвистеть). «Проверить микрофон» запишет 5 секунд и проиграет запись так, как вас слышат друзья.</span>
         <p class="error" id="mic-test-hint"></p>
       </div>
 
@@ -361,19 +359,39 @@
     </form>
   </div>
 
-  <!-- Участники и настройки комнаты -->
+  <!-- Участники, роли и баны комнаты -->
   <div id="room-manage" class="modal hidden">
-    <div class="modal-card room-card">
+    <div class="modal-card room-card manage-card">
       <h3 id="rm-title"></h3>
-      <form class="row rename-row" id="rm-rename">
-        <label class="field grow"><span>Название</span><input id="rm-name" maxlength="40"></label>
-        <button class="btn">Сохранить</button>
-      </form>
-      <h4>Участники</h4>
-      <div class="member-list" id="rm-members"></div>
-      <h4>Добавить друзей</h4>
-      <div class="friend-list" id="rm-friends"></div>
-      <button type="button" class="btn" id="rm-add">Добавить отмеченных</button>
+      <div class="tabs" id="rm-tabs">
+        <button type="button" class="tab active" data-tab="members">Участники</button>
+        <button type="button" class="tab" data-tab="roles">Роли и права</button>
+        <button type="button" class="tab" data-tab="bans">Баны<span id="rm-ban-count"></span></button>
+      </div>
+
+      <section data-pane="members">
+        <form class="row rename-row" id="rm-rename">
+          <label class="field grow"><span>Название</span><input id="rm-name" maxlength="40"></label>
+          <button class="btn">Сохранить</button>
+        </form>
+        <div class="member-list" id="rm-members"></div>
+        <div id="rm-invite">
+          <h4>Добавить друзей</h4>
+          <div class="friend-list" id="rm-friends"></div>
+          <button type="button" class="btn" id="rm-add">Добавить отмеченных</button>
+        </div>
+      </section>
+
+      <section data-pane="roles" class="hidden">
+        <p class="hint-text">Создатель комнаты может всё. Остальным права даёт роль, а без роли действуют права «всех участников». Выгонять, банить и менять роли можно только тех, у кого прав меньше.</p>
+        <div class="role-list" id="rm-roles"></div>
+        <button type="button" class="btn" id="rm-role-new">+ Новая роль</button>
+      </section>
+
+      <section data-pane="bans" class="hidden">
+        <div class="member-list" id="rm-bans"></div>
+      </section>
+
       <p class="error" id="rm-error"></p>
       <div class="row">
         <button type="button" class="btn danger-outline" id="rm-leave"></button>

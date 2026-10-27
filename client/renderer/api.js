@@ -48,6 +48,7 @@ const Api = {
   get: (path) => Api.request('GET', path),
   post: (path, body = {}) => Api.request('POST', path, body),
   patch: (path, body = {}) => Api.request('PATCH', path, body),
+  put: (path, body = {}) => Api.request('PUT', path, body),
   del: (path) => Api.request('DELETE', path),
 };
 

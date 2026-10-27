@@ -1,7 +1,7 @@
 {
   "name": "sozvon",
   "productName": "Sozvon",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Созвон — голосовые звонки и чат с друзьями",
   "author": "IlyaDasler",
   "license": "MIT",
@@ -33,9 +33,9 @@
       "icon": "build/icon.png"
     },
     "nsis": {
-      "oneClick": false,
+      "oneClick": true,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
+      "include": "build/installer.nsh",
       "shortcutName": "Созвон",
       "uninstallDisplayName": "Созвон",
       "artifactName": "Sozvon-Setup-${version}.${ext}",

@@ -245,16 +245,19 @@ body.has-voice .update-bar { bottom: 124px; }
 
 /* ---------- Панель разговора ---------- */
 
+/* Разговор занимает большую часть места, чат — остаток снизу. Плитки прокручиваются внутри,
+   а строка состояния и кнопки всегда видны, при любом размере окна */
 .call-panel {
-  flex: 0 1 auto; min-height: 0; overflow-y: auto;
-  padding: 18px 16px 16px;
+  flex: 1 1 75%; min-height: 230px; overflow: hidden;
+  padding: 12px 16px;
   background: linear-gradient(180deg, #0f1a15, #12151a);
   border-bottom: 1px solid var(--line);
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  display: flex; flex-direction: column; gap: 10px;
 }
-.call-status-row { display: flex; align-items: center; gap: 8px; min-height: 20px; }
+.chat:has(> .call-panel:not(.hidden)) > .messages { flex: 1 1 25%; min-height: 90px; }
+.call-status-row { flex: none; align-self: center; display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 4px 8px; min-height: 20px; text-align: center; }
 .call-status { color: var(--muted); font-variant-numeric: tabular-nums; }
-.call-controls { display: flex; align-items: center; gap: 12px; }
+.call-controls { flex: none; align-self: center; display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .round-btn {
   width: 48px; height: 48px; border-radius: 50%; border: 0;
   display: grid; place-items: center;
@@ -268,15 +271,18 @@ body.has-voice .update-bar { bottom: 124px; }
 .round-btn.hangup:hover { background: #ff636a; }
 
 /* Плитки участников: аватар, камера или экран */
-.stage { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.stage {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 2px;
+  display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 10px;
+}
 .tile {
-  position: relative; overflow: hidden; cursor: pointer;
-  width: 190px; aspect-ratio: 16 / 10;
+  position: relative; overflow: hidden; cursor: pointer; flex: none;
+  width: min(190px, 100%); aspect-ratio: 16 / 10;
   display: grid; place-items: center;
   border-radius: 12px; background: var(--bg-3);
   transition: box-shadow .1s;
 }
-.stage.has-video .tile { width: 260px; }
+.stage.has-video .tile { width: min(260px, 100%); }
 .tile.speaking { box-shadow: inset 0 0 0 3px var(--accent); }
 .tile.connecting { opacity: .55; }
 .tile video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; display: none; }
@@ -298,19 +304,34 @@ video.mirror { transform: scaleX(-1); }
   display: flex; align-items: center; gap: 4px;
   opacity: 0; transition: opacity .15s;
 }
-.tile:hover .tile-tools { opacity: 1; }
+.tile:hover .tile-tools, .tile.screen .tile-tools, .tile:fullscreen .tile-tools { opacity: 1; }
 .tile-volume, .tile-btn {
   display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px;
   border: 0; border-radius: 6px; background: rgba(0, 0, 0, .6); color: #fff; cursor: pointer;
 }
 .tile-volume svg, .tile-btn svg { width: 15px; height: 15px; }
 .tile-volume input { width: 70px; accent-color: var(--accent); }
-/* Развёрнутая плитка (чужой экран или по клику) занимает всю ширину, остальные — полоской снизу */
-.stage.has-focus .tile { width: 150px; }
-.stage.has-focus .tile.focused { order: -1; width: 100%; aspect-ratio: auto; height: min(44vh, 540px); }
+/* Развёрнутая плитка (чужой экран или по клику) занимает всё свободное место, остальные — рядами снизу */
+.stage.has-focus {
+  display: grid; align-content: stretch;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-rows: minmax(120px, 1fr); grid-auto-rows: auto;
+}
+.stage.has-focus .tile { width: 100%; max-width: 160px; justify-self: center; }
+.stage.has-focus .tile.focused { order: -1; grid-column: 1 / -1; max-width: none; height: 100%; aspect-ratio: auto; }
 .stage.has-focus .tile:not(.focused) .avatar.big { width: 52px; height: 52px; font-size: 22px; }
-.tile:fullscreen { border-radius: 0; box-shadow: none; }
+.tile:fullscreen { border-radius: 0; box-shadow: none; cursor: default; }
 .tile:fullscreen video { object-fit: contain; }
+
+@media (max-height: 640px) {
+  .call-panel { padding: 8px 12px; gap: 8px; }
+  .round-btn { width: 40px; height: 40px; }
+  .round-btn svg { width: 19px; height: 19px; }
+}
+@media (max-width: 1000px) {
+  .round-btn { width: 42px; height: 42px; }
+  .call-controls { gap: 8px; }
+}
 
 /* Значок качества связи: три столбика */
 .q-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; flex: none; }
@@ -390,7 +411,32 @@ video.mirror { transform: scaleX(-1); }
 .rename-row .btn { height: 40px; }
 .member-list { display: flex; flex-direction: column; gap: 6px; }
 .member-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; background: var(--bg-3); }
-.member-row .btn { height: 30px; padding: 0 12px; font-size: 13px; }
+.member-row .grow { min-width: 0; }
+.member-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; flex: none; max-width: 70%; }
+.member-actions:empty { display: none; }
+.member-row .btn { height: 30px; padding: 0 10px; font-size: 13px; }
+.role-select { height: 30px; padding: 0 6px; font-size: 13px; max-width: 150px; }
+
+.modal-card.manage-card { width: min(680px, calc(100% - 32px)); }
+.tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+.tab {
+  padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  background: none; color: var(--muted); font: inherit; font-weight: 600; cursor: pointer;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.manage-card section > .member-list { margin-top: 4px; }
+.role-list { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+.role-card { padding: 12px; border-radius: 10px; background: var(--bg-3); }
+.role-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.role-head input:not([type]) { flex: 1; min-width: 0; height: 32px; }
+.role-head input[type=color] { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 6px; background: none; cursor: pointer; }
+.perm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 2px 12px; }
+.perm-grid .check { margin: 0; padding: 3px 0; }
+.perm-grid .dim { opacity: .45; }
+.role-card .row { margin-top: 8px; }
+.role-card .btn { height: 30px; padding: 0 12px; font-size: 13px; }
+.btn.on { box-shadow: inset 0 0 0 2px var(--accent); color: var(--accent); }
 
 /* ---------- Выбор экрана ---------- */
 
