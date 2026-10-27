@@ -1,7 +1,7 @@
 {
   "name": "sozvon",
   "productName": "Sozvon",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Созвон — голосовые звонки и чат с друзьями",
   "author": "IlyaDasler",
   "license": "MIT",
@@ -9,17 +9,21 @@
   "scripts": {
     "start": "electron .",
     "icon": "node scripts/make-icon.js",
-    "dist": "node scripts/make-icon.js && electron-builder --win --x64"
+    "dist": "node scripts/make-icon.js && electron-builder --win --x64 --publish never && node scripts/check-package.js"
   },
   "build": {
     "appId": "ru.ilyadasler.sozvon",
     "productName": "Sozvon",
     "copyright": "© IlyaDasler",
     "files": [
-      "main.js",
-      "preload.js",
+      "*.js",
       "renderer/**/*"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "IlyaDasler",
+      "repo": "sozvon"
+    },
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -44,5 +48,8 @@
   "devDependencies": {
     "electron": "^45.0.0",
     "electron-builder": "^26.18.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
   }
 }
