@@ -1338,10 +1338,14 @@ function renderUpdate() {
   $('update-check-btn').disabled = s.state === 'checking' || s.state === 'downloading';
 }
 
+// Сначала говорим, что происходит: иначе окно просто исчезает, и человек жмёт на ярлык,
+// пока установщик меняет файлы, — Windows отвечает «Отсутствует ярлык»
 function installUpdate() {
   hangup();
   leaveRoomVoice();
-  window.desktop.update.install();
+  for (const el of document.querySelectorAll('.modal')) el.classList.add('hidden');
+  $('updating').classList.remove('hidden');
+  setTimeout(() => window.desktop.update.install(), 1500);
 }
 
 function startUpdate() {
