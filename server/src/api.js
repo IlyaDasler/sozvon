@@ -33,6 +33,7 @@ import { voice } from './voice.js';
 const USERNAME_RE = /^[a-z0-9_.]{3,24}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const COLOR_RE = /^#[0-9a-f]{6}$/i;
+const MAX_BIO = 190;
 const COLORS = ['#e5484d', '#f76b15', '#ffc53d', '#30a46c', '#12a594', '#0090ff', '#6e56cf', '#d6409f'];
 
 class HttpError extends Error {
@@ -552,6 +553,10 @@ export function createApi() {
       const avatarColor = req.body.avatarColor === undefined ? user.avatar_color : str(req.body.avatarColor);
       validateDisplayName(displayName);
       if (!COLOR_RE.test(avatarColor)) throw new HttpError(400, 'Неверный цвет');
+      const bio = req.body.bio === undefined ? user.bio || '' : str(req.body.bio);
+      if (bio.length > MAX_BIO) throw new HttpError(400, `«О себе» — не длиннее ${MAX_BIO} символов`);
+      const bannerColor = req.body.bannerColor === undefined ? user.banner_color : req.body.bannerColor && str(req.body.bannerColor).toLowerCase();
+      if (bannerColor && !COLOR_RE.test(bannerColor)) throw new HttpError(400, 'Неверный цвет баннера');
 
       if (req.body.newPassword) {
         // Если пароля ещё нет (профиль создан через Яндекс), задаём его без проверки текущего
@@ -564,7 +569,7 @@ export function createApi() {
         users.updatePassword(user.id, hashPassword(req.body.newPassword));
       }
 
-      users.updateProfile(user.id, displayName, avatarColor);
+      users.updateProfile(user.id, { displayName, avatarColor, bio, bannerColor: bannerColor || null });
       const row = users.byId(user.id);
       notifyRelated(user.id, { type: 'user:updated', user: toPublicUser(row) });
       return toSelf(row);
