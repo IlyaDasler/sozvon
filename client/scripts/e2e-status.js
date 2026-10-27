@@ -1,11 +1,11 @@
 // Сквозной тест статусов и уведомлений: два окна, одно меняет статус, другое видит; центр уведомлений.
 // Запуск (сервер должен работать): npx electron scripts/e2e-status.js [адрес сервера]
-const { api, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
+const { api, befriend, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
 
 runTest(async () => {
   const a = await register('sa', 'Аня');
   const b = await register('sb', 'Боря');
-  await api('POST', '/contacts', { username: b.user.username }, a.token);
+  await befriend(a, b);
   const winA = await openClient('sa', a);
   const winB = await openClient('sb', b);
   console.log('✔ оба вошли');

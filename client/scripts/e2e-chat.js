@@ -1,7 +1,7 @@
 // Сквозной тест чата: разметка, ссылки, смайлики, файлы и картинки, предпросмотр ссылок.
 // Запуск (сервер должен работать, для превью — с LINK_PREVIEW_ALLOW_PRIVATE=1): npx electron scripts/e2e-chat.js [адрес сервера]
 const http = require('node:http');
-const { api, register, js, waitFor, openClient, screenshot, runTest } = require('./e2e-lib');
+const { api, befriend, register, js, waitFor, openClient, screenshot, runTest } = require('./e2e-lib');
 
 // Последнее сообщение в открытом чате
 const lastMsg = `[...document.querySelectorAll('#messages .msg-text')].at(-1)`;
@@ -9,7 +9,7 @@ const lastMsg = `[...document.querySelectorAll('#messages .msg-text')].at(-1)`;
 runTest(async () => {
   const a = await register('ca', 'Аня');
   const b = await register('cb', 'Боря');
-  await api('POST', '/contacts', { username: b.user.username }, a.token);
+  await befriend(a, b);
   const winA = await openClient('ca', a);
   const winB = await openClient('cb', b);
   await js(winA, `selectContact(${b.user.id})`);

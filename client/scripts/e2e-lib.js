@@ -21,6 +21,12 @@ async function api(method, url, body, token) {
   return data;
 }
 
+// Дружба — через заявку: a зовёт, b принимает
+async function befriend(a, b) {
+  await api('POST', '/contacts', { username: b.user.username }, a.token);
+  await api('POST', `/friend-requests/${a.user.id}/accept`, null, b.token);
+}
+
 async function register(name, displayName) {
   const suffix = Date.now().toString(36).slice(-5);
   // E2E_INVITE — код приглашения, если сервер его требует
@@ -143,4 +149,4 @@ function runTest(run) {
   });
 }
 
-module.exports = { SERVER, api, register, js, waitFor, sleep, openClient, received, tilePlaying, screenshot, runTest };
+module.exports = { SERVER, api, befriend, register, js, waitFor, sleep, openClient, received, tilePlaying, screenshot, runTest };

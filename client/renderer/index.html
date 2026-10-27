@@ -89,6 +89,11 @@
       </div>
 
       <div class="sidebar-scroll">
+        <button type="button" class="contact friends-nav" id="friends-nav">
+          <span class="room-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></span>
+          <div class="name">Друзья</div>
+          <span class="badge hidden" id="friends-nav-badge"></span>
+        </button>
         <div class="list-title with-action">
           <span>Комнаты</span>
           <button class="icon-btn" id="new-room-btn" title="Создать комнату">
@@ -97,14 +102,7 @@
         </div>
         <ul id="room-list" class="contact-list room-list"></ul>
 
-        <div class="list-title">Друзья — <span id="contact-count">0</span></div>
-        <form id="add-contact" class="add-contact">
-          <input id="add-contact-input" placeholder="Добавить друга по логину" spellcheck="false">
-          <button class="icon-btn" title="Добавить">
-            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-          </button>
-        </form>
-        <p class="error small pad" id="add-contact-error"></p>
+        <div class="list-title">Личные сообщения — <span id="contact-count">0</span></div>
         <ul id="contact-list" class="contact-list"></ul>
       </div>
 
@@ -150,10 +148,36 @@
     </aside>
 
     <main class="content">
-      <div id="empty-state" class="empty">
-        <img src="logo.svg" alt="" width="72" height="72">
-        <h2>Привет!</h2>
-        <p class="muted">Выберите друга или комнату слева. Друга можно добавить по его логину.<br>Ваш логин: <b id="empty-username"></b></p>
+      <div id="empty-state" class="friends-view">
+        <header class="chat-head friends-head">
+          <span class="friends-title"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><b>Друзья</b></span>
+          <span class="head-divider"></span>
+          <nav class="friend-tabs" id="friend-tabs">
+            <button type="button" data-tab="online">В сети</button>
+            <button type="button" data-tab="all">Все</button>
+            <button type="button" data-tab="incoming">Входящие<span class="badge hidden" id="ftab-incoming"></span></button>
+            <button type="button" data-tab="outgoing">Отправленные</button>
+            <button type="button" data-tab="blocked">Заблокированные</button>
+            <button type="button" data-tab="add" class="add-tab">Добавить в друзья</button>
+          </nav>
+        </header>
+        <div class="friends-body">
+          <form id="friend-add-form" class="friend-add hidden">
+            <h3>Добавить в друзья</h3>
+            <p class="muted">Введите логин друга — ему придёт заявка, и как только он её примет, вы появитесь друг у друга в друзьях. Ваш логин: <b id="empty-username"></b></p>
+            <div class="friend-add-row">
+              <input id="friend-add-input" placeholder="Логин, например vasya_pro" spellcheck="false" autocomplete="off">
+              <button class="btn primary" id="friend-add-submit" disabled>Отправить заявку</button>
+            </div>
+            <p class="small" id="friend-add-result"></p>
+          </form>
+          <div id="friends-listing">
+            <input id="friend-search" class="friend-search" placeholder="Поиск" spellcheck="false">
+            <div class="list-title" id="friends-list-title"></div>
+            <div id="friends-list"></div>
+            <p class="muted friends-empty" id="friends-empty"></p>
+          </div>
+        </div>
       </div>
 
       <div id="chat" class="chat hidden">
@@ -530,6 +554,7 @@
   <script src="app.js"></script>
   <script src="voice-ui.js"></script>
   <script src="rooms.js"></script>
+  <script src="friends.js"></script>
   <script src="notifications.js"></script>
   <script src="composer.js"></script>
   <script src="chat-content.js"></script>

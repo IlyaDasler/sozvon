@@ -142,7 +142,8 @@ function userById(id) {
     if (m) return m;
   }
   if (state.call?.peerId === id) return state.call.peer;
-  return null;
+  // Заявки и заблокированные — чтобы и у них открывалась карточка профиля
+  return [...state.requests.incoming, ...state.requests.outgoing, ...state.blocked].find((u) => u.id === id) || null;
 }
 
 // Статус «в сети» и профиль обновляем везде, где этот человек виден
@@ -473,6 +474,7 @@ async function refreshContacts() {
     const list = await Api.get('/contacts');
     state.contacts = new Map(list.map((c) => [c.id, c]));
     renderContacts();
+    refreshFriendRequests();
     if (state.selectedId && !state.contacts.has(state.selectedId)) selectContact(null);
     else if (state.selectedId) renderChatHeader();
   } catch (err) {
@@ -497,6 +499,8 @@ function logout(message) {
     selectedRoomId: null,
     roomHistory: new Map(),
     roomUnread: new Map(),
+    requests: { incoming: [], outgoing: [] },
+    blocked: [],
   });
   for (const id of ['room-create', 'room-manage', 'screen-picker']) $(id).classList.add('hidden');
   closeSettings();
@@ -532,9 +536,10 @@ function renderContacts() {
   if (!sorted.length) {
     const li = document.createElement('li');
     li.className = 'muted small pad';
-    li.textContent = 'Пока никого. Попросите друга зарегистрироваться и добавьте его по логину.';
+    li.textContent = 'Пока никого. Добавьте друга по логину в разделе «Друзья» выше.';
     list.append(li);
   }
+  renderFriends();
 
   for (const c of sorted) {
     const li = document.createElement('li');
@@ -569,23 +574,6 @@ function renderContacts() {
     list.append(li);
   }
 }
-
-$('add-contact').onsubmit = async (e) => {
-  e.preventDefault();
-  const input = $('add-contact-input');
-  const username = input.value.trim();
-  $('add-contact-error').textContent = '';
-  if (!username) return;
-  try {
-    const user = await Api.post('/contacts', { username });
-    state.contacts.set(user.id, user);
-    input.value = '';
-    selectContact(user.id);
-    toast(`${user.displayName} теперь у вас в друзьях`);
-  } catch (err) {
-    $('add-contact-error').textContent = err.message;
-  }
-};
 
 $('remove-contact-btn').onclick = async () => {
   const c = state.contacts.get(state.selectedId);
@@ -753,10 +741,17 @@ function handleEvent(msg) {
     case 'me:status':
       return onMyStatus(msg.status);
     case 'contact:added':
+      // accepted — это вы сами приняли заявку (с этого или другого устройства)
+      dropRequest(msg.user.id);
       state.contacts.set(msg.user.id, msg.user);
       renderContacts();
-      notify('Новый друг', `${msg.user.displayName} добавил(а) вас в друзья`, { kind: 'friend', open: { contact: msg.user.id } });
+      if (!msg.accepted)
+        notify('Новый друг', `${msg.user.displayName} принял(а) вашу заявку в друзья`, { kind: 'friend', open: { contact: msg.user.id } });
       return;
+    case 'friend:request':
+      return onFriendRequest(msg.user);
+    case 'friend:request:removed':
+      return onFriendRequestRemoved(msg.userId);
     case 'contact:removed':
       state.contacts.delete(msg.userId);
       state.history.delete(msg.userId);

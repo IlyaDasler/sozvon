@@ -1,12 +1,12 @@
 // Сквозной тест звонка один на один: два окна с виртуальными микрофоном и камерой звонят друг другу.
 // Запуск (сервер должен работать): npx electron scripts/e2e-call.js [адрес сервера]
 // E2E_RELAY=1 — только через TURN, E2E_SHOTS=папка — скриншоты, E2E_SHOW=1 — показать окна
-const { api, register, js, waitFor, sleep, openClient, received, tilePlaying, screenshot, runTest } = require('./e2e-lib');
+const { api, befriend, register, js, waitFor, sleep, openClient, received, tilePlaying, screenshot, runTest } = require('./e2e-lib');
 
 runTest(async () => {
   const a = await register('a', 'Тест А');
   const b = await register('b', 'Тест Б');
-  await api('POST', '/contacts', { username: b.user.username }, a.token);
+  await befriend(a, b);
 
   const winA = await openClient('a', a);
   const winB = await openClient('b', b);

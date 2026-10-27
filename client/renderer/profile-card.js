@@ -152,14 +152,28 @@ function openProfileCard(userId, anchor) {
         startCall();
       };
       actions.append(write, callBtn);
+    } else if (state.requests.incoming.some((u) => u.id === userId)) {
+      const accept = Object.assign(document.createElement('button'), { type: 'button', className: 'btn primary', textContent: 'Принять заявку' });
+      accept.onclick = async () => {
+        await acceptFriend(user);
+        openProfileCard(userId, anchor);
+      };
+      actions.append(accept);
+    } else if (state.requests.outgoing.some((u) => u.id === userId)) {
+      actions.append(Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: 'Заявка отправлена', disabled: true }));
+    } else if (state.blocked.some((u) => u.id === userId)) {
+      const unblock = Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: 'Разблокировать' });
+      unblock.onclick = async () => {
+        await unblockUser(user);
+        openProfileCard(userId, anchor);
+      };
+      actions.append(unblock);
     } else {
       const add = Object.assign(document.createElement('button'), { type: 'button', className: 'btn primary', textContent: 'Добавить в друзья' });
       add.onclick = async () => {
         try {
-          const friend = await Api.post('/contacts', { username: user.username });
-          state.contacts.set(friend.id, friend);
-          renderContacts();
-          toast(`${friend.displayName} теперь в друзьях`);
+          const result = await sendFriendRequest(user.username);
+          toast(result.friendship === 'friends' ? `${user.displayName} теперь в друзьях` : `Заявка отправлена: ${user.displayName}`);
           openProfileCard(userId, anchor);
         } catch (err) {
           toast(err.message);

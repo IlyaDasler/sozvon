@@ -3,7 +3,7 @@
 //   mkdir old && git archive v1.4.0 client/renderer client/preload.js | tar -x -C old
 // Запуск (сервер должен работать): E2E_OLD=old/client npx electron scripts/e2e-compat.js [адрес сервера]
 const path = require('node:path');
-const { api, register, js, waitFor, sleep, openClient, runTest } = require('./e2e-lib');
+const { api, befriend, register, js, waitFor, sleep, openClient, runTest } = require('./e2e-lib');
 
 const OLD = path.resolve(process.env.E2E_OLD || '');
 
@@ -59,7 +59,7 @@ runTest(async () => {
   if (!process.env.E2E_OLD) throw new Error('Укажите папку старой версии в E2E_OLD');
   const fresh = await register('cn', 'Новая');
   const old = await register('co', 'Старая');
-  await api('POST', '/contacts', { username: old.user.username }, fresh.token);
+  await befriend(fresh, old);
 
   const winNew = await openClient('cn', fresh);
   const winOld = await openClient('co', old, OLD);
