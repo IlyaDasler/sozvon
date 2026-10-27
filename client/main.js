@@ -1,4 +1,4 @@
-const { app, BrowserWindow, desktopCapturer, globalShortcut, ipcMain, session, shell } = require('electron');
+const { app, BrowserWindow, desktopCapturer, globalShortcut, ipcMain, powerMonitor, session, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { autoUpdater } = require('electron-updater');
@@ -61,10 +61,30 @@ app.whenReady().then(() => {
     win.webContents.once('did-finish-load', () => setTimeout(() => offerRemoveOldCopy(win).catch(() => {}), 3000));
   }
 
+  watchIdle();
+
   // Глобальные клавиши работают, даже когда в фокусе игра
   globalShortcut.register('CommandOrControl+Shift+M', () => win?.webContents.send('hotkey', 'toggle-mute'));
   globalShortcut.register('CommandOrControl+Shift+D', () => win?.webContents.send('hotkey', 'toggle-deafen'));
 });
+
+// ---------- Статус «Неактивен» ----------
+// 10 минут без мыши и клавиатуры или заблокированный экран — сообщаем странице, она передаст серверу
+
+const IDLE_AFTER_SEC = 10 * 60;
+let idleNow = false;
+
+function setIdle(idle) {
+  if (idle === idleNow) return;
+  idleNow = idle;
+  win?.webContents.send('idle', idle);
+}
+
+function watchIdle() {
+  setInterval(() => setIdle(powerMonitor.getSystemIdleTime() >= IDLE_AFTER_SEC), 30_000);
+  powerMonitor.on('lock-screen', () => setIdle(true));
+  powerMonitor.on('unlock-screen', () => setIdle(false));
+}
 
 // ---------- Автообновление ----------
 // Новая версия скачивается в фоне с GitHub Releases; ставится по кнопке или при следующем закрытии приложения.
@@ -123,14 +143,14 @@ ipcMain.on('update:download', () => {
   setUpdateStatus({ state: 'downloading', percent: 0 });
   autoUpdater.downloadUpdate().catch(() => {}); // ошибка придёт через событие 'error'
 });
-// false, true — установщик показывает окошко с ходом установки (без вопросов) и сам запускает новую версию.
-// Без окошка казалось, что ничего не происходит, люди жали на ярлык посреди установки и получали «Отсутствует ярлык».
+// true, true — установить молча, без окна установщика, и сразу запустить новую версию.
+// Что идёт обновление, человек видит в самом приложении («Устанавливаем обновление…») перед его закрытием.
 // Окно приложения закрываем заранее: установщик не должен застать Созвон ещё запущенным
 ipcMain.on('update:install', () => {
   if (updateStatus.state !== 'ready') return;
   app.removeAllListeners('window-all-closed');
   win?.destroy();
-  autoUpdater.quitAndInstall(false, true);
+  autoUpdater.quitAndInstall(true, true);
 });
 
 // Вход через Яндекс: страница входа открывается в окне приложения, присылает ответ на localhost
