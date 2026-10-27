@@ -1,6 +1,7 @@
 // Принимает ответ сервиса входа (Google / Яндекс / VK) на http://localhost:<порт>/callback.
 // Адрес берётся из параметра redirect_uri ссылки входа, которую выдал сервер.
 const http = require('node:http');
+const { BrowserWindow, shell } = require('electron');
 
 const LOOPBACK = ['localhost', '127.0.0.1'];
 const TIMEOUT_MS = 5 * 60_000;
@@ -9,7 +10,8 @@ const page = (ok) => `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><title>Созвон</title></head>
 <body style="margin:0;height:100vh;display:grid;place-items:center;background:#17181c;color:#e8eaed;font-family:'Segoe UI',sans-serif">
 <div style="text-align:center"><h2>${ok ? 'Готово!' : 'Вход отменён'}</h2>
-<p style="color:#9aa0a8">Можно закрыть эту вкладку и вернуться в «Созвон».</p></div></body></html>`;
+<p style="color:#9aa0a8">Можно закрыть эту вкладку и вернуться в «Созвон».</p></div>
+<script>setTimeout(() => window.close(), 400)</script></body></html>`;
 
 /**
  * Начинает ждать ответ. Возвращает { result, close }:
@@ -65,4 +67,38 @@ async function listenForOAuth(authUrl) {
   return { result, close: () => reject(new Error('Вход отменён')) };
 }
 
-module.exports = { listenForOAuth };
+// Яндекс и VK открываем в окне приложения — после входа оно закрывается само.
+// Google вход во встроенных окнах запрещает, поэтому для него — обычный браузер
+const IN_APP_OAUTH_HOSTS = ['oauth.yandex.ru', 'oauth.yandex.com', 'id.vk.com', 'id.vk.ru'];
+
+const opensInApp = (authUrl) => IN_APP_OAUTH_HOSTS.includes(new URL(authUrl).hostname);
+
+/** Окно входа внутри приложения: закрывается само, как только сервис вернул ответ */
+function openOAuthWindow(authUrl, pending, parent) {
+  const title = new URL(authUrl).hostname.includes('yandex') ? 'Вход через Яндекс' : 'Вход через VK';
+  const auth = new BrowserWindow({
+    parent,
+    width: 520,
+    height: 720,
+    title,
+    autoHideMenuBar: true,
+    backgroundColor: '#ffffff',
+    // Отдельный сохраняемый профиль: в следующий раз Яндекс уже помнит вход
+    webPreferences: { partition: 'persist:oauth', sandbox: true, contextIsolation: true, nodeIntegration: false },
+  });
+  auth.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https:\/\//.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  auth.on('page-title-updated', (e) => e.preventDefault());
+  // Закрыли окно, не войдя, — вход отменён (после успешного входа это ничего не меняет)
+  auth.on('closed', () => pending.close());
+  pending.result
+    .finally(() => {
+      if (!auth.isDestroyed()) auth.close();
+    })
+    .catch(() => {});
+  auth.loadURL(authUrl);
+}
+
+module.exports = { listenForOAuth, openOAuthWindow, opensInApp };

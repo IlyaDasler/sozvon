@@ -58,7 +58,8 @@ ipcMain.handle('screen:choose', (_e, id) => {
 });
 ipcMain.handle('update:status', () => ({ state: 'idle', current: 'e2e' }));
 
-async function openClient(name, auth) {
+// root — папка с preload.js и renderer/ (по умолчанию текущая версия; для проверки совместимости — старая)
+async function openClient(name, auth, root = path.join(__dirname, '..')) {
   const ses = session.fromPartition(`e2e-${name}`);
   ses.setPermissionRequestHandler((_wc, _p, cb) => cb(true));
   ses.setDisplayMediaRequestHandler((_req, cb) => {
@@ -74,7 +75,7 @@ async function openClient(name, auth) {
     y: 40 + 40 * windowCount++,
     webPreferences: {
       session: ses,
-      preload: path.join(__dirname, '..', 'preload.js'),
+      preload: path.join(root, 'preload.js'),
       backgroundThrottling: false,
       autoplayPolicy: 'no-user-gesture-required',
     },
@@ -83,7 +84,7 @@ async function openClient(name, auth) {
   win.webContents.on('console-message', (e) => {
     if (e.level === 'error') console.error(`  [${name}] ${e.message} (${path.basename(e.sourceId || '')}:${e.lineNumber})`);
   });
-  await win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  await win.loadFile(path.join(root, 'renderer', 'index.html'));
   await js(win, `localStorage.setItem('session', ${JSON.stringify(JSON.stringify({ base: SERVER, token: auth.token }))}); location.reload()`);
   await sleep(500);
   await waitFor(win, `document.getElementById('conn-dot').classList.contains('ok')`, `${name}: подключение`);
