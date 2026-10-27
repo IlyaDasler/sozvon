@@ -95,6 +95,23 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
 
+  -- Заявки в друзья: from_id зовёт to_id; друзьями становятся, когда to_id примет
+  CREATE TABLE IF NOT EXISTS friend_requests (
+    from_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    to_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (from_id, to_id)
+  );
+  CREATE INDEX IF NOT EXISTS friend_requests_to ON friend_requests (to_id);
+
+  -- Кого человек заблокировал: ни заявок, ни дружбы в обе стороны
+  CREATE TABLE IF NOT EXISTS blocks (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (user_id, blocked_id)
+  );
+
   CREATE TABLE IF NOT EXISTS room_bans (
     room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -124,6 +141,8 @@ db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE em
 if (!columnsOf('rooms').includes('default_perms'))
   db.exec(`ALTER TABLE rooms ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
 if (!columnsOf('room_members').includes('role_id')) db.exec('ALTER TABLE room_members ADD COLUMN role_id INTEGER');
+// Кик на время: до этого момента (мс) участник может только читать чат
+if (!columnsOf('room_members').includes('timeout_until')) db.exec('ALTER TABLE room_members ADD COLUMN timeout_until INTEGER');
 
 const ADMIN_ROLE = { name: 'Администратор', color: '#e5484d', perms: PERMS.admin };
 
@@ -177,6 +196,24 @@ const q = {
   hasContact: db.prepare('SELECT 1 FROM contacts WHERE user_id = ? AND contact_id = ?'),
   addContact: db.prepare('INSERT OR IGNORE INTO contacts (user_id, contact_id, created_at) VALUES (?, ?, ?)'),
   removeContact: db.prepare('DELETE FROM contacts WHERE user_id = ? AND contact_id = ?'),
+  incomingRequests: db.prepare(`
+    SELECT u.*, r.created_at AS requested_at FROM friend_requests r JOIN users u ON u.id = r.from_id
+    WHERE r.to_id = ? ORDER BY r.created_at DESC
+  `),
+  outgoingRequests: db.prepare(`
+    SELECT u.*, r.created_at AS requested_at FROM friend_requests r JOIN users u ON u.id = r.to_id
+    WHERE r.from_id = ? ORDER BY r.created_at DESC
+  `),
+  hasRequest: db.prepare('SELECT 1 FROM friend_requests WHERE from_id = ? AND to_id = ?'),
+  addRequest: db.prepare('INSERT OR IGNORE INTO friend_requests (from_id, to_id, created_at) VALUES (?, ?, ?)'),
+  removeRequest: db.prepare('DELETE FROM friend_requests WHERE from_id = ? AND to_id = ?'),
+  blockedBy: db.prepare(`
+    SELECT u.*, b.created_at AS blocked_at FROM blocks b JOIN users u ON u.id = b.blocked_id
+    WHERE b.user_id = ? ORDER BY b.created_at DESC
+  `),
+  isBlocked: db.prepare('SELECT 1 FROM blocks WHERE user_id = ? AND blocked_id = ?'),
+  addBlock: db.prepare('INSERT OR IGNORE INTO blocks (user_id, blocked_id, created_at) VALUES (?, ?, ?)'),
+  removeBlock: db.prepare('DELETE FROM blocks WHERE user_id = ? AND blocked_id = ?'),
 
   findIdentity: db.prepare('SELECT * FROM identities WHERE provider = ? AND provider_user_id = ?'),
   identitiesOf: db.prepare('SELECT provider, email FROM identities WHERE user_id = ? ORDER BY provider'),
@@ -204,12 +241,13 @@ const q = {
   deleteRoom: db.prepare('DELETE FROM rooms WHERE id = ?'),
   setDefaultPerms: db.prepare('UPDATE rooms SET default_perms = ? WHERE id = ?'),
   roomMembers: db.prepare(`
-    SELECT u.*, m.role_id FROM room_members m JOIN users u ON u.id = m.user_id
+    SELECT u.*, m.role_id, m.timeout_until FROM room_members m JOIN users u ON u.id = m.user_id
     WHERE m.room_id = ? ORDER BY m.created_at, u.id
   `),
   roomMember: db.prepare('SELECT * FROM room_members WHERE room_id = ? AND user_id = ?'),
   isRoomMember: db.prepare('SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?'),
   setMemberRole: db.prepare('UPDATE room_members SET role_id = ? WHERE room_id = ? AND user_id = ?'),
+  setMemberTimeout: db.prepare('UPDATE room_members SET timeout_until = ? WHERE room_id = ? AND user_id = ?'),
   clearRole: db.prepare('UPDATE room_members SET role_id = NULL WHERE role_id = ?'),
 
   roomRoles: db.prepare('SELECT * FROM room_roles WHERE room_id = ? ORDER BY id'),
@@ -271,11 +309,36 @@ export const contacts = {
     const now = Date.now();
     q.addContact.run(a, b, now);
     q.addContact.run(b, a, now);
+    q.removeRequest.run(a, b);
+    q.removeRequest.run(b, a);
   },
   remove(a, b) {
     q.removeContact.run(a, b);
     q.removeContact.run(b, a);
   },
+};
+
+/** Заявки в друзья: from зовёт to */
+export const friendRequests = {
+  incoming: (userId) => q.incomingRequests.all(userId),
+  outgoing: (userId) => q.outgoingRequests.all(userId),
+  has: (fromId, toId) => Boolean(q.hasRequest.get(fromId, toId)),
+  add: (fromId, toId) => q.addRequest.run(fromId, toId, Date.now()),
+  remove: (fromId, toId) => q.removeRequest.run(fromId, toId),
+};
+
+/** Блокировка односторонняя, но мешает в обе стороны: ни заявок, ни дружбы */
+export const blocks = {
+  of: (userId) => q.blockedBy.all(userId),
+  has: (userId, otherId) => Boolean(q.isBlocked.get(userId, otherId)),
+  between: (a, b) => Boolean(q.isBlocked.get(a, b) || q.isBlocked.get(b, a)),
+  add(userId, otherId) {
+    q.addBlock.run(userId, otherId, Date.now());
+    contacts.remove(userId, otherId);
+    q.removeRequest.run(userId, otherId);
+    q.removeRequest.run(otherId, userId);
+  },
+  remove: (userId, otherId) => q.removeBlock.run(userId, otherId),
 };
 
 export const identities = {
@@ -326,13 +389,25 @@ export const rooms = {
   removeMember: (roomId, userId) => q.removeRoomMember.run(roomId, userId),
   setRole: (roomId, userId, roleId) => q.setMemberRole.run(roleId, roomId, userId),
 
-  /** Права участника (без учёта того, что создатель может всё) */
-  permsOf(room, userId) {
+  /** Права участника по роли (без учёта того, что создатель может всё); кик на время на них не влияет */
+  rolePermsOf(room, userId) {
     const member = q.roomMember.get(room.id, userId);
     if (!member) return 0;
     const role = member.role_id && q.roleById.get(member.role_id);
     return role ? role.perms : room.default_perms;
   },
+
+  /** Действующие права: кикнутый на время может только читать чат */
+  permsOf(room, userId) {
+    return rooms.timeoutOf(room.id, userId) ? 0 : rooms.rolePermsOf(room, userId);
+  },
+
+  /** До какого момента участник кикнут, или null */
+  timeoutOf(roomId, userId) {
+    const until = q.roomMember.get(roomId, userId)?.timeout_until;
+    return until > Date.now() ? until : null;
+  },
+  setTimeout: (roomId, userId, until) => q.setMemberTimeout.run(until, roomId, userId),
 
   bans: (roomId) => q.roomBans.all(roomId),
   isBanned: (roomId, userId) => Boolean(q.isBanned.get(roomId, userId)),

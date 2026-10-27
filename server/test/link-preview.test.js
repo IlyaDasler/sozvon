@@ -94,6 +94,7 @@ test('предпросмотр ссылки и превью в сообщени�
   const a = (await api('POST', '/register', { username: 'prev_a', password: 'secret1' })).body;
   const b = (await api('POST', '/register', { username: 'prev_b', password: 'secret1' })).body;
   await api('POST', '/contacts', { username: 'prev_b' }, a.token);
+  await api('POST', `/friend-requests/${a.user.id}/accept`, null, b.token);
 
   const q = (url) => api('GET', `/link-preview?url=${encodeURIComponent(url)}`, null, a.token);
   assert.equal((await api('GET', `/link-preview?url=${encodeURIComponent(siteUrl + '/page')}`)).status, 401);
