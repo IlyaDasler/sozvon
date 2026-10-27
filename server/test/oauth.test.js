@@ -79,7 +79,9 @@ test('регистрация, вход и привязка через Google, Я
   const { ticket } = pending.body;
   assert.equal((await api('GET', '/me', null, ticket)).status, 401, 'пропуск — не токен входа');
   assert.equal((await api('POST', '/signup/complete', { ticket, inviteCode: 'wrong' })).status, 403);
-  assert.equal((await api('POST', '/signup/complete', { ticket: ticket.replace(/.$/, 'A'), inviteCode: 'friends' })).status, 400);
+  // Меняем первый символ данных пропуска (не подписи: у последнего символа base64 часть битов не значима)
+  const forged = (ticket[0] === 'a' ? 'b' : 'a') + ticket.slice(1);
+  assert.equal((await api('POST', '/signup/complete', { ticket: forged, inviteCode: 'friends' })).status, 400);
 
   const created = await api('POST', '/signup/complete', { ticket, inviteCode: 'friends' });
   assert.equal(created.status, 200);
