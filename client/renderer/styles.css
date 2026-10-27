@@ -544,3 +544,9 @@ video.mirror { transform: scaleX(-1); }
 
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+
+/* Код из письма: поле и кнопка «Отправить код» в одной строке */
+.code-row { gap: 8px; }
+.code-row input { flex: 1; min-width: 0; }
+.code-row input:not(:placeholder-shown) { letter-spacing: .2em; }
+.code-row .btn { flex: none; }

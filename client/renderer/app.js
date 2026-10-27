@@ -66,9 +66,7 @@ const state = {
 };
 
 const PROVIDER_STYLE = {
-  google: { label: 'G', bg: '#ffffff', fg: '#4285f4' },
   yandex: { label: 'Я', bg: '#fc3f1d', fg: '#ffffff' },
-  vk: { label: 'VK', bg: '#0077ff', fg: '#ffffff' },
 };
 
 let socket = null;
@@ -183,24 +181,91 @@ function updateUser(id, patch) {
 
 // ---------- Вход и регистрация ----------
 
-function setAuthMode(register) {
-  state.registerMode = register;
-  $('display-field').classList.toggle('hidden', !register);
-  // Поле кода показываем, только если сервер его требует
-  $('invite-field').classList.toggle('hidden', !register || !state.inviteRequired);
-  $('auth-submit').textContent = register ? 'Создать аккаунт' : 'Войти';
-  $('auth-subtitle').textContent = register
-    ? 'Создайте аккаунт — это займёт полминуты'
-    : 'Войдите, чтобы созвониться с друзьями';
-  $('auth-switch-text').textContent = register ? 'Уже есть аккаунт?' : 'Нет аккаунта?';
-  $('auth-toggle').textContent = register ? 'Войти' : 'Зарегистрироваться';
-  $('auth-password').autocomplete = register ? 'new-password' : 'current-password';
-  $('auth-error').textContent = '';
+// Режимы экрана: 'login' — вход по почте или логину, 'register' — регистрация по почте,
+// 'reset' — новый пароль по коду из письма. true / false — то же, что 'register' / 'login'
+function setAuthMode(mode) {
+  if (typeof mode === 'boolean') mode = mode ? 'register' : 'login';
+  state.authMode = mode;
+  state.registerMode = mode === 'register';
   state.pendingSignup = null;
-  $('username-field').classList.remove('hidden');
+  $('auth-code').value = '';
+  $('code-hint').textContent = '';
+  $('auth-error').textContent = '';
+  $('auth-password').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+  renderAuthFields();
+}
+
+// Какие поля видны — зависит от режима и от сервера (нужен ли код приглашения, отправляет ли он письма)
+function renderAuthFields() {
+  if (state.pendingSignup) return;
+  const mode = state.authMode || 'login';
+  const register = mode === 'register';
+  const reset = mode === 'reset';
+  $('username-field').classList.toggle('hidden', mode !== 'login');
+  $('email-field').classList.toggle('hidden', mode === 'login');
+  $('display-field').classList.toggle('hidden', !register);
+  $('code-field').classList.toggle('hidden', !reset && !(register && state.emailCodes));
   $('password-field').classList.remove('hidden');
+  $('invite-field').classList.toggle('hidden', !register || !state.inviteRequired);
+  $('forgot-row').classList.toggle('hidden', mode !== 'login' || !state.emailCodes);
+  $('password-label').textContent = reset ? 'Новый пароль' : 'Пароль';
+  $('auth-submit').textContent = register ? 'Создать аккаунт' : reset ? 'Сменить пароль' : 'Войти';
+  $('auth-subtitle').textContent = register
+    ? 'Создайте аккаунт по своей почте — это займёт полминуты'
+    : reset
+      ? 'Пришлём код на почту, с которой вы регистрировались'
+      : 'Войдите, чтобы созвониться с друзьями';
+  $('auth-switch-text').textContent = register ? 'Уже есть аккаунт?' : reset ? 'Вспомнили пароль?' : 'Нет аккаунта?';
+  $('auth-toggle').textContent = mode === 'login' ? 'Зарегистрироваться' : 'Войти';
   renderOAuthButtons();
 }
+
+// Код на почту: для регистрации (если сервер подтверждает почту) и для смены пароля. Повторно — через минуту
+let codeTimer = null;
+
+async function sendEmailCode() {
+  const base = isWeb ? location.origin : normalizeServer($('server-url').value);
+  const email = $('auth-email').value.trim();
+  if (!email) {
+    $('auth-error').textContent = 'Введите почту';
+    $('auth-email').focus();
+    return false;
+  }
+  const button = $('auth-send-code');
+  button.disabled = true;
+  $('auth-error').textContent = '';
+  Api.base = base;
+  Api.token = '';
+  try {
+    if (state.authMode === 'reset') await Api.post('/password/code', { email });
+    else await Api.post('/register/code', { email, inviteCode: $('auth-invite').value.trim() });
+  } catch (err) {
+    $('auth-error').textContent = err.message;
+    button.disabled = false;
+    return false;
+  }
+  $('code-hint').textContent = `Код отправлен на ${email}. Если письма нет, проверьте папку «Спам».`;
+  $('auth-code').focus();
+  let left = 60;
+  clearInterval(codeTimer);
+  const tick = () => {
+    button.textContent = left > 0 ? `Ещё раз через ${left} с` : 'Отправить ещё раз';
+    button.disabled = left > 0;
+    if (left-- <= 0) clearInterval(codeTimer);
+  };
+  tick();
+  codeTimer = setInterval(tick, 1000);
+  return true;
+}
+
+$('auth-send-code').onclick = sendEmailCode;
+$('auth-forgot').onclick = (e) => {
+  e.preventDefault();
+  const login = $('auth-username').value.trim();
+  setAuthMode('reset');
+  if (login.includes('@')) $('auth-email').value = login;
+  $('auth-email').focus();
+};
 
 // Аккаунт сервиса подтверждён, профиля ещё нет — просим только код приглашения, повторно входить не нужно
 function showPendingSignup(ticket, provider) {
@@ -208,7 +273,8 @@ function showPendingSignup(ticket, provider) {
   state.inviteRequired = true;
   setAuthMode(true);
   state.pendingSignup = { ticket };
-  for (const id of ['username-field', 'password-field', 'display-field', 'oauth-block']) $(id).classList.add('hidden');
+  for (const id of ['username-field', 'email-field', 'code-field', 'password-field', 'display-field', 'oauth-block', 'forgot-row'])
+    $(id).classList.add('hidden');
   $('auth-subtitle').textContent = `Аккаунт ${name} подтверждён. Осталось ввести код приглашения — его даёт владелец сервера`;
   $('auth-submit').textContent = 'Создать профиль';
   $('auth-switch-text').textContent = 'Передумали?';
@@ -225,7 +291,7 @@ function finishLogin(base, { token, user, created }) {
   if (created) toast(`Профиль создан! Ваш логин для друзей: ${user.username}`, 8000);
 }
 
-// ---------- Вход через Google / Яндекс / VK ----------
+// ---------- Вход через Яндекс ----------
 
 // Ошибки из главного процесса Electron приходят с длинным техническим префиксом
 const cleanError = (err) => err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
@@ -250,6 +316,7 @@ async function loadProviders(base) {
   const request = ++providersRequest;
   let providers = [];
   let inviteRequired = true;
+  let emailCodes = false;
   // Вход через сервисы работает только в приложении: браузерной версии некуда принять ответ
   if (window.desktop?.oauth && base) {
     try {
@@ -260,13 +327,17 @@ async function loadProviders(base) {
   // Требует ли сервер код приглашения: если нет, поле кода не показываем
   try {
     const res = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(5000) });
-    if (res.ok) inviteRequired = (await res.json()).inviteRequired !== false;
+    if (res.ok) {
+      const health = await res.json();
+      inviteRequired = health.inviteRequired !== false;
+      emailCodes = health.emailCodes === true;
+    }
   } catch {}
   if (request !== providersRequest) return;
   state.providers = providers;
   state.inviteRequired = inviteRequired;
-  if (!state.pendingSignup) $('invite-field').classList.toggle('hidden', !state.registerMode || !inviteRequired);
-  renderOAuthButtons();
+  state.emailCodes = emailCodes;
+  renderAuthFields();
 }
 
 function renderOAuthButtons() {
@@ -282,7 +353,7 @@ function renderOAuthButtons() {
     button.onclick = () => oauthLogin(p.id);
     box.append(button);
   }
-  $('oauth-block').classList.toggle('hidden', !state.providers.length);
+  $('oauth-block').classList.toggle('hidden', !state.providers.length || state.authMode === 'reset' || Boolean(state.pendingSignup));
 }
 
 // PKCE: сервис входа вернёт код только тому, кто знает исходную случайную строку
@@ -333,18 +404,27 @@ function normalizeServer(url) {
 
 $('auth-toggle').onclick = (e) => {
   e.preventDefault();
-  setAuthMode(!state.registerMode);
+  setAuthMode(state.authMode === 'login' || !state.authMode ? 'register' : 'login');
 };
 
 $('auth-form').onsubmit = async (e) => {
   e.preventDefault();
   const base = isWeb ? location.origin : normalizeServer($('server-url').value);
+  const mode = state.authMode || 'login';
   const username = $('auth-username').value.trim();
+  const email = $('auth-email').value.trim();
+  const code = $('auth-code').value.trim();
   const password = $('auth-password').value;
   const inviteCode = $('auth-invite').value.trim();
   if (!base) return ($('auth-error').textContent = 'Укажите адрес сервера');
   if (state.pendingSignup && !inviteCode) return ($('auth-error').textContent = 'Введите код приглашения');
-  if (!state.pendingSignup && (!username || !password)) return ($('auth-error').textContent = 'Введите логин и пароль');
+  if (!state.pendingSignup) {
+    if (mode === 'login' && (!username || !password)) return ($('auth-error').textContent = 'Введите почту (или логин) и пароль');
+    if (mode !== 'login' && (!email || !password))
+      return ($('auth-error').textContent = mode === 'reset' ? 'Введите почту и новый пароль' : 'Введите почту и пароль');
+    // Кода ещё нет — сначала отправляем его на почту
+    if (!code && (mode === 'reset' || (mode === 'register' && state.emailCodes))) return sendEmailCode();
+  }
 
   const button = $('auth-submit');
   button.disabled = true;
@@ -356,12 +436,18 @@ $('auth-form').onsubmit = async (e) => {
       finishLogin(base, await Api.post('/signup/complete', { ticket: state.pendingSignup.ticket, inviteCode }));
       return;
     }
-    const body = { username, password };
-    if (state.registerMode) {
-      body.displayName = $('auth-display').value.trim();
-      body.inviteCode = inviteCode;
+    if (mode === 'reset') {
+      finishLogin(base, await Api.post('/password/reset', { email, code, password }));
+      toast('Пароль изменён');
+      return;
     }
-    finishLogin(base, await Api.post(state.registerMode ? '/register' : '/login', body));
+    if (mode === 'register') {
+      const body = { email, password, displayName: $('auth-display').value.trim(), inviteCode };
+      if (code) body.code = code;
+      finishLogin(base, await Api.post('/register', body));
+      return;
+    }
+    finishLogin(base, await Api.post('/login', { username, password }));
   } catch (err) {
     $('auth-error').textContent = err.message;
   } finally {

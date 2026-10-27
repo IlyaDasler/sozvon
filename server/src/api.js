@@ -19,12 +19,14 @@ import {
   users,
 } from './db.js';
 import { hub } from './hub.js';
+import { checkCode, mailEnabled, sendCode } from './mail.js';
 import { ALL_PERMS, PERMS, cleanPerms, has, rankOf } from './perms.js';
 import { buildAuthUrl, enabledProviders, fetchProfile } from './oauth.js';
 import { registerTurnUser } from './turn.js';
 import { voice } from './voice.js';
 
 const USERNAME_RE = /^[a-z0-9_.]{3,24}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const COLOR_RE = /^#[0-9a-f]{6}$/i;
 const COLORS = ['#e5484d', '#f76b15', '#ffc53d', '#30a46c', '#12a594', '#0090ff', '#6e56cf', '#d6409f'];
 
@@ -40,6 +42,18 @@ const str = (v) => (typeof v === 'string' ? v.trim() : '');
 function validatePassword(password) {
   if (typeof password !== 'string' || password.length < 6 || password.length > 128)
     throw new HttpError(400, 'Пароль должен быть от 6 до 128 символов');
+}
+
+const normEmail = (v) => str(v).toLowerCase();
+
+function validateEmail(email) {
+  if (email.length > 254 || !EMAIL_RE.test(email)) throw new HttpError(400, 'Проверьте адрес почты');
+}
+
+function requireCode(purpose, email, code) {
+  const result = checkCode(purpose, email, code);
+  if (result === 'expired') throw new HttpError(400, 'Код устарел — запросите новый');
+  if (result === 'wrong') throw new HttpError(400, 'Неверный код из письма');
 }
 
 function validateDisplayName(name) {
@@ -171,13 +185,78 @@ export function createApi() {
     return other;
   }
 
-  api.get('/health', (_req, res) => res.json({ ok: true, app: 'sozvon', inviteRequired: Boolean(config.inviteCode) }));
+  // emailCodes — сервер умеет отправлять письма: при регистрации по почте нужен код, работает «Забыли пароль?»
+  api.get('/health', (_req, res) =>
+    res.json({ ok: true, app: 'sozvon', inviteRequired: Boolean(config.inviteCode), emailCodes: mailEnabled })
+  );
+
+  // Код подтверждения почты для регистрации
+  api.post(
+    '/register/code',
+    handle(async (req) => {
+      rateLimit(req);
+      if (!mailEnabled) throw new HttpError(400, 'Подтверждение почты на сервере не настроено');
+      checkInvite(req.body.inviteCode);
+      const email = normEmail(req.body.email);
+      validateEmail(email);
+      if (users.byEmail(email)) throw new HttpError(409, 'Эта почта уже зарегистрирована — войдите или восстановите пароль');
+      await sendCode('register', email);
+      return { ok: true };
+    })
+  );
+
+  // Сброс пароля: код приходит на почту профиля. Есть ли такой профиль — не сообщаем
+  api.post(
+    '/password/code',
+    handle(async (req) => {
+      rateLimit(req);
+      if (!mailEnabled) throw new HttpError(400, 'Восстановление пароля на сервере не настроено');
+      const email = normEmail(req.body.email);
+      validateEmail(email);
+      if (users.byEmail(email)) await sendCode('reset', email);
+      return { ok: true };
+    })
+  );
+
+  api.post(
+    '/password/reset',
+    handle((req) => {
+      rateLimit(req);
+      const email = normEmail(req.body.email);
+      validateEmail(email);
+      validatePassword(req.body.password);
+      const user = users.byEmail(email);
+      if (!user) throw new HttpError(400, 'Неверный код из письма');
+      requireCode('reset', email, req.body.code);
+      users.updatePassword(user.id, hashPassword(req.body.password));
+      return { token: signToken(user.id), user: toSelf(users.byId(user.id)) };
+    })
+  );
+
+  function registerByEmail(req) {
+    const email = normEmail(req.body.email);
+    validateEmail(email);
+    validatePassword(req.body.password);
+    const displayName = str(req.body.displayName) || email.split('@')[0].slice(0, 32);
+    validateDisplayName(displayName);
+    if (users.byEmail(email)) throw new HttpError(409, 'Эта почта уже зарегистрирована — войдите или восстановите пароль');
+    if (mailEnabled) requireCode('register', email, req.body.code);
+    const user = users.create({
+      username: makeUsername(email, 'user'),
+      passwordHash: hashPassword(req.body.password),
+      displayName,
+      avatarColor: COLORS[crypto.randomInt(COLORS.length)],
+      email,
+    });
+    return { token: signToken(user.id), user: toSelf(user), created: true };
+  }
 
   api.post(
     '/register',
     handle((req) => {
       rateLimit(req);
       checkInvite(req.body.inviteCode);
+      if (req.body.email !== undefined) return registerByEmail(req);
       const username = str(req.body.username).toLowerCase();
       const displayName = str(req.body.displayName) || username;
       if (!USERNAME_RE.test(username))
@@ -200,14 +279,16 @@ export function createApi() {
     '/login',
     handle((req) => {
       rateLimit(req);
-      const user = users.byUsername(str(req.body.username).toLowerCase());
+      // Войти можно и по почте, и по логину
+      const login = str(req.body.username).toLowerCase();
+      const user = login.includes('@') ? users.byEmail(login) : users.byUsername(login);
       if (!user || typeof req.body.password !== 'string' || !verifyPassword(req.body.password, user.password_hash))
-        throw new HttpError(401, 'Неверный логин или пароль');
+        throw new HttpError(401, 'Неверная почта, логин или пароль');
       return { token: signToken(user.id), user: toSelf(user) };
     })
   );
 
-  // ---------- Вход через Google / Яндекс / VK ----------
+  // ---------- Вход через Яндекс ----------
 
   // Картинки открываются без токена (тег img его не передаёт), но имя файла случайное и меняется при каждой загрузке
   api.get('/avatars/:file', (req, res, next) => {
@@ -235,19 +316,14 @@ export function createApi() {
     handle(async (req) => {
       rateLimit(req);
       const provider = req.params.provider;
-      const { code, codeVerifier, deviceId, state, mode } = req.body;
+      const { code, codeVerifier, mode } = req.body;
       if (typeof code !== 'string' || !code || !PKCE_RE.test(str(codeVerifier)))
         throw new HttpError(400, 'Неверные параметры входа');
 
       const linkingUser = mode === 'link' ? userFromRequest(req) : null;
       if (mode === 'link' && !linkingUser) throw new HttpError(401, 'Нужно войти заново');
 
-      const profile = await fetchProfile(provider, {
-        code,
-        codeVerifier,
-        deviceId: typeof deviceId === 'string' ? deviceId : undefined,
-        state: str(state),
-      });
+      const profile = await fetchProfile(provider, { code, codeVerifier });
       const existing = identities.find(provider, profile.providerId);
 
       if (linkingUser) {

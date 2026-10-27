@@ -1,21 +1,8 @@
-// Вход через Google, Яндекс и VK ID (OAuth 2.0 с PKCE).
+// Вход через Яндекс ID (OAuth 2.0 с PKCE). Google и VK убраны в 1.7.1.
 // Приложение открывает страницу входа в браузере, получает код на http://localhost и передаёт его сюда,
 // а сервер сам обменивает код на профиль — секреты приложений остаются только на сервере.
 
 const PROVIDERS = {
-  google: {
-    name: 'Google',
-    clientId: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    needsSecret: true,
-    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-    tokenUrl: 'https://oauth2.googleapis.com/token',
-    userUrl: 'https://openidconnect.googleapis.com/v1/userinfo',
-    scope: 'openid email profile',
-    // Для приложений типа «Desktop app» Google разрешает любой порт на 127.0.0.1
-    redirectUri: 'http://127.0.0.1:47615/callback',
-    extra: { prompt: 'select_account' },
-  },
   yandex: {
     name: 'Яндекс',
     clientId: process.env.YANDEX_CLIENT_ID,
@@ -28,17 +15,6 @@ const PROVIDERS = {
     scope: '',
     redirectUri: 'http://localhost:47615/callback',
     extra: { force_confirm: 'yes' },
-  },
-  vk: {
-    name: 'VK',
-    clientId: process.env.VK_CLIENT_ID,
-    needsSecret: false,
-    authUrl: 'https://id.vk.com/authorize',
-    tokenUrl: 'https://id.vk.com/oauth2/auth',
-    userUrl: 'https://id.vk.com/oauth2/user_info',
-    scope: 'email',
-    redirectUri: 'http://localhost:47615/callback',
-    extra: {},
   },
 };
 
@@ -108,73 +84,25 @@ const form = (fields) => ({
   body: new URLSearchParams(Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined))),
 });
 
-/** Обменивает код на профиль: { providerId, email, name } */
-export async function fetchProfile(id, { code, codeVerifier, deviceId, state }) {
+/** Обменивает код на профиль: { providerId, email, login, name } */
+export async function fetchProfile(id, { code, codeVerifier }) {
   const p = provider(id);
-  const tokenUrl = endpoint(id, p.tokenUrl);
-  const userUrl = endpoint(id, p.userUrl);
-
-  if (id === 'google') {
-    const token = await request(
-      tokenUrl,
-      form({
-        grant_type: 'authorization_code',
-        code,
-        code_verifier: codeVerifier,
-        client_id: p.clientId,
-        client_secret: p.clientSecret,
-        redirect_uri: p.redirectUri,
-      }),
-      'google token'
-    );
-    const info = await request(userUrl, { headers: { Authorization: `Bearer ${token.access_token}` } }, 'google user');
-    return { providerId: String(info.sub), email: info.email_verified ? info.email : '', name: info.name || '' };
-  }
-
-  if (id === 'yandex') {
-    const token = await request(
-      tokenUrl,
-      form({
-        grant_type: 'authorization_code',
-        code,
-        code_verifier: codeVerifier,
-        client_id: p.clientId,
-        client_secret: p.clientSecret,
-      }),
-      'yandex token'
-    );
-    const info = await request(userUrl, { headers: { Authorization: `OAuth ${token.access_token}` } }, 'yandex user');
-    return {
-      providerId: String(info.id),
-      email: info.default_email || '',
-      login: info.login || '',
-      name: info.display_name || info.real_name || info.login || '',
-    };
-  }
-
-  // VK ID: секрет не нужен, но обязательны device_id и state из ответа
   const token = await request(
-    tokenUrl,
+    endpoint(id, p.tokenUrl),
     form({
       grant_type: 'authorization_code',
       code,
       code_verifier: codeVerifier,
       client_id: p.clientId,
-      device_id: deviceId,
-      redirect_uri: p.redirectUri,
-      state,
+      client_secret: p.clientSecret,
     }),
-    'vk token'
+    'yandex token'
   );
-  const info = await request(
-    userUrl,
-    form({ client_id: p.clientId, access_token: token.access_token }),
-    'vk user'
-  );
-  const user = info.user || {};
+  const info = await request(endpoint(id, p.userUrl), { headers: { Authorization: `OAuth ${token.access_token}` } }, 'yandex user');
   return {
-    providerId: String(user.user_id ?? token.user_id),
-    email: user.email || '',
-    name: [user.first_name, user.last_name].filter(Boolean).join(' '),
+    providerId: String(info.id),
+    email: info.default_email || '',
+    login: info.login || '',
+    name: info.display_name || info.real_name || info.login || '',
   };
 }
