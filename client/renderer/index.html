@@ -6,7 +6,9 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src http: https: ws: wss:; media-src 'self' blob: mediastream:; img-src 'self' data: blob: http: https:">
   <title>Созвон</title>
+  <link rel="stylesheet" href="themes.css">
   <link rel="stylesheet" href="styles.css">
+  <script src="theme-boot.js"></script>
 </head>
 <body>
 
@@ -193,9 +195,9 @@
 
         <div id="messages" class="messages"></div>
 
+        <!-- Поле ввода собирает composer.js: файлы, превью ссылки, «+», текст, смайлики, отправка -->
         <form id="message-form" class="composer">
           <textarea id="message-input" rows="1" placeholder="Написать сообщение" maxlength="2000"></textarea>
-          <button class="btn primary">Отправить</button>
         </form>
       </div>
 
@@ -216,7 +218,6 @@
         <div id="room-messages" class="messages"></div>
         <form id="room-message-form" class="composer">
           <textarea id="room-message-input" rows="1" placeholder="Написать в комнату" maxlength="2000"></textarea>
-          <button class="btn primary">Отправить</button>
         </form>
       </div>
     </main>
@@ -258,6 +259,9 @@
         <span>Цвет аватара</span>
         <div id="color-picker" class="colors"></div>
       </div>
+
+      <h4>Оформление</h4>
+      <div class="theme-grid" id="theme-grid"></div>
 
       <h4>Звук</h4>
       <label class="field">
@@ -499,6 +503,15 @@
     </div>
   </div>
 
+  <!-- Картинка из чата крупно -->
+  <div id="image-viewer" class="image-viewer hidden">
+    <img id="image-viewer-img" alt="">
+    <div class="image-viewer-bar">
+      <span id="image-viewer-name" class="ellipsis"></span>
+      <a id="image-viewer-open" href="#" download>Скачать</a>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
 
   <script src="markdown.js"></script>
@@ -509,5 +522,7 @@
   <script src="rooms.js"></script>
   <script src="notifications.js"></script>
   <script src="composer.js"></script>
+  <script src="chat-content.js"></script>
+  <script src="appearance.js"></script>
 </body>
 </html>

@@ -1,0 +1,157 @@
+// Содержимое сообщения: текст с разметкой, вложения (картинки, видео, звук, файлы) и превью ссылки.
+// Общее для чата с другом и комнаты.
+
+// Сообщение только из смайликов (до трёх) показывается крупно
+const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}(?:‍\p{Extended_Pictographic}|[️\u{1f3fb}-\u{1f3ff}])*\s*){1,3}$/u;
+
+const fileUrl = (a) => `${Api.base}${a.url}`;
+
+/** Коротко о сообщении — для уведомлений */
+function messageSummary(m) {
+  if (m.text) return m.text;
+  const n = m.attachments?.length || 0;
+  const kinds = new Set((m.attachments || []).map((a) => a.kind));
+  if (kinds.size === 1 && kinds.has('image')) return n > 1 ? `🖼 ${n} картинки` : '🖼 Картинка';
+  if (kinds.size === 1 && kinds.has('video')) return '🎬 Видео';
+  if (kinds.size === 1 && kinds.has('audio')) return '🎵 Аудио';
+  return n > 1 ? `📎 ${n} ${plural(n, 'файл', 'файла', 'файлов')}` : `📎 ${m.attachments?.[0]?.name || 'Файл'}`;
+}
+
+function messageContent(m) {
+  const box = document.createElement('div');
+  box.className = 'msg-content';
+  box.title = formatTime(m.createdAt);
+  if (m.text) {
+    const text = document.createElement('div');
+    text.className = `msg-text${EMOJI_ONLY.test(m.text.trim()) ? ' emoji-only' : ''}`;
+    text.append(renderMarkdown(m.text));
+    box.append(text);
+  }
+  const attachments = m.attachments || [];
+  const images = attachments.filter((a) => a.kind === 'image');
+  if (images.length) {
+    const grid = document.createElement('div');
+    grid.className = `msg-images n${Math.min(images.length, 4)}`;
+    for (const a of images) {
+      const img = document.createElement('img');
+      img.src = fileUrl(a);
+      img.alt = a.name;
+      img.loading = 'lazy';
+      img.title = `${a.name} — нажмите, чтобы открыть`;
+      img.onclick = () => openImageViewer(a);
+      grid.append(img);
+    }
+    box.append(grid);
+  }
+  for (const a of attachments) {
+    if (a.kind === 'video') {
+      const video = document.createElement('video');
+      video.className = 'msg-video';
+      video.src = fileUrl(a);
+      video.controls = true;
+      video.preload = 'metadata';
+      box.append(video);
+    } else if (a.kind === 'audio') {
+      const card = fileCard(a);
+      const audio = document.createElement('audio');
+      audio.src = fileUrl(a);
+      audio.controls = true;
+      audio.preload = 'metadata';
+      card.append(audio);
+      box.append(card);
+    } else if (a.kind === 'file') {
+      box.append(fileCard(a));
+    }
+  }
+  if (m.preview) box.append(linkCard(m.preview));
+  return box;
+}
+
+function fileCard(a) {
+  const card = document.createElement('div');
+  card.className = 'file-card';
+  const row = document.createElement('div');
+  row.className = 'file-card-row';
+  const icon = document.createElement('span');
+  icon.className = 'file-card-icon';
+  icon.innerHTML = COMPOSER_ICONS.file;
+  const info = document.createElement('div');
+  info.className = 'file-card-info';
+  const name = document.createElement('a');
+  name.className = 'ellipsis';
+  name.href = fileUrl(a);
+  name.download = a.name;
+  name.textContent = a.name;
+  name.title = 'Скачать';
+  const size = document.createElement('span');
+  size.className = 'muted small';
+  size.textContent = formatSize(a.size);
+  info.append(name, size);
+  const download = document.createElement('a');
+  download.className = 'icon-btn';
+  download.href = fileUrl(a);
+  download.download = a.name;
+  download.title = 'Скачать';
+  download.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>';
+  row.append(icon, info, download);
+  card.append(row);
+  return card;
+}
+
+/** Карточка превью ссылки: сайт, заголовок-ссылка, описание и картинка */
+function linkCard(p) {
+  const card = document.createElement('div');
+  card.className = 'link-card';
+  const text = document.createElement('div');
+  text.className = 'link-card-text';
+  const site = document.createElement('div');
+  site.className = 'link-card-site small';
+  site.textContent = p.siteName || '';
+  const title = document.createElement('a');
+  title.className = 'link-card-title';
+  title.href = p.url;
+  title.target = '_blank';
+  title.rel = 'noopener noreferrer';
+  title.textContent = p.title;
+  text.append(site, title);
+  if (p.description) {
+    const d = document.createElement('div');
+    d.className = 'link-card-desc small';
+    d.textContent = p.description;
+    text.append(d);
+  }
+  card.append(text);
+  if (p.image) {
+    const img = document.createElement('img');
+    img.className = 'link-card-image';
+    img.src = p.image;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.referrerPolicy = 'no-referrer';
+    img.onerror = () => img.remove();
+    card.append(img);
+  }
+  return card;
+}
+
+// ---------- Просмотр картинки ----------
+
+function openImageViewer(a) {
+  const viewer = $('image-viewer');
+  $('image-viewer-img').src = fileUrl(a);
+  $('image-viewer-name').textContent = a.name;
+  $('image-viewer-open').href = fileUrl(a);
+  $('image-viewer-open').download = a.name;
+  viewer.classList.remove('hidden');
+}
+
+const closeImageViewer = () => {
+  $('image-viewer').classList.add('hidden');
+  $('image-viewer-img').removeAttribute('src');
+};
+
+$('image-viewer').onclick = (e) => {
+  if (e.target.closest('a')) return;
+  closeImageViewer();
+};
+document.addEventListener('keydown', (e) => e.key === 'Escape' && closeImageViewer());
