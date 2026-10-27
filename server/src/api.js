@@ -20,6 +20,7 @@ import {
   users,
 } from './db.js';
 import { hub } from './hub.js';
+import { fetchPreview, previewableUrl } from './link-preview.js';
 import { canonicalEmail } from './email-address.js';
 import { FILE_ID_RE, MAX_ATTACHMENTS, MAX_FILE_BYTES, cleanMime, cleanName, fileHeaders, kindOf, toAttachment } from './files.js';
 import { checkCode, mailEnabled, sendCode } from './mail.js';
@@ -124,8 +125,12 @@ setInterval(() => {
 
 const MAX_TEXT = 2000;
 
-/** Сообщение из запроса: текст и вложения. Без текста можно, если есть вложения */
-function messageFrom(req) {
+// Превью — только для ссылки из самого сообщения (www.… приложение присылает как https://www.…)
+const linkInText = (text, url) => text.includes(url) || text.includes(url.replace(/^https:\/\//, ''));
+
+/** Сообщение из запроса: текст, вложения и превью ссылки (previewUrl; не прислали — человек его убрал).
+ *  Без текста можно, если есть вложения */
+async function messageFrom(req) {
   const text = str(req.body.text);
   if (text.length > MAX_TEXT) throw new HttpError(400, `Сообщение должно быть не длиннее ${MAX_TEXT} символов`);
   const ids = Array.isArray(req.body.attachmentIds) ? req.body.attachmentIds : [];
@@ -135,7 +140,9 @@ function messageFrom(req) {
   if (!text && !ids.length) throw new HttpError(400, 'Напишите сообщение или прикрепите файл');
   const rows = ids.length ? uploads.claim(ids, req.user.id) : [];
   if (!rows) throw new HttpError(400, 'Вложение не найдено или уже отправлено — прикрепите файл заново');
-  return { text, attachments: rows.map(toAttachment) };
+  const previewUrl = previewableUrl(req.body.previewUrl);
+  const preview = previewUrl && linkInText(text, req.body.previewUrl) ? await fetchPreview(previewUrl) : null;
+  return { text, attachments: rows.map(toAttachment), preview };
 }
 
 const isWebp = (buf) =>
@@ -421,6 +428,16 @@ export function createApi() {
 
   api.use(requireAuth);
 
+  // Предпросмотр ссылки для поля ввода: заголовок, описание, картинка. null — превью нет
+  api.get(
+    '/link-preview',
+    handle(async (req) => {
+      const url = previewableUrl(req.query.url);
+      if (!url) throw new HttpError(400, 'Неверная ссылка');
+      return (await fetchPreview(url)) ?? null;
+    })
+  );
+
   // Загрузка вложения: тело запроса — сам файл, имя — в адресе (?name=), тип — в Content-Type
   api.post(
     '/uploads',
@@ -589,9 +606,9 @@ export function createApi() {
 
   api.post(
     '/messages/:id',
-    handle((req) => {
+    handle(async (req) => {
       const other = requireContact(req);
-      const { text, ...extra } = messageFrom(req);
+      const { text, ...extra } = await messageFrom(req);
       const message = toMessage(messages.add(req.user.id, other.id, text, extra));
       hub.send(other.id, { type: 'message', message });
       hub.send(req.user.id, { type: 'message', message });
@@ -859,10 +876,10 @@ export function createApi() {
 
   api.post(
     '/rooms/:id/messages',
-    handle((req) => {
+    handle(async (req) => {
       const room = requireRoom(req);
       requirePerm(req, room, PERMS.write, 'Вам нельзя писать в эту комнату');
-      const { text, ...extra } = messageFrom(req);
+      const { text, ...extra } = await messageFrom(req);
       const message = toRoomMessage(roomMessages.add(room.id, req.user.id, text, extra));
       for (const m of rooms.members(room.id)) hub.send(m.id, { type: 'room:message', message });
       return message;
