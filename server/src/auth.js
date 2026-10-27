@@ -35,7 +35,33 @@ export function verifyToken(token) {
   if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return null;
   try {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    return data.exp > Date.now() ? data.uid : null;
+    // У пропусков регистрации есть поле kind — как токен входа их принимать нельзя
+    return data.exp > Date.now() && !data.kind ? data.uid : null;
+  } catch {
+    return null;
+  }
+}
+
+const TICKET_TTL_MS = 10 * 60 * 1000;
+
+/** Пропуск на создание профиля: аккаунт сервиса уже подтверждён, не хватает только кода приглашения */
+export function signTicket(data) {
+  const payload = Buffer.from(JSON.stringify({ ...data, kind: 'oauth-signup', exp: Date.now() + TICKET_TTL_MS })).toString(
+    'base64url'
+  );
+  return `${payload}.${sign(payload).toString('base64url')}`;
+}
+
+export function verifyTicket(ticket) {
+  if (typeof ticket !== 'string') return null;
+  const [payload, sig] = ticket.split('.');
+  if (!payload || !sig) return null;
+  const expected = sign(payload);
+  const given = Buffer.from(sig, 'base64url');
+  if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return null;
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return data.kind === 'oauth-signup' && data.exp > Date.now() ? data : null;
   } catch {
     return null;
   }

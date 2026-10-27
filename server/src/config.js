@@ -28,6 +28,8 @@ export const config = {
   publicIp,
   // Код приглашения: если задан, зарегистрироваться можно только с ним
   inviteCode: process.env.INVITE_CODE || '',
+  // Сколько попыток входа и регистрации в минуту разрешено с одного адреса
+  authRateLimit: Number(process.env.AUTH_RATE_LIMIT) || 10,
   stunUrls: list(
     process.env.STUN_URLS ?? (turnEmbedded && publicIp ? `stun:${publicIp}:${turnPort}` : 'stun:stun.l.google.com:19302')
   ),

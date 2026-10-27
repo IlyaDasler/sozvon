@@ -46,6 +46,8 @@ const state = {
   settings: store.get('audio', { micId: '', speakerId: '', noiseSuppression: true }),
   registerMode: false,
   providers: [], // способы входа, включённые на сервере: [{ id, name }]
+  inviteRequired: true, // требует ли сервер код приглашения при регистрации
+  pendingSignup: null, // { ticket } — аккаунт сервиса подтверждён, ждём код приглашения
 };
 
 const PROVIDER_STYLE = {
@@ -134,7 +136,8 @@ function micErrorText(err) {
 function setAuthMode(register) {
   state.registerMode = register;
   $('display-field').classList.toggle('hidden', !register);
-  $('invite-field').classList.toggle('hidden', !register);
+  // Поле кода показываем, только если сервер его требует
+  $('invite-field').classList.toggle('hidden', !register || !state.inviteRequired);
   $('auth-submit').textContent = register ? 'Создать аккаунт' : 'Войти';
   $('auth-subtitle').textContent = register
     ? 'Создайте аккаунт — это займёт полминуты'
@@ -143,7 +146,33 @@ function setAuthMode(register) {
   $('auth-toggle').textContent = register ? 'Войти' : 'Зарегистрироваться';
   $('auth-password').autocomplete = register ? 'new-password' : 'current-password';
   $('auth-error').textContent = '';
+  state.pendingSignup = null;
+  $('username-field').classList.remove('hidden');
+  $('password-field').classList.remove('hidden');
   renderOAuthButtons();
+}
+
+// Аккаунт сервиса подтверждён, профиля ещё нет — просим только код приглашения, повторно входить не нужно
+function showPendingSignup(ticket, provider) {
+  const name = state.providers.find((p) => p.id === provider)?.name || 'сервиса';
+  state.inviteRequired = true;
+  setAuthMode(true);
+  state.pendingSignup = { ticket };
+  for (const id of ['username-field', 'password-field', 'display-field', 'oauth-block']) $(id).classList.add('hidden');
+  $('auth-subtitle').textContent = `Аккаунт ${name} подтверждён. Осталось ввести код приглашения — его даёт владелец сервера`;
+  $('auth-submit').textContent = 'Создать профиль';
+  $('auth-switch-text').textContent = 'Передумали?';
+  $('auth-toggle').textContent = 'Назад ко входу';
+  $('auth-invite').focus();
+}
+
+function finishLogin(base, { token, user, created }) {
+  Api.token = token;
+  store.set('session', { base, token });
+  store.set('server', base);
+  $('auth-password').value = '';
+  enterMain(user);
+  if (created) toast(`Профиль создан! Ваш логин для друзей: ${user.username}`, 8000);
 }
 
 // ---------- Вход через Google / Яндекс / VK ----------
@@ -170,6 +199,7 @@ async function loadProviders(base) {
   // Учитываем только ответ на последний запрос: более ранний мог прийти позже и затереть список
   const request = ++providersRequest;
   let providers = [];
+  let inviteRequired = true;
   // Вход через сервисы работает только в приложении: браузерной версии некуда принять ответ
   if (window.desktop?.oauth && base) {
     try {
@@ -177,8 +207,15 @@ async function loadProviders(base) {
       if (res.ok) providers = await res.json();
     } catch {}
   }
+  // Требует ли сервер код приглашения: если нет, поле кода не показываем
+  try {
+    const res = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) inviteRequired = (await res.json()).inviteRequired !== false;
+  } catch {}
   if (request !== providersRequest) return;
   state.providers = providers;
+  state.inviteRequired = inviteRequired;
+  if (!state.pendingSignup) $('invite-field').classList.toggle('hidden', !state.registerMode || !inviteRequired);
   renderOAuthButtons();
 }
 
@@ -229,14 +266,10 @@ async function oauthLogin(provider) {
   Api.base = base;
   Api.token = '';
   try {
-    const { token, user, created } = await runOAuth(provider, 'login', { inviteCode: $('auth-invite').value.trim() });
-    Api.token = token;
-    store.set('session', { base, token });
-    store.set('server', base);
-    enterMain(user);
-    if (created) toast(`Профиль создан! Ваш логин для друзей: ${user.username}`, 8000);
+    finishLogin(base, await runOAuth(provider, 'login', { inviteCode: $('auth-invite').value.trim() }));
   } catch (err) {
-    $('auth-error').textContent = cleanError(err);
+    if (err.data?.needInvite) showPendingSignup(err.data.ticket, provider);
+    else $('auth-error').textContent = cleanError(err);
   } finally {
     buttons.forEach((b) => (b.disabled = false));
   }
@@ -258,8 +291,10 @@ $('auth-form').onsubmit = async (e) => {
   const base = isWeb ? location.origin : normalizeServer($('server-url').value);
   const username = $('auth-username').value.trim();
   const password = $('auth-password').value;
+  const inviteCode = $('auth-invite').value.trim();
   if (!base) return ($('auth-error').textContent = 'Укажите адрес сервера');
-  if (!username || !password) return ($('auth-error').textContent = 'Введите логин и пароль');
+  if (state.pendingSignup && !inviteCode) return ($('auth-error').textContent = 'Введите код приглашения');
+  if (!state.pendingSignup && (!username || !password)) return ($('auth-error').textContent = 'Введите логин и пароль');
 
   const button = $('auth-submit');
   button.disabled = true;
@@ -267,17 +302,16 @@ $('auth-form').onsubmit = async (e) => {
   Api.base = base;
   Api.token = '';
   try {
+    if (state.pendingSignup) {
+      finishLogin(base, await Api.post('/signup/complete', { ticket: state.pendingSignup.ticket, inviteCode }));
+      return;
+    }
     const body = { username, password };
     if (state.registerMode) {
       body.displayName = $('auth-display').value.trim();
-      body.inviteCode = $('auth-invite').value.trim();
+      body.inviteCode = inviteCode;
     }
-    const { token, user } = await Api.post(state.registerMode ? '/register' : '/login', body);
-    Api.token = token;
-    store.set('session', { base, token });
-    store.set('server', base);
-    $('auth-password').value = '';
-    enterMain(user);
+    finishLogin(base, await Api.post(state.registerMode ? '/register' : '/login', body));
   } catch (err) {
     $('auth-error').textContent = err.message;
   } finally {

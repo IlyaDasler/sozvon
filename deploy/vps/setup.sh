@@ -44,7 +44,8 @@ mkdir -p "$DATA_DIR" && chown sozvon:sozvon "$DATA_DIR" && chmod 700 "$DATA_DIR"
 [ -f "$ENV_FILE" ] && set -a && . "$ENV_FILE" && set +a
 PUBLIC_IP=${PUBLIC_IP_OVERRIDE:-$(ip -4 route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')}
 TURN_SECRET=${TURN_SECRET:-$(openssl rand -hex 32)}
-INVITE_CODE=${INVITE_CODE:-$(tr -dc 'abcdefghjkmnpqrstuvwxyz23456789' </dev/urandom | head -c 8)}
+# Пустой INVITE_CODE= в настройках означает «регистрация без кода» — его не перезаписываем
+INVITE_CODE=${INVITE_CODE-$(tr -dc 'abcdefghjkmnpqrstuvwxyz23456789' </dev/urandom | head -c 8)}
 # Домен для HTTPS. Если своего нет — бесплатный адрес sslip.io, который сам указывает на IP сервера
 DOMAIN=${DOMAIN:-${PUBLIC_IP//./-}.sslip.io}
 
@@ -158,6 +159,6 @@ curl -fsS "https://$DOMAIN/api/health" >/dev/null || { echo 'HTTPS не подн
 
 log 'Готово'
 echo "  Адрес сервера:     https://$DOMAIN"
-echo "  Код приглашения:   $INVITE_CODE"
+echo "  Код приглашения:   ${INVITE_CODE:-не нужен (регистрация открыта)}"
 echo "  Настройки и ключи: $ENV_FILE (после правки: systemctl restart sozvon)"
 echo "  Журнал:            journalctl -u sozvon -f"
