@@ -481,7 +481,7 @@ export function createApi() {
       if (!COLOR_RE.test(avatarColor)) throw new HttpError(400, 'Неверный цвет');
 
       if (req.body.newPassword) {
-        // Если пароля ещё нет (профиль через Google / Яндекс / VK), задаём его без проверки текущего
+        // Если пароля ещё нет (профиль создан через Яндекс), задаём его без проверки текущего
         if (
           user.password_hash &&
           (typeof req.body.currentPassword !== 'string' || !verifyPassword(req.body.currentPassword, user.password_hash))

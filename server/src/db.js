@@ -34,7 +34,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS messages_pair ON messages (from_id, to_id, id);
 
-  -- Аккаунты Google / Яндекс / VK, через которые можно войти в профиль
+  -- Аккаунты сервисов (сейчас — Яндекс), через которые можно войти в профиль
   CREATE TABLE IF NOT EXISTS identities (
     provider TEXT NOT NULL,
     provider_user_id TEXT NOT NULL,
