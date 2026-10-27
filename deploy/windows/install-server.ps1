@@ -154,4 +154,4 @@ Write-Host "  Код приглашения:    $InviteCode"
 Write-Host "  Папка сервера:      $InstallDir"
 Write-Host ''
 Write-Host "Проброс портов в роутере на ${localIp}: $Port/TCP, 3478/UDP, 49160-49200/UDP"
-Write-Host "Ключи для входа через Google / Яндекс / VK: $oauthFile (после правки запустите этот скрипт ещё раз)"
+Write-Host "Ключи входа через Яндекс и почтовый ящик для писем: $oauthFile (после правки запустите этот скрипт ещё раз)"

@@ -13,6 +13,11 @@ const ALLOWED_PERMISSIONS = ['media', 'notifications', 'speaker-selection', 'dis
 
 let win;
 
+// Сообщение странице. Окно могло быть уже закрыто (например, перед установкой обновления) — тогда молчим
+function toPage(channel, ...args) {
+  if (win && !win.isDestroyed()) win.webContents.send(channel, ...args);
+}
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1100,
@@ -64,8 +69,8 @@ app.whenReady().then(() => {
   watchIdle();
 
   // Глобальные клавиши работают, даже когда в фокусе игра
-  globalShortcut.register('CommandOrControl+Shift+M', () => win?.webContents.send('hotkey', 'toggle-mute'));
-  globalShortcut.register('CommandOrControl+Shift+D', () => win?.webContents.send('hotkey', 'toggle-deafen'));
+  globalShortcut.register('CommandOrControl+Shift+M', () => toPage('hotkey', 'toggle-mute'));
+  globalShortcut.register('CommandOrControl+Shift+D', () => toPage('hotkey', 'toggle-deafen'));
 });
 
 // ---------- Статус «Неактивен» ----------
@@ -77,7 +82,7 @@ let idleNow = false;
 function setIdle(idle) {
   if (idle === idleNow) return;
   idleNow = idle;
-  win?.webContents.send('idle', idle);
+  toPage('idle', idle);
 }
 
 function watchIdle() {
@@ -94,7 +99,7 @@ let updateStatus = { state: 'idle' };
 
 function setUpdateStatus(status) {
   updateStatus = { ...updateStatus, ...status };
-  win?.webContents.send('update', updateStatus);
+  toPage('update', updateStatus);
   try {
     fs.appendFileSync(
       path.join(app.getPath('userData'), 'update.log'),
