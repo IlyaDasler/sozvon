@@ -59,8 +59,10 @@ const bytesReceived = (win) =>
 
 async function run() {
   const suffix = Date.now().toString(36).slice(-5);
-  const a = await api('POST', '/register', { username: `e2e_a_${suffix}`, password: 'test123', displayName: 'Тест А' });
-  const b = await api('POST', '/register', { username: `e2e_b_${suffix}`, password: 'test123', displayName: 'Тест Б' });
+  // E2E_INVITE — код приглашения, если сервер его требует
+  const inviteCode = process.env.E2E_INVITE;
+  const a = await api('POST', '/register', { username: `e2e_a_${suffix}`, password: 'test123', displayName: 'Тест А', inviteCode });
+  const b = await api('POST', '/register', { username: `e2e_b_${suffix}`, password: 'test123', displayName: 'Тест Б', inviteCode });
   await api('POST', '/contacts', { username: b.user.username }, a.token);
 
   const winA = await openClient('a', a);
