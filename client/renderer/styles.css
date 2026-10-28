@@ -206,6 +206,15 @@ body.has-voice .update-bar { bottom: 124px; }
 .update-card .row { margin-top: 16px; }
 .update-bar span { flex: 1; min-width: 0; }
 .update-bar .btn { height: 28px; padding: 0 10px; font-size: 12px; }
+.update-bar .icon-btn { width: 24px; height: 24px; margin-left: -4px; }
+.update-bar .icon-btn svg { width: 14px; height: 14px; }
+/* Точка на кнопке обновлений: вышла новая версия */
+#sidebar-update-check { position: relative; }
+#sidebar-update-check.has-dot { color: var(--ok); }
+#sidebar-update-check.has-dot::after {
+  content: ''; position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ok); box-shadow: 0 0 0 2px var(--bg-2);
+}
 
 .me-panel {
   display: flex; align-items: center; gap: 6px;

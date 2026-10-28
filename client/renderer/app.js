@@ -1449,8 +1449,7 @@ $('settings-form').onsubmit = async (e) => {
 
 let updateStatus = { state: 'idle' };
 let updateRequested = false; // нажали «Обновить»: после загрузки сразу ставим
-let manualCheck = false; // проверка из настроек показывает окно даже для пропущенной версии
-let modalShownFor = null; // версия, для которой окно уже показывали в этом запуске
+let manualCheck = false; // проверка по кнопке показывает окно даже для пропущенной версии
 
 const UPDATE_TEXT = {
   checking: () => 'Проверяем обновления…',
@@ -1476,7 +1475,6 @@ function notesToText(html) {
 
 function openUpdateModal() {
   const s = updateStatus;
-  modalShownFor = s.version;
   $('update-title').textContent = `Доступно обновление ${s.version}`;
   $('update-current').textContent = `Сейчас у вас версия ${s.current}`;
   $('update-notes').textContent = notesToText(s.notes);
@@ -1500,17 +1498,20 @@ function renderUpdate() {
   $('update-progress-fill').style.width = `${s.state === 'ready' ? 100 : (s.percent ?? 0)}%`;
   $('update-progress-text').textContent = s.state === 'ready' ? 'Перезапускаем…' : `Скачиваем… ${s.percent ?? 0}%`;
 
-  // Полоса внизу слева — если окно закрыли кнопкой «Позже»
+  // Плашка внизу слева и точка на кнопке обновлений: вышла новая версия — само окно не выскакивает
   const pending =
     !updateModalOpen() &&
     ((s.state === 'available' && !isSkipped(s.version)) || s.state === 'downloading' || s.state === 'ready');
   $('update-bar').classList.toggle('hidden', !pending);
   document.body.classList.toggle('has-update', pending);
   $('update-text').textContent =
-    s.state === 'downloading' ? `Обновление: ${s.percent ?? 0}%` : s.state === 'ready' ? 'Обновление готово' : 'Доступно обновление';
+    s.state === 'downloading' ? `Обновление: ${s.percent ?? 0}%` : s.state === 'ready' ? 'Обновление готово' : `Вышла версия ${s.version}`;
   $('update-btn').classList.toggle('hidden', s.state === 'downloading');
-  $('update-btn').textContent = s.state === 'ready' ? 'Обновить' : 'Подробнее';
+  $('update-btn').textContent = 'Обновить';
   $('update-bar').title = `Версия ${s.version ?? ''}`;
+  $('update-later-bar').classList.toggle('hidden', s.state !== 'available');
+  $('sidebar-update-check').classList.toggle('has-dot', pending);
+  $('sidebar-update-check').title = pending ? `Вышла версия ${s.version}` : 'Проверить обновления';
 
   // Версия и кнопки «Проверить обновления»: экран входа, шапка боковой панели, настройки
   $('app-version').textContent = s.current || '';
@@ -1547,7 +1548,8 @@ function startUpdate() {
 function onUpdateStatus(s) {
   updateStatus = { ...updateStatus, ...s };
   const { state: st, version } = updateStatus;
-  if (st === 'available' && (manualCheck || (modalShownFor !== version && !isSkipped(version)))) openUpdateModal();
+  // Окно «Что нового» само открывается только по кнопке; при запуске — плашка и точка (renderUpdate)
+  if (st === 'available' && manualCheck) openUpdateModal();
   if (manualCheck && st === 'latest') toast(`У вас последняя версия — ${updateStatus.current}`);
   if (manualCheck && st === 'error') toast('Не удалось проверить обновления. Проверьте интернет');
   if (manualCheck && st === 'unsupported') toast('Обновления работают только в установленной версии');
@@ -1572,6 +1574,11 @@ if (window.desktop?.update) {
     closeUpdateModal();
   };
   $('update-btn').onclick = () => (updateStatus.state === 'ready' ? startUpdate() : openUpdateModal());
+  // «Не сейчас» прячет плашку до следующей версии; точка на кнопке тоже гаснет
+  $('update-later-bar').onclick = () => {
+    store.set('skippedUpdate', updateStatus.version);
+    renderUpdate();
+  };
 
   // Ручная проверка: если новая версия уже известна — сразу показываем окно
   const checkUpdatesManually = () => {
