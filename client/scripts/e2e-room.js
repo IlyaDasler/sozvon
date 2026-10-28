@@ -155,6 +155,21 @@ runTest(async () => {
     console.log('✔ трансляция открывается на весь монитор и закрывается кнопкой');
   }
 
+  // Границу между разговором и чатом тянут мышью — разговор становится ниже, и это запоминается
+  const panelH = () => js(winA, `Math.round(document.getElementById('call-panel').getBoundingClientRect().height)`);
+  const grip = await js(winA, `(() => { const r = document.querySelector('#call-panel > .panel-resizer.bottom').getBoundingClientRect(); return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) }; })()`);
+  const tall = await panelH();
+  winA.webContents.sendInputEvent({ type: 'mouseMove', x: grip.x, y: grip.y });
+  winA.webContents.sendInputEvent({ type: 'mouseDown', x: grip.x, y: grip.y, button: 'left', clickCount: 1 });
+  for (let i = 1; i <= 5; i++) winA.webContents.sendInputEvent({ type: 'mouseMove', x: grip.x, y: grip.y - i * 30, button: 'left' });
+  winA.webContents.sendInputEvent({ type: 'mouseUp', x: grip.x, y: grip.y - 150, button: 'left', clickCount: 1 });
+  await sleep(300);
+  const short = await panelH();
+  const share = await js(winA, `store.get('panelWidths', {}).call`);
+  if (!(short < tall - 80) || !(share > 0.2 && share < 0.75)) throw new Error(`Граница разговора и чата не тянется: ${tall} → ${short}, доля ${share}`);
+  await js(winA, `document.querySelector('#call-panel > .panel-resizer.bottom').dispatchEvent(new MouseEvent('dblclick')); true`);
+  console.log('✔ границу между разговором и чатом тянут мышью, доля запоминается');
+
   // Маленькое окно: кнопки разговора видны и не перекрыты плитками
   winA.setSize(820, 540);
   await sleep(600);
