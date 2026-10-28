@@ -1086,7 +1086,21 @@ kbd {
 .friends-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px 20px 30px; }
 .friends-body .list-title { padding: 16px 0 8px; }
 .friend-search { width: 100%; height: 34px !important; }
-.friends-empty { text-align: center; margin: 48px auto; max-width: 360px; }
+.friends-empty { text-align: center; margin: 32px auto; max-width: 380px; }
+/* Совон в пустых местах: покачивается и моргает */
+.mascot { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 380px; text-align: center; padding: 16px; }
+.mascot p { margin: 0; line-height: 1.5; }
+.mascot-title { font-size: 16px; color: var(--text); margin-top: 4px; }
+.sovon { width: 150px; height: 150px; overflow: visible; }
+.mascot.small .sovon { width: 96px; height: 96px; }
+.mascot-art .sovon { width: 170px; height: 170px; margin-bottom: 6px; }
+.sovon-bob { animation: sovon-bob 3.2s ease-in-out infinite; }
+.sovon-shadow { animation: sovon-shadow 3.2s ease-in-out infinite; transform-origin: 80px 150px; }
+.sovon-lids rect { animation: sovon-blink 5s infinite; }
+@keyframes sovon-bob { 50% { transform: translateY(-5px); } }
+@keyframes sovon-shadow { 50% { transform: scaleX(.86); opacity: .18; } }
+@keyframes sovon-blink { 0%, 92%, 100% { height: 0; } 95% { height: 38px; } }
+@media (prefers-reduced-motion: reduce) { .sovon-bob, .sovon-shadow, .sovon-lids rect { animation: none; } }
 .friend-row {
   display: flex; align-items: center; gap: 12px; padding: 10px 10px; margin: 0 -10px;
   border-top: 1px solid var(--line); border-radius: 8px;

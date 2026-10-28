@@ -15,6 +15,10 @@ runTest(async () => {
   await js(winA, `selectContact(${b.user.id})`);
   await js(winB, `selectContact(${a.user.id})`);
   console.log('✔ оба вошли и открыли чат');
+  // Пустой чат — Совон с подсказкой, а не голый текст
+  await waitFor(winA, `Boolean(document.querySelector('#messages .mascot .sovon')) && document.querySelector('#messages .mascot-title').textContent === 'Здесь пока тихо'`, 'Совон в пустом чате');
+  await screenshot(winA, 'chat-empty-sovon');
+  console.log('✔ в пустом чате — Совон');
 
   // Разметка: жирный, курсив, код, ссылка, спойлер, цитата и список
   const send = (win, text) =>

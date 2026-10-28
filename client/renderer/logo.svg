@@ -1,12 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Значок Созвона: Совон в наушниках на фиолетовом. Из этого файла scripts/make-icon.js рисует
+       иконку приложения (build/icon.png) и значок в трее (assets/tray.png) -->
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#3ddc97"/>
-      <stop offset="1" stop-color="#1b9e77"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8f80ff"/>
+      <stop offset="1" stop-color="#5a3fd6"/>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="14" fill="url(#g)"/>
-  <path d="M14 37v-5a18 18 0 0 1 36 0v5" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>
-  <rect x="10" y="33" width="10" height="16" rx="4" fill="#fff"/>
-  <rect x="44" y="33" width="10" height="16" rx="4" fill="#fff"/>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <path d="M19 27 15 11 29 21Z M45 27 49 11 35 21Z" fill="#f2efff"/>
+  <ellipse cx="32" cy="38" rx="19" ry="18" fill="#f2efff"/>
+  <circle cx="25" cy="35" r="7.5" fill="#d9d3ff"/><circle cx="39" cy="35" r="7.5" fill="#d9d3ff"/>
+  <circle cx="25.5" cy="35.5" r="4.6" fill="#1d1a33"/><circle cx="38.5" cy="35.5" r="4.6" fill="#1d1a33"/>
+  <circle cx="27" cy="33.8" r="1.6" fill="#fff"/><circle cx="40" cy="33.8" r="1.6" fill="#fff"/>
+  <path d="M29.3 42h5.4L32 46.5z" fill="#ffb547"/>
+  <path d="M10.5 39C10.5 14 53.5 14 53.5 39" fill="none" stroke="#3ddc97" stroke-width="4.5" stroke-linecap="round"/>
+  <rect x="6" y="33" width="9" height="15" rx="4" fill="#3ddc97"/>
+  <rect x="49" y="33" width="9" height="15" rx="4" fill="#3ddc97"/>
 </svg>

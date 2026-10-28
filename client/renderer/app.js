@@ -712,10 +712,9 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
   shownMessages.set(box, { list, ids: new Set(list.map((m) => m.id)) });
 
   if (!list.length) {
-    const hint = document.createElement('div');
-    hint.className = 'hint';
-    hint.textContent = loaded ? emptyText : 'Загрузка…';
-    box.append(hint);
+    // Пустая переписка — Совон; пока грузим — просто «Загрузка…»
+    if (loaded) box.append(mascot('Здесь пока тихо', emptyText));
+    else box.append(Object.assign(document.createElement('div'), { className: 'hint', textContent: 'Загрузка…' }));
     jumpBar(box).classList.add('hidden');
     return;
   }
