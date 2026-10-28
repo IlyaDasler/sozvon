@@ -262,7 +262,10 @@ function setSpeaking(who, isSpeaking) {
 // ---------- Панель целиком ----------
 
 function voiceTitle() {
-  if (state.call) return `Звонок: ${state.call.peer.displayName}`;
+  if (state.call) {
+    const ids = state.call.session.peers.size ? [...state.call.session.peers.keys()] : [state.call.peerId];
+    return `Звонок: ${ids.map((id) => userById(id)?.displayName || '…').join(', ')}`;
+  }
   if (state.room) return state.rooms.get(state.room.roomId)?.name || 'Голосовая комната';
   return '';
 }
@@ -345,6 +348,9 @@ function renderVoiceStatus() {
     $('call-quality-text').textContent = qualityText(q);
   }
   $('call-quality-text').classList.toggle('hidden', !withPeers);
+  renderCallCode(session.code);
+  // Позвать ещё кого-то можно в личный звонок, когда уже соединились
+  $('call-add').classList.toggle('hidden', !(state.call && connected));
 
   // Значки качества на плитках собеседников
   for (const p of session.peers.values()) {
@@ -413,7 +419,7 @@ async function openScreenPicker() {
   // В браузере экран выбирают в системном окне браузера
   if (!window.desktop?.screen) {
     try {
-      await activeSession()?.startScreen({ mode: 'motion', audio: true });
+      await activeSession()?.startScreen({ audio: true });
     } catch (err) {
       if (err.name !== 'NotAllowedError') toast(mediaErrorText(err, 'экран'));
     }
@@ -424,7 +430,9 @@ async function openScreenPicker() {
   $('screen-start').disabled = true;
   $('screen-error').textContent = '';
   $('screen-audio').checked = store.get('screenAudio', false);
-  for (const r of document.querySelectorAll('input[name="screen-mode"]')) r.checked = r.value === store.get('screenMode', 'motion');
+  const savedMode = screenMode(store.get('screenMode', DEFAULT_SCREEN_MODE));
+  for (const r of document.querySelectorAll('input[name="screen-mode"]')) r.checked = r.value === savedMode;
+  $('screen-text').checked = store.get('screenText', false);
   $('screen-picker').classList.remove('hidden');
   await loadScreenSources(store.get('screenTab', 'screen'));
 }
@@ -524,13 +532,15 @@ async function startScreenShare() {
   const session = activeSession();
   if (!session || !pickedSource) return closeScreenPicker();
   const audio = $('screen-audio').checked;
-  const mode = document.querySelector('input[name="screen-mode"]:checked')?.value || 'motion';
+  const mode = document.querySelector('input[name="screen-mode"]:checked')?.value || DEFAULT_SCREEN_MODE;
+  const text = $('screen-text').checked;
   store.set('screenAudio', audio);
   store.set('screenMode', mode);
+  store.set('screenText', text);
   $('screen-start').disabled = true;
   try {
     await window.desktop.screen.choose(pickedSource, audio);
-    await session.startScreen({ mode, audio });
+    await session.startScreen({ mode, text, audio });
     closeScreenPicker();
   } catch (err) {
     $('screen-error').textContent = mediaErrorText(err, 'экран');
@@ -571,4 +581,27 @@ $('voice-where').onclick = (e) => {
   e.preventDefault();
   if (state.call) selectContact(state.call.peerId);
   else if (state.room) selectRoom(state.room.roomId);
+};
+
+// ---------- Код шифрования ----------
+
+/** Замок, четыре смайлика и цифры: одинаковы у всех участников, если разговор не перехватили */
+function renderCallCode(code) {
+  const chip = $('call-code');
+  chip.classList.toggle('hidden', !code);
+  if (!code) return;
+  chip.innerHTML = '<svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  const emoji = document.createElement('span');
+  emoji.className = 'code-emoji';
+  emoji.textContent = code.emoji.join(' ');
+  const digits = document.createElement('span');
+  digits.className = 'code-digits';
+  digits.textContent = code.digits;
+  chip.append(emoji, digits);
+  chip.title = 'Сквозное шифрование: звук и видео идут напрямую и шифруются ключами на ваших компьютерах. Сверьте код с собеседниками — у всех он должен быть одинаковым';
+}
+
+$('call-code').onclick = () => {
+  const code = activeSession()?.code;
+  if (code) toast(`Код шифрования: ${code.emoji.join(' ')} ${code.digits}. Если у собеседников такой же — разговор слышат только участники`, 7000);
 };

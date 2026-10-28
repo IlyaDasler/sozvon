@@ -25,6 +25,9 @@ function memberBySocket(call, ws) {
   return null;
 }
 
+/** Событие об участнике звонка — с профилем: в групповом звонке люди могут быть не друзьями друг другу */
+const memberEvent = (call, uid, state) => ({ type: 'call:member', callId: call.id, userId: uid, state, user: toPublicUser(users.byId(uid)) });
+
 function toMembers(call, message, except = null) {
   for (const [uid, m] of call.members) if (uid !== except) hub.sendTo(m.ws, message);
 }
@@ -44,7 +47,7 @@ function endCall(call, reason) {
 function leaveCall(call, uid, reason) {
   if (call.state === 'ringing') return endCall(call, reason);
   call.members.delete(uid);
-  toMembers(call, { type: 'call:member', callId: call.id, userId: uid, state: 'left' });
+  toMembers(call, memberEvent(call, uid, 'left'));
   if (call.members.size < 2) endCall(call, reason);
 }
 
@@ -55,7 +58,7 @@ function stopRinging(call, uid, state) {
   clearTimeout(r.timer);
   call.ringing.delete(uid);
   hub.send(uid, { type: 'call:ended', callId: call.id, reason: state === 'missed' ? 'timeout' : 'declined' });
-  toMembers(call, { type: 'call:member', callId: call.id, userId: uid, state });
+  toMembers(call, memberEvent(call, uid, state));
 }
 
 const handlers = {
@@ -93,7 +96,7 @@ const handlers = {
     call.ringing.set(to, { timer: setTimeout(() => stopRinging(call, to, 'missed'), RING_TIMEOUT_MS) });
     const others = [...call.members.keys()].map((uid) => toPublicUser(users.byId(uid)));
     hub.send(to, { type: 'call:incoming', callId: call.id, from: toPublicUser(user), group: true, others });
-    toMembers(call, { type: 'call:member', callId: call.id, userId: to, state: 'ringing' });
+    toMembers(call, memberEvent(call, to, 'ringing'));
   },
 
   'call:accept'(ws, user, msg) {
@@ -105,7 +108,7 @@ const handlers = {
       clearTimeout(r.timer);
       call.ringing.delete(user.id);
       hub.sendTo(ws, { type: 'call:ended', callId: call.id, reason: 'old-version' });
-      toMembers(call, { type: 'call:member', callId: call.id, userId: user.id, state: 'declined' });
+      toMembers(call, memberEvent(call, user.id, 'declined'));
       return;
     }
     clearTimeout(r.timer);
@@ -120,7 +123,7 @@ const handlers = {
     } else {
       // Новенький сам предлагает соединение каждому, как в голосовых комнатах
       hub.sendTo(ws, { type: 'call:joined', callId: call.id, peers });
-      toMembers(call, { type: 'call:member', callId: call.id, userId: user.id, state: 'joined' }, user.id);
+      toMembers(call, memberEvent(call, user.id, 'joined'), user.id);
     }
   },
 

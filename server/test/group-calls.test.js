@@ -24,6 +24,14 @@ async function people(...names) {
   return list;
 }
 
+// Событие об участнике звонка: профиль приходит вместе с ним — проверяем и его, и остальное
+async function member(u) {
+  const { user, ...rest } = await u.ws.next('call:member');
+  assert.equal(user.id, rest.userId);
+  assert.ok(user.displayName);
+  return rest;
+}
+
 // Звонок a → b, b принимает; group — версия умеет групповые звонки
 async function call(a, b, { group = true } = {}) {
   a.ws.send({ type: 'call:invite', to: b.user.id, group });
@@ -51,13 +59,13 @@ test('звонок на двоих — как раньше; добавленны
   assert.equal(incoming.from.id, a.user.id);
   assert.equal(incoming.group, true);
   assert.deepEqual(incoming.others.map((u) => u.id).sort(), [a.user.id, b.user.id].sort());
-  for (const u of [a, b]) assert.deepEqual(await u.ws.next('call:member'), { type: 'call:member', callId, userId: c.user.id, state: 'ringing' });
+  for (const u of [a, b]) assert.deepEqual(await member(u), { type: 'call:member', callId, userId: c.user.id, state: 'ringing' });
 
   // Вова принимает: ему — с кем соединяться, остальным — что он вошёл
   c.ws.send({ type: 'call:accept', callId, group: true });
   const joined = await c.ws.next('call:joined');
   assert.deepEqual(joined.peers.sort(), [a.user.id, b.user.id].sort());
-  for (const u of [a, b]) assert.deepEqual(await u.ws.next('call:member'), { type: 'call:member', callId, userId: c.user.id, state: 'joined' });
+  for (const u of [a, b]) assert.deepEqual(await member(u), { type: 'call:member', callId, userId: c.user.id, state: 'joined' });
 
   // Адресный сигнал доходит только до адресата
   c.ws.send({ type: 'signal', callId, to: b.user.id, data: { offer: 'c→b' } });
@@ -65,7 +73,7 @@ test('звонок на двоих — как раньше; добавленны
 
   // Боря ушёл — звонок продолжается у двоих
   b.ws.send({ type: 'call:hangup', callId });
-  for (const u of [a, c]) assert.deepEqual(await u.ws.next('call:member'), { type: 'call:member', callId, userId: b.user.id, state: 'left' });
+  for (const u of [a, c]) assert.deepEqual(await member(u), { type: 'call:member', callId, userId: b.user.id, state: 'left' });
   // Аня ушла — Вова остался один, звонок закончен
   a.ws.send({ type: 'call:hangup', callId });
   assert.equal((await c.ws.next('call:ended')).reason, 'hangup');
@@ -87,10 +95,10 @@ test('позвать в звонок: только друга, не старую
   a.ws.send({ type: 'call:add', callId, to: c.user.id });
   await c.ws.next('call:incoming');
   c.ws.send({ type: 'call:decline', callId });
-  await a.ws.next('call:member'); // ringing
-  assert.deepEqual(await a.ws.next('call:member'), { type: 'call:member', callId, userId: c.user.id, state: 'declined' });
-  assert.equal((await b.ws.next('call:member')).state, 'ringing');
-  assert.equal((await b.ws.next('call:member')).state, 'declined');
+  await member(a); // ringing
+  assert.deepEqual(await member(a), { type: 'call:member', callId, userId: c.user.id, state: 'declined' });
+  assert.equal((await member(b)).state, 'ringing');
+  assert.equal((await member(b)).state, 'declined');
 
   // Старая версия, принявшая групповой звонок, в него не попадает
   a.ws.send({ type: 'call:add', callId, to: old.user.id });

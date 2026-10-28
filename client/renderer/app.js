@@ -146,6 +146,7 @@ function userById(id) {
     if (m) return m;
   }
   if (state.call?.peerId === id) return state.call.peer;
+  if (state.call?.people.has(id)) return state.call.people.get(id);
   // Заявки и заблокированные — чтобы и у них открывалась карточка профиля
   return [...state.requests.incoming, ...state.requests.outgoing, ...state.blocked].find((u) => u.id === id) || null;
 }
@@ -786,6 +787,16 @@ const END_REASONS = {
   timeout: 'Собеседник не ответил',
   hangup: 'Звонок завершён',
   disconnected: 'Собеседник отключился',
+  'old-version': 'Это групповой звонок — обновите Созвон, чтобы к нему присоединиться',
+};
+
+// Почему не получилось позвать человека в звонок
+const ADD_FAILED = {
+  'not-contact': 'Позвать в звонок можно только друга',
+  offline: 'не в сети',
+  busy: 'уже разговаривает',
+  full: 'В звонке уже 10 человек — больше не поместится',
+  'old-version': 'У кого-то в звонке старая версия Созвона — пусть обновится, и тогда можно будет звать',
 };
 
 const UNAVAILABLE_REASONS = {
@@ -847,8 +858,18 @@ function handleEvent(msg) {
     case 'call:ended':
       return onCallEnded(msg);
     case 'signal':
-      if (state.call?.callId === msg.callId) state.call.session.handleSignal(state.call.peerId, msg.data);
+      // from есть у сервера 2.2+; без него сигнал — от единственного собеседника
+      if (state.call?.callId === msg.callId) state.call.session.handleSignal(msg.from ?? state.call.peerId, msg.data);
       return;
+    case 'call:joined':
+      return onCallJoined(msg);
+    case 'call:member':
+      return onCallMember(msg);
+    case 'call:add:failed': {
+      const who = userById(msg.to)?.displayName || 'Друг';
+      const text = ADD_FAILED[msg.reason] || 'Не удалось позвать';
+      return toast(/^[а-яё]/.test(text) ? `${who} ${text}` : text);
+    }
     default:
       if (msg.type.startsWith('room:')) handleRoomEvent(msg);
       else if (msg.type.startsWith('hub:')) handleHubEvent(msg);
@@ -858,13 +879,15 @@ function handleEvent(msg) {
 // ---------- Звонки один на один ----------
 
 function newCall(peer, callId, phase) {
-  const call = { peerId: peer.id, peer: { ...peer }, callId, phase, connectedAt: null, failTimer: null };
-  // Сигналы уходят, только когда сервер уже выдал номер звонка
-  call.session = newSession((_id, data) => call.callId && socket?.send({ type: 'signal', callId: call.callId, data }));
+  // people — все, кто в звонке или кому звонят: имена и аватарки для плиток
+  const call = { peerId: peer.id, peer: { ...peer }, people: new Map([[peer.id, peer]]), callId, phase, connectedAt: null, failTimer: null };
+  // Сигналы уходят, только когда сервер уже выдал номер звонка; to — кому из участников
+  call.session = newSession((id, data) => call.callId && socket?.send({ type: 'signal', callId: call.callId, to: id, data }));
   state.call = call;
   renderVoice();
   renderChatHeader();
   renderContacts();
+  renderRail();
   return call;
 }
 
@@ -884,18 +907,24 @@ async function startCall() {
     return finishCall(mediaErrorText(err));
   }
   if (state.call !== call) return; // отменили, пока ждали микрофон
-  if (!socket.send({ type: 'call:invite', to: peer.id })) return finishCall('Нет связи с сервером');
+  // group: эта версия умеет групповые звонки — в такой звонок можно будет позвать ещё людей
+  if (!socket.send({ type: 'call:invite', to: peer.id, group: true })) return finishCall('Нет связи с сервером');
   tone.loop('ringback');
 }
 
-function onIncoming({ callId, from }) {
+function onIncoming({ callId, from, group = false, others = [] }) {
   if (state.call || state.incoming) return socket.send({ type: 'call:decline', callId });
-  state.incoming = { callId, from };
+  state.incoming = { callId, from, group, others };
   const peer = state.contacts.get(from.id) || from;
   const av = $('incoming-avatar');
   av.replaceChildren();
   fillAvatar(av, peer);
   $('incoming-name').textContent = peer.displayName;
+  // Групповой звонок: кто уже разговаривает
+  const names = others.filter((u) => u.id !== from.id).map((u) => u.displayName);
+  $('incoming-sub').textContent = group
+    ? `Зовёт в звонок${names.length ? ` — там уже ${names.join(', ')}` : ''}`
+    : 'Входящий звонок…';
   $('incoming').classList.remove('hidden');
   renderChatHeader();
   if (doNotDisturb()) return;
@@ -916,7 +945,8 @@ async function acceptIncoming() {
   hideIncoming();
   const peer = state.contacts.get(inc.from.id) || inc.from;
   const call = newCall(peer, inc.callId, 'connecting');
-  selectContact(peer.id);
+  for (const u of inc.others) call.people.set(u.id, state.contacts.get(u.id) || u);
+  if (state.contacts.has(peer.id)) selectContact(peer.id);
   try {
     await call.session.start(audioFlags());
   } catch (err) {
@@ -924,10 +954,95 @@ async function acceptIncoming() {
     return finishCall(mediaErrorText(err));
   }
   if (state.call !== call) return;
-  // Предложение соединения пришлёт звонивший — ждём его
-  call.session.addPeer(peer.id, false);
-  socket.send({ type: 'call:accept', callId: inc.callId });
+  // В звонок на двоих предложение соединения пришлёт звонивший — ждём его.
+  // В групповой — сервер скажет, с кем соединяться (call:joined), и предлагаем мы
+  if (!inc.group) call.session.addPeer(peer.id, false);
+  socket.send({ type: 'call:accept', callId: inc.callId, group: true });
 }
+
+/** Нас добавили в групповой звонок: соединяемся с каждым, кто уже там */
+function onCallJoined({ callId, peers }) {
+  const call = state.call;
+  if (call?.callId !== callId) return;
+  for (const id of peers) call.session.addPeer(id, true);
+  renderVoice();
+  renderRail();
+}
+
+/** Кто-то вошёл в звонок, вышел, ему звонят или он отказался */
+function onCallMember({ callId, userId, state: st, user }) {
+  const call = state.call;
+  if (call?.callId !== callId) return;
+  if (user) call.people.set(userId, state.contacts.get(userId) || user);
+  const name = userById(userId)?.displayName || 'Собеседник';
+  if (st === 'joined') {
+    tone.blip('join');
+    toast(`${name} в звонке`);
+  } else if (st === 'left') {
+    call.session.removePeer(userId);
+    tone.blip('leave');
+    toast(`${name} вышел из звонка`);
+  } else if (st === 'ringing') {
+    toast(`Звоним ${name}…`);
+  } else if (st === 'declined' || st === 'missed') {
+    toast(st === 'declined' ? `${name} не может присоединиться` : `${name} не ответил`);
+  }
+  renderVoice();
+  renderRail();
+  if (!$('call-add-modal').classList.contains('hidden')) renderCallAdd();
+}
+
+// ---------- Позвать в звонок ----------
+
+function openCallAdd() {
+  if (!state.call) return;
+  $('call-add-search').value = '';
+  renderCallAdd();
+  $('call-add-modal').classList.remove('hidden');
+  $('call-add-search').focus();
+}
+
+function renderCallAdd() {
+  const call = state.call;
+  if (!call) return $('call-add-modal').classList.add('hidden');
+  const q = $('call-add-search').value.trim().toLowerCase();
+  const inCall = new Set([...call.session.peers.keys(), call.peerId]);
+  const friends = [...state.contacts.values()]
+    .filter((c) => !q || `${c.displayName} ${c.username}`.toLowerCase().includes(q))
+    .sort((a, b) => isAvailable(b) - isAvailable(a) || a.displayName.localeCompare(b.displayName, 'ru'));
+  const list = $('call-add-list');
+  list.replaceChildren();
+  if (!friends.length) list.append(Object.assign(document.createElement('p'), { className: 'muted', textContent: state.contacts.size ? 'Никого не нашли' : 'Позвать можно только друзей, а их пока нет' }));
+  for (const f of friends) {
+    const row = document.createElement('div');
+    row.className = 'member-row';
+    const info = document.createElement('div');
+    info.className = 'grow ellipsis';
+    info.innerHTML = '<div class="ellipsis"></div><div class="muted small"></div>';
+    info.firstChild.textContent = f.displayName;
+    info.lastChild.textContent = inCall.has(f.id) ? 'Уже в звонке' : STATUS[presenceOf(f)].sub;
+    row.append(makeAvatar(f, presenceOf(f), 'small'), info);
+    if (!inCall.has(f.id)) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn primary';
+      b.textContent = 'Позвать';
+      b.disabled = !isAvailable(f);
+      b.onclick = () => {
+        socket.send({ type: 'call:add', callId: call.callId, to: f.id });
+        call.people.set(f.id, f);
+        b.disabled = true;
+        b.textContent = 'Звоним…';
+      };
+      row.append(b);
+    }
+    list.append(row);
+  }
+}
+
+$('call-add').onclick = openCallAdd;
+$('call-add-search').oninput = renderCallAdd;
+$('call-add-close').onclick = () => $('call-add-modal').classList.add('hidden');
 
 function declineIncoming() {
   if (!state.incoming) return;
@@ -962,6 +1077,8 @@ function finishCall(message) {
   state.call = null;
   clearTimeout(c.failTimer);
   c.session.close();
+  $('call-add-modal').classList.add('hidden');
+  renderRail();
   tone.stop();
   tone.blip('end');
   renderVoice();

@@ -109,19 +109,20 @@ runTest(async () => {
   await js(winB, `document.querySelector('#screen-tabs [data-tab="screen"]').click(); true`);
   await waitFor(winB, `document.querySelectorAll('#screen-sources .source.selected').length === 1 && !document.getElementById('screen-start').disabled`, 'экран снова выбран');
   console.log('✔ в окне выбора есть вкладки «Весь экран» и «Окно приложения»');
-  await js(winB, `document.getElementById('screen-start').click(); true`);
+  // Режим 720p, 90 кадров/с — карточкой в окне выбора
+  await js(winB, `document.querySelector('input[name="screen-mode"][value="720p90"]').click(); document.getElementById('screen-start').click(); true`);
   await waitFor(winB, `Boolean(activeSession().local.tracks.screen)`, 'демонстрация у Бори');
-  // Режим «плавно»: 720p, 60 кадров/с, до 5 Мбит/с
   await waitFor(
     winB,
     `(() => {
       const c = activeSession().local.tracks.screen.getConstraints();
       const p = [...activeSession().peers.values()][0].link.transceiver('screen').sender.getParameters().encodings[0];
-      return c.frameRate?.ideal === 60 && c.height?.max === 720 && p.maxFramerate === 60 && p.maxBitrate === 5000000;
+      return c.frameRate?.ideal === 90 && c.height?.max === 720 && p.maxFramerate === 90 && p.maxBitrate === 7000000;
     })()`,
-    'настройки качества 720p60'
+    'настройки качества 720p90'
   );
-  console.log('✔ демонстрация в режиме 720p, 60 кадров/с');
+  if ((await js(winB, `store.get('screenMode')`)) !== '720p90') throw new Error('Режим трансляции не запомнился');
+  console.log('✔ демонстрация в режиме 720p, 90 кадров/с; режим запомнился');
   for (const [win, u] of [[winA, a], [winC, c]]) {
     await waitFor(win, tilePlaying(win, `u${b.user.id}:screen`), `экран Бори у ${u.user.displayName}`, 20000);
     const focused = await js(win, `document.querySelector('.tile[data-key="u${b.user.id}:screen"]').classList.contains('focused')`);
