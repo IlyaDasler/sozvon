@@ -1,13 +1,26 @@
 // Общие хелперы серверных тестов: свой сервер на случайном порту с временной базой
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import WebSocket from 'ws';
 
+/** Свободный порт: система выдаёт его на миг, мы сразу освобождаем и отдаём серверу */
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+}
+
 /** Запускает сервер. dataDir можно передать свой — например, чтобы перезапустить сервер на той же базе */
 export async function startServer({ dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sozvon-test-')), env = {} } = {}) {
-  const port = 3900 + Math.floor(Math.random() * 90);
+  const port = await freePort();
   const base = `http://localhost:${port}`;
   const proc = spawn(process.execPath, ['src/index.js'], {
     env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, INVITE_CODE: 'friends', AUTH_RATE_LIMIT: '100', ...env },
