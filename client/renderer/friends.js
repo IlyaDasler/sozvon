@@ -200,7 +200,7 @@ async function cancelRequest(user, done) {
 }
 
 async function removeFriend(user) {
-  if (!confirm(`Удалить ${user.displayName} из друзей? Чтобы снова дружить, понадобится новая заявка.`)) return;
+  if (!(await ask(`Чтобы снова дружить с ${user.displayName}, понадобится новая заявка.`, { title: 'Удалить из друзей?', ok: 'Удалить', danger: true }))) return;
   if (!(await friendAction(Api.del(`/contacts/${user.id}`)))) return;
   if (state.call?.peerId === user.id) hangup();
   state.contacts.delete(user.id);
@@ -211,7 +211,7 @@ async function removeFriend(user) {
 }
 
 async function blockUser(user) {
-  if (!confirm(`Заблокировать ${user.displayName}? Дружба и заявки пропадут, и звать вас в друзья он больше не сможет.`)) return;
+  if (!(await ask(`Дружба и заявки пропадут, и звать вас в друзья ${user.displayName} больше не сможет.`, { title: 'Заблокировать?', ok: 'Заблокировать', danger: true }))) return;
   const blocked = await friendAction(Api.post('/blocks', { userId: user.id }), `${user.displayName} заблокирован`);
   if (!blocked) return;
   if (state.call?.peerId === user.id) hangup();

@@ -1,7 +1,7 @@
 // Сквозной тест голосовой комнаты: три окна заходят в один канал, включают камеру, показывают экран,
 // меняют права ролями, переходят между каналами и банят.
 // Запуск (сервер должен работать): npx electron scripts/e2e-room.js [адрес сервера]
-const { api, befriend, register, js, waitFor, sleep, openClient, received, tilePlaying, screenshot, runTest } = require('./e2e-lib');
+const { ACCEPT_DIALOGS, api, befriend, register, js, waitFor, sleep, openClient, received, tilePlaying, screenshot, runTest } = require('./e2e-lib');
 
 // Видна ли кнопка целиком и не перекрыта ли чем-то
 const reachable = (sel) => `(() => {
@@ -21,7 +21,7 @@ const roomTool = (win, id, kind) =>
 const memberButton = (win, name, label) =>
   js(
     win,
-    `window.confirm = () => true; [...[...document.querySelectorAll('#rm-members .member-row')].find((r) => r.textContent.includes(${JSON.stringify(name)})).querySelectorAll('button')].find((x) => x.textContent === ${JSON.stringify(label)}).click(); true`
+    `${ACCEPT_DIALOGS} [...[...document.querySelectorAll('#rm-members .member-row')].find((r) => r.textContent.includes(${JSON.stringify(name)})).querySelectorAll('button')].find((x) => x.textContent === ${JSON.stringify(label)}).click(); true`
   );
 
 const clickRoom = (win, id) =>

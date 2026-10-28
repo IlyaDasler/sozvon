@@ -447,7 +447,7 @@ async function joinRoomVoice(roomId) {
   const room = roomById(roomId);
   if (!room || room.kind !== 'voice' || state.room?.roomId === roomId) return;
   if (state.call) {
-    if (!confirm('Сейчас идёт звонок. Завершить его и подключиться к комнате?')) return;
+    if (!(await ask('Звонок завершится, и вы подключитесь к комнате.', { title: 'Сейчас идёт звонок', ok: 'Завершить и подключиться' }))) return;
     hangup();
   }
   if (state.room) leaveRoomVoice();

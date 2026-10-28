@@ -1,10 +1,10 @@
 // Сквозной тест раздела «Друзья»: заявка по логину, принятие, отказ, блокировка и разблокировка.
 // Запуск (сервер должен работать): npx electron scripts/e2e-friends.js [адрес сервера]
-const { register, js, waitFor, openClient, screenshot, runTest } = require('./e2e-lib');
+const { ACCEPT_DIALOGS, register, js, waitFor, openClient, screenshot, runTest } = require('./e2e-lib');
 
 const tab = (win, name) => js(win, `document.querySelector('#friend-tabs [data-tab="${name}"]').click(); true`);
 const rowOf = (name) => `[...document.querySelectorAll('#friends-list .friend-row')].find((r) => r.textContent.includes(${JSON.stringify(name)}))`;
-const press = (win, name, action) => js(win, `window.confirm = () => true; ${rowOf(name)}.querySelector('[data-action="${action}"]').click(); true`);
+const press = (win, name, action) => js(win, `${ACCEPT_DIALOGS} ${rowOf(name)}.querySelector('[data-action="${action}"]').click(); true`);
 
 runTest(async () => {
   const a = await register('fa', 'Аня');

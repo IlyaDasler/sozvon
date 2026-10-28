@@ -596,7 +596,7 @@ function renderContacts() {
 
 $('remove-contact-btn').onclick = async () => {
   const c = state.contacts.get(state.selectedId);
-  if (!c || !confirm(`Удалить ${c.displayName} из друзей?`)) return;
+  if (!c || !(await ask(`Удалить ${c.displayName} из друзей?`, { title: 'Удалить из друзей?', ok: 'Удалить', danger: true }))) return;
   try {
     await Api.del(`/contacts/${c.id}`);
     if (state.call?.peerId === c.id) hangup();
@@ -682,7 +682,7 @@ function dropMessage(history, key, id) {
 
 // Корзина у сообщения: Shift — удалить сразу, без вопроса
 async function deleteMessage(m, remove, skipConfirm) {
-  if (!skipConfirm && !confirm('Удалить это сообщение? Его не увидит никто. Совет: с Shift — без этого вопроса.')) return;
+  if (!skipConfirm && !(await ask('Его больше не увидит никто. Совет: с Shift сообщение удаляется сразу, без этого вопроса.', { title: 'Удалить сообщение?', ok: 'Удалить', danger: true }))) return;
   try {
     await remove(m);
   } catch (err) {
@@ -900,7 +900,7 @@ async function startCall() {
   if (!peer || state.call || state.incoming) return;
   if (!isAvailable(peer)) return toast('Друг не в сети');
   if (state.room) {
-    if (!confirm('Вы в голосовой комнате. Выйти из неё и позвонить?')) return;
+    if (!(await ask('Вы в голосовой комнате. Выйти из неё и позвонить?', { title: 'Позвонить?', ok: 'Выйти и позвонить' }))) return;
     leaveRoomVoice();
   }
 
@@ -1256,7 +1256,7 @@ function emailIdentityRow() {
       if (!form.classList.contains('hidden')) $('link-email').focus();
       return;
     }
-    if (!confirm(`Отвязать почту ${email}? Входить по ней будет нельзя.`)) return;
+    if (!(await ask(`Входить по почте ${email} будет нельзя.`, { title: 'Отвязать почту?', ok: 'Отвязать', danger: true }))) return;
     button.disabled = true;
     try {
       state.me = await Api.del('/me/email');
@@ -1735,8 +1735,8 @@ function installUpdate() {
   setTimeout(() => window.desktop.update.install(), 1500);
 }
 
-function startUpdate() {
-  if (activeSession() && !confirm('Сейчас идёт звонок. После загрузки приложение перезапустится и звонок завершится. Продолжить?'))
+async function startUpdate() {
+  if (activeSession() && !(await ask('После загрузки приложение перезапустится, и звонок завершится.', { title: 'Сейчас идёт звонок', ok: 'Обновить' })))
     return;
   updateRequested = true;
   $('update-error').textContent = '';
