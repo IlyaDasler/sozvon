@@ -144,7 +144,7 @@ input:focus, select:focus { border-color: var(--accent); }
 .main { display: flex; }
 
 .sidebar {
-  width: 272px; flex: none;
+  width: 240px; flex: none;
   display: flex; flex-direction: column;
   background: var(--bg-2);
 }
@@ -181,8 +181,8 @@ input:focus, select:focus { border-color: var(--accent); }
 .in-call-tag { color: var(--accent); }
 
 .update-bar {
-  position: fixed; left: 8px; bottom: 64px; z-index: 5;
-  width: 264px;
+  position: fixed; left: 80px; bottom: 64px; z-index: 5;
+  width: 224px;
   display: flex; align-items: center; gap: 8px;
   padding: 8px 8px 8px 10px; border-radius: 8px;
   background: color-mix(in srgb, var(--accent) 22%, var(--bg-deep)); color: var(--text);
@@ -911,4 +911,172 @@ video.mirror { transform: scaleX(-1); }
   .rs-nav { width: 160px; }
   .rs-roles { flex-direction: column; }
   .rs-role-list { width: 100%; }
+}
+
+/* ---------- Сходки: столбец слева ---------- */
+
+.rail {
+  width: 72px; flex: none;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 10px 0; background: var(--bg-deep);
+}
+.rail-list {
+  flex: 1; min-height: 0; width: 100%;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  overflow-y: auto; scrollbar-width: none; padding-bottom: 8px;
+}
+.rail-list::-webkit-scrollbar { display: none; }
+.rail-list.drop-end { box-shadow: inset 0 -3px 0 var(--accent); }
+.rail-sep { width: 30px; height: 2px; border-radius: 1px; background: var(--line-strong); flex: none; }
+.rail-item { position: relative; width: 72px; display: flex; justify-content: center; flex: none; }
+
+/* Полоска слева: точка — есть непрочитанное, короткая — наведение, длинная — открыто */
+.rail-item::before {
+  content: ''; position: absolute; left: 0; top: 50%;
+  width: 4px; height: 0; border-radius: 0 4px 4px 0; background: var(--text);
+  transform: translateY(-50%); transition: height .15s;
+}
+.rail-item.unread::before { height: 8px; }
+.rail-item:hover::before { height: 18px; }
+.rail-item.active::before { height: 36px; }
+
+.rail-tile {
+  position: relative; width: 46px; height: 46px; padding: 0;
+  display: grid; place-items: center; border: 0; border-radius: 14px;
+  background: var(--bg-3); color: var(--text-2); cursor: pointer;
+  font-weight: 700; font-size: 15px; letter-spacing: .02em;
+  transition: border-radius .15s, background .15s, box-shadow .15s, transform .1s;
+}
+.rail-tile:hover { border-radius: 12px; }
+.rail-tile:active { transform: translateY(1px); }
+.rail-item.active .rail-tile { box-shadow: 0 0 0 2px var(--bg-deep), 0 0 0 4px var(--accent); }
+.rail-home { background: var(--bg-3); }
+.rail-home img { display: block; }
+.rail-item.active .rail-home, .rail-home:hover { background: var(--accent); }
+.rail-add { color: var(--ok); }
+.rail-add:hover { background: var(--ok); color: var(--bg-deep); }
+.rail-add svg { width: 22px; height: 22px; }
+
+.hub-tile {
+  background-color: var(--hub-color); background-size: cover; background-position: center;
+  color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.35); user-select: none;
+}
+.hub-tile.big { width: 72px; height: 72px; border-radius: 22px; display: grid; place-items: center; font-size: 26px; font-weight: 700; flex: none; }
+.hub-tile.huge { width: 96px; height: 96px; border-radius: 28px; display: grid; place-items: center; font-size: 34px; font-weight: 700; flex: none; }
+
+.rail-badge {
+  position: absolute; right: 6px; bottom: -2px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 9px; background: var(--danger); color: #fff; box-shadow: 0 0 0 3px var(--bg-deep);
+  font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; pointer-events: none;
+}
+.rail-voice {
+  position: absolute; right: 8px; bottom: -3px; width: 18px; height: 18px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--ok); color: #fff; box-shadow: 0 0 0 3px var(--bg-deep); pointer-events: none;
+}
+.rail-voice svg { width: 11px; height: 11px; }
+
+/* Приглашение: пунктир и «!» — ждёт ответа */
+.rail-item.invite .rail-tile { opacity: .75; outline: 2px dashed var(--accent); outline-offset: 2px; }
+.rail-item.invite::after {
+  content: '!'; position: absolute; right: 8px; top: -4px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 800; line-height: 16px; text-align: center;
+}
+
+/* Группа: свёрнутая — мозаика из сходок, развёрнутая — подложка цвета группы */
+.rail-folder { width: 56px; display: flex; flex-direction: column; align-items: center; gap: 6px; border-radius: 16px; flex: none; }
+.rail-folder.open { padding-bottom: 6px; background: color-mix(in srgb, var(--folder-color) 18%, var(--bg-2)); }
+.rail-folder .rail-item { width: 72px; }
+.folder-tile { background: color-mix(in srgb, var(--folder-color) 30%, var(--bg-3)); color: var(--folder-color); }
+.rail-folder.open .folder-tile { background: transparent; }
+.folder-tile svg { width: 22px; height: 22px; fill: color-mix(in srgb, var(--folder-color) 35%, transparent); }
+.folder-tile:has(.mini) { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 5px; grid-template-rows: 1fr 1fr; place-items: stretch; }
+.folder-tile .mini {
+  border-radius: 5px; display: grid; place-items: center;
+  font-size: 7px; font-weight: 700; text-shadow: none; overflow: hidden;
+}
+
+/* Куда бросят: линия — перед, рамка — в группу */
+.rail-item.dragging { opacity: .4; }
+.rail-item.drop-before::after {
+  content: ''; position: absolute; left: 12px; right: 12px; top: -5px; height: 3px; border-radius: 2px; background: var(--accent);
+}
+.rail-item.drop-group .rail-tile, .rail-item.drop-into .rail-tile { box-shadow: 0 0 0 3px var(--accent); border-radius: 18px; }
+
+.rail-tip {
+  position: fixed; z-index: 30; transform: translateY(-50%); pointer-events: none;
+  max-width: 240px; padding: 6px 10px; border-radius: 6px;
+  background: var(--bg-deep); color: var(--text); box-shadow: var(--shadow);
+  font-weight: 600; font-size: 13px;
+}
+
+/* ---------- Сходка: шапка, комнаты, пусто ---------- */
+
+.head-home { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.hub-menu-btn {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 34px; margin-left: -8px; padding: 0 8px;
+  border: 0; border-radius: 6px; background: none; color: var(--text); font: inherit; font-weight: 700; font-size: 15px; text-align: left; cursor: pointer;
+}
+.hub-menu-btn:hover { background: var(--bg-4); }
+.hub-menu-btn svg { margin-left: auto; color: var(--muted); }
+.sidebar-head:has(.hub-menu-btn:not(.hidden)) .conn-dot { margin-left: 4px; }
+.room-section { list-style: none; padding: 14px 8px 4px; }
+.room-none { list-style: none; padding: 2px 8px 6px; }
+
+.hub-empty { display: flex; flex-direction: column; align-items: center; max-width: 440px; }
+.hub-empty .hub-tile { width: 72px; height: 72px; border-radius: 22px; display: grid; place-items: center; font-size: 26px; font-weight: 700; }
+.hub-empty .row { margin-top: 16px; }
+
+/* ---------- Участники справа ---------- */
+
+.members-panel { width: 240px; flex: none; display: flex; flex-direction: column; background: var(--bg-2); }
+.members-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 16px; }
+.members-head { display: flex; align-items: baseline; gap: 6px; height: 48px; padding: 16px 8px 0; }
+.members-group { padding: 16px 8px 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.member-item { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
+.member-item:hover { background: color-mix(in srgb, var(--bg-4) 60%, transparent); }
+.member-item.offline { opacity: .45; }
+.member-item.offline:hover { opacity: 1; }
+.member-text { flex: 1; min-width: 0; }
+.member-nick { color: var(--text-2); font-weight: 500; }
+.member-item .crown { width: 14px; height: 14px; color: var(--idle); fill: currentColor; stroke-width: 1.5; }
+.icon-btn.members-toggle.on { color: var(--text); }
+
+/* ---------- Всплывающее меню ---------- */
+
+.popup-menu {
+  position: fixed; z-index: 25; min-width: 200px; padding: 6px;
+  display: flex; flex-direction: column; gap: 2px;
+  border-radius: 8px; background: var(--bg-deep); box-shadow: var(--shadow);
+}
+.popup-item {
+  padding: 8px 10px; border: 0; border-radius: 4px; background: none;
+  color: var(--text-2); font: inherit; font-weight: 500; text-align: left; cursor: pointer;
+}
+.popup-item:hover { background: var(--accent); color: var(--on-accent); }
+.popup-item.danger { color: var(--danger); }
+.popup-item.danger:hover { background: var(--danger); color: #fff; }
+.popup-sep { height: 1px; margin: 4px 6px; background: var(--line); }
+
+/* ---------- Окна сходки ---------- */
+
+.hub-create-top { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+.hub-create-top h3 { margin-bottom: 4px; }
+.hub-create-top p { margin: 0; }
+#hub-join .hub-tile { margin: 0 auto; }
+.hs-icon-row { display: flex; align-items: center; gap: 18px; margin: 8px 0 18px; }
+.hs-icon-actions { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.hs-icon-actions p { margin: 0; }
+.hs-icon-actions .btn { height: 32px; font-size: 13px; }
+.manager-switch { display: inline-flex; align-items: center; gap: 8px; margin-right: 6px; color: var(--text-2); cursor: pointer; }
+
+/* Узкое окно: всё уже, но список участников по-прежнему рядом с чатом и его ничего не перекрывает */
+@media (max-width: 1000px) {
+  .members-panel { width: 200px; }
+}
+@media (max-width: 900px) {
+  .sidebar { width: 216px; }
+  .rail { width: 64px; }
+  .rail-item, .rail-folder .rail-item { width: 64px; }
+  .rail-tile { width: 42px; height: 42px; }
+  .rail-folder { width: 52px; }
 }

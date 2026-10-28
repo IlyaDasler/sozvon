@@ -1,4 +1,4 @@
-// Интерфейс: вход, список друзей, чат и звонки. Комнаты — в rooms.js, панель разговора — в voice-ui.js
+// Интерфейс: вход, список друзей, чат и звонки. Сходки — в hubs.js, комнаты — в rooms.js, панель разговора — в voice-ui.js
 
 const $ = (id) => document.getElementById(id);
 const isWeb = location.protocol.startsWith('http');
@@ -51,7 +51,11 @@ const state = {
   unread: new Map(),
   call: null, // звонок один на один: { session: MediaSession, peerId, peer, callId, phase, connectedAt }
   incoming: null, // { callId, from }
-  rooms: new Map(), // id комнаты -> { id, name, kind, ownerId, members, voice }
+  hubs: new Map(), // id сходки -> { id, name, ownerId, iconColor, iconUrl, members, invited, bans }
+  hubsLoaded: false, // пока сходки не пришли, раскладку столбца не трогаем
+  hubInvites: [], // приглашения в сходки: [{ hub, from, createdAt }]
+  view: 'home', // что открыто слева: 'home' — друзья и личные сообщения, иначе id сходки
+  rooms: new Map(), // id комнаты -> { id, name, kind, hubId, ownerId, members, voice }
   selectedRoomId: null,
   roomHistory: new Map(),
   roomUnread: new Map(),
@@ -137,8 +141,8 @@ function plural(n, one, few, many) {
 function userById(id) {
   if (state.me?.id === id) return state.me;
   if (state.contacts.has(id)) return state.contacts.get(id);
-  for (const room of state.rooms.values()) {
-    const m = room.members.find((u) => u.id === id);
+  for (const group of [...state.rooms.values(), ...state.hubs.values()]) {
+    const m = group.members.find((u) => u.id === id);
     if (m) return m;
   }
   if (state.call?.peerId === id) return state.call.peer;
@@ -150,13 +154,14 @@ function userById(id) {
 function updateUser(id, patch) {
   const c = state.contacts.get(id);
   if (c) Object.assign(c, patch);
-  for (const room of state.rooms.values()) {
-    const m = room.members.find((u) => u.id === id);
+  for (const group of [...state.rooms.values(), ...state.hubs.values()]) {
+    const m = group.members.find((u) => u.id === id);
     if (m) Object.assign(m, patch);
   }
   if (state.call?.peerId === id) Object.assign(state.call.peer, patch);
   renderContacts();
   renderRooms();
+  renderMembers();
   if (id === state.selectedId) {
     renderChatHeader();
     renderMessages();
@@ -457,6 +462,7 @@ function enterMain(user) {
       $('conn-dot').title = ok ? 'Подключено к серверу' : 'Нет связи с сервером, переподключаемся…';
       if (ok) {
         refreshContacts();
+        refreshHubs();
         refreshRooms();
         sendAutoStatus();
       } else if (state.call) {
@@ -495,6 +501,10 @@ function logout(message) {
     contacts: new Map(),
     history: new Map(),
     unread: new Map(),
+    hubs: new Map(),
+    hubsLoaded: false,
+    hubInvites: [],
+    view: 'home',
     rooms: new Map(),
     selectedRoomId: null,
     roomHistory: new Map(),
@@ -502,7 +512,7 @@ function logout(message) {
     requests: { incoming: [], outgoing: [] },
     blocked: [],
   });
-  for (const id of ['room-create', 'room-manage', 'room-invite', 'room-kick', 'screen-picker']) $(id).classList.add('hidden');
+  for (const id of ['room-create', 'room-manage', 'room-invite', 'room-kick', 'screen-picker', ...HUB_MODALS]) $(id).classList.add('hidden');
   closeSettings();
   setAuthMode(false);
   showScreen('auth');
@@ -590,6 +600,7 @@ $('remove-contact-btn').onclick = async () => {
 };
 
 async function selectContact(id) {
+  state.view = 'home';
   state.selectedId = id;
   state.selectedRoomId = null;
   state.unread.delete(id);
@@ -600,6 +611,7 @@ async function selectContact(id) {
   $('empty-state').classList.toggle('hidden', Boolean(contact));
   $('chat').classList.toggle('hidden', !contact);
   $('room-view').classList.add('hidden');
+  renderHubChrome();
   renderVoice();
   if (!contact) return;
 
@@ -786,6 +798,7 @@ function handleEvent(msg) {
       return;
     default:
       if (msg.type.startsWith('room:')) handleRoomEvent(msg);
+      else if (msg.type.startsWith('hub:')) handleHubEvent(msg);
   }
 }
 

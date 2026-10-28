@@ -130,6 +130,7 @@ function friendRow(user, tab) {
 
 function renderFriends() {
   renderFriendBadges();
+  renderRail();
   $('friends-nav').classList.toggle('active', !state.selectedId && !state.selectedRoomId);
   for (const t of document.querySelectorAll('#friend-tabs [data-tab]')) t.classList.toggle('active', t.dataset.tab === friendsTab);
   const adding = friendsTab === 'add';
@@ -150,7 +151,7 @@ function renderFriends() {
 
 function showFriendsTab(tab) {
   friendsTab = tab;
-  if (state.selectedId || state.selectedRoomId) selectContact(null);
+  if (state.selectedId || state.selectedRoomId || state.view !== 'home') selectContact(null);
   renderFriends();
   if (tab === 'add') $('friend-add-input').focus();
 }

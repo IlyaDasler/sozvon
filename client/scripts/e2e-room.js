@@ -16,7 +16,7 @@ const reachable = (sel) => `(() => {
 const roomTool = (win, id, kind) =>
   js(
     win,
-    `[...document.querySelectorAll('#room-list .room-row')].find((r) => r.querySelector('.name').textContent === roomById(${id}).name).querySelector('.room-tool.${kind}').click(); true`
+    `state.view === roomById(${id}).hubId || openHub(roomById(${id}).hubId); [...document.querySelectorAll('#room-list .room-row')].find((r) => r.querySelector('.name').textContent === roomById(${id}).name).querySelector('.room-tool.${kind}').click(); true`
   );
 const memberButton = (win, name, label) =>
   js(
@@ -27,7 +27,7 @@ const memberButton = (win, name, label) =>
 const clickRoom = (win, id) =>
   js(
     win,
-    `[...document.querySelectorAll('#room-list .room-row')].find((r) => r.querySelector('.name').textContent === roomById(${id}).name).click(); true`
+    `state.view === roomById(${id}).hubId || openHub(roomById(${id}).hubId); [...document.querySelectorAll('#room-list .room-row')].find((r) => r.querySelector('.name').textContent === roomById(${id}).name).click(); true`
   );
 
 runTest(async () => {
@@ -43,11 +43,18 @@ runTest(async () => {
   const all = [[winA, a], [winB, b], [winC, c]];
   console.log('✔ три клиента вошли');
 
-  // Аня создаёт комнату через окно создания и зовёт друзей
-  await js(winA, `openRoomCreate()`);
+  // Комнаты живут в сходках: Аня собирает сходку, друзья вступают (подробно — в e2e-hubs.js)
+  const hub = await api('POST', '/hubs', { name: 'Клуб' }, a.token);
+  for (const u of [b, c]) {
+    await api('POST', `/hubs/${hub.id}/invites`, { userIds: [u.user.id] }, a.token);
+    await api('POST', `/hub-invites/${hub.id}/accept`, null, u.token);
+  }
+  for (const [win] of all) await waitFor(win, `state.hubs.get(${hub.id})?.members.length === 3`, 'сходка у всех');
+
+  // Аня создаёт комнату через окно создания — в комнате сразу все участники сходки
+  await js(winA, `openHub(${hub.id}); openRoomCreate('voice')`);
   await js(winA, `
     document.getElementById('room-name').value = 'Вечерние катки';
-    document.querySelectorAll('#room-friends input').forEach((cb) => (cb.checked = true));
     document.getElementById('room-create-submit').click(); true`);
   await waitFor(winA, `state.selectedRoomId && document.getElementById('room-title').textContent === 'Вечерние катки'`, 'комната открылась у Ани');
   const roomId = await js(winA, 'state.selectedRoomId');
@@ -126,22 +133,26 @@ runTest(async () => {
   // Кнопка «во весь экран» видна и не перекрыта, нажатие разворачивает трансляцию
   const fullBtn = `document.querySelector('.tile[data-key="u${b.user.id}:screen"] .tile-btn')`;
   if (!(await js(winA, reachable(fullBtn)))) throw new Error('Кнопка «во весь экран» перекрыта или вне экрана');
-  await winA.webContents.executeJavaScript(`${fullBtn}.click()`, true);
-  const inFull = `(() => {
-    const v = document.getElementById('fullview-video');
-    const r = v.getBoundingClientRect();
-    return document.fullscreenElement?.id === 'fullview' && fullView === 'u${b.user.id}:screen' &&
-      v.videoWidth > 0 && !v.paused && r.width === innerWidth && r.height === innerHeight;
-  })()`;
-  await waitFor(winA, inFull, 'трансляция во весь экран');
-  await sleep(800);
-  if (!(await js(winA, inFull))) throw new Error('Полноэкранный режим сам выключился');
-  if (!winA.isFullScreen()) throw new Error('Окно приложения не ушло в полноэкранный режим');
-  await screenshot(winA, 'room-fullview');
-  // Выход — кнопкой на панели
-  await js(winA, `document.getElementById('fullview-exit').click(); true`);
-  await waitFor(winA, `!document.fullscreenElement && fullView === null && document.getElementById('fullview').classList.contains('hidden')`, 'выход из полноэкранного режима');
-  console.log('✔ трансляция открывается на весь монитор и закрывается кнопкой');
+  // E2E_SKIP_FULLSCREEN=1 — на машинах, где Windows не даёт окну полноэкранный режим (document.fullscreenElement пуст)
+  if (process.env.E2E_SKIP_FULLSCREEN === '1') console.log('  (пропущено: трансляция во весь экран — E2E_SKIP_FULLSCREEN)');
+  else {
+    await winA.webContents.executeJavaScript(`${fullBtn}.click()`, true);
+    const inFull = `(() => {
+      const v = document.getElementById('fullview-video');
+      const r = v.getBoundingClientRect();
+      return document.fullscreenElement?.id === 'fullview' && fullView === 'u${b.user.id}:screen' &&
+        v.videoWidth > 0 && !v.paused && r.width === innerWidth && r.height === innerHeight;
+    })()`;
+    await waitFor(winA, inFull, 'трансляция во весь экран');
+    await sleep(800);
+    if (!(await js(winA, inFull))) throw new Error('Полноэкранный режим сам выключился');
+    if (!winA.isFullScreen()) throw new Error('Окно приложения не ушло в полноэкранный режим');
+    await screenshot(winA, 'room-fullview');
+    // Выход — кнопкой на панели
+    await js(winA, `document.getElementById('fullview-exit').click(); true`);
+    await waitFor(winA, `!document.fullscreenElement && fullView === null && document.getElementById('fullview').classList.contains('hidden')`, 'выход из полноэкранного режима');
+    console.log('✔ трансляция открывается на весь монитор и закрывается кнопкой');
+  }
 
   // Маленькое окно: кнопки разговора видны и не перекрыты плитками
   winA.setSize(820, 540);
@@ -177,11 +188,11 @@ runTest(async () => {
   await js(winA, `Api.patch('/rooms/${roomId}', { defaultPerms: 31 }).then(() => true)`);
   console.log('✔ права ролей: без права говорить человека не слышно, роль возвращает голос');
 
-  // Настройки комнаты открываются шестерёнкой в списке, не заходя в комнату
-  await js(winA, `selectContact(null)`);
+  // Настройки комнаты открываются шестерёнкой в списке, не заходя в комнату (открыта другая комната сходки)
+  await js(winA, `openHub(${hub.id}); selectRoom([...state.rooms.values()].find((r) => r.hubId === ${hub.id} && r.kind === 'text').id)`);
   await roomTool(winA, roomId, 'settings');
   await waitFor(winA, `!document.getElementById('room-manage').classList.contains('hidden') && document.getElementById('rs-room-name').textContent === roomById(${roomId}).name`, 'настройки комнаты');
-  if (await js(winA, `state.selectedRoomId !== null`)) throw new Error('Шестерёнка открыла саму комнату');
+  if (await js(winA, `state.selectedRoomId === ${roomId}`)) throw new Error('Шестерёнка открыла саму комнату');
   await js(winA, `document.querySelector('#rs-nav [data-tab="roles"]').click(); true`);
   await waitFor(winA, `document.querySelectorAll('#rs-body .rs-role-item').length === 3 && Boolean(document.querySelector('#rm-role-editor .switch'))`, 'роли и переключатели прав');
   // Роль «Голос»: переключатели показывают её права, назначить можно прямо отсюда
@@ -204,7 +215,7 @@ runTest(async () => {
   // Второй голосовой канал: Боря переходит туда одним щелчком и так же возвращается
   const second = await js(
     winA,
-    `Api.post('/rooms', { name: 'Второй', kind: 'voice', memberIds: [${b.user.id}, ${c.user.id}] }).then((r) => { state.rooms.set(r.id, r); renderRooms(); return r.id; })`
+    `Api.post('/rooms', { hubId: ${hub.id}, name: 'Второй', kind: 'voice' }).then((r) => { state.rooms.set(r.id, r); renderRooms(); return r.id; })`
   );
   await waitFor(winB, `state.rooms.has(${second})`, 'второй канал у Бори');
   await clickRoom(winB, second);
