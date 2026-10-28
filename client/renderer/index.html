@@ -105,7 +105,7 @@
           <span class="notif-badge hidden" id="notif-badge"></span>
         </button>
         <button class="icon-btn hidden" id="sidebar-update-check" title="Проверить обновления">
-          <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v8.5M8.5 12.5 12 16l3.5-3.5"/></svg>
         </button>
       </div>
 
@@ -446,11 +446,12 @@
     </div>
   </div>
 
-  <!-- Обновление: видно и на экране входа, и над профилем в боковой панели -->
+  <!-- Вышла новая версия: плашка видна и на экране входа, и над профилем в боковой панели -->
   <div id="update-bar" class="update-bar hidden">
-    <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v8.5M8.5 12.5 12 16l3.5-3.5"/></svg>
     <span id="update-text" class="ellipsis"></span>
-    <button class="btn primary" id="update-btn" title="Перезапустить приложение с новой версией">Обновить</button>
+    <button class="btn primary" id="update-btn" title="Что нового и обновить">Обновить</button>
+    <button class="icon-btn" id="update-later-bar" title="Не сейчас — напомнить о следующей версии"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
   </div>
 
   <!-- Новая комната -->
@@ -489,7 +490,6 @@
     </form>
   </div>
 
-  <!-- Настройки комнаты: обзор, роли и права, участники, баны -->
   <!-- Собрать сходку -->
   <div id="hub-create" class="modal hidden">
     <form class="modal-card room-card hub-create-card" id="hub-create-form">
@@ -590,6 +590,7 @@
   <!-- Всплывающее меню: сходка, группа, шапка сходки -->
   <div class="popup-menu hidden" id="popup-menu"></div>
 
+  <!-- Настройки комнаты: обзор, роли и права, участники, баны -->
   <div id="room-manage" class="modal hidden">
     <div class="modal-card rs-card">
       <nav class="rs-nav" id="rs-nav">
@@ -698,9 +699,9 @@
   <script src="voice-ui.js"></script>
   <script src="rooms.js"></script>
   <script src="room-settings.js"></script>
-  <script src="friends.js"></script>
   <script src="rail-layout.js"></script>
   <script src="hubs.js"></script>
+  <script src="friends.js"></script>
   <script src="notifications.js"></script>
   <script src="composer.js"></script>
   <script src="chat-content.js"></script>
