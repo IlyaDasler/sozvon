@@ -118,6 +118,7 @@ const PKCE_RE = /^[A-Za-z0-9_-]{16,128}$/;
 // Аватарки хранятся файлами рядом с базой; приложение заранее обрезает их до квадрата 256×256 в формате WebP
 const AVATAR_DIR = path.join(config.dataDir, 'avatars');
 const AVATAR_MAX_BYTES = 300 * 1024;
+const BACKGROUND_MAX_BYTES = 2 * 1024 * 1024; // фон комнаты — во всю ширину окна
 const AVATAR_FILE_RE = /^[a-f0-9]{32}\.webp$/;
 fs.mkdirSync(AVATAR_DIR, { recursive: true });
 
@@ -217,6 +218,7 @@ const toRoom = (row) => ({
   ownerId: row.owner_id,
   createdAt: row.created_at,
   defaultPerms: row.default_perms,
+  backgroundUrl: row.background ? `/api/avatars/${row.background}.webp` : null,
   roles: roles.of(row.id).map((r) => ({ id: r.id, name: r.name, color: r.color, perms: r.perms })),
   members: rooms.members(row.id).map((m) => ({
     ...withOnline(m),
@@ -997,6 +999,7 @@ export function createApi() {
       requireRoomRemover(req, room);
       const members = rooms.members(room.id);
       voice.closeRoom(room.id);
+      removeAvatarFile(room.background);
       rooms.remove(room.id);
       for (const m of members) hub.send(m.id, { type: 'room:removed', roomId: room.id });
       return { ok: true };
@@ -1268,6 +1271,33 @@ export function createApi() {
       if (!COLOR_RE.test(iconColor)) throw new HttpError(400, 'Неверный цвет');
       hubs.update(hubRow.id, { name, iconColor });
       return notifyHub(hubRow.id);
+    })
+  );
+
+  // Свой фон комнаты — WebP, который приложение заранее уменьшило; ставит и убирает тот, кто настраивает комнату
+  api.put(
+    '/rooms/:id/background',
+    express.raw({ type: 'image/webp', limit: BACKGROUND_MAX_BYTES }),
+    handle((req) => {
+      const room = requireRoom(req);
+      requirePerm(req, room, PERMS.manage, 'Нет права настраивать комнату');
+      if (!Buffer.isBuffer(req.body) || !isWebp(req.body)) throw new HttpError(400, 'Нужна картинка в формате WebP');
+      const id = crypto.randomBytes(16).toString('hex');
+      fs.writeFileSync(path.join(AVATAR_DIR, `${id}.webp`), req.body);
+      removeAvatarFile(room.background);
+      rooms.setBackground(room.id, id);
+      return notifyRoom(room.id);
+    })
+  );
+
+  api.delete(
+    '/rooms/:id/background',
+    handle((req) => {
+      const room = requireRoom(req);
+      requirePerm(req, room, PERMS.manage, 'Нет права настраивать комнату');
+      removeAvatarFile(room.background);
+      rooms.setBackground(room.id, null);
+      return notifyRoom(room.id);
     })
   );
 
