@@ -461,20 +461,21 @@ for (const t of document.querySelectorAll('#rs-nav [data-tab]')) {
 $('room-manage-btn').onclick = () => openRoomManage(state.selectedRoomId);
 $('rm-close').onclick = closeRoomManage;
 
-$('rm-leave').onclick = async () => {
-  const room = manageRoom();
-  if (!room) return;
-  const isOwner = canRemoveRoom(room);
-  const question = isOwner
+/** Выйти из комнаты или, если можно, удалить её — из настроек и из меню по правой кнопке */
+async function leaveOrDeleteRoom(room) {
+  const remove = canRemoveRoom(room);
+  const question = remove
     ? `Удалить комнату «${room.name}» вместе с сообщениями? Это нельзя отменить.`
     : `Выйти из комнаты «${room.name}»? Вернуть вас сможет любой, у кого есть право звать друзей.`;
-  if (!confirm(question)) return;
-  try {
-    if (isOwner) await Api.del(`/rooms/${room.id}`);
-    else await Api.del(`/rooms/${room.id}/members/${state.me.id}`);
-    closeRoomManage();
-    forgetRoom(room.id);
-  } catch (err) {
-    $('rm-error').textContent = err.message;
-  }
+  if (!confirm(question)) return false;
+  if (remove) await Api.del(`/rooms/${room.id}`);
+  else await Api.del(`/rooms/${room.id}/members/${state.me.id}`);
+  if (manageRoomId === room.id) closeRoomManage();
+  forgetRoom(room.id);
+  return true;
+}
+
+$('rm-leave').onclick = () => {
+  const room = manageRoom();
+  if (room) leaveOrDeleteRoom(room).catch((err) => ($('rm-error').textContent = err.message));
 };

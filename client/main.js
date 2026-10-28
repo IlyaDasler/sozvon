@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Tray, desktopCapturer, globalShortcut, ipcMain, powerMonitor, session, shell } = require('electron');
+const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, globalShortcut, ipcMain, powerMonitor, session, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { autoUpdater } = require('electron-updater');
@@ -293,6 +293,13 @@ ipcMain.on('attention', () => {
 });
 
 ipcMain.on('focus', showWindow);
+
+// Меню по правой кнопке: скопировать текст и команды правки в полях ввода
+ipcMain.handle('clipboard:write', (_event, text) => clipboard.writeText(String(text)));
+const EDIT_COMMANDS = new Set(['cut', 'copy', 'paste', 'selectAll']);
+ipcMain.on('edit', (event, command) => {
+  if (EDIT_COMMANDS.has(command)) event.sender[command]();
+});
 
 // Любой настоящий выход (в том числе quitAndInstall внутри electron-updater) и завершение работы Windows
 app.on('before-quit', () => (quitting = true));
