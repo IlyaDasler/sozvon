@@ -19,3 +19,12 @@ test('чату остаётся не меньше 380 пикселей, даже
 test('мусор вместо сохранённой ширины — ширина по умолчанию', () => {
   for (const bad of [null, undefined, 'широко', NaN, {}]) assert.equal(panelWidth('members', bad, { window: 1600 }), PANELS.members.default);
 });
+
+test('доля разговора над чатом: по умолчанию 3/4, в пределах, мусор — по умолчанию', () => {
+  const { callShare } = require('../renderer/panel-sizes');
+  assert.equal(callShare(undefined), 0.75);
+  assert.equal(callShare('x'), 0.75);
+  assert.equal(callShare(0.5), 0.5);
+  assert.equal(callShare(0.05), 0.25);
+  assert.equal(callShare(0.99), 0.85);
+});
