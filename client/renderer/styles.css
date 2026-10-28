@@ -458,6 +458,17 @@ body.has-voice .update-bar { bottom: 124px; }
 .chat:has(> .call-panel:not(.hidden)) > .messages { flex: 1 1 25%; min-height: 90px; }
 .call-status-row { flex: none; align-self: center; display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 4px 8px; min-height: 20px; text-align: center; }
 .call-status { color: var(--muted); font-variant-numeric: tabular-nums; }
+/* Код шифрования: замок, смайлики и цифры — у всех участников одинаковые */
+.call-code {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px;
+  border: 0; border-radius: 999px; cursor: pointer; font: inherit; font-size: 12px;
+  background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 30%, transparent);
+  animation: fade var(--slow) var(--ease);
+}
+.call-code svg { width: 13px; height: 13px; }
+.call-code .code-emoji { font-size: 14px; letter-spacing: 1px; }
+.call-code .code-digits { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text-2); }
 .call-controls { flex: none; align-self: center; display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .round-btn {
   width: 48px; height: 48px; border-radius: 50%; border: 0;
@@ -644,6 +655,19 @@ video.mirror { transform: scaleX(-1); }
 .source:hover { background: var(--bg-4); }
 .source.selected { box-shadow: inset 0 0 0 2px var(--accent); }
 .screen-options { margin-top: 16px; }
+/* Режимы трансляции — три карточки: разрешение, кадры и сколько нужно интернета */
+.screen-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.screen-mode {
+  position: relative; display: flex; flex-direction: column; gap: 1px; padding: 10px 12px; cursor: pointer;
+  border-radius: var(--r-m); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line);
+  transition: box-shadow var(--fast), background var(--fast);
+}
+.screen-mode input { position: absolute; opacity: 0; pointer-events: none; }
+.screen-mode b { font-size: 16px; }
+.screen-mode span { font-size: 13px; color: var(--text-2); }
+.screen-mode em { font-style: normal; font-size: 11px; color: var(--muted); }
+.screen-mode:hover { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.screen-mode:has(input:checked) { background: color-mix(in srgb, var(--accent) 14%, var(--bg-3)); box-shadow: inset 0 0 0 2px var(--accent); }
 .screen-options .check { margin-bottom: 8px; }
 .screen-card .row { margin-top: 12px; }
 
@@ -1228,6 +1252,17 @@ video.mirror { transform: scaleX(-1); }
   display: grid; place-items: center; background: var(--ok); color: #fff; box-shadow: 0 0 0 3px var(--bg-deep); pointer-events: none;
 }
 .rail-voice svg { width: 11px; height: 11px; }
+/* Идущий личный звонок: аватарка с зелёной пульсацией */
+.rail-call .rail-tile { color: #fff; font-size: 17px; background-size: cover; background-position: center; animation: call-pulse 2s var(--ease) infinite; }
+.rail-call .rail-tile .status { display: none; }
+.rail-call-more {
+  position: absolute; right: -4px; bottom: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
+  background: var(--ok); color: #fff; box-shadow: 0 0 0 3px var(--bg-deep); font-size: 11px; font-weight: 700; line-height: 20px;
+}
+@keyframes call-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 90%, transparent), 0 0 0 0 color-mix(in srgb, var(--ok) 45%, transparent); }
+  50% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 90%, transparent), 0 0 0 8px transparent; }
+}
 
 /* Приглашение: пунктир и «!» — ждёт ответа */
 .rail-item.invite .rail-tile { opacity: .75; outline: 2px dashed var(--accent); outline-offset: 2px; }
