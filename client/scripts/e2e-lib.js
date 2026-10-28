@@ -2,6 +2,7 @@
 const { app, BrowserWindow, desktopCapturer, ipcMain, session } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
+const { applyPermissions } = require('../permissions');
 
 const SERVER = process.argv.find((a) => /^https?:\/\//.test(a)) || 'http://127.0.0.1:3000'; // localhost клиент считает старым адресом и сбрасывает вход
 
@@ -75,7 +76,7 @@ ipcMain.handle('update:status', () => ({ state: 'idle', current: 'e2e' }));
 // root — папка с preload.js и renderer/ (по умолчанию текущая версия; для проверки совместимости — старая)
 async function openClient(name, auth, root = path.join(__dirname, '..')) {
   const ses = session.fromPartition(`e2e-${name}`);
-  ses.setPermissionRequestHandler((_wc, _p, cb) => cb(true));
+  applyPermissions(ses);
   ses.setDisplayMediaRequestHandler((_req, cb) => {
     const source = screenChoice;
     screenChoice = null;

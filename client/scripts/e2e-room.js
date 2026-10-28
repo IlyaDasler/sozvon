@@ -134,7 +134,7 @@ runTest(async () => {
   // Кнопка «во весь экран» видна и не перекрыта, нажатие разворачивает трансляцию
   const fullBtn = `document.querySelector('.tile[data-key="u${b.user.id}:screen"] .tile-btn')`;
   if (!(await js(winA, reachable(fullBtn)))) throw new Error('Кнопка «во весь экран» перекрыта или вне экрана');
-  // E2E_SKIP_FULLSCREEN=1 — на машинах, где Windows не даёт окну полноэкранный режим (document.fullscreenElement пуст)
+  // E2E_SKIP_FULLSCREEN=1 — пропустить (раньше «не работало» из-за списка разрешений приложения, а не Windows)
   if (process.env.E2E_SKIP_FULLSCREEN === '1') console.log('  (пропущено: трансляция во весь экран — E2E_SKIP_FULLSCREEN)');
   else {
     await winA.webContents.executeJavaScript(`${fullBtn}.click()`, true);
