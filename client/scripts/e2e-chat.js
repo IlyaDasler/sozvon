@@ -181,4 +181,34 @@ runTest(async () => {
   await send(winB, 'мой ответ');
   await waitFor(winB, `(() => { const m = document.getElementById('messages'); return ${lastMsg}?.textContent === 'мой ответ' && m.scrollHeight - m.scrollTop - m.clientHeight < 5; })()`, 'своё сообщение видно внизу');
   console.log('✔ при чтении старого лента не прыгает, «Перейти к последним» возвращает вниз');
+
+  // Узкая левая панель: в шапке ничего не налезает друг на друга
+  // (самый тесный случай — когда рядом ещё и кнопка проверки обновлений)
+  await js(winB, `document.documentElement.style.setProperty('--sidebar-w', '200px'); document.getElementById('sidebar-update-check').classList.remove('hidden'); true`);
+  await sleep(300);
+  const overlaps = await js(
+    winB,
+    `(() => {
+      const items = [...document.querySelectorAll('.sidebar-head > *')].filter((el) => el.offsetParent && el.getBoundingClientRect().width);
+      const head = document.querySelector('.sidebar-head').getBoundingClientRect();
+      const out = [];
+      items.forEach((a, i) => {
+        const ra = a.getBoundingClientRect();
+        if (ra.right > head.right + 0.5) out.push(a.id || a.className + ' вылезает');
+        // Содержимое шире своей коробки и не обрезано — текст рисуется поверх соседей
+        // (значки, нарочно вынесенные за угол, вроде счётчика уведомлений, — не в счёт)
+        for (const el of [a, ...a.querySelectorAll('*')]) {
+          const cs = getComputedStyle(el);
+          const pinned = [...el.children].some((c) => getComputedStyle(c).position === 'absolute');
+          if (el.scrollWidth > el.clientWidth + 1 && cs.overflow === 'visible' && el.clientWidth && !pinned) out.push((el.id || el.className || el.tagName) + ' переполнен');
+        }
+        // Видимая часть (у слов с многоточием — своя ширина)
+        items.slice(i + 1).forEach((b) => { const rb = b.getBoundingClientRect(); if (ra.right > rb.left + 0.5) out.push((a.id || a.className) + ' / ' + (b.id || b.className)); });
+      });
+      return out;
+    })()`
+  );
+  if (overlaps.length) throw new Error(`В узкой шапке налезает: ${overlaps.join(', ')}`);
+  await js(winB, `document.documentElement.style.removeProperty('--sidebar-w'); true`);
+  console.log('✔ узкая левая панель: в шапке ничего не налезает');
 });
