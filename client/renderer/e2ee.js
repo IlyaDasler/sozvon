@@ -314,6 +314,10 @@ function refreshConv(conv) {
   e2ee.convs.delete(conv);
   if (used) loadConv(conv).catch(() => {});
   redecryptAll(conv);
+  // Голос большой комнаты зашифрован её ключом — сменился ключ, меняем и в разговоре
+  const sfu = state.room?.session;
+  if (sfu instanceof SfuSession && conv === roomConvOf(state.room.roomId))
+    sendKey(conv).then(({ key }) => sfu.setKey(key), () => {});
 }
 
 /** Выход из аккаунта: ключи и расшифрованные файлы — из памяти */

@@ -444,13 +444,17 @@ class PeerLink {
 
 /** Оценка связи для значка: 3 — отлично, 2 — нормально, 1 — плохо */
 function qualityLevel(q) {
+  if (q?.sfu) return q.level || 0;
   if (!q || q.rtt == null) return 0;
   if (q.rtt > 400 || q.loss > 8) return 1;
   if (q.rtt > 180 || q.loss > 2 || q.jitter > 40) return 2;
   return 3;
 }
 
+const SFU_QUALITY_TEXT = ['Соединение…', 'через медиасервер · связь плохая', 'через медиасервер · связь нормальная', 'через медиасервер · связь отличная'];
+
 function qualityText(q) {
+  if (q?.sfu) return SFU_QUALITY_TEXT[q.level || 0];
   if (!q || q.rtt == null) return 'Соединение…';
   const parts = [`пинг ${q.rtt} мс`, `потери ${q.loss < 0.1 ? 0 : q.loss.toFixed(1)}%`, `джиттер ${q.jitter} мс`];
   if (q.relay) parts.push('через сервер');
@@ -683,6 +687,17 @@ class MediaSession {
       } catch {}
     }
     if (!this.closed) this.onStats?.();
+  }
+
+  /** Значки людей из списка нашего сервера — нужно только при голосе через медиасервер (SfuSession) */
+  applyVoiceState() {}
+
+  /** Свои устройства переходят к другой сессии (вход в большую комнату): эту останавливаем, устройства не трогаем */
+  handOver() {
+    this.closed = true;
+    clearInterval(this.statsTimer);
+    this.meter?.stop();
+    this.meter = null;
   }
 
   /** Самое плохое соединение — по нему показываем значок качества связи */
