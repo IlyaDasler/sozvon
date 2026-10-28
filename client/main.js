@@ -1,4 +1,4 @@
-const { app, BrowserWindow, desktopCapturer, globalShortcut, ipcMain, powerMonitor, session, shell } = require('electron');
+const { app, BrowserWindow, Menu, Tray, desktopCapturer, globalShortcut, ipcMain, powerMonitor, session, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { autoUpdater } = require('electron-updater');
@@ -11,7 +11,16 @@ if (profileArg) app.setPath('userData', path.join(app.getPath('appData'), `Sozvo
 
 const ALLOWED_PERMISSIONS = ['media', 'notifications', 'speaker-selection', 'display-capture'];
 
+// Одна копия приложения: повторный запуск ярлыка показывает уже открытое (или спрятанное в трей) окно
+const primary = app.requestSingleInstanceLock();
+if (!primary) app.quit();
+app.on('second-instance', () => showWindow());
+
 let win;
+let tray = null;
+// Выходим по-настоящему (меню трея, установка обновления, завершение Windows): крестик тогда не прячет окно,
+// иначе обработчик close заблокирует выход и тихая установка обновления сломается
+let quitting = false;
 
 // Сообщение странице. Окно могло быть уже закрыто (например, перед установкой обновления) — тогда молчим
 function toPage(channel, ...args) {
@@ -40,6 +49,12 @@ function createWindow() {
 
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   win.on('focus', () => win.flashFrame(false));
+  // Крестик прячет окно в трей: звонки, голос и уведомления продолжают работать
+  win.on('close', (event) => {
+    if (quitting) return;
+    event.preventDefault();
+    win.hide();
+  });
   // Ссылки из чата открываются в обычном браузере, а само окно никуда не уходит со своей страницы
   win.webContents.setWindowOpenHandler(({ url }) => {
     openOutside(url);
@@ -54,7 +69,38 @@ function createWindow() {
 
 const openOutside = (url) => /^(https?:\/\/|mailto:)/i.test(url) && shell.openExternal(url);
 
+/** Показать и развернуть окно — из трея, второго запуска, щелчка по уведомлению */
+function showWindow() {
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+
+function quitApp() {
+  quitting = true;
+  app.quit();
+}
+
+// ---------- Значок в трее ----------
+// Есть всегда, с самого запуска: щелчок — открыть окно, меню — «Открыть Созвон» и «Выйти» (без вопросов)
+
+function createTray() {
+  tray = new Tray(path.join(__dirname, 'assets', 'tray.png'));
+  tray.setToolTip('Созвон');
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: 'Открыть Созвон', click: showWindow },
+      { type: 'separator' },
+      { label: 'Выйти', click: quitApp },
+    ])
+  );
+  tray.on('click', showWindow);
+  tray.on('double-click', showWindow);
+}
+
 app.whenReady().then(() => {
+  if (!primary) return;
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) =>
     callback(ALLOWED_PERMISSIONS.includes(permission))
   );
@@ -68,6 +114,7 @@ app.whenReady().then(() => {
   });
 
   createWindow();
+  createTray();
   setupUpdater();
   if (app.isPackaged && process.platform === 'win32') {
     repairShortcuts();
@@ -161,6 +208,7 @@ ipcMain.on('update:download', () => {
 // Окно приложения закрываем заранее: установщик не должен застать Созвон ещё запущенным
 ipcMain.on('update:install', () => {
   if (updateStatus.state !== 'ready') return;
+  quitting = true;
   app.removeAllListeners('window-all-closed');
   win?.destroy();
   autoUpdater.quitAndInstall(true, true);
@@ -220,12 +268,13 @@ ipcMain.on('attention', () => {
   if (win && !win.isFocused()) win.flashFrame(true);
 });
 
-ipcMain.on('focus', () => {
-  if (!win) return;
-  if (win.isMinimized()) win.restore();
-  win.show();
-  win.focus();
-});
+ipcMain.on('focus', showWindow);
 
-app.on('will-quit', () => globalShortcut.unregisterAll());
+// Любой настоящий выход (в том числе quitAndInstall внутри electron-updater) и завершение работы Windows
+app.on('before-quit', () => (quitting = true));
+app.on('session-end', () => (quitting = true));
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+  tray?.destroy();
+});
 app.on('window-all-closed', () => app.quit());

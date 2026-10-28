@@ -18,7 +18,8 @@
     "copyright": "© IlyaDasler",
     "files": [
       "*.js",
-      "renderer/**/*"
+      "renderer/**/*",
+      "assets/**/*"
     ],
     "publish": {
       "provider": "github",
