@@ -15,11 +15,11 @@ const FRIEND_ICONS = {
 };
 
 const FRIEND_TABS = {
-  online: { title: 'В сети', empty: 'Сейчас никого нет в сети. Загляните позже — или позовите друзей.' },
-  all: { title: 'Все друзья', empty: 'Друзей пока нет. Добавьте кого-нибудь по логину во вкладке «Добавить в друзья».' },
-  incoming: { title: 'Входящие заявки', empty: 'Новых заявок нет.' },
-  outgoing: { title: 'Отправленные заявки', empty: 'Вы никому не отправляли заявок, на которые ещё не ответили.' },
-  blocked: { title: 'Заблокированные', empty: 'Вы никого не блокировали.' },
+  online: { title: 'В сети', emptyTitle: 'Тишина в эфире', empty: 'Сейчас никого нет в сети. Загляните позже — или позовите друзей.' },
+  all: { title: 'Все друзья', emptyTitle: 'Совону не с кем созвониться', empty: 'Друзей пока нет. Добавьте кого-нибудь по логину во вкладке «Добавить в друзья».' },
+  incoming: { title: 'Входящие заявки', emptyTitle: 'Здесь пусто', empty: 'Новых заявок нет.' },
+  outgoing: { title: 'Отправленные заявки', emptyTitle: 'Здесь пусто', empty: 'Вы никому не отправляли заявок, на которые ещё не ответили.' },
+  blocked: { title: 'Заблокированные', emptyTitle: 'Здесь пусто', empty: 'Вы никого не блокировали.' },
 };
 
 async function refreshFriendRequests() {
@@ -145,7 +145,8 @@ function renderFriends() {
   $('friends-list-title').textContent = `${FRIEND_TABS[friendsTab].title} — ${shown.length}`;
   const list = $('friends-list');
   list.replaceChildren(...shown.map((u) => friendRow(u, friendsTab)));
-  $('friends-empty').textContent = all.length ? 'Никого не нашли' : FRIEND_TABS[friendsTab].empty;
+  const tab = FRIEND_TABS[friendsTab];
+  $('friends-empty').replaceChildren(all.length ? mascot('Никого не нашли', '', { small: true }) : mascot(tab.emptyTitle, tab.empty));
   $('friends-empty').classList.toggle('hidden', shown.length > 0);
   $('friend-search').classList.toggle('hidden', !all.length);
 }

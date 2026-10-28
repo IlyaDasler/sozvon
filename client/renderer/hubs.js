@@ -106,7 +106,7 @@ function renderHubChrome() {
 
 function renderHubEmpty(hub) {
   $('hub-empty-title').textContent = hub.name;
-  fillHubIcon($('hub-empty-icon'), hub);
+  if (!$('hub-empty-mascot').firstChild) $('hub-empty-mascot').innerHTML = SOVON_SVG;
   const manager = canManageHub(hub);
   $('hub-empty-text').textContent = manager
     ? 'Создайте первую комнату: голосовую — чтобы разговаривать, текстовую — чтобы переписываться.'
