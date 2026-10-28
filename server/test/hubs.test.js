@@ -292,3 +292,30 @@ test('миграция 2.2: каналы «Сходка <имя>» из верс
     }
   }
 });
+
+test('свой фон комнаты: ставит тот, кто настраивает комнату; видят все; убирается и пропадает с комнатой', async () => {
+  const owner = await reg('bg_owner');
+  const guest = await reg('bg_guest');
+  await befriend(owner, guest);
+  const hub = (await api('POST', '/hubs', { name: 'С фоном' }, owner.token)).body;
+  await api('POST', `/hubs/${hub.id}/invites`, { userIds: [guest.user.id] }, owner.token);
+  await api('POST', `/hub-invites/${hub.id}/accept`, null, guest.token);
+  const room = (await api('POST', '/rooms', { name: 'Уютная', kind: 'text', hubId: hub.id }, owner.token)).body;
+  assert.equal(room.backgroundUrl, null);
+  const put = (who, body, type = 'image/webp') =>
+    fetch(`${server.base}/api/rooms/${room.id}/background`, { method: 'PUT', body, headers: { 'Content-Type': type, Authorization: `Bearer ${who.token}` } });
+  const webp = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBPVP8 '), Buffer.alloc(400 * 1024)]);
+  assert.equal((await put(guest, webp)).status, 403);
+  assert.equal((await put(owner, Buffer.from('not an image'))).status, 400);
+  const res = await put(owner, webp); // крупнее аватарки: фон — во всю ширину
+  assert.equal(res.status, 200);
+  const { backgroundUrl } = await res.json();
+  assert.match(backgroundUrl, /^\/api\/avatars\/[a-f0-9]{32}\.webp$/);
+  const seen = (await api('GET', '/rooms', null, guest.token)).body.find((r) => r.id === room.id);
+  assert.equal(seen.backgroundUrl, backgroundUrl);
+  assert.equal((await api('DELETE', `/rooms/${room.id}/background`, null, owner.token)).body.backgroundUrl, null);
+  assert.equal((await fetch(server.base + backgroundUrl)).status, 404);
+  const again = (await (await put(owner, webp)).json()).backgroundUrl;
+  await api('DELETE', `/rooms/${room.id}`, null, owner.token);
+  assert.equal((await fetch(server.base + again)).status, 404);
+});

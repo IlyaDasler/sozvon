@@ -201,6 +201,8 @@ db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE em
 if (!columnsOf('rooms').includes('default_perms'))
   db.exec(`ALTER TABLE rooms ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
 if (!columnsOf('room_members').includes('role_id')) db.exec('ALTER TABLE room_members ADD COLUMN role_id INTEGER');
+// Свой фон комнаты: имя картинки в папке аватарок (как иконка канала)
+if (!columnsOf('rooms').includes('background')) db.exec('ALTER TABLE rooms ADD COLUMN background TEXT');
 // Кик на время: до этого момента (мс) участник может только читать чат
 if (!columnsOf('room_members').includes('timeout_until')) db.exec('ALTER TABLE room_members ADD COLUMN timeout_until INTEGER');
 // Канал комнаты (с 2.0); комнаты старых версий переносятся ниже
@@ -372,6 +374,7 @@ const q = {
   insertHub: db.prepare('INSERT INTO hubs (name, owner_id, icon_color, created_at) VALUES (?, ?, ?, ?)'),
   updateHub: db.prepare('UPDATE hubs SET name = ?, icon_color = ? WHERE id = ?'),
   setHubIcon: db.prepare('UPDATE hubs SET icon = ? WHERE id = ?'),
+  setRoomBackground: db.prepare('UPDATE rooms SET background = ? WHERE id = ?'),
   deleteHub: db.prepare('DELETE FROM hubs WHERE id = ?'),
   ownedHubs: db.prepare('SELECT COUNT(*) AS n FROM hubs WHERE owner_id = ?'),
   firstOwnedHub: db.prepare('SELECT * FROM hubs WHERE owner_id = ? ORDER BY id LIMIT 1'),
@@ -507,6 +510,7 @@ export const messages = {
 
 export const rooms = {
   byId: (id) => q.roomById.get(id),
+  setBackground: (id, background) => q.setRoomBackground.run(background, id),
   of: (userId) => q.roomsOf.all(userId),
   /** Комната в канале hubId. everyone — сразу позвать всех участников канала (старые версии зовут поимённо) */
   create(ownerId, name, kind, hubId, { everyone = true } = {}) {
