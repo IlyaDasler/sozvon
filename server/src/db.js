@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { config } from './config.js';
 import { canonicalEmail } from './email-address.js';
-import { DEFAULT_PERMS, PERMS } from './perms.js';
+import { ALL_PERMS, DEFAULT_PERMS, PERMS, rankOf } from './perms.js';
 
 export const db = new DatabaseSync(path.join(config.dataDir, 'sozvon.db'));
 
@@ -119,6 +119,45 @@ db.exec(`
     created_at INTEGER NOT NULL,
     PRIMARY KEY (room_id, user_id)
   );
+
+  -- Сходки (в коде — hubs; не путать с hub.js, рассылкой по WebSocket): свой «сервер» с комнатами внутри.
+  -- Участник сходки — участник её комнат (кроме тех, где забанен); создатель может всё,
+  -- управляющий (manager = 1) — создавать и удалять комнаты, переименовывать, звать, выгонять и банить
+  CREATE TABLE IF NOT EXISTS hubs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    icon_color TEXT NOT NULL,
+    icon TEXT,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS hub_members (
+    hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    manager INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (hub_id, user_id)
+  );
+  CREATE INDEX IF NOT EXISTS hub_members_user ON hub_members (user_id);
+
+  -- Приглашения: друг вступает в сходку, только когда сам примет
+  CREATE TABLE IF NOT EXISTS hub_invites (
+    hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    by_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (hub_id, user_id)
+  );
+  CREATE INDEX IF NOT EXISTS hub_invites_user ON hub_invites (user_id);
+
+  CREATE TABLE IF NOT EXISTS hub_bans (
+    hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    by_id INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (hub_id, user_id)
+  );
 `);
 
 // Миграции для баз, созданных старыми версиями
@@ -143,6 +182,21 @@ if (!columnsOf('rooms').includes('default_perms'))
 if (!columnsOf('room_members').includes('role_id')) db.exec('ALTER TABLE room_members ADD COLUMN role_id INTEGER');
 // Кик на время: до этого момента (мс) участник может только читать чат
 if (!columnsOf('room_members').includes('timeout_until')) db.exec('ALTER TABLE room_members ADD COLUMN timeout_until INTEGER');
+// Сходка комнаты (с 2.0); комнаты старых версий переносятся ниже
+if (!columnsOf('rooms').includes('hub_id')) db.exec('ALTER TABLE rooms ADD COLUMN hub_id INTEGER REFERENCES hubs(id) ON DELETE CASCADE');
+db.exec('CREATE INDEX IF NOT EXISTS rooms_hub ON rooms (hub_id)');
+
+/** Выполняет fn целиком или никак */
+function transaction(fn) {
+  db.exec('BEGIN');
+  try {
+    fn();
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
 
 const ADMIN_ROLE = { name: 'Администратор', color: '#e5484d', perms: PERMS.admin };
 
@@ -230,13 +284,12 @@ const q = {
     ORDER BY id DESC LIMIT ?
   `),
 
-  insertRoom: db.prepare('INSERT INTO rooms (name, kind, owner_id, created_at) VALUES (?, ?, ?, ?)'),
+  insertRoom: db.prepare('INSERT INTO rooms (name, kind, owner_id, hub_id, created_at) VALUES (?, ?, ?, ?, ?)'),
   roomById: db.prepare('SELECT * FROM rooms WHERE id = ?'),
   roomsOf: db.prepare(`
     SELECT r.* FROM room_members m JOIN rooms r ON r.id = m.room_id
     WHERE m.user_id = ? ORDER BY r.kind DESC, r.name COLLATE NOCASE
   `),
-  ownedRooms: db.prepare('SELECT COUNT(*) AS n FROM rooms WHERE owner_id = ?'),
   renameRoom: db.prepare('UPDATE rooms SET name = ? WHERE id = ?'),
   deleteRoom: db.prepare('DELETE FROM rooms WHERE id = ?'),
   setDefaultPerms: db.prepare('UPDATE rooms SET default_perms = ? WHERE id = ?'),
@@ -266,11 +319,55 @@ const q = {
   removeBan: db.prepare('DELETE FROM room_bans WHERE room_id = ? AND user_id = ?'),
   addRoomMember: db.prepare('INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) VALUES (?, ?, ?)'),
   removeRoomMember: db.prepare('DELETE FROM room_members WHERE room_id = ? AND user_id = ?'),
-  // Все, с кем человек в одной комнате: им тоже нужны его статус «в сети» и новый профиль
+  // Все, с кем человек в одной комнате или сходке: им тоже нужны его статус «в сети» и новый профиль
   roomNeighbours: db.prepare(`
-    SELECT DISTINCT b.user_id AS id FROM room_members a JOIN room_members b ON a.room_id = b.room_id
+    SELECT b.user_id AS id FROM room_members a JOIN room_members b ON a.room_id = b.room_id
+    WHERE a.user_id = ? AND b.user_id != a.user_id
+    UNION
+    SELECT b.user_id FROM hub_members a JOIN hub_members b ON a.hub_id = b.hub_id
     WHERE a.user_id = ? AND b.user_id != a.user_id
   `),
+
+  hubById: db.prepare('SELECT * FROM hubs WHERE id = ?'),
+  hubsOf: db.prepare(`
+    SELECT h.* FROM hub_members m JOIN hubs h ON h.id = m.hub_id WHERE m.user_id = ? ORDER BY m.created_at, h.id
+  `),
+  insertHub: db.prepare('INSERT INTO hubs (name, owner_id, icon_color, created_at) VALUES (?, ?, ?, ?)'),
+  updateHub: db.prepare('UPDATE hubs SET name = ?, icon_color = ? WHERE id = ?'),
+  setHubIcon: db.prepare('UPDATE hubs SET icon = ? WHERE id = ?'),
+  deleteHub: db.prepare('DELETE FROM hubs WHERE id = ?'),
+  ownedHubs: db.prepare('SELECT COUNT(*) AS n FROM hubs WHERE owner_id = ?'),
+  firstOwnedHub: db.prepare('SELECT * FROM hubs WHERE owner_id = ? ORDER BY id LIMIT 1'),
+  hubMembers: db.prepare(`
+    SELECT u.*, m.manager, m.created_at AS joined_at FROM hub_members m JOIN users u ON u.id = m.user_id
+    WHERE m.hub_id = ? ORDER BY m.created_at, u.id
+  `),
+  hubMember: db.prepare('SELECT * FROM hub_members WHERE hub_id = ? AND user_id = ?'),
+  addHubMember: db.prepare('INSERT OR IGNORE INTO hub_members (hub_id, user_id, created_at) VALUES (?, ?, ?)'),
+  removeHubMember: db.prepare('DELETE FROM hub_members WHERE hub_id = ? AND user_id = ?'),
+  setManager: db.prepare('UPDATE hub_members SET manager = ? WHERE hub_id = ? AND user_id = ?'),
+  hubRooms: db.prepare('SELECT * FROM rooms WHERE hub_id = ? ORDER BY id'),
+  // Участники комнаты становятся участниками её сходки (перенос старых комнат, приглашения из старых версий)
+  roomMembersToHub: db.prepare(`
+    INSERT OR IGNORE INTO hub_members (hub_id, user_id, created_at) SELECT ?, user_id, created_at FROM room_members WHERE room_id = ?
+  `),
+  setRoomHub: db.prepare('UPDATE rooms SET hub_id = ? WHERE id = ?'),
+  ownersOfLooseRooms: db.prepare('SELECT DISTINCT owner_id FROM rooms WHERE hub_id IS NULL'),
+  looseRoomsOf: db.prepare('SELECT id FROM rooms WHERE hub_id IS NULL AND owner_id = ? ORDER BY id'),
+  hubInvitesOf: db.prepare(`
+    SELECT i.hub_id, i.created_at, i.by_id FROM hub_invites i WHERE i.user_id = ? ORDER BY i.created_at DESC
+  `),
+  hubInvite: db.prepare('SELECT * FROM hub_invites WHERE hub_id = ? AND user_id = ?'),
+  hubInvited: db.prepare('SELECT user_id FROM hub_invites WHERE hub_id = ? ORDER BY created_at, user_id'),
+  addHubInvite: db.prepare('INSERT OR REPLACE INTO hub_invites (hub_id, user_id, by_id, created_at) VALUES (?, ?, ?, ?)'),
+  removeHubInvite: db.prepare('DELETE FROM hub_invites WHERE hub_id = ? AND user_id = ?'),
+  hubBans: db.prepare(`
+    SELECT u.*, b.created_at AS banned_at FROM hub_bans b JOIN users u ON u.id = b.user_id
+    WHERE b.hub_id = ? ORDER BY b.created_at
+  `),
+  isHubBanned: db.prepare('SELECT 1 FROM hub_bans WHERE hub_id = ? AND user_id = ?'),
+  addHubBan: db.prepare('INSERT OR IGNORE INTO hub_bans (hub_id, user_id, by_id, created_at) VALUES (?, ?, ?, ?)'),
+  removeHubBan: db.prepare('DELETE FROM hub_bans WHERE hub_id = ? AND user_id = ?'),
 
   insertRoomMessage: db.prepare(
     'INSERT INTO room_messages (room_id, from_id, text, attachments, preview, created_at) VALUES (?, ?, ?, ?, ?, ?)'
@@ -371,11 +468,12 @@ export const messages = {
 export const rooms = {
   byId: (id) => q.roomById.get(id),
   of: (userId) => q.roomsOf.all(userId),
-  ownedCount: (userId) => q.ownedRooms.get(userId).n,
-  create(ownerId, name, kind) {
+  /** Комната в сходке hubId. everyone — сразу позвать всех участников сходки (старые версии зовут поимённо) */
+  create(ownerId, name, kind, hubId, { everyone = true } = {}) {
     const now = Date.now();
-    const id = Number(q.insertRoom.run(name, kind, ownerId, now).lastInsertRowid);
+    const id = Number(q.insertRoom.run(name, kind, ownerId, hubId, now).lastInsertRowid);
     q.addRoomMember.run(id, ownerId, now);
+    if (everyone) for (const m of q.hubMembers.all(hubId)) q.addRoomMember.run(id, m.id, now);
     roles.create(id, ADMIN_ROLE);
     return rooms.byId(id);
   },
@@ -397,9 +495,20 @@ export const rooms = {
     return role ? role.perms : room.default_perms;
   },
 
+  /** Положение в комнате: создатель комнаты и создатель её сходки могут всё, управляющий сходкой — как администратор.
+   *  rank — старшинство (см. rankOf): действовать можно только на тех, кто младше */
+  standing(room, userId) {
+    const hub = room.hub_id && q.hubById.get(room.hub_id);
+    const isOwner = room.owner_id === userId || hub?.owner_id === userId;
+    const manager = Boolean(hub && q.hubMember.get(hub.id, userId)?.manager);
+    const perms = isOwner ? ALL_PERMS : rooms.rolePermsOf(room, userId) | (manager ? PERMS.admin : 0);
+    return { isOwner, perms, rank: rankOf(isOwner, perms) };
+  },
+
   /** Действующие права: кикнутый на время может только читать чат */
   permsOf(room, userId) {
-    return rooms.timeoutOf(room.id, userId) ? 0 : rooms.rolePermsOf(room, userId);
+    const { isOwner, perms } = rooms.standing(room, userId);
+    return isOwner || !rooms.timeoutOf(room.id, userId) ? perms : 0;
   },
 
   /** До какого момента участник кикнут, или null */
@@ -413,6 +522,82 @@ export const rooms = {
   isBanned: (roomId, userId) => Boolean(q.isBanned.get(roomId, userId)),
   ban: (roomId, userId, byId) => q.addBan.run(roomId, userId, byId, Date.now()),
   unban: (roomId, userId) => q.removeBan.run(roomId, userId),
+};
+
+/** Сходки. Участник сходки — участник её комнат, кроме тех, где его забанили */
+export const hubs = {
+  byId: (id) => q.hubById.get(id),
+  of: (userId) => q.hubsOf.all(userId),
+  ownedCount: (userId) => q.ownedHubs.get(userId).n,
+  create(ownerId, name, iconColor) {
+    const now = Date.now();
+    const id = Number(q.insertHub.run(name, ownerId, iconColor, now).lastInsertRowid);
+    q.addHubMember.run(id, ownerId, now);
+    return hubs.byId(id);
+  },
+
+  /** Куда класть комнату без сходки (старые версии и перенос): в первую свою сходку, а нет — в новую «Сходка <имя>» */
+  defaultFor(owner) {
+    return q.firstOwnedHub.get(owner.id) || hubs.create(owner.id, `Сходка ${owner.display_name}`.slice(0, 40), owner.avatar_color);
+  },
+
+  /** Переносит комнату в сходку вместе с её участниками */
+  attachRoom(hubId, roomId) {
+    q.setRoomHub.run(hubId, roomId);
+    q.roomMembersToHub.run(hubId, roomId);
+  },
+
+  update: (id, { name, iconColor }) => q.updateHub.run(name, iconColor, id),
+  setIcon: (id, icon) => q.setHubIcon.run(icon, id),
+  remove: (id) => q.deleteHub.run(id),
+  rooms: (hubId) => q.hubRooms.all(hubId),
+  members: (hubId) => q.hubMembers.all(hubId),
+  isMember: (hubId, userId) => Boolean(q.hubMember.get(hubId, userId)),
+  setManager: (hubId, userId, manager) => q.setManager.run(manager ? 1 : 0, hubId, userId),
+
+  /** Старшинство в сходке: создатель 3, управляющий 2, участник 1, чужой 0 */
+  rankOf(hub, userId) {
+    if (hub.owner_id === userId) return 3;
+    const member = q.hubMember.get(hub.id, userId);
+    return member ? (member.manager ? 2 : 1) : 0;
+  },
+
+  /** Вступить: сходка и все её комнаты, кроме тех, где забанен. Возвращает комнаты, куда попал */
+  join(hubId, userId) {
+    const now = Date.now();
+    const joined = [];
+    transaction(() => {
+      q.addHubMember.run(hubId, userId, now);
+      q.removeHubInvite.run(hubId, userId);
+      for (const room of q.hubRooms.all(hubId)) {
+        if (q.isBanned.get(room.id, userId) || q.isRoomMember.get(room.id, userId)) continue;
+        q.addRoomMember.run(room.id, userId, now);
+        joined.push(room);
+      }
+    });
+    return joined;
+  },
+
+  /** Только запись участника: из комнат его убирает вызывающий (там ещё голос и события) */
+  removeMember: (hubId, userId) => q.removeHubMember.run(hubId, userId),
+  addMemberOnly: (hubId, userId) => {
+    q.addHubMember.run(hubId, userId, Date.now());
+    q.removeHubInvite.run(hubId, userId);
+  },
+
+  invitesOf: (userId) => q.hubInvitesOf.all(userId),
+  invite: (hubId, userId) => q.hubInvite.get(hubId, userId),
+  invited: (hubId) => q.hubInvited.all(hubId).map((r) => r.user_id),
+  addInvite: (hubId, userId, byId) => q.addHubInvite.run(hubId, userId, byId, Date.now()),
+  removeInvite: (hubId, userId) => q.removeHubInvite.run(hubId, userId),
+
+  bans: (hubId) => q.hubBans.all(hubId),
+  isBanned: (hubId, userId) => Boolean(q.isHubBanned.get(hubId, userId)),
+  ban(hubId, userId, byId) {
+    q.addHubBan.run(hubId, userId, byId, Date.now());
+    q.removeHubInvite.run(hubId, userId);
+  },
+  unban: (hubId, userId) => q.removeHubBan.run(hubId, userId),
 };
 
 export const roles = {
@@ -435,13 +620,21 @@ for (const { id, email } of db.prepare('SELECT id, email FROM users WHERE email 
   if (canonical !== email && !q.userByEmail.get(canonical)) q.setEmail.run(canonical, id);
 }
 
+// Комнаты из версий до 2.0 жили сами по себе: у каждого создателя собираем их в сходку вместе с участниками
+transaction(() => {
+  for (const { owner_id } of q.ownersOfLooseRooms.all()) {
+    const hub = hubs.defaultFor(q.userById.get(owner_id));
+    for (const { id } of q.looseRoomsOf.all(owner_id)) hubs.attachRoom(hub.id, id);
+  }
+});
+
 // В комнатах из версий без ролей создатель получает готовую роль администратора, которую можно раздать
 for (const { id } of q.roomsWithoutRoles.all()) roles.create(id, ADMIN_ROLE);
 
 /** id всех, кому важны обновления пользователя: друзья и соседи по комнатам */
 export function relatedUserIds(userId) {
   const ids = new Set(q.listContacts.all(userId).map((u) => u.id));
-  for (const row of q.roomNeighbours.all(userId)) ids.add(row.id);
+  for (const row of q.roomNeighbours.all(userId, userId)) ids.add(row.id);
   return ids;
 }
 
@@ -473,14 +666,9 @@ export const uploads = {
   claim(ids, ownerId) {
     const rows = ids.map((id) => q.uploadById.get(id));
     if (rows.some((row) => !row || row.owner_id !== ownerId || row.used)) return null;
-    db.exec('BEGIN');
-    try {
+    transaction(() => {
       for (const row of rows) q.useUpload.run(row.id);
-      db.exec('COMMIT');
-    } catch (err) {
-      db.exec('ROLLBACK');
-      throw err;
-    }
+    });
     return rows;
   },
 
