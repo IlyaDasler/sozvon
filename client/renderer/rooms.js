@@ -1,5 +1,5 @@
 // Комнаты: голосовые (общий голосовой канал с видео и демонстрацией экрана + чат) и текстовые (только чат).
-// Каждая комната — в сходке (hubs.js); в боковой панели видны комнаты открытой сходки
+// Каждая комната — в канале (hubs.js); в боковой панели видны комнаты открытого канала
 
 const ROOM_ERRORS = {
   'not-member': 'Вы не участник этой комнаты',
@@ -25,10 +25,10 @@ const PERMS = { connect: 1, speak: 2, video: 4, write: 8, invite: 16, kick: 32, 
 const ALL_PERMS = 511;
 const memberOf = (room, userId) => room?.members.find((m) => m.id === userId);
 
-// Как на сервере (rooms.standing): создатель комнаты и создатель её сходки могут всё, управляющий сходкой — как администратор
+// Как на сервере (rooms.standing): создатель комнаты и создатель её канала могут всё, управляющий каналом — как администратор
 const isRoomOwner = (room, userId) => room.ownerId === userId || state.hubs.get(room.hubId)?.ownerId === userId;
 const managesHubOf = (room, userId) => Boolean(state.hubs.get(room.hubId)?.members.find((m) => m.id === userId)?.manager);
-// Удалить комнату может её создатель и тот, кто управляет сходкой
+// Удалить комнату может её создатель и тот, кто управляет каналом
 const canRemoveRoom = (room) => isRoomOwner(room, state.me.id) || managesHubOf(room, state.me.id);
 
 /** До какого момента участник кикнут на время (создателя не кикают), или null */
@@ -99,7 +99,7 @@ function renderRooms() {
     (a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name, 'ru') : a.kind === 'voice' ? -1 : 1)
   );
 
-  // Разделы «Голосовые» и «Текстовые»; кто управляет сходкой, создаёт комнаты прямо отсюда
+  // Разделы «Голосовые» и «Текстовые»; кто управляет каналом, создаёт комнаты прямо отсюда
   for (const [kind, title] of [['voice', 'Голосовые'], ['text', 'Текстовые']]) {
     const head = document.createElement('li');
     head.className = 'list-title with-action room-section';
@@ -361,7 +361,7 @@ function handleRoomEvent(msg) {
     case 'room:updated': {
       const room = msg.room;
       const old = roomById(room.id);
-      // Комнаты сходки появляются у всех её участников сами — об этом не шумим
+      // Комнаты канала появляются у всех его участников сами — об этом не шумим
       if (!old && room.ownerId !== state.me.id && !room.hubId) {
         toast(`Вас добавили в комнату «${room.name}»`);
         notify('Новая комната', `Вас добавили в «${room.name}»`, { kind: 'room-invite', open: { room: room.id } });
@@ -379,7 +379,7 @@ function handleRoomEvent(msg) {
     case 'room:removed': {
       const room = roomById(msg.roomId);
       forgetRoom(msg.roomId);
-      // hub — ушли из сходки целиком: об этом скажет hub:removed
+      // hub — ушли из канала целиком: об этом скажет hub:removed
       if (!room || msg.reason === 'left' || msg.reason === 'hub') return;
       if (msg.reason === 'banned' || msg.reason === 'kicked') {
         const text = msg.reason === 'banned' ? `Вас забанили в комнате «${room.name}»` : `Вас убрали из комнаты «${room.name}»`;
@@ -545,7 +545,7 @@ function openRoomCreate(kind = 'voice', hubId = state.view) {
   createHubId = hub.id;
   $('room-name').value = '';
   $('room-create-error').textContent = '';
-  $('room-create-hint').textContent = `Комната появится в «${hub.name}» у всех участников сходки.`;
+  $('room-create-hint').textContent = `Комната появится в «${hub.name}» у всех участников канала.`;
   document.querySelector(`input[name="room-kind"][value="${kind}"]`).checked = true;
   $('room-create').classList.remove('hidden');
   $('room-name').focus();

@@ -31,7 +31,7 @@
         <span class="grad">расстоянии.</span>
       </p>
 
-      <p class="auth-lead">Созвон — это тихие комнаты для работы и шумные вечера с друзьями. Соберите своих в сходке и позовите остальных.</p>
+      <p class="auth-lead">Созвон — это тихие комнаты для работы и шумные вечера с друзьями. Соберите своих в канале и позовите остальных.</p>
 
       <ul class="auth-features">
         <li>
@@ -47,7 +47,7 @@
         <li>
           <span class="auth-feature-icon"><svg viewBox="0 0 24 24"><path d="M12 21.5s7.5-3.7 7.5-9.4V5.6L12 2.5 4.5 5.6v6.5c0 5.7 7.5 9.4 7.5 9.4z"/><path d="M9.2 11.9l2 2 3.6-3.9"/></svg></span>
           <b>Только ваши</b>
-          <span>Сходки, куда пускают по приглашению</span>
+          <span>Каналы, куда пускают по приглашению</span>
         </li>
       </ul>
 
@@ -75,7 +75,7 @@
 
       <p class="auth-stat">
         <svg viewBox="0 0 24 24"><path d="M17 20v-1.8a3.6 3.6 0 0 0-3.6-3.6H6.6A3.6 3.6 0 0 0 3 18.2V20"/><circle cx="10" cy="7.6" r="3.4"/><path d="M21 20v-1.8a3.6 3.6 0 0 0-2.7-3.5M15.6 4.4a3.4 3.4 0 0 1 0 6.5"/></svg>
-        Голос, чат и сходки на своём сервере — без VPN и лишних подписок
+        Голос, чат и каналы на своём сервере — без VPN и лишних подписок
       </p>
     </aside>
 
@@ -148,8 +148,8 @@
 
   <!-- Основной экран -->
   <section id="main" class="screen main hidden">
-    <!-- Столбец сходок: дом (друзья и личные сообщения), свои сходки и группы в личном порядке, «Собрать сходку» -->
-    <nav class="rail" id="rail" aria-label="Сходки">
+    <!-- Столбец каналов: дом (друзья и личные сообщения), свои каналы и группы в личном порядке, «Собрать канал» -->
+    <nav class="rail" id="rail" aria-label="Каналы">
       <div class="rail-item" id="rail-home-item">
         <button type="button" class="rail-tile rail-home" id="rail-home" data-tip="Друзья и личные сообщения">
           <img src="logo.svg" alt="" width="28" height="28">
@@ -159,7 +159,7 @@
       <div class="rail-sep"></div>
       <div class="rail-list" id="rail-list"></div>
       <div class="rail-item">
-        <button type="button" class="rail-tile rail-add" id="rail-add" data-tip="Собрать сходку">
+        <button type="button" class="rail-tile rail-add" id="rail-add" data-tip="Собрать канал">
           <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
         </button>
       </div>
@@ -169,7 +169,7 @@
     <aside class="sidebar">
       <div class="sidebar-head">
         <span class="head-home" id="head-home"><img src="logo.svg" alt="" width="24" height="24"><span>Созвон</span></span>
-        <button type="button" class="hub-menu-btn hidden" id="hub-menu-btn" title="Меню сходки">
+        <button type="button" class="hub-menu-btn hidden" id="hub-menu-btn" title="Меню канала">
           <span class="ellipsis" id="hub-menu-name"></span>
           <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
         </button>
@@ -194,7 +194,7 @@
         <ul id="contact-list" class="contact-list"></ul>
         </div>
 
-        <!-- Комнаты открытой сходки: голосовые и текстовые -->
+        <!-- Комнаты открытого канала: голосовые и текстовые -->
         <ul id="room-list" class="contact-list room-list hidden"></ul>
       </div>
 
@@ -338,7 +338,7 @@
         </form>
       </div>
 
-      <!-- Сходка без комнат -->
+      <!-- Канал без комнат -->
       <div id="hub-empty" class="chat hidden">
         <header class="chat-head">
           <div class="peer-name ellipsis" id="hub-empty-title"></div>
@@ -354,7 +354,7 @@
       </div>
     </main>
 
-    <!-- Участники сходки или открытой комнаты: по ролям, «В сети» и «Не в сети» -->
+    <!-- Участники канала или открытой комнаты: по ролям, «В сети» и «Не в сети» -->
     <aside class="members-panel hidden" id="members-panel">
       <div class="members-scroll" id="members-list"></div>
     </aside>
@@ -564,18 +564,18 @@
     </form>
   </div>
 
-  <!-- Собрать сходку -->
+  <!-- Собрать канал -->
   <div id="hub-create" class="modal hidden">
     <form class="modal-card room-card hub-create-card" id="hub-create-form">
       <div class="hub-create-top">
         <div class="hub-tile big" id="hub-create-preview"></div>
         <div>
-          <h3>Собрать сходку</h3>
+          <h3>Собрать канал</h3>
           <p class="muted small">Своё место для своих: голосовые и текстовые комнаты, куда заходят только те, кого вы позовёте.</p>
         </div>
       </div>
       <label class="field">
-        <span>Название сходки</span>
+        <span>Название канала</span>
         <input id="hub-name" maxlength="40" placeholder="Например: Наш двор">
       </label>
       <div class="field">
@@ -586,12 +586,12 @@
       <div class="row">
         <div class="spacer"></div>
         <button type="button" class="btn" id="hub-create-cancel">Отмена</button>
-        <button class="btn primary" id="hub-create-submit">Собрать сходку</button>
+        <button class="btn primary" id="hub-create-submit">Собрать канал</button>
       </div>
     </form>
   </div>
 
-  <!-- Настройки сходки: обзор, участники, баны -->
+  <!-- Настройки канала: обзор, участники, баны -->
   <div id="hub-settings" class="modal hidden">
     <div class="modal-card rs-card">
       <nav class="rs-nav" id="hs-nav">
@@ -614,11 +614,11 @@
   </div>
   <input type="file" id="hub-icon-input" accept="image/*" hidden>
 
-  <!-- Позвать друзей в сходку -->
+  <!-- Позвать друзей в канал -->
   <div id="hub-invite" class="modal hidden">
     <div class="modal-card invite-card">
       <h3 id="hi-title"></h3>
-      <p class="muted small">Друг вступит в сходку, когда примет приглашение, — и сразу попадёт во все её комнаты.</p>
+      <p class="muted small">Друг вступит в канал, когда примет приглашение, — и сразу попадёт во все его комнаты.</p>
       <input id="hi-search" class="friend-search" placeholder="Поиск друзей" spellcheck="false">
       <p class="error" id="hi-error"></p>
       <div class="member-list invite-list" id="hi-list"></div>
@@ -626,7 +626,7 @@
     </div>
   </div>
 
-  <!-- Приглашение в сходку -->
+  <!-- Приглашение в канал -->
   <div id="hub-join" class="modal hidden">
     <div class="modal-card incoming-card">
       <div class="hub-tile big" id="hj-icon"></div>
@@ -640,11 +640,11 @@
     </div>
   </div>
 
-  <!-- Группа сходок в столбце: название и цвет (видно только вам) -->
+  <!-- Группа каналов в столбце: название и цвет (видно только вам) -->
   <div id="folder-edit" class="modal hidden">
     <form class="modal-card room-card" id="folder-form">
-      <h3>Группа сходок</h3>
-      <p class="muted small">Группы и порядок сходок — только в вашем приложении, другие их не видят.</p>
+      <h3>Группа каналов</h3>
+      <p class="muted small">Группы и порядок каналов — только в вашем приложении, другие их не видят.</p>
       <label class="field">
         <span>Название</span>
         <input id="folder-name" maxlength="32" placeholder="Например: Игры">
@@ -661,7 +661,7 @@
     </form>
   </div>
 
-  <!-- Всплывающее меню: сходка, группа, шапка сходки -->
+  <!-- Всплывающее меню: канал, группа, шапка канала -->
   <div class="popup-menu hidden" id="popup-menu"></div>
 
   <!-- Настройки комнаты: обзор, роли и права, участники, баны -->
