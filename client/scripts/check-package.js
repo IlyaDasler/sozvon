@@ -31,6 +31,13 @@ if (!fs.existsSync(path.join(root, 'dist', 'win-unpacked', 'resources', 'app-upd
   process.exit(1);
 }
 
+// Нативные модули (рация) работают только распакованными рядом с app.asar
+const unpacked = path.join(root, 'dist', 'win-unpacked', 'resources', 'app.asar.unpacked');
+if (dependencies['uiohook-napi'] && !fs.existsSync(path.join(unpacked, 'node_modules', 'uiohook-napi', 'prebuilds', 'win32-x64', 'uiohook-napi.node'))) {
+  console.error('✖ В сборке нет распакованного uiohook-napi.node — рация работать не будет');
+  process.exit(1);
+}
+
 const missing = [...required].filter((f) => !packed.has(f));
 if (missing.length) {
   console.error(`✖ В установщик не попали файлы: ${missing.join(', ')}`);

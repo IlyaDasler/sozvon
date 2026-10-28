@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { autoUpdater } = require('electron-updater');
 const { listenForOAuth, openOAuthWindow, opensInApp } = require('./oauth-loopback');
+const { parseBinding } = require('./renderer/ptt-keys');
 const { offerRemoveOldCopy, repairShortcuts } = require('./install-repair');
 
 // --profile=имя запускает отдельный экземпляр со своим входом (удобно, чтобы проверить звонок на одном ПК)
@@ -127,6 +128,29 @@ app.whenReady().then(() => {
   globalShortcut.register('CommandOrControl+Shift+M', () => toPage('hotkey', 'toggle-mute'));
   globalShortcut.register('CommandOrControl+Shift+D', () => toPage('hotkey', 'toggle-deafen'));
 });
+
+// ---------- Рация (push-to-talk) ----------
+// Модуль перехвата грузим, только когда рацию включили: если он почему-то не загрузится,
+// приложение всё равно работает — просто без рации
+let ptt = null;
+function loadPtt() {
+  if (!ptt) ptt = require('./ptt');
+  return ptt;
+}
+
+ipcMain.handle('ptt:set', (_event, value) => {
+  const binding = parseBinding(value);
+  if (!binding && !ptt) return true;
+  try {
+    loadPtt().configure(binding, (down) => toPage('ptt', down));
+    return true;
+  } catch (err) {
+    console.error('Рация недоступна:', err);
+    return false;
+  }
+});
+ipcMain.handle('ptt:capture', () => loadPtt().capture());
+ipcMain.handle('ptt:names', () => loadPtt().KEY_NAMES);
 
 // ---------- Статус «Неактивен» ----------
 // 10 минут без мыши и клавиатуры или заблокированный экран — сообщаем странице, она передаст серверу
@@ -275,6 +299,7 @@ app.on('before-quit', () => (quitting = true));
 app.on('session-end', () => (quitting = true));
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  ptt?.stop();
   tray?.destroy();
 });
 app.on('window-all-closed', () => app.quit());
