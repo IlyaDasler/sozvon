@@ -151,10 +151,14 @@
     <!-- Столбец каналов: дом (друзья и личные сообщения), свои каналы и группы в личном порядке, «Создать канал» -->
     <nav class="rail" id="rail" aria-label="Каналы">
       <div class="rail-item" id="rail-home-item">
-        <button type="button" class="rail-tile rail-home" id="rail-home" data-tip="Друзья и личные сообщения">
+        <button type="button" class="rail-tile rail-home" id="rail-home" data-tip="Друзья и личные чаты">
           <img src="logo.svg" alt="" width="28" height="28">
         </button>
         <span class="rail-badge hidden" id="rail-home-badge"></span>
+      </div>
+      <!-- Идущий личный звонок: аватарка собеседника, щелчок — к разговору -->
+      <div class="rail-item rail-call hidden" id="rail-call-item">
+        <button type="button" class="rail-tile" id="rail-call"></button>
       </div>
       <div class="rail-sep"></div>
       <div class="rail-list" id="rail-list"></div>
@@ -296,6 +300,7 @@
             <span class="call-status" id="call-status"></span>
             <span class="q-bars hidden" id="call-quality"></span>
             <span class="muted small hidden" id="call-quality-text"></span>
+            <button type="button" class="call-code hidden" id="call-code"></button>
           </div>
           <div class="call-controls">
             <button class="round-btn" id="call-mute" title="Микрофон (Ctrl+Shift+M)"></button>
@@ -303,6 +308,7 @@
             <button class="round-btn" id="call-ns"></button>
             <button class="round-btn" id="call-cam"></button>
             <button class="round-btn" id="call-screen"></button>
+            <button class="round-btn hidden" id="call-add" title="Добавить в звонок"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg></button>
             <button class="round-btn hangup" id="hangup-btn" title="Завершить">
               <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" transform="rotate(135 12 12)"/></svg>
             </button>
@@ -365,7 +371,7 @@
     <div class="modal-card incoming-card">
       <div class="avatar huge pulse" id="incoming-avatar"></div>
       <h3 id="incoming-name"></h3>
-      <p class="muted">Входящий звонок…</p>
+      <p class="muted" id="incoming-sub">Входящий звонок…</p>
       <div class="row center">
         <button class="btn danger" id="decline-btn">Отклонить</button>
         <button class="btn success" id="accept-btn">Принять</button>
@@ -742,6 +748,16 @@
     </div>
   </div>
 
+  <!-- Позвать друга в идущий звонок -->
+  <div id="call-add-modal" class="modal hidden">
+    <div class="modal-card invite-card">
+      <h3>Добавить в звонок</h3>
+      <input id="call-add-search" class="friend-search" placeholder="Поиск друзей" spellcheck="false">
+      <div class="member-list invite-list" id="call-add-list"></div>
+      <div class="row"><div class="spacer"></div><button type="button" class="btn" id="call-add-close">Готово</button></div>
+    </div>
+  </div>
+
   <!-- Кик на время -->
   <div id="room-kick" class="modal hidden">
     <form class="modal-card kick-card" id="kick-form">
@@ -771,10 +787,14 @@
       </div>
       <div class="screen-sources" id="screen-sources"></div>
       <div class="screen-options">
-        <label class="check"><input type="radio" name="screen-mode" value="motion" checked> Плавно — 720p, 60 кадров/с (игры, видео)</label>
-        <label class="check"><input type="radio" name="screen-mode" value="detail"> Чётко — 1080p, 30 кадров/с (текст, фильмы, презентации)</label>
+        <div class="screen-modes">
+          <label class="screen-mode"><input type="radio" name="screen-mode" value="1440p60"><b>1440p</b><span>60 кадров/с</span><em>~14 Мбит/с на зрителя</em></label>
+          <label class="screen-mode"><input type="radio" name="screen-mode" value="1080p60" checked><b>1080p</b><span>60 кадров/с</span><em>~9 Мбит/с на зрителя</em></label>
+          <label class="screen-mode"><input type="radio" name="screen-mode" value="720p90"><b>720p</b><span>90 кадров/с</span><em>~7 Мбит/с на зрителя</em></label>
+        </div>
+        <label class="check"><input type="checkbox" id="screen-text"> Для текста — держать чёткость, а не плавность (код, документы)</label>
         <label class="check"><input type="checkbox" id="screen-audio"> Передавать звук компьютера</label>
-        <span class="hint-text">Со звуком компьютера друзья услышат и игру, и собственные голоса из ваших динамиков — лучше слушать разговор в наушниках.</span>
+        <span class="hint-text">Звук самого Созвона в трансляцию не попадает — друзья не услышат собственные голоса. Если интернет не тянет, картинка сама станет чуть мягче, но плавность останется.</span>
       </div>
       <p class="error" id="screen-error"></p>
       <div class="row">
@@ -812,6 +832,7 @@
 
   <script src="markdown.js"></script>
   <script src="api.js"></script>
+  <script src="call-code.js"></script>
   <script src="call.js"></script>
   <script src="app.js"></script>
   <script src="voice-ui.js"></script>

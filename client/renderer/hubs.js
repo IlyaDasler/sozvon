@@ -151,6 +151,8 @@ function renderRail() {
   badge.classList.toggle('hidden', !unread);
   badge.textContent = unread > 99 ? '99+' : unread;
 
+  renderRailCall();
+
   const list = $('rail-list');
   list.replaceChildren();
   for (const invite of state.hubInvites) list.append(inviteItem(invite));
@@ -160,6 +162,23 @@ function renderRail() {
   if (JSON.stringify(layout) !== JSON.stringify(store.get(layoutKey(), null))) store.set(layoutKey(), layout);
   for (const item of layout.items) list.append(typeof item === 'number' ? hubItem(hubById(item)) : folderItem(item));
 }
+
+/** Значок идущего личного звонка: аватарка собеседника (или «+N» для группы) и зелёная пульсация */
+function renderRailCall() {
+  const call = state.call;
+  const item = $('rail-call-item');
+  item.classList.toggle('hidden', !call);
+  if (!call) return;
+  const tile = $('rail-call');
+  tile.replaceChildren();
+  fillAvatar(tile, call.peer);
+  const others = call.session.peers.size - 1;
+  if (others > 0) tile.append(Object.assign(document.createElement('span'), { className: 'rail-call-more', textContent: `+${others}` }));
+  tile.dataset.tip = voiceTitle();
+  item.classList.toggle('active', state.selectedId === call.peerId);
+}
+
+$('rail-call').onclick = () => state.call && selectContact(state.call.peerId);
 
 function railItem(tile, { active = false, unread = false, draggable = false } = {}) {
   const item = document.createElement('div');
