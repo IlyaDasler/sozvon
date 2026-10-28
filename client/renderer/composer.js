@@ -354,7 +354,6 @@ function toggleEmojiPicker(composer) {
 }
 
 document.addEventListener('click', () => emojiPopover?.classList.add('hidden'));
-document.addEventListener('keydown', (e) => e.key === 'Escape' && emojiPopover?.classList.add('hidden'));
 
 // ---------- Два поля ввода: чат с другом и комната ----------
 

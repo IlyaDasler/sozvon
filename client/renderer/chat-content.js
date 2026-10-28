@@ -154,4 +154,3 @@ $('image-viewer').onclick = (e) => {
   if (e.target.closest('a')) return;
   closeImageViewer();
 };
-document.addEventListener('keydown', (e) => e.key === 'Escape' && closeImageViewer());
