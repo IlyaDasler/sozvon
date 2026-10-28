@@ -1024,6 +1024,11 @@ kbd {
 .pc-chip::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--chip, var(--muted)); }
 .pc-chip.link { cursor: pointer; }
 .pc-chip.link:hover { background: var(--bg-5); }
+.pc-keycode { display: grid; gap: 4px; }
+.pc-keycode-value { font: 600 15px ui-monospace, Consolas, monospace; letter-spacing: .06em; user-select: all; }
+.pc-keycode.changed .pc-keycode-value { color: var(--warn); }
+.pc-keycode-warn { color: var(--warn); }
+.pc-keycode .btn { justify-self: start; margin-top: 4px; }
 .pc-note {
   width: 100%; resize: vertical; min-height: 36px; padding: 6px 8px; border: 0; border-radius: 4px;
   background: transparent; color: var(--text); font: inherit; font-size: 13px;

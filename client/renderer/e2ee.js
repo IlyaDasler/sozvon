@@ -372,3 +372,34 @@ $('e2ee-reset-btn').onclick = async () => {
     $('e2ee-setup-error').textContent = err.message;
   }
 };
+
+// ---------- Код проверки ключей в карточке профиля ----------
+
+/** Код ключей с человеком: у вас и у него одинаковый — значит, ключи никто не подменил */
+function keyCodeBox(user) {
+  const box = document.createElement('div');
+  box.className = 'pc-keycode';
+  const code = document.createElement('div');
+  code.className = 'pc-keycode-value';
+  code.textContent = '…';
+  E2EE.keyCode(e2ee.identity.publicKey, user.publicKey).then((c) => (code.textContent = c ? `${c.emoji.join(' ')}   ${c.digits}` : '—'));
+  const hint = document.createElement('div');
+  hint.className = 'muted small';
+  hint.textContent = 'Сравните с кодом в его карточке — лично или в звонке. Совпадает — переписку никто не подменил.';
+  box.append(code, hint);
+  if (keyChanged(user.id)) {
+    box.classList.add('changed');
+    const warn = document.createElement('div');
+    warn.className = 'pc-keycode-warn small';
+    warn.textContent = `Ключ ${user.displayName} недавно сменился (новое устройство?) — сверьте код заново.`;
+    const ok = Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: 'Код совпал' });
+    ok.onclick = () => {
+      setKeyChanged(user.id, false);
+      box.classList.remove('changed');
+      warn.remove();
+      ok.remove();
+    };
+    box.append(warn, ok);
+  }
+  return box;
+}

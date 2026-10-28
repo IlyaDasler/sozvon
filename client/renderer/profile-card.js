@@ -135,6 +135,8 @@ function openProfileCard(userId, anchor) {
     note.value = store.get(noteKey(userId), '');
     note.oninput = () => store.set(noteKey(userId), note.value);
     body.append(section('Заметка', note));
+    // Код ключей шифрования — чтобы убедиться, что переписку с этим человеком никто не подменил
+    if (user.publicKey && e2eeReady()) body.append(section('Код шифрования', keyCodeBox(user)));
 
     const actions = document.createElement('div');
     actions.className = 'pc-actions';
