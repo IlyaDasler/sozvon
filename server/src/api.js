@@ -5,6 +5,9 @@ import express from 'express';
 import { config } from './config.js';
 import { hashPassword, signTicket, signToken, verifyPassword, verifyTicket, verifyToken } from './auth.js';
 import {
+  convKeys,
+  keyTransfers,
+  setPublicKey,
   blocks,
   contacts,
   friendRequests,
@@ -23,6 +26,7 @@ import {
   users,
 } from './db.js';
 import { hub } from './hub.js';
+import { convMembers, dmConv, isPublicKey, isSealed, parseEnvelope, roomConv } from './e2ee.js';
 import { fetchPreview, previewableUrl } from './link-preview.js';
 import { canonicalEmail } from './email-address.js';
 import { FILE_ID_RE, MAX_ATTACHMENTS, MAX_FILE_BYTES, cleanMime, cleanName, fileHeaders, kindOf, toAttachment } from './files.js';
@@ -150,19 +154,22 @@ const linkInText = (text, url) => text.includes(url) || text.includes(url.replac
 
 /** Сообщение из запроса: текст, вложения и превью ссылки (previewUrl; не прислали — человек его убрал).
  *  Без текста можно, если есть вложения */
-async function messageFrom(req) {
+async function messageFrom(req, conv) {
   const text = str(req.body.text);
+  const enc = req.body.enc == null ? null : parseEnvelope(req.body.enc);
+  if (req.body.enc != null && !enc) throw new HttpError(400, 'Неверный зашифрованный конверт');
+  if (enc && enc.epoch > convKeys.epoch(conv)) throw new HttpError(400, 'Такой версии ключа у переписки нет');
   if (text.length > MAX_TEXT) throw new HttpError(400, `Сообщение должно быть не длиннее ${MAX_TEXT} символов`);
   const ids = Array.isArray(req.body.attachmentIds) ? req.body.attachmentIds : [];
   if (ids.length > MAX_ATTACHMENTS) throw new HttpError(400, `Можно прикрепить не больше ${MAX_ATTACHMENTS} файлов`);
   if (!ids.every((id) => typeof id === 'string' && FILE_ID_RE.test(id)) || new Set(ids).size !== ids.length)
     throw new HttpError(400, 'Неверные вложения');
-  if (!text && !ids.length) throw new HttpError(400, 'Напишите сообщение или прикрепите файл');
+  if (!text && !ids.length && !enc) throw new HttpError(400, 'Напишите сообщение или прикрепите файл');
   const rows = ids.length ? uploads.claim(ids, req.user.id) : [];
   if (!rows) throw new HttpError(400, 'Вложение не найдено или уже отправлено — прикрепите файл заново');
-  const previewUrl = previewableUrl(req.body.previewUrl);
+  const previewUrl = !enc && previewableUrl(req.body.previewUrl);
   const preview = previewUrl && linkInText(text, req.body.previewUrl) ? await fetchPreview(previewUrl) : null;
-  return { text, attachments: rows.map(toAttachment), preview };
+  return { text, attachments: rows.map(toAttachment), preview, enc };
 }
 
 const isWebp = (buf) =>
@@ -746,7 +753,7 @@ export function createApi() {
     '/messages/:id',
     handle(async (req) => {
       const other = requireContact(req);
-      const { text, ...extra } = await messageFrom(req);
+      const { text, ...extra } = await messageFrom(req, dmConv(req.user.id, other.id));
       const message = toMessage(messages.add(req.user.id, other.id, text, extra));
       hub.send(other.id, { type: 'message', message });
       hub.send(req.user.id, { type: 'message', message });
@@ -770,6 +777,97 @@ export function createApi() {
       hub.send(peerId, event);
       hub.send(me, event);
       return { ok: true };
+    })
+  );
+
+  // ---------- Сквозное шифрование ----------
+
+  // Свой публичный ключ. Сменили — старые копии ключей переписок (запечатанные старым ключом) удаляем,
+  // а друзья и соседи по комнатам узнают новый и запечатают ключи заново
+  api.put(
+    '/me/key',
+    handle((req) => {
+      if (!isPublicKey(req.body.publicKey)) throw new HttpError(400, 'Неверный публичный ключ');
+      if (req.user.public_key !== req.body.publicKey) {
+        setPublicKey(req.user.id, req.body.publicKey);
+        if (req.user.public_key) convKeys.dropUser(req.user.id);
+        const row = users.byId(req.user.id);
+        notifyRelated(row.id, { type: 'user:updated', user: toPublicUser(row) });
+      }
+      return toSelf(users.byId(req.user.id));
+    })
+  );
+
+  /** Переписка и её участники; не участник — для него её нет */
+  function requireConv(req) {
+    const members = convMembers(req.params.conv);
+    if (!members || !members.includes(req.user.id)) throw new HttpError(404, 'Переписка не найдена');
+    return { conv: req.params.conv, members };
+  }
+
+  // Мои копии ключа по версиям; у кого из участников (с публичным ключом) нет последней версии;
+  // нужно ли сменить ключ — у последней версии есть копия у того, кто уже не участник
+  api.get(
+    '/keys/:conv',
+    handle((req) => {
+      const { conv, members } = requireConv(req);
+      const epoch = convKeys.epoch(conv);
+      const holders = new Set(epoch ? convKeys.holders(conv, epoch) : []);
+      const withKey = members.filter((id) => users.byId(id)?.public_key);
+      return {
+        epoch,
+        mine: convKeys.mine(conv, req.user.id),
+        missing: epoch ? withKey.filter((id) => !holders.has(id)) : [],
+        rotate: [...holders].some((id) => !members.includes(id)),
+      };
+    })
+  );
+
+  // Новая версия ключа (epoch = текущая + 1, с копией для себя) или копии существующей версии тем,
+  // у кого их нет (делиться может только тот, у кого эта версия есть). Уже выданные копии не перезаписываем
+  api.post(
+    '/keys/:conv',
+    handle((req) => {
+      const { conv, members } = requireConv(req);
+      const epoch = Number(req.body.epoch);
+      const sealed = req.body.sealed && typeof req.body.sealed === 'object' ? req.body.sealed : {};
+      const ids = Object.keys(sealed).map(Number);
+      if (!ids.length || !ids.every((id) => members.includes(id)) || !Object.values(sealed).every(isSealed))
+        throw new HttpError(400, 'Запечатать ключ можно только участникам переписки');
+      const current = convKeys.epoch(conv);
+      if (!Number.isInteger(epoch) || epoch < 1 || epoch > current + 1) throw new HttpError(409, 'Версия ключа устарела — обновите ключи');
+      if (epoch === current + 1) {
+        if (!ids.includes(req.user.id)) throw new HttpError(400, 'Новую версию ключа запечатайте и для себя');
+      } else if (!convKeys.has(conv, epoch, req.user.id)) throw new HttpError(403, 'Поделиться можно только ключом, который есть у вас');
+      try {
+        convKeys.add(conv, epoch, sealed, req.user.id);
+      } catch {
+        throw new HttpError(409, 'Ключ уже обновили — обновите ключи');
+      }
+      for (const id of members) hub.send(id, { type: 'keys:updated', conv });
+      return { ok: true, epoch };
+    })
+  );
+
+  // Перенос ключа на новое устройство: старое кладёт ключ, зашифрованный кодом; id — хэш кода
+  api.post(
+    '/key-transfer',
+    handle((req) => {
+      const id = str(req.body.id);
+      const blob = req.body.blob;
+      if (!/^[a-f0-9]{64}$/.test(id) || typeof blob !== 'string' || !blob || blob.length > 16 * 1024)
+        throw new HttpError(400, 'Неверные данные переноса');
+      keyTransfers.put(id, req.user.id, blob);
+      return { ok: true };
+    })
+  );
+
+  api.get(
+    '/key-transfer/:id',
+    handle((req) => {
+      const blob = /^[a-f0-9]{64}$/.test(req.params.id) && keyTransfers.take(req.params.id, req.user.id);
+      if (!blob) throw new HttpError(404, 'Код не подошёл или устарел — создайте новый на старом устройстве');
+      return { blob };
     })
   );
 
@@ -1085,7 +1183,7 @@ export function createApi() {
     handle(async (req) => {
       const room = requireRoom(req);
       requirePerm(req, room, PERMS.write, 'Вам нельзя писать в эту комнату');
-      const { text, ...extra } = await messageFrom(req);
+      const { text, ...extra } = await messageFrom(req, roomConv(room.id));
       const message = toRoomMessage(roomMessages.add(room.id, req.user.id, text, extra));
       for (const m of rooms.members(room.id)) hub.send(m.id, { type: 'room:message', message });
       return message;

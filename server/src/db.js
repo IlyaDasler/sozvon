@@ -151,6 +151,27 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS hub_invites_user ON hub_invites (user_id);
 
+  -- Ключи переписок: для каждой версии (epoch) ключа — копия, запечатанная публичным ключом участника.
+  -- Сервер открыть их не может; conv — «dm:<a>-<b>» или «room:<id>»
+  CREATE TABLE IF NOT EXISTS conv_keys (
+    conv TEXT NOT NULL,
+    epoch INTEGER NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sealed TEXT NOT NULL,
+    by_id INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (conv, epoch, user_id)
+  );
+  CREATE INDEX IF NOT EXISTS conv_keys_user ON conv_keys (user_id);
+
+  -- Перенос ключа на новое устройство: зашифрованный кодом ключ, живёт 10 минут; id — хэш кода
+  CREATE TABLE IF NOT EXISTS key_transfers (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    blob TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS hub_bans (
     hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -185,6 +206,9 @@ if (!columnsOf('room_members').includes('timeout_until')) db.exec('ALTER TABLE r
 // Канал комнаты (с 2.0); комнаты старых версий переносятся ниже
 if (!columnsOf('rooms').includes('hub_id')) db.exec('ALTER TABLE rooms ADD COLUMN hub_id INTEGER REFERENCES hubs(id) ON DELETE CASCADE');
 db.exec('CREATE INDEX IF NOT EXISTS rooms_hub ON rooms (hub_id)');
+// Сквозное шифрование (2.3): публичный ключ человека и конверт сообщения вместо текста
+if (!columnsOf('users').includes('public_key')) db.exec('ALTER TABLE users ADD COLUMN public_key TEXT');
+for (const table of ['messages', 'room_messages']) if (!columnsOf(table).includes('enc')) db.exec(`ALTER TABLE ${table} ADD COLUMN enc TEXT`);
 
 /** Выполняет fn целиком или никак */
 function transaction(fn) {
@@ -210,6 +234,7 @@ export const toPublicUser = (row) =>
     bio: row.bio || '',
     bannerColor: row.banner_color || null,
     memberSince: row.created_at,
+    publicKey: row.public_key || null,
   };
 
 const parseJson = (value, fallback) => {
@@ -227,6 +252,7 @@ export const toMessage = (row) => ({
   text: row.text,
   attachments: parseJson(row.attachments, []),
   preview: parseJson(row.preview, null),
+  enc: parseJson(row.enc, null),
   createdAt: row.created_at,
 });
 
@@ -276,7 +302,17 @@ const q = {
   ),
   removeIdentity: db.prepare('DELETE FROM identities WHERE user_id = ? AND provider = ?'),
 
-  insertMessage: db.prepare('INSERT INTO messages (from_id, to_id, text, attachments, preview, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
+  insertMessage: db.prepare('INSERT INTO messages (from_id, to_id, text, attachments, preview, enc, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'),
+  setPublicKey: db.prepare('UPDATE users SET public_key = ? WHERE id = ?'),
+  convEpoch: db.prepare('SELECT MAX(epoch) AS epoch FROM conv_keys WHERE conv = ?'),
+  convMine: db.prepare('SELECT epoch, sealed FROM conv_keys WHERE conv = ? AND user_id = ? ORDER BY epoch'),
+  convHolders: db.prepare('SELECT user_id FROM conv_keys WHERE conv = ? AND epoch = ?'),
+  convHas: db.prepare('SELECT 1 FROM conv_keys WHERE conv = ? AND epoch = ? AND user_id = ?'),
+  convInsert: db.prepare('INSERT OR IGNORE INTO conv_keys (conv, epoch, user_id, sealed, by_id, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
+  convDropUser: db.prepare('DELETE FROM conv_keys WHERE user_id = ?'),
+  transferPut: db.prepare('INSERT OR REPLACE INTO key_transfers (id, user_id, blob, created_at) VALUES (?, ?, ?, ?)'),
+  transferGet: db.prepare('SELECT * FROM key_transfers WHERE id = ?'),
+  transferDrop: db.prepare('DELETE FROM key_transfers WHERE id = ? OR created_at < ?'),
   messageById: db.prepare('SELECT * FROM messages WHERE id = ?'),
   deleteMessage: db.prepare('DELETE FROM messages WHERE id = ?'),
   messagesBetween: db.prepare(`
@@ -371,7 +407,7 @@ const q = {
   removeHubBan: db.prepare('DELETE FROM hub_bans WHERE hub_id = ? AND user_id = ?'),
 
   insertRoomMessage: db.prepare(
-    'INSERT INTO room_messages (room_id, from_id, text, attachments, preview, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+    'INSERT INTO room_messages (room_id, from_id, text, attachments, preview, enc, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
   ),
 
   insertUpload: db.prepare('INSERT INTO uploads (id, owner_id, name, mime, size, kind, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'),
@@ -458,8 +494,8 @@ export const toSelf = (row) => ({
 });
 
 export const messages = {
-  add(fromId, toId, text, { attachments = [], preview = null } = {}) {
-    const res = q.insertMessage.run(fromId, toId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), Date.now());
+  add(fromId, toId, text, { attachments = [], preview = null, enc = null } = {}) {
+    const res = q.insertMessage.run(fromId, toId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), enc && JSON.stringify(enc), Date.now());
     return q.messageById.get(Number(res.lastInsertRowid));
   },
   between(a, b, beforeId = Number.MAX_SAFE_INTEGER, limit = 50) {
@@ -652,12 +688,13 @@ export const toRoomMessage = (row) => ({
   text: row.text,
   attachments: parseJson(row.attachments, []),
   preview: parseJson(row.preview, null),
+  enc: parseJson(row.enc, null),
   createdAt: row.created_at,
 });
 
 export const roomMessages = {
-  add(roomId, fromId, text, { attachments = [], preview = null } = {}) {
-    const res = q.insertRoomMessage.run(roomId, fromId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), Date.now());
+  add(roomId, fromId, text, { attachments = [], preview = null, enc = null } = {}) {
+    const res = q.insertRoomMessage.run(roomId, fromId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), enc && JSON.stringify(enc), Date.now());
     return q.roomMessageById.get(Number(res.lastInsertRowid));
   },
   list(roomId, beforeId = Number.MAX_SAFE_INTEGER, limit = 50) {
@@ -684,4 +721,37 @@ export const uploads = {
   /** Загрузки, которые так и не прикрепили, старше времени cutoff */
   stale: (cutoff) => q.staleUploads.all(cutoff).map((row) => row.id),
   remove: (id) => q.deleteUpload.run(id),
+};
+
+/** Ключи переписок: версии и копии, запечатанные для каждого участника */
+export const convKeys = {
+  epoch: (conv) => q.convEpoch.get(conv).epoch || 0,
+  mine: (conv, userId) => Object.fromEntries(q.convMine.all(conv, userId).map((r) => [r.epoch, r.sealed])),
+  holders: (conv, epoch) => q.convHolders.all(conv, epoch).map((r) => r.user_id),
+  has: (conv, epoch, userId) => Boolean(q.convHas.get(conv, epoch, userId)),
+
+  /** Добавить копии; новая версия — целиком или никак (кто-то мог успеть раньше) */
+  add(conv, epoch, sealed, byId) {
+    const now = Date.now();
+    transaction(() => {
+      for (const [userId, blob] of Object.entries(sealed)) q.convInsert.run(conv, epoch, Number(userId), blob, byId, now);
+    });
+  },
+
+  /** Человек сменил ключ — его старые копии никто уже не откроет */
+  dropUser: (userId) => q.convDropUser.run(userId),
+};
+
+export const setPublicKey = (userId, key) => q.setPublicKey.run(key, userId);
+
+const TRANSFER_TTL = 10 * 60_000;
+
+/** Перенос ключа на новое устройство: забрать можно один раз, своим аккаунтом, за 10 минут */
+export const keyTransfers = {
+  put: (id, userId, blob) => q.transferPut.run(id, userId, blob, Date.now()),
+  take(id, userId) {
+    const row = q.transferGet.get(id);
+    q.transferDrop.run(row?.user_id === userId ? id : '', Date.now() - TRANSFER_TTL);
+    return row && row.user_id === userId && row.created_at > Date.now() - TRANSFER_TTL ? row.blob : null;
+  },
 };
