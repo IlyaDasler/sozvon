@@ -65,6 +65,17 @@ runTest(async () => {
   const winOld = await openClient('co', old, OLD);
   console.log('✔ обе версии вошли и подключились');
 
+  // Переписка: незашифрованное от старой версии новая читает; зашифрованное от новой старая видит
+  // как просьбу обновиться (а не как пустоту или мусор)
+  await js(winOld, `Api.post('/messages/${fresh.user.id}', { text: 'привет от старой' }).then(() => true)`);
+  await js(winNew, `selectContact(${old.user.id})`);
+  await waitFor(winNew, `[...document.querySelectorAll('#messages .msg-text')].some((t) => t.textContent === 'привет от старой')`, 'новая читает старую');
+  await js(winNew, `document.getElementById('message-input').value = 'шифр для старой'; document.getElementById('message-form').requestSubmit(); true`);
+  await waitFor(winNew, `[...document.querySelectorAll('#messages .msg-text')].some((t) => t.textContent === 'шифр для старой')`, 'новая отправила');
+  const seenByOld = await js(winOld, `Api.get('/messages/${fresh.user.id}').then((list) => list.at(-1).text)`);
+  if (!seenByOld.startsWith('🔒') || !seenByOld.includes('обновите')) throw new Error(`Старая версия видит: ${seenByOld}`);
+  console.log('✔ переписка со старой версией: её сообщения читаются, наши — с просьбой обновиться');
+
   // Новая звонит старой; посреди звонка новая включает камеру — у старой звук не должен пропасть
   await call(winNew, winOld, old, 'новая → старая');
   await js(winNew, 'toggleCamera()');

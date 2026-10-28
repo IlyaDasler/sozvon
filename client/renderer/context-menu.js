@@ -143,7 +143,7 @@ function messageMenu(row, target) {
     image && { label: 'Открыть картинку', onclick: () => image.click() },
     image && { label: 'Скопировать ссылку на картинку', onclick: () => copyText(image.src, 'Ссылка скопирована') },
     (link || image) && 'sep',
-    m.text && { label: 'Скопировать текст', onclick: () => copyText(m.text, 'Текст скопирован') },
+    messageView(m).text && { label: 'Скопировать текст', onclick: () => copyText(messageView(m).text, 'Текст скопирован') },
     author && { label: `Профиль: ${author.displayName}`, onclick: () => openProfileCard(m.fromId, row.querySelector('.avatar')) },
     row.actions?.canDelete(m) && 'sep',
     row.actions?.canDelete(m) && { label: 'Удалить сообщение', danger: true, onclick: () => deleteMessage(m, row.actions.remove, false) },
