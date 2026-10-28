@@ -48,5 +48,14 @@ export const config = {
   turnPort,
   turnMinPort: Number(process.env.TURN_MIN_PORT) || 49160,
   turnMaxPort: Number(process.env.TURN_MAX_PORT) || 49200,
+  // Медиасервер LiveKit для больших комнат: url — для приложений (wss), apiUrl — для этого сервера
+  livekit: {
+    url: process.env.LIVEKIT_URL || '',
+    apiUrl: process.env.LIVEKIT_API_URL || 'http://127.0.0.1:7880',
+    key: process.env.LIVEKIT_API_KEY || '',
+    secret: process.env.LIVEKIT_API_SECRET || '',
+    // С какого числа участников комнаты голос идёт через LiveKit
+    minMembers: Number(process.env.LIVEKIT_MIN_MEMBERS) || 5,
+  },
   webDir: path.resolve(process.env.WEB_DIR || path.join(here, '..', '..', 'client', 'renderer')),
 };
