@@ -1,11 +1,8 @@
-// Рисует иконку приложения (build/icon.png, 512×512) без сторонних библиотек.
-// Та же картинка, что и logo.svg: наушники на зелёном фоне.
+// Рисует иконку приложения (build/icon.png, 512×512) и значок в трее (assets/tray.png, 32×32)
+// без сторонних библиотек. Та же картинка, что и logo.svg: наушники на зелёном фоне.
 const fs = require('node:fs');
 const path = require('node:path');
 const zlib = require('node:zlib');
-
-const SIZE = 512;
-const S = SIZE / 64; // масштаб относительно logo.svg (viewBox 64×64)
 
 const clamp = (v) => Math.max(0, Math.min(1, v));
 
@@ -14,6 +11,10 @@ function roundedRect(px, py, x, y, w, h, r) {
   const qy = Math.abs(py - (y + h / 2)) - h / 2 + r;
   return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
 }
+
+/** PNG с иконкой стороной size пикселей */
+function renderIcon(SIZE) {
+const S = SIZE / 64; // масштаб относительно logo.svg (viewBox 64×64)
 
 // Дуга оголовья: окружность радиуса 18 с центром (32, 32), только верхняя половина, концы скруглены
 function band(px, py) {
@@ -46,6 +47,20 @@ for (let y = 0; y < SIZE; y++) {
   }
 }
 
+const ihdr = Buffer.alloc(13);
+ihdr.writeUInt32BE(SIZE, 0);
+ihdr.writeUInt32BE(SIZE, 4);
+ihdr[8] = 8; // бит на канал
+ihdr[9] = 6; // RGBA
+
+return Buffer.concat([
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  chunk('IHDR', ihdr),
+  chunk('IDAT', zlib.deflateSync(raw, { level: 9 })),
+  chunk('IEND', Buffer.alloc(0)),
+]);
+}
+
 const crcTable = Array.from({ length: 256 }, (_, n) => {
   let c = n;
   for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
@@ -65,20 +80,9 @@ function chunk(type, data) {
   return Buffer.concat([len, body, crc]);
 }
 
-const ihdr = Buffer.alloc(13);
-ihdr.writeUInt32BE(SIZE, 0);
-ihdr.writeUInt32BE(SIZE, 4);
-ihdr[8] = 8; // бит на канал
-ihdr[9] = 6; // RGBA
-
-const png = Buffer.concat([
-  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-  chunk('IHDR', ihdr),
-  chunk('IDAT', zlib.deflateSync(raw, { level: 9 })),
-  chunk('IEND', Buffer.alloc(0)),
-]);
-
-const out = path.join(__dirname, '..', 'build', 'icon.png');
-fs.mkdirSync(path.dirname(out), { recursive: true });
-fs.writeFileSync(out, png);
-console.log(`Иконка сохранена: ${out}`);
+for (const [size, file] of [[512, ['build', 'icon.png']], [32, ['assets', 'tray.png']]]) {
+  const out = path.join(__dirname, '..', ...file);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, renderIcon(size));
+  console.log(`Иконка сохранена: ${out}`);
+}
