@@ -71,8 +71,8 @@ function voiceAllowed(id) {
   return room ? { speak: can(room, PERMS.speak, id), video: can(room, PERMS.video, id) } : { speak: true, video: true };
 }
 
-/** Самому говорить нельзя — микрофон принудительно выключен */
-const forcedMute = () => !voiceAllowed(state.me.id).speak;
+/** Самому говорить нельзя — микрофон принудительно выключен (до входа — некому и нечего запрещать) */
+const forcedMute = () => Boolean(state.me) && !voiceAllowed(state.me.id).speak;
 
 async function refreshRooms() {
   try {
@@ -130,6 +130,7 @@ function roomItem(room) {
   li.className = 'room-item';
   const row = document.createElement('div');
   row.className = `contact room-row${room.id === state.selectedRoomId ? ' active' : ''}`;
+  row.dataset.room = room.id;
   const tool = (kind, title, onclick) => {
     const b = document.createElement('button');
     b.type = 'button';

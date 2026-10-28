@@ -95,8 +95,12 @@ async function openClient(name, auth, root = path.join(__dirname, '..')) {
     },
   });
   // Ошибки страницы — в вывод теста, иначе падение видно только как «не дождались»
+  const ownCode = root === path.join(__dirname, '..');
   win.webContents.on('console-message', (e) => {
-    if (e.level === 'error') console.error(`  [${name}] ${e.message} (${path.basename(e.sourceId || '')}:${e.lineNumber})`);
+    if (e.level !== 'error') return;
+    const line = `[${name}] ${e.message} (${path.basename(e.sourceId || '')}:${e.lineNumber})`;
+    console.error(`  ${line}`);
+    if (ownCode && e.message.startsWith('Uncaught')) pageErrors.push(line);
   });
   await win.loadFile(path.join(root, 'renderer', 'index.html'));
   await js(win, `localStorage.setItem('session', ${JSON.stringify(JSON.stringify({ base: SERVER, token: auth.token }))}); location.reload()`);
@@ -136,10 +140,14 @@ async function screenshot(win, name) {
   }
 }
 
+// Необработанные ошибки на страницах текущей версии: тест с ними не считается пройденным
+const pageErrors = [];
+
 function runTest(run) {
   app.whenReady().then(async () => {
     try {
       await run();
+      if (pageErrors.length) throw new Error(`Ошибки на странице: ${[...new Set(pageErrors)].join('; ')}`);
       console.log('\nВсе проверки пройдены');
       app.exit(0);
     } catch (err) {
