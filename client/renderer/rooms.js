@@ -208,6 +208,7 @@ function applyRoomUpdate(room) {
 
 /** Комнаты больше нет (вышли, убрали, удалили) */
 function forgetRoom(id) {
+  e2ee.convs.delete(roomConvOf(id));
   state.rooms.delete(id);
   state.roomHistory.delete(id);
   state.roomUnread.delete(id);
@@ -269,6 +270,7 @@ function selectRoom(id) {
 async function loadRoomHistory(id) {
   try {
     const loaded = await Api.get(`/rooms/${id}/messages`);
+    await decryptMessages(loaded, roomConvOf(id));
     const known = state.roomHistory.get(id) || [];
     const merged = new Map([...loaded, ...known].map((m) => [m.id, m]));
     state.roomHistory.set(id, [...merged.values()].sort((a, b) => a.id - b.id));
@@ -349,7 +351,15 @@ function renderRoomMessages() {
 
 function addRoomMessage(m) {
   const list = state.roomHistory.get(m.roomId);
-  if (list && !list.some((x) => x.id === m.id)) list.push(m);
+  const known = list?.find((x) => x.id === m.id);
+  if (known) {
+    known.plain ??= m.plain;
+    m = known;
+  } else list?.push(m);
+  decryptMessages([m], roomConvOf(m.roomId)).then(() => showNewRoomMessage(m));
+}
+
+function showNewRoomMessage(m) {
   const viewing = m.roomId === state.selectedRoomId;
   if (viewing) renderRoomMessages();
   if (m.fromId === state.me.id) return;
@@ -381,6 +391,8 @@ function handleRoomEvent(msg) {
         notify('Комната', text, { kind: 'room-removed', open: { room: room.id } });
       } else if (old && timeoutOf(old) && !until) toast(`Кик в «${room.name}» снят — права вернулись`);
       applyRoomUpdate(room);
+      // Состав мог поменяться: новичку нужен ключ, после ухода — новая версия ключа
+      refreshConv(roomConvOf(room.id));
       return;
     }
     case 'room:removed': {
