@@ -100,31 +100,31 @@ function openProfileCard(userId, anchor) {
     body.append(section('В Созвоне с', since));
   }
 
-  // Роль в открытой комнате и общие комнаты
+  // Роль в открытой комнате и общие сходки (комнаты в разных сходках часто называются одинаково)
   const openRoom = state.selectedRoomId && roomById(state.selectedRoomId);
   if (openRoom && memberOf(openRoom, userId)) {
     const roles = document.createElement('div');
     roles.className = 'pc-chips';
     const role = roleOf(openRoom, userId);
-    roles.append(openRoom.ownerId === userId ? chip('Создатель', '#f0b232') : role ? chip(role.name, role.color) : chip('Без роли'));
+    roles.append(isRoomOwner(openRoom, userId) ? chip('Создатель', '#f0b232') : role ? chip(role.name, role.color) : chip('Без роли'));
     body.append(section(`Роль в «${openRoom.name}»`, roles));
   }
   if (!isMe) {
-    const shared = [...state.rooms.values()].filter((r) => r.members.some((m) => m.id === userId));
+    const shared = [...state.hubs.values()].filter((h) => h.members.some((m) => m.id === userId));
     if (shared.length) {
       const list = document.createElement('div');
       list.className = 'pc-chips';
-      for (const r of shared) {
-        const c = chip(r.name);
+      for (const h of shared) {
+        const c = chip(h.name, h.iconColor);
         c.classList.add('link');
-        c.title = 'Открыть комнату';
+        c.title = 'Открыть сходку';
         c.onclick = () => {
           closeProfileCard();
-          selectRoom(r.id);
+          openHub(h.id);
         };
         list.append(c);
       }
-      body.append(section(`Общие комнаты — ${shared.length}`, list));
+      body.append(section(`Общие сходки — ${shared.length}`, list));
     }
 
     const note = document.createElement('textarea');
