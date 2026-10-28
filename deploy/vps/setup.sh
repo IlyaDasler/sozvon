@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Установка сервера «Созвон» на VPS с Ubuntu без Docker: Node.js + coturn + systemd.
+# Установка сервера «Созвон» на VPS с Ubuntu без Docker: Node.js + coturn + LiveKit + systemd.
 # Docker Hub ограничивает доступ с российских IP, поэтому всё ставится из репозиториев Ubuntu.
 #
 #   curl -fsSL https://raw.githubusercontent.com/IlyaDasler/sozvon/main/deploy/vps/setup.sh | sudo bash
@@ -48,6 +48,9 @@ TURN_SECRET=${TURN_SECRET:-$(openssl rand -hex 32)}
 INVITE_CODE=${INVITE_CODE-$(tr -dc 'abcdefghjkmnpqrstuvwxyz23456789' </dev/urandom | head -c 8)}
 # Домен для HTTPS. Если своего нет — бесплатный адрес sslip.io, который сам указывает на IP сервера
 DOMAIN=${DOMAIN:-${PUBLIC_IP//./-}.sslip.io}
+# Медиасервер LiveKit для больших комнат: ключ и секрет, которыми наш сервер подписывает пропуска
+LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-sozvon}
+LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-$(openssl rand -hex 32)}
 
 log 'Записываю настройки'
 umask 077
@@ -68,6 +71,10 @@ SMTP_PORT=${SMTP_PORT:-465}
 SMTP_USER=${SMTP_USER:-}
 SMTP_PASS=${SMTP_PASS:-}
 SMTP_FROM=${SMTP_FROM:-}
+LIVEKIT_URL=wss://$DOMAIN/livekit
+LIVEKIT_API_URL=http://127.0.0.1:7880
+LIVEKIT_API_KEY=$LIVEKIT_API_KEY
+LIVEKIT_API_SECRET=$LIVEKIT_API_SECRET
 EOF
 chmod 640 "$ENV_FILE" && chgrp sozvon "$ENV_FILE"
 umask 022
@@ -101,6 +108,67 @@ chmod 640 /etc/turnserver.conf && chgrp turnserver /etc/turnserver.conf 2>/dev/n
 [ -f /etc/default/coturn ] && sed -i 's/^#\?TURNSERVER_ENABLED=.*/TURNSERVER_ENABLED=1/' /etc/default/coturn
 systemctl enable -q coturn && systemctl restart coturn
 
+# Официальная сборка с GitHub; суммы — из checksums.txt этого выпуска, вписаны сюда заранее
+LIVEKIT_VERSION=1.13.11
+declare -A LIVEKIT_SHA256=(
+  [amd64]=1e9ee90ca301e1842b2887fc77cb122759756a9c8aeb4334ee91de3325ec43fb
+  [arm64]=2af6ce091d6b3c79d1677f8ff1bbb91a8007f40b2325c059b52d38383c0830b6
+)
+if ! /usr/local/bin/livekit-server --version 2>/dev/null | grep -q " $LIVEKIT_VERSION\$"; then
+  log "Ставлю медиасервер LiveKit $LIVEKIT_VERSION"
+  arch=$(dpkg --print-architecture)
+  [ -n "${LIVEKIT_SHA256[$arch]:-}" ] || { echo "LiveKit для $arch не предусмотрен"; exit 1; }
+  tmp=$(mktemp -d)
+  curl -fsSL -o "$tmp/livekit.tar.gz" "https://github.com/livekit/livekit/releases/download/v$LIVEKIT_VERSION/livekit_${LIVEKIT_VERSION}_linux_$arch.tar.gz"
+  echo "${LIVEKIT_SHA256[$arch]}  $tmp/livekit.tar.gz" | sha256sum -c --quiet - || { echo 'Сумма LiveKit не совпала — не ставлю'; rm -rf "$tmp"; exit 1; }
+  tar -xzf "$tmp/livekit.tar.gz" -C "$tmp" livekit-server
+  install -m 755 "$tmp/livekit-server" /usr/local/bin/livekit-server
+  rm -rf "$tmp"
+fi
+id livekit >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin livekit
+umask 077
+cat > /etc/livekit.yaml <<EOF
+# Медиасервер LiveKit: сигналы — через Caddy (https://$DOMAIN/livekit), звук и видео — UDP 50000–50200 или TCP 7881
+port: 7880
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50200
+  use_external_ip: false
+  node_ip: $PUBLIC_IP
+keys:
+  $LIVEKIT_API_KEY: $LIVEKIT_API_SECRET
+room:
+  empty_timeout: 60
+logging:
+  level: info
+EOF
+chmod 640 /etc/livekit.yaml && chgrp livekit /etc/livekit.yaml
+umask 022
+cat > /etc/systemd/system/livekit.service <<EOF
+[Unit]
+Description=LiveKit media server for Sozvon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=livekit
+Group=livekit
+ExecStart=/usr/local/bin/livekit-server --config /etc/livekit.yaml
+Restart=always
+RestartSec=3
+LimitNOFILE=65536
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl enable -q livekit && systemctl restart livekit
+
 log 'Настраиваю сервис «Созвон»'
 cat > /etc/systemd/system/sozvon.service <<EOF
 [Unit]
@@ -132,7 +200,13 @@ log "Настраиваю HTTPS для $DOMAIN (Caddy сам получит и �
 cat > /etc/caddy/Caddyfile <<EOF
 $DOMAIN {
 	encode gzip
-	reverse_proxy localhost:3000
+	# Медиасервер LiveKit: приложения подключаются к wss://$DOMAIN/livekit
+	handle_path /livekit/* {
+		reverse_proxy 127.0.0.1:7880
+	}
+	handle {
+		reverse_proxy localhost:3000
+	}
 }
 EOF
 systemctl enable -q caddy && systemctl reload-or-restart caddy
@@ -145,6 +219,9 @@ ufw allow 443/tcp >/dev/null
 ufw allow 3000/tcp >/dev/null
 ufw allow 3478 >/dev/null
 ufw allow 49160:49200/udp >/dev/null
+# LiveKit: звук и видео больших комнат
+ufw allow 7881/tcp >/dev/null
+ufw allow 50000:50200/udp >/dev/null
 ufw --force enable >/dev/null
 
 for i in $(seq 1 20); do
@@ -158,6 +235,8 @@ for i in $(seq 1 60); do
   sleep 2
 done
 curl -fsS "https://$DOMAIN/api/health" >/dev/null || { echo 'HTTPS не поднялся:'; journalctl -u caddy -n 20 --no-pager; exit 1; }
+# LiveKit отвечает через Caddy (корень его HTTP — «OK»)
+curl -fsS "https://$DOMAIN/livekit/" >/dev/null || { echo 'LiveKit не отвечает:'; journalctl -u livekit -n 30 --no-pager; exit 1; }
 
 log 'Готово'
 echo "  Адрес сервера:     https://$DOMAIN"
