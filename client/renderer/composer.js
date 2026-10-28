@@ -47,7 +47,7 @@ function uploadFile(file, onProgress) {
 }
 
 class Composer {
-  /** send({ text, attachmentIds, previewUrl }) отправляет сообщение и возвращает его */
+  /** send({ text, files, preview }) шифрует и отправляет сообщение */
   constructor(form, area, send) {
     this.form = form;
     this.area = area;
@@ -151,7 +151,7 @@ class Composer {
         continue;
       }
       const item = { file, url: /^image\//.test(file.type) ? URL.createObjectURL(file) : null, progress: 0 };
-      item.upload = uploadFile(file, (p) => {
+      item.upload = uploadEncrypted(file, (p) => {
         item.progress = p;
         this.renderFiles();
       });
@@ -215,7 +215,8 @@ class Composer {
     this.preview = url ? { url, data: undefined } : null;
     this.renderPreview();
     if (!url) return;
-    const data = await Api.get(`/link-preview?url=${encodeURIComponent(url)}`).catch(() => null);
+    // Превью делает само приложение: сервер не должен знать, какими ссылками делятся в зашифрованной переписке
+    const data = await (window.desktop?.preview?.(url) ?? Promise.resolve(null)).catch(() => null);
     if (this.preview?.url !== url) return; // пока грузили, ссылка поменялась
     this.preview.data = data;
     this.renderPreview();
@@ -249,8 +250,8 @@ class Composer {
     if (this.files.some((f) => !f.attachment && !f.error)) return toast('Подождите, файлы ещё загружаются');
     const ready = this.files.filter((f) => f.attachment);
     if (!text && !ready.length) return;
-    const payload = { text, attachmentIds: ready.map((f) => f.attachment.id) };
-    if (this.preview?.data && text.includes(this.preview.url.replace(/^https:\/\/(?=www\.)/, ''))) payload.previewUrl = this.preview.url;
+    const payload = { text, files: ready.map((f) => f.attachment), preview: null };
+    if (this.preview?.data && text.includes(this.preview.url.replace(/^https:\/\/(?=www\.)/, ''))) payload.preview = this.preview.data;
     this.sendBtn.disabled = true;
     try {
       await this.send(payload);
@@ -358,11 +359,17 @@ document.addEventListener('click', () => emojiPopover?.classList.add('hidden'));
 // ---------- Два поля ввода: чат с другом и комната ----------
 
 const dmComposer = new Composer($('message-form'), $('message-input'), async (payload) => {
-  if (state.selectedId) addMessage(await Api.post(`/messages/${state.selectedId}`, payload));
+  const peerId = state.selectedId;
+  if (!peerId) return;
+  const { body, plain } = await encryptOutgoing(dmConvOf(peerId), payload);
+  addMessage({ ...(await Api.post(`/messages/${peerId}`, body)), plain });
 });
 dmComposer.acceptDrops($('chat'));
 
 const roomComposer = new Composer($('room-message-form'), $('room-message-input'), async (payload) => {
-  if (state.selectedRoomId) addRoomMessage(await Api.post(`/rooms/${state.selectedRoomId}/messages`, payload));
+  const roomId = state.selectedRoomId;
+  if (!roomId) return;
+  const { body, plain } = await encryptOutgoing(roomConvOf(roomId), payload);
+  addRoomMessage({ ...(await Api.post(`/rooms/${roomId}/messages`, body)), plain });
 });
 roomComposer.acceptDrops($('room-view'));
