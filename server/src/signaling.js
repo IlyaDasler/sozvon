@@ -6,6 +6,7 @@ import { hub } from './hub.js';
 import { PERMS, has } from './perms.js';
 import { broadcastPresence, setAutoIdle, userGone } from './presence.js';
 import { MAX_VOICE_PARTICIPANTS, voice } from './voice.js';
+import { joinGrant, mediaFor } from './livekit.js';
 
 const RING_TIMEOUT_MS = 45_000;
 const MAX_CALL_PARTICIPANTS = 10;
@@ -161,6 +162,10 @@ const handlers = {
     const others = voice.participants(roomId).filter((p) => p.userId !== user.id);
     if (others.length >= MAX_VOICE_PARTICIPANTS) return fail('full');
 
+    // Большая комната — через LiveKit (решено, когда разговор начался); версии до 2.3.1 его не умеют
+    const media = voice.mediaOf(roomId) ?? mediaFor(rooms.members(roomId).length);
+    if (media === 'sfu' && !msg.sfu) return fail('old-version');
+
     // В голосе можно быть только в одном месте: со старого устройства или из другой комнаты выходим
     const current = voice.roomOf(user.id);
     if (current !== null) voice.leave(current, user.id, voice.get(current, user.id).ws === ws ? null : 'moved');
@@ -168,9 +173,16 @@ const handlers = {
     voice.join(roomId, user.id, ws, {
       muted: Boolean(msg.muted) || !has(perms, PERMS.speak),
       deafened: Boolean(msg.deafened),
+    }, media);
+    // Новичок сам звонит каждому, кто уже в комнате, — так у двух сторон не бывает встречных предложений.
+    // Через LiveKit звонить не нужно: приложение подключается к медиасерверу по пропуску
+    hub.sendTo(ws, {
+      type: 'room:joined',
+      roomId,
+      peers: others.map((p) => p.userId),
+      media,
+      ...(media === 'sfu' && { livekit: joinGrant(roomId, user, perms) }),
     });
-    // Новичок сам звонит каждому, кто уже в комнате, — так у двух сторон не бывает встречных предложений
-    hub.sendTo(ws, { type: 'room:joined', roomId, peers: others.map((p) => p.userId) });
     voice.broadcast(roomId);
   },
 
