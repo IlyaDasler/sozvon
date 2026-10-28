@@ -127,6 +127,22 @@ setInterval(() => {
   }
 }, 10 * 60_000).unref();
 
+/** Вложения удалённого сообщения больше не нужны: файл с диска и запись о загрузке */
+function removeAttachments(row) {
+  for (const a of parseAttachments(row.attachments)) {
+    fs.rm(path.join(FILES_DIR, a.id), { force: true }, () => {});
+    uploads.remove(a.id);
+  }
+}
+const parseAttachments = (json) => {
+  try {
+    const list = JSON.parse(json || '[]');
+    return Array.isArray(list) ? list.filter((a) => FILE_ID_RE.test(a?.id || '')) : [];
+  } catch {
+    return [];
+  }
+};
+
 const MAX_TEXT = 2000;
 
 // Превью — только для ссылки из самого сообщения (www.… приложение присылает как https://www.…)
@@ -737,6 +753,25 @@ export function createApi() {
     })
   );
 
+  // Удалить своё сообщение из переписки с :peerId. Дружба для этого не нужна — своё удалить можно и после неё
+  api.delete(
+    '/messages/:peerId/:id',
+    handle((req) => {
+      const peerId = Number(req.params.peerId);
+      const row = messages.byId(Number(req.params.id));
+      const me = req.user.id;
+      const inThisChat = row && ((row.from_id === me && row.to_id === peerId) || (row.from_id === peerId && row.to_id === me));
+      if (!inThisChat) throw new HttpError(404, 'Сообщение не найдено');
+      if (row.from_id !== me) throw new HttpError(403, 'Удалить можно только своё сообщение');
+      messages.remove(row.id);
+      removeAttachments(row);
+      const event = { type: 'message:deleted', id: row.id, fromId: row.from_id, toId: row.to_id };
+      hub.send(peerId, event);
+      hub.send(me, event);
+      return { ok: true };
+    })
+  );
+
   // ---------- Комнаты ----------
 
   function requireRoom(req) {
@@ -1053,6 +1088,22 @@ export function createApi() {
       const message = toRoomMessage(roomMessages.add(room.id, req.user.id, text, extra));
       for (const m of rooms.members(room.id)) hub.send(m.id, { type: 'room:message', message });
       return message;
+    })
+  );
+
+  // Своё сообщение удаляет автор; чужое — тот, кто настраивает комнату и старше автора
+  api.delete(
+    '/rooms/:id/messages/:messageId',
+    handle((req) => {
+      const room = requireRoom(req);
+      const row = roomMessages.byId(Number(req.params.messageId));
+      if (!row || row.room_id !== room.id) throw new HttpError(404, 'Сообщение не найдено');
+      if (row.from_id !== req.user.id)
+        requireOutranks(requirePerm(req, room, PERMS.manage, 'Удалять чужие сообщения может только тот, кто настраивает комнату'), room, row.from_id);
+      roomMessages.remove(row.id);
+      removeAttachments(row);
+      for (const m of rooms.members(room.id)) hub.send(m.id, { type: 'room:message:deleted', roomId: room.id, id: row.id });
+      return { ok: true };
     })
   );
 
