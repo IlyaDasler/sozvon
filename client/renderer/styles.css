@@ -779,6 +779,12 @@ video.mirror { transform: scaleX(-1); }
   padding: 12px 28px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--bg-deep) 35%, var(--bg-2));
 }
 .set-foot .error { flex: 1; }
+.ptt-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 8px; }
+kbd {
+  min-width: 34px; padding: 4px 10px; border-radius: var(--r-s); text-align: center;
+  background: var(--bg-deep); box-shadow: inset 0 -2px 0 var(--line-strong), inset 0 0 0 1px var(--line);
+  font: 600 13px/1.3 inherit; color: var(--text);
+}
 .incoming-card { width: 320px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 32px 24px; }
 .incoming-card h3 { margin-top: 18px; font-size: 20px; }
 .incoming-card .row { margin-top: 16px; }

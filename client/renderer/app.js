@@ -1409,6 +1409,7 @@ for (const b of document.querySelectorAll('#set-nav [data-tab]')) b.onclick = ()
 async function openSettings(tab) {
   showSettingsTab(typeof tab === 'string' ? tab : 'profile');
   renderThemePicker();
+  renderPttSettings();
   renderNotifySettings();
   $('email-link').classList.add('hidden');
   $('link-email').value = '';
@@ -1625,8 +1626,11 @@ $('settings-form').onsubmit = async (e) => {
     speakerId: $('set-speaker').value,
     camId: $('set-cam').value,
     noiseSuppression: $('set-ns').checked,
+    ptt: document.querySelector('input[name="mic-mode"]:checked')?.value === 'ptt' && Boolean(pickedPtt),
+    pttBinding: pickedPtt,
   };
   store.set('audio', state.settings);
+  applyPtt();
   applySpeaker();
   const micChanged = prev.micId !== state.settings.micId || prev.noiseSuppression !== state.settings.noiseSuppression;
   const session = activeSession();

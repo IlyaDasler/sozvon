@@ -52,6 +52,7 @@
     "electron-builder": "^26.18.0"
   },
   "dependencies": {
-    "electron-updater": "^6.8.11"
+    "electron-updater": "^6.8.11",
+    "uiohook-napi": "^1.5.5"
   }
 }

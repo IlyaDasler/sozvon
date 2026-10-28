@@ -454,6 +454,17 @@
               </label>
               <label class="check"><input type="checkbox" id="set-ns"> Шумоподавление — убирает фоновый шум, клавиатуру и вентилятор</label>
             </div>
+            <div class="set-block hidden" id="ptt-block">
+              <h4>Режим микрофона</h4>
+              <label class="check"><input type="radio" name="mic-mode" value="voice" checked> Голосом — микрофон включён всё время</label>
+              <label class="check"><input type="radio" name="mic-mode" value="ptt"> Рация — слышно, только пока держите клавишу</label>
+              <div class="ptt-row">
+                <span class="muted">Клавиша:</span>
+                <kbd id="ptt-key">не назначена</kbd>
+                <button type="button" class="btn" id="ptt-assign">Назначить</button>
+              </div>
+              <span class="hint-text">Работает и в игре. Подойдёт любая клавиша или боковая кнопка мыши; Esc — отменить назначение.</span>
+            </div>
             <div class="set-block">
               <h4>Проверка звука</h4>
               <div class="meter" title="Громкость микрофона"><div class="meter-fill" id="mic-meter"></div></div>
@@ -835,6 +846,7 @@
   <script src="call-code.js"></script>
   <script src="call.js"></script>
   <script src="app.js"></script>
+  <script src="ptt-keys.js"></script>
   <script src="voice-ui.js"></script>
   <script src="rooms.js"></script>
   <script src="room-settings.js"></script>
@@ -846,6 +858,7 @@
   <script src="chat-content.js"></script>
   <script src="appearance.js"></script>
   <script src="profile-card.js"></script>
+  <script src="ptt-ui.js"></script>
   <script src="panel-sizes.js"></script>
   <script src="layers.js"></script>
 </body>
