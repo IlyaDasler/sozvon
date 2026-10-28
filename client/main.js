@@ -5,12 +5,11 @@ const { autoUpdater } = require('electron-updater');
 const { listenForOAuth, openOAuthWindow, opensInApp } = require('./oauth-loopback');
 const { parseBinding } = require('./renderer/ptt-keys');
 const { offerRemoveOldCopy, repairShortcuts } = require('./install-repair');
+const { applyPermissions } = require('./permissions');
 
 // --profile=имя запускает отдельный экземпляр со своим входом (удобно, чтобы проверить звонок на одном ПК)
 const profileArg = process.argv.find((a) => a.startsWith('--profile='));
 if (profileArg) app.setPath('userData', path.join(app.getPath('appData'), `Sozvon-${profileArg.split('=')[1]}`));
-
-const ALLOWED_PERMISSIONS = ['media', 'notifications', 'speaker-selection', 'display-capture'];
 
 // Одна копия приложения: повторный запуск ярлыка показывает уже открытое (или спрятанное в трей) окно
 const primary = app.requestSingleInstanceLock();
@@ -102,10 +101,7 @@ function createTray() {
 
 app.whenReady().then(() => {
   if (!primary) return;
-  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) =>
-    callback(ALLOWED_PERMISSIONS.includes(permission))
-  );
-  session.defaultSession.setPermissionCheckHandler((_wc, permission) => ALLOWED_PERMISSIONS.includes(permission));
+  applyPermissions(session.defaultSession);
   // Демонстрация экрана: что показывать, человек выбирает в окне приложения, а сюда приходит готовый выбор
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
     const choice = screenChoice;
