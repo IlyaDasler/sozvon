@@ -278,6 +278,7 @@ const q = {
 
   insertMessage: db.prepare('INSERT INTO messages (from_id, to_id, text, attachments, preview, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
   messageById: db.prepare('SELECT * FROM messages WHERE id = ?'),
+  deleteMessage: db.prepare('DELETE FROM messages WHERE id = ?'),
   messagesBetween: db.prepare(`
     SELECT * FROM messages
     WHERE ((from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)) AND id < ?
@@ -379,6 +380,7 @@ const q = {
   staleUploads: db.prepare('SELECT id FROM uploads WHERE used = 0 AND created_at < ?'),
   deleteUpload: db.prepare('DELETE FROM uploads WHERE id = ?'),
   roomMessageById: db.prepare('SELECT * FROM room_messages WHERE id = ?'),
+  deleteRoomMessage: db.prepare('DELETE FROM room_messages WHERE id = ?'),
   roomMessages: db.prepare('SELECT * FROM room_messages WHERE room_id = ? AND id < ? ORDER BY id DESC LIMIT ?'),
 };
 
@@ -463,6 +465,8 @@ export const messages = {
   between(a, b, beforeId = Number.MAX_SAFE_INTEGER, limit = 50) {
     return q.messagesBetween.all(a, b, b, a, beforeId, limit).reverse();
   },
+  byId: (id) => q.messageById.get(id),
+  remove: (id) => q.deleteMessage.run(id),
 };
 
 export const rooms = {
@@ -656,6 +660,8 @@ export const roomMessages = {
   list(roomId, beforeId = Number.MAX_SAFE_INTEGER, limit = 50) {
     return q.roomMessages.all(roomId, beforeId, limit).reverse();
   },
+  byId: (id) => q.roomMessageById.get(id),
+  remove: (id) => q.deleteRoomMessage.run(id),
 };
 
 export const uploads = {
