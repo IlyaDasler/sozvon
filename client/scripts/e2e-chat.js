@@ -1,7 +1,7 @@
 // Сквозной тест чата: разметка, ссылки, смайлики, файлы и картинки, предпросмотр ссылок.
 // Запуск (сервер должен работать, для превью — с LINK_PREVIEW_ALLOW_PRIVATE=1): npx electron scripts/e2e-chat.js [адрес сервера]
 const http = require('node:http');
-const { api, befriend, register, js, waitFor, openClient, screenshot, runTest } = require('./e2e-lib');
+const { api, befriend, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
 
 // Последнее сообщение в открытом чате
 const lastMsg = `[...document.querySelectorAll('#messages .msg-text')].at(-1)`;
@@ -149,7 +149,17 @@ runTest(async () => {
   await waitFor(winB, `${lastMsg}?.textContent === 'это сообщение я удалю'`, 'сообщение дошло');
   if (await js(winB, `Boolean([...document.querySelectorAll('#messages .msg')].at(-1).querySelector('.msg-tool'))`))
     throw new Error('У чужого сообщения есть корзина');
-  await js(winA, `[...document.querySelectorAll('#messages .msg')].at(-1).querySelector('.msg-tool.danger').dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true })); true`);
+  // Без Shift — вопрос окном приложения (не системным): Esc отменяет, «Удалить» удаляет
+  const trash = `[...document.querySelectorAll('#messages .msg')].at(-1).querySelector('.msg-tool.danger')`;
+  await js(winA, `${trash}.click(); true`);
+  await waitFor(winA, `!document.getElementById('dialog').classList.contains('hidden') && document.getElementById('dialog-title').textContent === 'Удалить сообщение?'`, 'вопрос об удалении');
+  await js(winA, `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); true`);
+  await waitFor(winA, `document.getElementById('dialog').classList.contains('hidden')`, 'Esc закрыл вопрос');
+  await sleep(300);
+  if ((await js(winA, `${lastMsg}?.textContent`)) !== 'это сообщение я удалю') throw new Error('Отмена удалила сообщение');
+  await js(winA, `${trash}.click(); true`);
+  await waitFor(winA, `!document.getElementById('dialog').classList.contains('hidden')`, 'вопрос снова');
+  await js(winA, `document.getElementById('dialog-ok').click(); true`);
   await waitFor(winB, `${lastMsg}?.textContent !== 'это сообщение я удалю' && !state.history.get(${a.user.id}).some((m) => m.text === 'это сообщение я удалю')`, 'сообщение пропало у Бори');
   await waitFor(winA, `!state.history.get(${b.user.id}).some((m) => m.text === 'это сообщение я удалю')`, 'сообщение пропало у Ани');
   console.log('✔ своё сообщение удаляется, у собеседника пропадает сразу');
