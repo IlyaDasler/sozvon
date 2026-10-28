@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld('desktop', {
   // Давно не трогали мышь и клавиатуру (true) или вернулись (false) — для статуса «Неактивен»
   onIdle: (callback) => ipcRenderer.on('idle', (_event, idle) => callback(idle)),
   oauth: (authUrl) => ipcRenderer.invoke('oauth', authUrl),
+  // Буфер обмена и правка текста (вырезать, вставить…) — средствами Electron, они надёжнее браузерных
+  copy: (text) => ipcRenderer.invoke('clipboard:write', String(text)),
+  edit: (command) => ipcRenderer.send('edit', command),
   screen: {
     sources: () => ipcRenderer.invoke('screen:sources'),
     choose: (id, audio) => ipcRenderer.invoke('screen:choose', id, audio),
