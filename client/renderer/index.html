@@ -12,64 +12,138 @@
 </head>
 <body>
 
-  <!-- Вход и регистрация -->
+  <!-- Вход и регистрация: слева — рассказ о приложении, справа — форма -->
   <section id="auth" class="screen auth hidden">
-    <form id="auth-form" class="auth-card" novalidate>
-      <div class="brand">
-        <img src="logo.svg" alt="" width="56" height="56">
-        <h1>Созвон</h1>
+    <aside class="auth-hero" aria-hidden="true">
+      <div class="auth-brand">
+        <img src="logo.svg" alt="" width="44" height="44">
+        <span class="auth-word">СОЗВОН<span class="dot">.</span></span>
       </div>
-      <p class="muted" id="auth-subtitle">Войдите, чтобы созвониться с друзьями</p>
 
-      <!-- Адрес сервера задан в приложении; поле скрыто и нужно только автотестам -->
-      <label class="field hidden" id="server-field">
-        <span>Адрес сервера</span>
-        <input id="server-url" placeholder="https://135-106-226-12.sslip.io" spellcheck="false">
-      </label>
-      <label class="field" id="username-field">
-        <span>Почта или логин</span>
-        <input id="auth-username" autocomplete="username" spellcheck="false" required>
-      </label>
-      <label class="field hidden" id="email-field">
-        <span>Почта</span>
-        <input id="auth-email" type="email" autocomplete="email" spellcheck="false" placeholder="name@yandex.ru">
-      </label>
-      <label class="field hidden" id="display-field">
-        <span>Имя в профиле</span>
-        <input id="auth-display" maxlength="32" placeholder="Как вас называть">
-      </label>
-      <label class="field" id="password-field">
-        <span id="password-label">Пароль</span>
-        <input id="auth-password" type="password" autocomplete="current-password" required>
-      </label>
-      <div class="field hidden" id="code-field">
-        <span>Код из письма</span>
-        <div class="row code-row">
-          <input id="auth-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 цифр">
-          <button type="button" class="btn" id="auth-send-code">Отправить код</button>
+      <span class="auth-pill">
+        <svg viewBox="0 0 24 24"><path d="M12 3.5l1.9 4.9 4.9 1.9-4.9 1.9L12 17.1l-1.9-4.9L5.2 10.3l4.9-1.9z"/></svg>
+        Место, где вас слышат
+      </span>
+
+      <p class="auth-headline">
+        <span>Будьте ближе.</span>
+        <span class="soft">Даже на</span>
+        <span class="grad">расстоянии.</span>
+      </p>
+
+      <p class="auth-lead">Созвон — это тихие комнаты для работы и шумные вечера с друзьями. Соберите своих в сходке и позовите остальных.</p>
+
+      <ul class="auth-features">
+        <li>
+          <span class="auth-feature-icon"><svg viewBox="0 0 24 24"><path d="M20.5 11.6a8.4 8.4 0 0 1-9 8.4 8.7 8.7 0 0 1-3.4-.7L3.5 21l1.6-4.6a8.3 8.3 0 0 1-.6-3.1 8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 8.6 8.3z"/></svg></span>
+          <b>Живые разговоры</b>
+          <span>Текст, голос и люди, которые рядом</span>
+        </li>
+        <li>
+          <span class="auth-feature-icon"><svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></span>
+          <b>Голос без шума</b>
+          <span>Шумо- и эхоподавление в каждом звонке</span>
+        </li>
+        <li>
+          <span class="auth-feature-icon"><svg viewBox="0 0 24 24"><path d="M12 21.5s7.5-3.7 7.5-9.4V5.6L12 2.5 4.5 5.6v6.5c0 5.7 7.5 9.4 7.5 9.4z"/><path d="M9.2 11.9l2 2 3.6-3.9"/></svg></span>
+          <b>Только ваши</b>
+          <span>Сходки, куда пускают по приглашению</span>
+        </li>
+      </ul>
+
+      <div class="auth-preview">
+        <div class="auth-preview-head">
+          <span class="channel"># общий</span>
+          <span class="online"><i></i>4 в сети</span>
         </div>
-        <span class="hint-text" id="code-hint"></span>
+        <div class="auth-message">
+          <span class="auth-avatar avatar-m">М</span>
+          <div>
+            <div class="auth-meta"><b>Мила</b><span>сейчас</span></div>
+            <p>собрала новый мудборд, кажется, это именно наше настроение ✨</p>
+          </div>
+        </div>
+        <div class="auth-message">
+          <span class="auth-avatar avatar-n">Н</span>
+          <div>
+            <div class="auth-meta"><b>Ника</b><span>1 мин</span></div>
+            <p>уже захожу, встречаемся в «Кухне»?</p>
+          </div>
+        </div>
+        <div class="auth-typing"><span class="dots"><i></i><i></i><i></i></span>Орион печатает…</div>
       </div>
-      <label class="field hidden" id="invite-field">
-        <span>Код приглашения</span>
-        <input id="auth-invite" spellcheck="false" placeholder="Если сервер его требует">
-      </label>
 
-      <p class="error" id="auth-error"></p>
-      <button class="btn primary wide" id="auth-submit">Войти</button>
-      <p class="muted center small hidden" id="forgot-row"><a href="#" id="auth-forgot">Забыли пароль?</a></p>
-      <div id="oauth-block" class="oauth hidden">
-        <div class="divider"><span>или</span></div>
-        <div id="oauth-buttons" class="oauth-buttons"></div>
-      </div>
-      <p class="muted center small">
-        <span id="auth-switch-text">Нет аккаунта?</span>
-        <a href="#" id="auth-toggle">Зарегистрироваться</a>
+      <p class="auth-stat">
+        <svg viewBox="0 0 24 24"><path d="M17 20v-1.8a3.6 3.6 0 0 0-3.6-3.6H6.6A3.6 3.6 0 0 0 3 18.2V20"/><circle cx="10" cy="7.6" r="3.4"/><path d="M21 20v-1.8a3.6 3.6 0 0 0-2.7-3.5M15.6 4.4a3.4 3.4 0 0 1 0 6.5"/></svg>
+        Голос, чат и сходки на своём сервере — без VPN и лишних подписок
       </p>
-      <p class="muted center small auth-version hidden" id="auth-version-row">
-        <span id="auth-version"></span> · <a href="#" id="auth-update-check">Проверить обновления</a>
-      </p>
-    </form>
+    </aside>
+
+    <div class="auth-panel">
+      <form id="auth-form" class="auth-card" novalidate>
+        <p class="auth-eyebrow" id="auth-eyebrow">С возвращением</p>
+        <h1 class="auth-title" id="auth-title">Войдите в Созвон</h1>
+        <p class="muted auth-sub" id="auth-subtitle">Войдите, чтобы созвониться с друзьями</p>
+
+        <!-- Адрес сервера задан в приложении; поле скрыто и нужно только автотестам -->
+        <label class="field hidden" id="server-field">
+          <span>Адрес сервера</span>
+          <input id="server-url" placeholder="https://135-106-226-12.sslip.io" spellcheck="false">
+        </label>
+        <label class="field" id="username-field">
+          <span>Почта или логин</span>
+          <input id="auth-username" autocomplete="username" spellcheck="false" placeholder="name@yandex.ru" required>
+        </label>
+        <label class="field hidden" id="email-field">
+          <span>Почта</span>
+          <input id="auth-email" type="email" autocomplete="email" spellcheck="false" placeholder="name@yandex.ru">
+        </label>
+        <label class="field hidden" id="display-field">
+          <span>Имя в профиле</span>
+          <input id="auth-display" maxlength="32" placeholder="Как вас называть">
+        </label>
+        <label class="field" id="password-field">
+          <span id="password-label">Пароль</span>
+          <input id="auth-password" type="password" autocomplete="current-password" required>
+        </label>
+        <div class="field hidden" id="code-field">
+          <span>Код из письма</span>
+          <div class="row code-row">
+            <input id="auth-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 цифр">
+            <button type="button" class="btn" id="auth-send-code">Отправить код</button>
+          </div>
+          <span class="hint-text" id="code-hint"></span>
+        </div>
+        <label class="field hidden" id="invite-field">
+          <span>Код приглашения</span>
+          <input id="auth-invite" spellcheck="false" placeholder="Если сервер его требует">
+        </label>
+
+        <div class="auth-row hidden" id="forgot-row">
+          <label class="check auth-check">
+            <input type="checkbox" id="auth-remember" checked>
+            <span>Запомнить меня</span>
+          </label>
+          <a href="#" id="auth-forgot">Забыли пароль?</a>
+        </div>
+
+        <p class="error" id="auth-error"></p>
+        <button class="btn primary wide" id="auth-submit">Войти</button>
+
+        <div id="oauth-block" class="oauth hidden">
+          <div class="divider"><span>или</span></div>
+          <div id="oauth-buttons" class="oauth-buttons"></div>
+        </div>
+
+        <p class="auth-switch">
+          <span id="auth-switch-text">Нет аккаунта?</span>
+          <a href="#" id="auth-toggle">Зарегистрироваться</a>
+        </p>
+        <p class="muted center small auth-version hidden" id="auth-version-row">
+          <span id="auth-version"></span> · <a href="#" id="auth-update-check">Проверить обновления</a>
+        </p>
+      </form>
+    </div>
   </section>
 
   <!-- Основной экран -->
