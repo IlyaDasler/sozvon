@@ -12,7 +12,7 @@ runTest(async () => {
   await js(win, `localStorage.removeItem('skippedUpdate'); true`);
 
   // Проверка при запуске нашла версию 9.9.9
-  await js(win, `onUpdateStatus({ state: 'available', version: '9.9.9', current: '2.0.0', notes: '<ul><li>Сходки</li></ul>' }); true`);
+  await js(win, `onUpdateStatus({ state: 'available', version: '9.9.9', current: '2.0.0', notes: '<ul><li>Каналы</li></ul>' }); true`);
   await waitFor(win, `${visible('update-bar')} && document.getElementById('update-text').textContent === 'Вышла версия 9.9.9'`, 'плашка «Вышла версия»');
   if (await js(win, visible('update-modal'))) throw new Error('Окно обновления выскочило само');
   if (!(await js(win, `document.getElementById('sidebar-update-check').classList.contains('has-dot')`))) throw new Error('Нет точки на кнопке обновлений');
@@ -21,7 +21,7 @@ runTest(async () => {
 
   // «Обновить» на плашке — окно «Что нового»; «Позже» возвращает плашку
   await js(win, `document.getElementById('update-btn').click(); true`);
-  await waitFor(win, `${visible('update-modal')} && document.getElementById('update-notes').textContent.includes('Сходки')`, 'окно «Что нового»');
+  await waitFor(win, `${visible('update-modal')} && document.getElementById('update-notes').textContent.includes('Каналы')`, 'окно «Что нового»');
   await js(win, `document.getElementById('update-later').click(); true`);
   await waitFor(win, `!${visible('update-modal')} && ${visible('update-bar')}`, 'плашка после «Позже»');
   console.log('✔ «Обновить» показывает «Что нового», «Позже» оставляет плашку');

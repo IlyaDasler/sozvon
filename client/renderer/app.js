@@ -1,4 +1,4 @@
-// Интерфейс: вход, список друзей, чат и звонки. Сходки — в hubs.js, комнаты — в rooms.js, панель разговора — в voice-ui.js
+// Интерфейс: вход, список друзей, чат и звонки. Каналы — в hubs.js, комнаты — в rooms.js, панель разговора — в voice-ui.js
 
 const $ = (id) => document.getElementById(id);
 const isWeb = location.protocol.startsWith('http');
@@ -51,10 +51,10 @@ const state = {
   unread: new Map(),
   call: null, // звонок один на один: { session: MediaSession, peerId, peer, callId, phase, connectedAt }
   incoming: null, // { callId, from }
-  hubs: new Map(), // id сходки -> { id, name, ownerId, iconColor, iconUrl, members, invited, bans }
-  hubsLoaded: false, // пока сходки не пришли, раскладку столбца не трогаем
-  hubInvites: [], // приглашения в сходки: [{ hub, from, createdAt }]
-  view: 'home', // что открыто слева: 'home' — друзья и личные сообщения, иначе id сходки
+  hubs: new Map(), // id канала -> { id, name, ownerId, iconColor, iconUrl, members, invited, bans }
+  hubsLoaded: false, // пока каналы не пришли, раскладку столбца не трогаем
+  hubInvites: [], // приглашения в каналы: [{ hub, from, createdAt }]
+  view: 'home', // что открыто слева: 'home' — друзья и личные сообщения, иначе id канала
   rooms: new Map(), // id комнаты -> { id, name, kind, hubId, ownerId, members, voice }
   selectedRoomId: null,
   roomHistory: new Map(),
