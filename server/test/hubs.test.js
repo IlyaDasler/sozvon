@@ -223,6 +223,14 @@ test('старые клиенты: комната без сходки попад
   await befriend(owner, late);
   assert.equal((await api('POST', `/rooms/${second.body.id}/members`, { userId: late.user.id }, owner.token)).status, 200);
   assert.ok((await api('GET', '/hubs', null, late.token)).body[0].members.some((m) => m.id === late.user.id));
+
+  // Первая комната из старого клиента без друзей: новая сходка всё равно приходит на другие устройства создателя
+  const solo = await reg('legacy_solo');
+  const cs = connect(solo.token);
+  await cs.open;
+  const lone = await api('POST', '/rooms', { name: 'Один', kind: 'text' }, solo.token);
+  assert.equal((await cs.next('hub:updated')).hub.id, lone.body.hubId);
+  cs.ws.close();
 });
 
 test('миграция: комнаты без сходки переезжают в «Сходку <имя создателя>» вместе с участниками', async () => {

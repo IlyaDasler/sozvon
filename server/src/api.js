@@ -831,6 +831,8 @@ export function createApi() {
         throw new HttpError(400, `В сходке может быть не больше ${MAX_HUB_ROOMS} комнат`);
       const room = rooms.create(req.user.id, name, kind, hubRow.id, { everyone: !legacy });
       addMembers(req, room, memberIds);
+      // Сходка могла только что появиться — новые версии на других устройствах должны о ней узнать
+      if (legacy) notifyHub(hubRow.id);
       return notifyRoom(room.id);
     })
   );
