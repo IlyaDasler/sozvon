@@ -103,6 +103,8 @@ function overviewPane(room) {
   };
   out.push(form);
 
+  out.push(el('h4', { textContent: 'Фон комнаты' }), backgroundBlock(room, manage));
+
   const facts = el('div', { className: 'rs-facts' });
   const fact = (label, value) => facts.append(el('div', {}, el('span', { className: 'muted small', textContent: label }), el('b', { textContent: value })));
   fact('Тип', room.kind === 'voice' ? 'Голосовая — разговор и чат' : 'Текстовая — только чат');
@@ -121,6 +123,32 @@ function overviewPane(room) {
   const myRole = isRoomOwner(room, state.me.id) ? 'Вы создатель — можно всё' : `Ваша роль: ${roleOf(room, state.me.id)?.name || 'без роли'}`;
   out.push(el('h4', { textContent: 'Что можно вам' }), el('p', { className: 'muted small', textContent: myRole }), list);
   return out;
+}
+
+// Свой фон: картинка под перепиской и разговором (приглушённая, чтобы текст читался)
+function backgroundBlock(room, manage) {
+  const preview = el('div', { className: `rs-bg-preview${room.backgroundUrl ? '' : ' empty'}`, textContent: room.backgroundUrl ? '' : 'Фон по теме оформления' });
+  if (room.backgroundUrl) preview.style.backgroundImage = `url("${Api.base}${room.backgroundUrl}")`;
+  if (!manage) return el('div', { className: 'rs-bg' }, preview);
+  const pick = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp,image/gif', hidden: true });
+  pick.onchange = () => pick.files[0] && uploadRoomBackground(room, pick.files[0]);
+  const actions = el(
+    'div',
+    { className: 'rs-row' },
+    el('button', { type: 'button', className: 'btn', id: 'rm-bg-pick', textContent: room.backgroundUrl ? 'Сменить картинку' : 'Выбрать картинку', onclick: () => pick.click() }),
+    room.backgroundUrl &&
+      el('button', { type: 'button', className: 'btn danger-outline', id: 'rm-bg-remove', textContent: 'Убрать фон', onclick: () => roomAction(Api.del(`/rooms/${room.id}/background`), 'Фон убран') }),
+    pick
+  );
+  return el('div', { className: 'rs-bg' }, preview, actions, el('span', { className: 'hint-text', textContent: 'Фон видят все в комнате. Подойдёт широкая картинка — она подстроится под окно.' }));
+}
+
+async function uploadRoomBackground(room, file) {
+  try {
+    await roomAction(Api.upload('PUT', `/rooms/${room.id}/background`, await makeBackgroundBlob(file)), 'Фон поставлен');
+  } catch (err) {
+    $('rm-error').textContent = err.message;
+  }
 }
 
 // ---------- Роли ----------

@@ -82,6 +82,27 @@ runTest(async () => {
   await waitFor(winA, `[...document.querySelectorAll('#room-messages .msg-text')].some((el) => el.textContent === 'Свежий мем')`, 'сообщение в комнате канала');
   console.log('✔ новая комната у обоих, переписка работает');
 
+  // Свой фон: Аня ставит картинку в настройках комнаты — фон виден и у неё, и у Васи; убирается
+  await js(winA, `openRoomManage(${memes}); true`);
+  await waitFor(winA, `Boolean(document.getElementById('rm-bg-pick'))`, 'кнопка выбора фона');
+  await js(
+    winA,
+    `(async () => {
+      const c = document.createElement('canvas'); c.width = 2400; c.height = 1350;
+      const g = c.getContext('2d'); const grad = g.createLinearGradient(0, 0, 2400, 1350); grad.addColorStop(0, '#ff6a00'); grad.addColorStop(1, '#5b2bd6'); g.fillStyle = grad; g.fillRect(0, 0, 2400, 1350);
+      const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+      await uploadRoomBackground(roomById(${memes}), new File([blob], 'фон.png', { type: 'image/png' }));
+      return true;
+    })()`
+  );
+  await js(winB, `selectRoom(${memes})`);
+  for (const win of [winA, winB])
+    await waitFor(win, `document.getElementById('room-view').classList.contains('has-bg') && getComputedStyle(document.getElementById('room-view')).backgroundImage.includes('/api/avatars/')`, 'фон комнаты');
+  await js(winA, `document.getElementById('rm-bg-remove').click(); true`);
+  await waitFor(winB, `!document.getElementById('room-view').classList.contains('has-bg')`, 'фон убран у Васи');
+  await js(winA, `closeRoomManage(); true`);
+  console.log('✔ свой фон комнаты: ставится картинкой, виден всем, убирается');
+
   // Второй канал; Вася тоже в нём
   const second = await api('POST', '/hubs', { name: 'Гаражи', iconColor: '#30a46c' }, a.token);
   await api('POST', `/hubs/${second.id}/invites`, { userIds: [b.user.id] }, a.token);
