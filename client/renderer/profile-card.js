@@ -218,4 +218,3 @@ document.addEventListener('click', (e) => {
   }
   if (!e.target.closest('#profile-card')) closeProfileCard();
 }, true);
-document.addEventListener('keydown', (e) => e.key === 'Escape' && closeProfileCard());
