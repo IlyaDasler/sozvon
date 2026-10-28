@@ -8,6 +8,7 @@
   --r-xl: 18px;
   --dock-h: 56px;
   --dock-gap: 8px;
+  --rail-tile: 46px;
   --ease: cubic-bezier(.2, .8, .2, 1);
   --ease-out: cubic-bezier(.16, 1, .3, 1);
   --spring: cubic-bezier(.34, 1.4, .64, 1);
@@ -344,7 +345,7 @@ input:not([type=checkbox]):not([type=range]):focus, select:focus { border-color:
 }
 
 .sidebar {
-  width: 248px; flex: none;
+  width: var(--sidebar-w, 248px); flex: none; position: relative;
   display: flex; flex-direction: column;
   background: var(--bg-2);
   border-top-left-radius: var(--r-xl);
@@ -791,7 +792,6 @@ video.mirror { transform: scaleX(-1); }
 .avatar .status.s-invisible { background: var(--bg-2); box-shadow: inset 0 0 0 2px #80848e; }
 .me-status-btn { padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; flex: none; }
 .me-status-btn:hover .avatar { filter: brightness(1.12); }
-.sidebar { position: relative; }
 .status-menu {
   position: absolute; left: 10px; bottom: calc(var(--dock-h) + var(--dock-gap) + 8px); z-index: 15; width: 260px;
   display: flex; flex-direction: column; gap: 2px; padding: 6px;
@@ -1172,7 +1172,7 @@ video.mirror { transform: scaleX(-1); }
   width: 72px; flex: none;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   /* «+» внизу — по центру нижней полки: (высота полки − высота плитки) / 2 + отступ полки */
-  padding: 10px 0 calc(var(--dock-gap) + (var(--dock-h) - 46px) / 2); background: transparent;
+  padding: 10px 0 calc(var(--dock-gap) + (var(--dock-h) - var(--rail-tile)) / 2); background: transparent;
 }
 .rail-list {
   flex: 1; min-height: 0; width: 100%;
@@ -1195,7 +1195,7 @@ video.mirror { transform: scaleX(-1); }
 .rail-item.active::before { height: 36px; }
 
 .rail-tile {
-  position: relative; width: 46px; height: 46px; padding: 0;
+  position: relative; width: var(--rail-tile); height: var(--rail-tile); padding: 0;
   display: grid; place-items: center; border: 0; border-radius: 50%;
   background: var(--bg-3); color: var(--text-2); cursor: pointer;
   font-weight: 700; font-size: 15px; letter-spacing: .02em;
@@ -1283,7 +1283,7 @@ video.mirror { transform: scaleX(-1); }
 
 /* ---------- Участники справа ---------- */
 
-.members-panel { width: 240px; flex: none; display: flex; flex-direction: column; background: var(--bg-2); border: 1px solid var(--line); border-width: 1px 0 0 1px; }
+.members-panel { position: relative; width: var(--members-w, 240px); flex: none; display: flex; flex-direction: column; background: var(--bg-2); border: 1px solid var(--line); border-width: 1px 0 0 1px; }
 .members-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 16px; }
 .members-head { display: flex; align-items: center; gap: 6px; height: 52px; margin: 0 -8px; padding: 0 16px; border-bottom: 1px solid var(--line); }
 .members-group { padding: 16px 8px 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
@@ -1295,6 +1295,18 @@ video.mirror { transform: scaleX(-1); }
 .member-nick { color: var(--text-2); font-weight: 500; }
 .member-item .crown { width: 14px; height: 14px; color: var(--idle); fill: currentColor; stroke-width: 1.5; }
 .icon-btn.members-toggle.on { color: var(--text); }
+
+/* Ручка на краю боковой панели: тянут мышью, при наведении — тонкая линия акцента */
+.panel-resizer { position: absolute; top: 0; bottom: 0; z-index: 3; width: 8px; cursor: col-resize; }
+.panel-resizer.right { right: -4px; }
+.panel-resizer.left { left: -4px; }
+.panel-resizer::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; border-radius: 1px;
+  background: var(--accent); opacity: 0; transition: opacity var(--mid) var(--ease);
+}
+.panel-resizer:hover::after, body.resizing .panel-resizer::after { opacity: .8; }
+body.resizing { cursor: col-resize; user-select: none; }
+body.resizing * { transition: none !important; }
 
 /* ---------- Всплывающее меню ---------- */
 
@@ -1327,14 +1339,10 @@ video.mirror { transform: scaleX(-1); }
 .manager-switch { display: inline-flex; align-items: center; gap: 8px; margin-right: 6px; color: var(--text-2); cursor: pointer; }
 
 /* Узкое окно: всё уже, но список участников по-прежнему рядом с чатом и его ничего не перекрывает */
-@media (max-width: 1000px) {
-  .members-panel { width: 200px; }
-}
 @media (max-width: 900px) {
-  .sidebar { width: 216px; }
+  :root { --rail-tile: 42px; }
   .rail { width: 64px; }
   .rail-item, .rail-folder .rail-item { width: 64px; }
-  .rail-tile { width: 42px; height: 42px; }
   .rail-folder { width: 52px; }
 }
 
