@@ -79,6 +79,7 @@ function friendRow(user, tab) {
   const isFriend = tab === 'online' || tab === 'all';
   const avatar = makeAvatar(user, isFriend ? presenceOf(user) : undefined);
   avatar.dataset.profile = user.id;
+  row.dataset.user = user.id;
   const info = document.createElement('div');
   info.className = 'friend-info';
   const name = document.createElement('div');
