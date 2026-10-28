@@ -1192,6 +1192,12 @@ kbd {
 .dialog-card { width: min(420px, calc(100% - 32px)); }
 .dialog-card h3 { font-size: 18px; margin-bottom: 8px; }
 .dialog-card p { margin: 0 0 18px; line-height: 1.5; }
+.e2ee-card p { margin-bottom: 8px; }
+.e2ee-steps { margin: 0 0 14px; padding-left: 20px; line-height: 1.5; }
+.e2ee-card input { width: 100%; font-family: ui-monospace, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+.e2ee-card .error { margin: 6px 0 4px; }
+.e2ee-share-code { font: 600 16px ui-monospace, Consolas, monospace; letter-spacing: .1em; padding: 6px 10px; border-radius: var(--r-s); background: var(--bg-3); user-select: all; }
+.msg-locked { color: var(--muted); font-style: italic; }
 .invite-card .friend-search { margin-bottom: 10px; }
 .invite-list { max-height: 360px; overflow-y: auto; margin-bottom: 14px; }
 .error-text { color: var(--danger); }

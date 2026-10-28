@@ -6,8 +6,32 @@ const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}(?:‍\p{Extended_Pictographic}
 
 const fileUrl = (a) => `${Api.base}${a.url}`;
 
+/** Адрес файла в элемент: обычный — сразу, зашифрованный — когда расшифруется */
+function setFileSrc(el, prop, a) {
+  if (!a.key) return void (el[prop] = fileUrl(a));
+  decryptedFileUrl(a).then((url) => (el[prop] = url), () => el.classList.add('file-broken'));
+}
+
+/** Что показывать: у зашифрованного сообщения — расшифрованные текст, файлы (с адресами с сервера) и превью */
+function messageView(m) {
+  if (!m.enc) return m;
+  if (!m.plain) return { ...m, text: '', attachments: [], preview: null };
+  const stored = new Map((m.attachments || []).map((a) => [a.id, a]));
+  const attachments = (m.plain.files || []).filter((f) => stored.has(f.id)).map((f) => ({ ...f, url: stored.get(f.id).url }));
+  return { ...m, text: m.plain.text || '', attachments, preview: m.plain.preview || null };
+}
+
+// Почему зашифрованное сообщение не показать
+const LOCKED_REASONS = {
+  'no-identity': '🔒 Не прочитать на этом устройстве — перенесите сюда ключ шифрования (Настройки → Аккаунт)',
+  'no-key': '🔒 Нет ключа к этому сообщению — его ещё не передали этому устройству',
+  broken: '🔒 Сообщение повреждено — расшифровать не получилось',
+};
+
 /** Коротко о сообщении — для уведомлений */
 function messageSummary(m) {
+  if (m.enc && !m.plain) return '🔒 Зашифрованное сообщение';
+  m = messageView(m);
   if (m.text) return m.text;
   const n = m.attachments?.length || 0;
   const kinds = new Set((m.attachments || []).map((a) => a.kind));
@@ -21,6 +45,14 @@ function messageContent(m) {
   const box = document.createElement('div');
   box.className = 'msg-content';
   box.title = formatTime(m.createdAt);
+  if (m.enc && !m.plain) {
+    const locked = document.createElement('div');
+    locked.className = 'msg-locked';
+    locked.textContent = LOCKED_REASONS[m.locked] || 'Расшифровка…';
+    box.append(locked);
+    return box;
+  }
+  m = messageView(m);
   if (m.text) {
     const text = document.createElement('div');
     text.className = `msg-text${EMOJI_ONLY.test(m.text.trim()) ? ' emoji-only' : ''}`;
@@ -34,7 +66,7 @@ function messageContent(m) {
     grid.className = `msg-images n${Math.min(images.length, 4)}`;
     for (const a of images) {
       const img = document.createElement('img');
-      img.src = fileUrl(a);
+      setFileSrc(img, 'src', a);
       img.alt = a.name;
       img.loading = 'lazy';
       img.title = `${a.name} — нажмите, чтобы открыть`;
@@ -47,14 +79,14 @@ function messageContent(m) {
     if (a.kind === 'video') {
       const video = document.createElement('video');
       video.className = 'msg-video';
-      video.src = fileUrl(a);
+      setFileSrc(video, 'src', a);
       video.controls = true;
       video.preload = 'metadata';
       box.append(video);
     } else if (a.kind === 'audio') {
       const card = fileCard(a);
       const audio = document.createElement('audio');
-      audio.src = fileUrl(a);
+      setFileSrc(audio, 'src', a);
       audio.controls = true;
       audio.preload = 'metadata';
       card.append(audio);
@@ -79,7 +111,7 @@ function fileCard(a) {
   info.className = 'file-card-info';
   const name = document.createElement('a');
   name.className = 'ellipsis';
-  name.href = fileUrl(a);
+  setFileSrc(name, 'href', a);
   name.download = a.name;
   name.textContent = a.name;
   name.title = 'Скачать';
@@ -89,7 +121,7 @@ function fileCard(a) {
   info.append(name, size);
   const download = document.createElement('a');
   download.className = 'icon-btn';
-  download.href = fileUrl(a);
+  setFileSrc(download, 'href', a);
   download.download = a.name;
   download.title = 'Скачать';
   download.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>';
@@ -138,9 +170,9 @@ function linkCard(p) {
 
 function openImageViewer(a) {
   const viewer = $('image-viewer');
-  $('image-viewer-img').src = fileUrl(a);
+  setFileSrc($('image-viewer-img'), 'src', a);
   $('image-viewer-name').textContent = a.name;
-  $('image-viewer-open').href = fileUrl(a);
+  setFileSrc($('image-viewer-open'), 'href', a);
   $('image-viewer-open').download = a.name;
   viewer.classList.remove('hidden');
 }

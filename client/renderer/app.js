@@ -462,6 +462,7 @@ function enterMain(user) {
   applyAudioState();
   showScreen('main');
   selectContact(null);
+  setupE2EE();
 
   socket = new ServerSocket({
     onMessage: handleEvent,
@@ -487,6 +488,7 @@ async function refreshContacts() {
   try {
     const list = await Api.get('/contacts');
     state.contacts = new Map(list.map((c) => [c.id, c]));
+    noteKeys(list);
     renderContacts();
     refreshFriendRequests();
     if (state.selectedId && !state.contacts.has(state.selectedId)) selectContact(null);
@@ -503,6 +505,7 @@ function logout(message) {
   socket?.close();
   socket = null;
   store.set('session', null);
+  resetE2EE();
   Object.assign(state, {
     me: null,
     selectedId: null,
@@ -631,6 +634,7 @@ async function selectContact(id) {
   if (!state.history.has(id)) {
     try {
       const loaded = await Api.get(`/messages/${id}`);
+      await decryptMessages(loaded, dmConvOf(id));
       // Пока грузили историю, могли прийти новые сообщения — объединяем без дублей
       const known = state.history.get(id) || [];
       const merged = new Map([...loaded, ...known].map((m) => [m.id, m]));
@@ -768,8 +772,16 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
 function addMessage(m) {
   const peerId = m.fromId === state.me.id ? m.toId : m.fromId;
   const list = state.history.get(peerId);
-  if (list && !list.some((x) => x.id === m.id)) list.push(m);
+  // Своё сообщение приходит дважды (ответ на отправку и событие) — храним одно, с расшифровкой
+  const known = list?.find((x) => x.id === m.id);
+  if (known) {
+    known.plain ??= m.plain;
+    m = known;
+  } else list?.push(m);
+  decryptMessages([m], dmConvOf(peerId)).then(() => showNewMessage(m, peerId));
+}
 
+function showNewMessage(m, peerId) {
   if (m.fromId === state.me.id) {
     if (peerId === state.selectedId) renderMessages();
     return;
@@ -834,7 +846,10 @@ function handleEvent(msg) {
       else renderContacts();
       return;
     case 'user:updated':
+      onUserKey(msg.user);
       return updateUser(msg.user.id, msg.user);
+    case 'keys:updated':
+      return refreshConv(msg.conv);
     case 'message':
       return addMessage(msg.message);
     case 'message:deleted': {

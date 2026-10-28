@@ -160,7 +160,7 @@ runTest(async () => {
   await js(winA, `${trash}.click(); true`);
   await waitFor(winA, `!document.getElementById('dialog').classList.contains('hidden')`, 'вопрос снова');
   await js(winA, `document.getElementById('dialog-ok').click(); true`);
-  await waitFor(winB, `${lastMsg}?.textContent !== 'это сообщение я удалю' && !state.history.get(${a.user.id}).some((m) => m.text === 'это сообщение я удалю')`, 'сообщение пропало у Бори');
-  await waitFor(winA, `!state.history.get(${b.user.id}).some((m) => m.text === 'это сообщение я удалю')`, 'сообщение пропало у Ани');
+  await waitFor(winB, `${lastMsg}?.textContent !== 'это сообщение я удалю' && !state.history.get(${a.user.id}).some((m) => messageView(m).text === 'это сообщение я удалю')`, 'сообщение пропало у Бори');
+  await waitFor(winA, `!state.history.get(${b.user.id}).some((m) => messageView(m).text === 'это сообщение я удалю')`, 'сообщение пропало у Ани');
   console.log('✔ своё сообщение удаляется, у собеседника пропадает сразу');
 });
