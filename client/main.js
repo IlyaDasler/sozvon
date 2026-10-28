@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, globalShortcut, ipcMain, powerMonitor, session, shell } = require('electron');
+const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, globalShortcut, ipcMain, powerMonitor, screen, session, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { autoUpdater } = require('electron-updater');
@@ -7,6 +7,7 @@ const { parseBinding } = require('./renderer/ptt-keys');
 const { offerRemoveOldCopy, repairShortcuts } = require('./install-repair');
 const { applyPermissions } = require('./permissions');
 const { fetchPreview } = require('./link-preview');
+const { restoreBounds, readState, trackWindow } = require('./window-state');
 
 // --profile=имя запускает отдельный экземпляр со своим входом (удобно, чтобы проверить звонок на одном ПК)
 const profileArg = process.argv.find((a) => a.startsWith('--profile='));
@@ -30,12 +31,16 @@ function toPage(channel, ...args) {
 
 const TITLEBAR_H = 32; // как .titlebar в styles.css
 
+const WINDOW_MIN = { width: 820, height: 540 };
+
 function createWindow() {
+  // Окно открывается там и такого размера, каким его оставили (если тот экран ещё подключён)
+  const stateFile = path.join(app.getPath('userData'), 'window.json');
+  const saved = restoreBounds(readState(stateFile), screen.getAllDisplays().map((d) => d.workArea), WINDOW_MIN);
   win = new BrowserWindow({
-    width: 1100,
-    height: 720,
-    minWidth: 820,
-    minHeight: 540,
+    ...(saved ? { x: saved.x, y: saved.y, width: saved.width, height: saved.height } : { width: 1100, height: 720 }),
+    minWidth: WINDOW_MIN.width,
+    minHeight: WINDOW_MIN.height,
     title: 'Созвон',
     backgroundColor: '#17181c',
     autoHideMenuBar: true,
@@ -54,6 +59,8 @@ function createWindow() {
     },
   });
 
+  if (saved?.maximized) win.maximize();
+  trackWindow(win, stateFile);
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   ipcMain.on('window:titlebar', (_e, { color, symbolColor }) => {
     if (/^#[0-9a-f]{6}$/i.test(color) && /^#[0-9a-f]{6}$/i.test(symbolColor)) win.setTitleBarOverlay({ color, symbolColor, height: TITLEBAR_H });
