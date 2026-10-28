@@ -8,6 +8,7 @@ import {
   blocks,
   contacts,
   friendRequests,
+  hubs,
   identities,
   messages,
   relatedUserIds,
@@ -27,7 +28,7 @@ import { canonicalEmail } from './email-address.js';
 import { FILE_ID_RE, MAX_ATTACHMENTS, MAX_FILE_BYTES, cleanMime, cleanName, fileHeaders, kindOf, toAttachment } from './files.js';
 import { checkCode, mailEnabled, sendCode } from './mail.js';
 import { STATUSES, broadcastPresence, presenceOf } from './presence.js';
-import { ALL_PERMS, PERMS, cleanPerms, has, rankOf } from './perms.js';
+import { PERMS, cleanPerms, has } from './perms.js';
 import { buildAuthUrl, enabledProviders, fetchProfile } from './oauth.js';
 import { registerTurnUser } from './turn.js';
 import { voice } from './voice.js';
@@ -172,8 +173,11 @@ function notifyRelated(userId, message) {
 }
 
 const ROOM_KINDS = ['voice', 'text'];
-const MAX_OWNED_ROOMS = 20;
-const MAX_ROOM_MEMBERS = 30;
+const MAX_OWNED_HUBS = 10;
+const MAX_HUB_ROOMS = 30;
+// Участники комнаты — из участников сходки, поэтому предел один
+const MAX_HUB_MEMBERS = 50;
+const MAX_ROOM_MEMBERS = MAX_HUB_MEMBERS;
 const MAX_ROLES = 20;
 const MAX_TIMEOUT_SECONDS = 28 * 24 * 3600;
 
@@ -185,6 +189,7 @@ const toRoom = (row) => ({
   id: row.id,
   name: row.name,
   kind: row.kind,
+  hubId: row.hub_id,
   ownerId: row.owner_id,
   createdAt: row.created_at,
   defaultPerms: row.default_perms,
@@ -203,6 +208,41 @@ function notifyRoom(roomId) {
   const room = toRoom(rooms.byId(roomId));
   for (const m of room.members) hub.send(m.id, { type: 'room:updated', room });
   return room;
+}
+
+function validateHubName(name) {
+  if (name.length < 1 || name.length > 40) throw new HttpError(400, 'Название сходки — от 1 до 40 символов');
+}
+
+const hubIconUrl = (row) => (row.icon ? `/api/avatars/${row.icon}.webp` : null);
+
+const toHub = (row) => ({
+  id: row.id,
+  name: row.name,
+  ownerId: row.owner_id,
+  iconColor: row.icon_color,
+  iconUrl: hubIconUrl(row),
+  createdAt: row.created_at,
+  members: hubs.members(row.id).map((m) => ({ ...withOnline(m), manager: Boolean(m.manager), joinedAt: m.joined_at })),
+  invited: hubs.invited(row.id),
+  bans: hubs.bans(row.id).map((b) => ({ ...toPublicUser(b), bannedAt: b.banned_at })),
+});
+
+// Приглашение глазами приглашённого: сходку он ещё не видит, поэтому только её вывеска
+function toHubInvite(row) {
+  const hubRow = hubs.byId(row.hub_id);
+  return {
+    hub: { id: hubRow.id, name: hubRow.name, iconColor: hubRow.icon_color, iconUrl: hubIconUrl(hubRow), memberCount: hubs.members(hubRow.id).length },
+    from: toPublicUser(users.byId(row.by_id)),
+    createdAt: row.created_at,
+  };
+}
+
+// Свежие данные сходки — всем её участникам
+function notifyHub(hubId) {
+  const data = toHub(hubs.byId(hubId));
+  for (const m of data.members) hub.send(m.id, { type: 'hub:updated', hub: data });
+  return data;
 }
 
 export function createApi() {
@@ -707,9 +747,8 @@ export function createApi() {
 
   // Кто действует: его права и старшинство
   function actor(req, room) {
-    const isOwner = room.owner_id === req.user.id;
-    const perms = isOwner ? ALL_PERMS : rooms.permsOf(room, req.user.id);
-    return { isOwner, perms, rank: rankOf(isOwner, perms) };
+    const { isOwner, rank } = rooms.standing(room, req.user.id);
+    return { isOwner, perms: rooms.permsOf(room, req.user.id), rank };
   }
 
   function requirePerm(req, room, perm, message) {
@@ -723,27 +762,36 @@ export function createApi() {
     return who;
   }
 
-  function requireOwner(req, room) {
-    if (room.owner_id !== req.user.id) throw new HttpError(403, 'Это может только создатель комнаты');
+  // Удалить комнату может её создатель и тот, кто управляет её сходкой
+  function requireRoomRemover(req, room) {
+    const hubRow = room.hub_id && hubs.byId(room.hub_id);
+    if (room.owner_id !== req.user.id && !(hubRow && hubs.rankOf(hubRow, req.user.id) >= 2))
+      throw new HttpError(403, 'Удалить комнату может только её создатель или тот, кто управляет сходкой');
   }
 
   // Над участником может действовать только тот, кто старше по роли
   function requireOutranks(who, room, userId) {
-    const target = rankOf(room.owner_id === userId, rooms.rolePermsOf(room, userId));
-    if (who.rank <= target) throw new HttpError(403, 'Нельзя: у этого участника такие же или более высокие права');
+    if (who.rank <= rooms.standing(room, userId).rank)
+      throw new HttpError(403, 'Нельзя: у этого участника такие же или более высокие права');
   }
 
-  // Добавлять в комнату можно только своих друзей
+  // Звать в комнату можно своих друзей и участников её сходки. Друг, которого ещё нет в сходке,
+  // входит в неё только с этой комнатой — так зовут версии до 2.0
   function addMembers(req, room, ids) {
     const count = rooms.members(room.id).length;
     const fresh = [...new Set(ids.map(Number))].filter((id) => !rooms.isMember(room.id, id));
     for (const id of fresh) {
-      if (!contacts.has(req.user.id, id)) throw new HttpError(400, 'Добавлять в комнату можно только своих друзей');
+      if (!hubs.isMember(room.hub_id, id) && !contacts.has(req.user.id, id))
+        throw new HttpError(400, 'Добавлять в комнату можно только своих друзей');
       if (rooms.isBanned(room.id, id)) throw new HttpError(400, `${users.byId(id).display_name} заблокирован в этой комнате`);
+      if (hubs.isBanned(room.hub_id, id)) throw new HttpError(400, `${users.byId(id).display_name} заблокирован в этой сходке`);
     }
     if (count + fresh.length > MAX_ROOM_MEMBERS)
       throw new HttpError(400, `В комнате может быть не больше ${MAX_ROOM_MEMBERS} человек`);
+    const newcomers = fresh.filter((id) => !hubs.isMember(room.hub_id, id));
+    for (const id of newcomers) hubs.addMemberOnly(room.hub_id, id);
     for (const id of fresh) rooms.addMember(room.id, id);
+    if (newcomers.length) notifyHub(room.hub_id);
     return fresh;
   }
 
@@ -758,10 +806,8 @@ export function createApi() {
 
   // Права поменялись — кто потерял доступ к голосу, того отключаем
   function enforceVoice(room) {
-    for (const p of voice.participants(room.id)) {
-      const perms = room.owner_id === p.userId ? ALL_PERMS : rooms.permsOf(room, p.userId);
-      if (!has(perms, PERMS.connect)) voice.leave(room.id, p.userId, 'no-access');
-    }
+    for (const p of voice.participants(room.id))
+      if (!has(rooms.permsOf(room, p.userId), PERMS.connect)) voice.leave(room.id, p.userId, 'no-access');
   }
 
   api.get('/rooms', handle((req) => rooms.of(req.user.id).map(toRoom)));
@@ -773,13 +819,17 @@ export function createApi() {
       const kind = req.body.kind;
       validateRoomName(name);
       if (!ROOM_KINDS.includes(kind)) throw new HttpError(400, 'Тип комнаты: голосовая или текстовая');
-      if (rooms.ownedCount(req.user.id) >= MAX_OWNED_ROOMS)
-        throw new HttpError(400, `Можно создать не больше ${MAX_OWNED_ROOMS} комнат`);
       const memberIds = Array.isArray(req.body.memberIds) ? req.body.memberIds : [];
       // Проверяем друзей до создания, чтобы не оставить пустую комнату при ошибке
       if (memberIds.some((id) => !contacts.has(req.user.id, Number(id))))
         throw new HttpError(400, 'Добавлять в комнату можно только своих друзей');
-      const room = rooms.create(req.user.id, name, kind);
+      // Версии до 2.0 не знают о сходках: их комната попадает в сходку создателя и только к тем, кого позвали
+      const legacy = req.body.hubId == null;
+      const hubRow = legacy ? hubs.defaultFor(req.user) : requireHub(req, Number(req.body.hubId));
+      if (!legacy) requireHubManager(req, hubRow);
+      if (hubs.rooms(hubRow.id).length >= MAX_HUB_ROOMS)
+        throw new HttpError(400, `В сходке может быть не больше ${MAX_HUB_ROOMS} комнат`);
+      const room = rooms.create(req.user.id, name, kind, hubRow.id, { everyone: !legacy });
       addMembers(req, room, memberIds);
       return notifyRoom(room.id);
     })
@@ -808,7 +858,7 @@ export function createApi() {
     '/rooms/:id',
     handle((req) => {
       const room = requireRoom(req);
-      requireOwner(req, room);
+      requireRoomRemover(req, room);
       const members = rooms.members(room.id);
       voice.closeRoom(room.id);
       rooms.remove(room.id);
@@ -1001,6 +1051,218 @@ export function createApi() {
       const message = toRoomMessage(roomMessages.add(room.id, req.user.id, text, extra));
       for (const m of rooms.members(room.id)) hub.send(m.id, { type: 'room:message', message });
       return message;
+    })
+  );
+
+  // ---------- Сходки ----------
+
+  function requireHub(req, id = Number(req.params.id)) {
+    const hubRow = hubs.byId(id);
+    if (!hubRow || !hubs.isMember(hubRow.id, req.user.id)) throw new HttpError(404, 'Сходка не найдена');
+    return hubRow;
+  }
+
+  /** Создатель или управляющий; возвращает старшинство */
+  function requireHubManager(req, hubRow) {
+    const rank = hubs.rankOf(hubRow, req.user.id);
+    if (rank < 2) throw new HttpError(403, 'Нет права управлять сходкой');
+    return rank;
+  }
+
+  function requireHubOutranks(req, hubRow, userId) {
+    if (requireHubManager(req, hubRow) <= hubs.rankOf(hubRow, userId))
+      throw new HttpError(403, 'Нельзя: у этого участника такие же или более высокие права');
+  }
+
+  function requireHubOwner(req, hubRow) {
+    if (hubRow.owner_id !== req.user.id) throw new HttpError(403, 'Это может только создатель сходки');
+  }
+
+  // Из сходки — значит из всех её комнат: вышел сам (left), выгнали (kicked) или забанили (banned)
+  function removeFromHub(hubRow, userId, reason) {
+    for (const room of hubs.rooms(hubRow.id)) if (rooms.isMember(room.id, userId)) removeFromRoom(room, userId, 'hub');
+    hubs.removeMember(hubRow.id, userId);
+    hub.send(userId, { type: 'hub:removed', hubId: hubRow.id, reason });
+    return notifyHub(hubRow.id);
+  }
+
+  api.get('/hubs', handle((req) => hubs.of(req.user.id).map(toHub)));
+
+  // Собрать сходку: в ней сразу голосовая и текстовая комнаты, чтобы было куда зайти
+  api.post(
+    '/hubs',
+    handle((req) => {
+      const name = str(req.body.name);
+      validateHubName(name);
+      const iconColor = COLOR_RE.test(req.body.iconColor) ? req.body.iconColor : COLORS[crypto.randomInt(COLORS.length)];
+      if (hubs.ownedCount(req.user.id) >= MAX_OWNED_HUBS)
+        throw new HttpError(400, `Можно собрать не больше ${MAX_OWNED_HUBS} сходок`);
+      const hubRow = hubs.create(req.user.id, name, iconColor);
+      rooms.create(req.user.id, 'Общий голос', 'voice', hubRow.id);
+      rooms.create(req.user.id, 'Болталка', 'text', hubRow.id);
+      for (const room of hubs.rooms(hubRow.id)) notifyRoom(room.id);
+      return notifyHub(hubRow.id);
+    })
+  );
+
+  api.patch(
+    '/hubs/:id',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubManager(req, hubRow);
+      const name = 'name' in req.body ? str(req.body.name) : hubRow.name;
+      validateHubName(name);
+      const iconColor = 'iconColor' in req.body ? str(req.body.iconColor) : hubRow.icon_color;
+      if (!COLOR_RE.test(iconColor)) throw new HttpError(400, 'Неверный цвет');
+      hubs.update(hubRow.id, { name, iconColor });
+      return notifyHub(hubRow.id);
+    })
+  );
+
+  // Картинка сходки — как аватарка: приложение заранее обрезает её до квадрата WebP
+  api.put(
+    '/hubs/:id/icon',
+    express.raw({ type: 'image/webp', limit: AVATAR_MAX_BYTES }),
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubManager(req, hubRow);
+      if (!Buffer.isBuffer(req.body) || !isWebp(req.body)) throw new HttpError(400, 'Нужна картинка в формате WebP');
+      const id = crypto.randomBytes(16).toString('hex');
+      fs.writeFileSync(path.join(AVATAR_DIR, `${id}.webp`), req.body);
+      removeAvatarFile(hubRow.icon);
+      hubs.setIcon(hubRow.id, id);
+      return notifyHub(hubRow.id);
+    })
+  );
+
+  api.delete(
+    '/hubs/:id/icon',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubManager(req, hubRow);
+      removeAvatarFile(hubRow.icon);
+      hubs.setIcon(hubRow.id, null);
+      return notifyHub(hubRow.id);
+    })
+  );
+
+  // Удалить сходку может только создатель; комнаты пропадают вместе с ней
+  api.delete(
+    '/hubs/:id',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubOwner(req, hubRow);
+      const members = hubs.members(hubRow.id);
+      const hubRooms = hubs.rooms(hubRow.id).map((room) => ({ id: room.id, members: rooms.members(room.id) }));
+      for (const room of hubRooms) voice.closeRoom(room.id);
+      hubs.remove(hubRow.id);
+      removeAvatarFile(hubRow.icon);
+      for (const room of hubRooms) for (const m of room.members) hub.send(m.id, { type: 'room:removed', roomId: room.id });
+      for (const m of members) hub.send(m.id, { type: 'hub:removed', hubId: hubRow.id, reason: 'deleted' });
+      return { ok: true };
+    })
+  );
+
+  // Позвать друзей: вступят, когда сами примут приглашение
+  api.post(
+    '/hubs/:id/invites',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubManager(req, hubRow);
+      const ids = [...new Set((Array.isArray(req.body.userIds) ? req.body.userIds : [req.body.userId]).map(Number))].filter(
+        (id) => !hubs.isMember(hubRow.id, id)
+      );
+      for (const id of ids) {
+        if (!contacts.has(req.user.id, id)) throw new HttpError(400, 'Звать в сходку можно только своих друзей');
+        if (hubs.isBanned(hubRow.id, id)) throw new HttpError(400, `${users.byId(id).display_name} заблокирован в этой сходке`);
+      }
+      if (hubs.members(hubRow.id).length + ids.length > MAX_HUB_MEMBERS)
+        throw new HttpError(400, `В сходке может быть не больше ${MAX_HUB_MEMBERS} человек`);
+      for (const id of ids) {
+        hubs.addInvite(hubRow.id, id, req.user.id);
+        hub.send(id, { type: 'hub:invite', invite: toHubInvite(hubs.invite(hubRow.id, id)) });
+      }
+      return notifyHub(hubRow.id);
+    })
+  );
+
+  api.get('/hub-invites', handle((req) => hubs.invitesOf(req.user.id).map(toHubInvite)));
+
+  // Принять приглашение: сходка и все её комнаты, кроме тех, где забанен
+  api.post(
+    '/hub-invites/:hubId/accept',
+    handle((req) => {
+      const hubId = Number(req.params.hubId);
+      if (!hubs.byId(hubId) || !hubs.invite(hubId, req.user.id) || hubs.isBanned(hubId, req.user.id))
+        throw new HttpError(404, 'Приглашение не найдено');
+      if (hubs.members(hubId).length >= MAX_HUB_MEMBERS)
+        throw new HttpError(400, `В сходке может быть не больше ${MAX_HUB_MEMBERS} человек`);
+      for (const room of hubs.join(hubId, req.user.id)) notifyRoom(room.id);
+      return notifyHub(hubId);
+    })
+  );
+
+  api.delete(
+    '/hub-invites/:hubId',
+    handle((req) => {
+      const hubId = Number(req.params.hubId);
+      hubs.removeInvite(hubId, req.user.id);
+      if (hubs.byId(hubId)) notifyHub(hubId);
+      return { ok: true };
+    })
+  );
+
+  // Выйти самому или выгнать (позвать снова можно); создатель не выходит — сходку можно только удалить
+  api.delete(
+    '/hubs/:id/members/:userId',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      const userId = Number(req.params.userId);
+      if (userId === req.user.id) {
+        if (userId === hubRow.owner_id) throw new HttpError(400, 'Создатель не может выйти из сходки — её можно только удалить');
+        return removeFromHub(hubRow, userId, 'left');
+      }
+      requireHubOutranks(req, hubRow, userId);
+      if (!hubs.isMember(hubRow.id, userId)) throw new HttpError(404, 'Этого человека нет в сходке');
+      return removeFromHub(hubRow, userId, 'kicked');
+    })
+  );
+
+  // Право управлять сходкой раздаёт только создатель
+  api.put(
+    '/hubs/:id/members/:userId/manager',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubOwner(req, hubRow);
+      const userId = Number(req.params.userId);
+      if (userId === hubRow.owner_id) throw new HttpError(400, 'Создатель сходки и так может всё');
+      if (!hubs.isMember(hubRow.id, userId)) throw new HttpError(404, 'Этого человека нет в сходке');
+      hubs.setManager(hubRow.id, userId, req.body.manager === true);
+      for (const room of hubs.rooms(hubRow.id)) enforceVoice(room);
+      return notifyHub(hubRow.id);
+    })
+  );
+
+  // Бан: человек пропадает из сходки и всех её комнат, позвать его нельзя, пока не снимут
+  api.post(
+    '/hubs/:id/bans',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      const userId = Number(req.body.userId);
+      requireHubOutranks(req, hubRow, userId);
+      if (!hubs.isMember(hubRow.id, userId)) throw new HttpError(404, 'Этого человека нет в сходке');
+      hubs.ban(hubRow.id, userId, req.user.id);
+      return removeFromHub(hubRow, userId, 'banned');
+    })
+  );
+
+  api.delete(
+    '/hubs/:id/bans/:userId',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubManager(req, hubRow);
+      hubs.unban(hubRow.id, Number(req.params.userId));
+      return notifyHub(hubRow.id);
     })
   );
 
