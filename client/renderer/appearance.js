@@ -11,6 +11,13 @@ const THEMES = [
 
 const currentTheme = () => document.documentElement.dataset.theme || 'sozvon';
 
+/** Кнопки окна Windows — в цвета полосы окна текущей темы */
+function syncTitleBar() {
+  const css = getComputedStyle(document.documentElement);
+  window.desktop?.titleBar?.({ color: css.getPropertyValue('--bg-deep').trim(), symbolColor: css.getPropertyValue('--text-2').trim() });
+}
+syncTitleBar();
+
 let themeSwitchTimer;
 function setTheme(id) {
   // На время смены цвета перетекают (см. html.theme-switching в styles.css)
@@ -19,6 +26,7 @@ function setTheme(id) {
   themeSwitchTimer = setTimeout(() => document.documentElement.classList.remove('theme-switching'), 400);
   document.documentElement.dataset.theme = id;
   store.set('theme', id);
+  syncTitleBar();
   renderThemePicker();
 }
 

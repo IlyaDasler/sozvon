@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('desktop', {
   onHotkey: (callback) => ipcRenderer.on('hotkey', (_event, name) => callback(name)),
   attention: () => ipcRenderer.send('attention'),
   focus: () => ipcRenderer.send('focus'),
+  // Цвета кнопок окна под тему: { color, symbolColor } в виде #rrggbb
+  titleBar: (colors) => ipcRenderer.send('window:titlebar', colors),
   // Давно не трогали мышь и клавиатуру (true) или вернулись (false) — для статуса «Неактивен»
   onIdle: (callback) => ipcRenderer.on('idle', (_event, idle) => callback(idle)),
   oauth: (authUrl) => ipcRenderer.invoke('oauth', authUrl),
