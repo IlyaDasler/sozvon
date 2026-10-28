@@ -163,4 +163,22 @@ runTest(async () => {
   await waitFor(winB, `${lastMsg}?.textContent !== 'это сообщение я удалю' && !state.history.get(${a.user.id}).some((m) => messageView(m).text === 'это сообщение я удалю')`, 'сообщение пропало у Бори');
   await waitFor(winA, `!state.history.get(${b.user.id}).some((m) => messageView(m).text === 'это сообщение я удалю')`, 'сообщение пропало у Ани');
   console.log('✔ своё сообщение удаляется, у собеседника пропадает сразу');
+
+  // Листаем вверх: лента не прыгает вниз от новых сообщений, внизу — «Перейти к последним»
+  for (let i = 0; i < 25; i++) await send(winA, `строка ${i}`);
+  await waitFor(winB, `${lastMsg}?.textContent === 'строка 24'`, 'длинная переписка');
+  const jump = `document.querySelector('#messages + .jump-bar')`;
+  await js(winB, `document.getElementById('messages').scrollTop = 0; document.getElementById('messages').dispatchEvent(new Event('scroll')); true`);
+  await waitFor(winB, `!${jump}.classList.contains('hidden')`, 'полоса «Перейти к последним»');
+  await send(winA, 'пока ты читал');
+  await waitFor(winB, `${lastMsg}?.textContent === 'пока ты читал'`, 'новое сообщение');
+  if ((await js(winB, `document.getElementById('messages').scrollTop`)) > 50) throw new Error('Лента прыгнула вниз, хотя её листали');
+  if (!(await js(winB, `${jump}.classList.contains('fresh')`))) throw new Error('Полоса не говорит о новых сообщениях');
+  await js(winB, `${jump}.click(); true`);
+  await waitFor(winB, `(() => { const m = document.getElementById('messages'); return m.scrollHeight - m.scrollTop - m.clientHeight < 5 && ${jump}.classList.contains('hidden'); })()`, 'перешли к последним');
+  // Своё отправленное — всегда вниз, даже если листали вверх
+  await js(winB, `document.getElementById('messages').scrollTop = 0; true`);
+  await send(winB, 'мой ответ');
+  await waitFor(winB, `(() => { const m = document.getElementById('messages'); return ${lastMsg}?.textContent === 'мой ответ' && m.scrollHeight - m.scrollTop - m.clientHeight < 5; })()`, 'своё сообщение видно внизу');
+  console.log('✔ при чтении старого лента не прыгает, «Перейти к последним» возвращает вниз');
 });
