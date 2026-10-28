@@ -1771,7 +1771,11 @@ function renderUpdate() {
   $('auth-version').textContent = s.current ? `Версия ${s.current}` : '';
   $('auth-version-row').classList.toggle('hidden', !s.current);
   $('sidebar-update-check').classList.toggle('spinning', s.state === 'checking' && manualCheck);
-  $('update-status').textContent = UPDATE_TEXT[s.state]?.(s) ?? '';
+  // Когда проверяли в последний раз: сегодня — только время, раньше — с датой
+  const checked = s.checkedAt && s.state !== 'checking'
+    ? ` · проверено ${formatDay(s.checkedAt) === formatDay(Date.now()) ? 'в' : formatDay(s.checkedAt)} ${formatTime(s.checkedAt)}`
+    : '';
+  $('update-status').textContent = (UPDATE_TEXT[s.state]?.(s) ?? '') + checked;
   $('update-status').title = s.state === 'error' ? s.message || '' : '';
   $('update-check-btn').textContent =
     s.state === 'ready' ? 'Перезапустить и обновить' : s.state === 'available' ? 'Обновить…' : 'Проверить обновления';

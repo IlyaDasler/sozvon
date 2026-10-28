@@ -33,4 +33,9 @@ runTest(async () => {
   await js(win, `document.getElementById('sidebar-update-check').click(); onUpdateStatus({ state: 'available', version: '9.9.9' }); true`);
   await waitFor(win, visible('update-modal'), 'окно по кнопке проверки');
   console.log('✔ крестик откладывает до следующей версии, проверка по кнопке показывает окно');
+
+  // Когда проверяли в последний раз — видно в «О приложении»
+  await js(win, `document.getElementById('update-later').click(); const t = new Date(); t.setHours(17, 35, 0, 0); onUpdateStatus({ state: 'latest', checkedAt: t.getTime() }); true`);
+  await waitFor(win, `document.getElementById('update-status').textContent === 'У вас последняя версия · проверено в 17:35'`, 'время проверки');
+  console.log('✔ видно, когда последний раз проверяли обновления');
 });

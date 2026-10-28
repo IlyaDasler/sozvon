@@ -188,6 +188,7 @@ function watchIdle() {
 
 // Обновления проверяем один раз при запуске, дальше — только по кнопке «Проверить обновления»
 let updateStatus = { state: 'idle' };
+const UPDATE_EVERY_MS = 4 * 60 * 60 * 1000;
 
 function setUpdateStatus(status) {
   updateStatus = { ...updateStatus, ...status };
@@ -223,14 +224,16 @@ function setupUpdater() {
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.on('checking-for-update', () => setUpdateStatus({ state: 'checking', message: '' }));
   autoUpdater.on('update-available', (info) =>
-    setUpdateStatus({ state: 'available', version: info.version, notes: releaseNotes(info), percent: 0 })
+    setUpdateStatus({ state: 'available', version: info.version, notes: releaseNotes(info), percent: 0, checkedAt: Date.now() })
   );
   autoUpdater.on('download-progress', (p) => setUpdateStatus({ state: 'downloading', percent: Math.round(p.percent) }));
-  autoUpdater.on('update-not-available', () => setUpdateStatus({ state: 'latest' }));
+  autoUpdater.on('update-not-available', () => setUpdateStatus({ state: 'latest', checkedAt: Date.now() }));
   autoUpdater.on('update-downloaded', (info) => setUpdateStatus({ state: 'ready', version: info.version }));
-  autoUpdater.on('error', (err) => setUpdateStatus({ state: 'error', message: err.message }));
+  autoUpdater.on('error', (err) => setUpdateStatus({ state: 'error', message: err.message, checkedAt: Date.now() }));
 
   checkForUpdates();
+  // И дальше раз в несколько часов: Созвон неделями живёт в трее, и новую версию иначе не заметить
+  setInterval(checkForUpdates, UPDATE_EVERY_MS);
 }
 
 ipcMain.handle('update:status', () => ({ ...updateStatus, current: app.getVersion() }));
