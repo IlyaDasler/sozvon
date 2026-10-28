@@ -160,4 +160,7 @@ function runTest(run) {
   });
 }
 
-module.exports = { SERVER, api, befriend, register, js, waitFor, sleep, openClient, received, tilePlaying, screenshot, runTest };
+// Отвечать «да» на все вопросы «вы уверены?» в этом окне — нажимая кнопку, как человек
+const ACCEPT_DIALOGS = `window.acceptDialogs ??= new MutationObserver(() => { if (!document.getElementById('dialog').classList.contains('hidden')) document.getElementById('dialog-ok').click(); }); window.acceptDialogs.observe(document.getElementById('dialog'), { attributes: true });`;
+
+module.exports = { ACCEPT_DIALOGS, SERVER, api, befriend, register, js, waitFor, sleep, openClient, received, tilePlaying, screenshot, runTest };

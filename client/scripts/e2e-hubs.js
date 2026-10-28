@@ -2,7 +2,7 @@
 // группа из двух каналов перетаскиванием (раскладка у каждого своя), список участников и его скрытие,
 // вид во всех темах и в узком окне.
 // Запуск (сервер должен работать): npx electron scripts/e2e-hubs.js [адрес сервера]
-const { api, befriend, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
+const { ACCEPT_DIALOGS, api, befriend, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
 
 const THEMES = ['sozvon', 'midnight', 'light', 'forest', 'dusk'];
 
@@ -104,7 +104,7 @@ runTest(async () => {
 
   // Группу называем и сворачиваем
   const folderId = layoutA.items[0].folder;
-  await js(winA, `window.confirm = () => true; document.querySelector('[data-folder="${folderId}"]').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 40, clientY: 120 })); true`);
+  await js(winA, `${ACCEPT_DIALOGS} document.querySelector('[data-folder="${folderId}"]').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 40, clientY: 120 })); true`);
   await js(winA, `[...document.querySelectorAll('#popup-menu .popup-item')].find((b) => b.textContent.startsWith('Название')).click(); true`);
   await js(winA, `document.getElementById('folder-name').value = 'Свои'; document.getElementById('folder-form').requestSubmit(); true`);
   await js(winA, `document.querySelector('[data-folder="${folderId}"] .rail-tile').click(); true`);
@@ -185,7 +185,7 @@ runTest(async () => {
   console.log('✔ темы и узкое окно');
 
   // Удаление канала создателем: пропадает из столбца
-  await js(winA, `window.confirm = () => true; deleteHub(hubById(${second.id})); true`);
+  await js(winA, `${ACCEPT_DIALOGS} deleteHub(hubById(${second.id})); true`);
   await waitFor(winA, `!document.querySelector('${tile(second.id)}')`, 'удалённый канал пропал');
   console.log('✔ удалённый канал пропал из столбца');
 });

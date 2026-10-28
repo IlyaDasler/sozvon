@@ -818,6 +818,19 @@
     </div>
   </div>
 
+  <!-- Вопрос «вы уверены?» (dialog.js) — последним из окон, чтобы быть поверх любого -->
+  <div id="dialog" class="modal hidden">
+    <div class="modal-card dialog-card" role="alertdialog" aria-labelledby="dialog-title">
+      <h3 id="dialog-title"></h3>
+      <p class="muted" id="dialog-text"></p>
+      <div class="row">
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="dialog-cancel">Отмена</button>
+        <button type="button" class="btn primary" id="dialog-ok"></button>
+      </div>
+    </div>
+  </div>
+
   <!-- Трансляция или камера во весь экран -->
   <div id="fullview" class="fullview hidden">
     <video id="fullview-video" autoplay playsinline muted></video>
@@ -863,6 +876,7 @@
   <script src="ptt-ui.js"></script>
   <script src="panel-sizes.js"></script>
   <script src="context-menu.js"></script>
+  <script src="dialog.js"></script>
   <script src="layers.js"></script>
 </body>
 </html>
