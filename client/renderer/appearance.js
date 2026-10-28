@@ -2,16 +2,21 @@
 // (theme-boot.js ставит её до отрисовки при следующем запуске)
 
 const THEMES = [
-  { id: 'sozvon', name: 'Созвон', hint: 'Тёмная, по умолчанию' },
+  { id: 'sozvon', name: 'Тёмная', hint: 'Глубокая тёмная с фиолетовым — по умолчанию' },
   { id: 'midnight', name: 'Полночь', hint: 'Чёрная, для OLED' },
   { id: 'light', name: 'Светлая', hint: 'Для дня' },
-  { id: 'forest', name: 'Лес', hint: 'Зелёная, как раньше' },
-  { id: 'dusk', name: 'Сумерки', hint: 'Фиолетовая' },
+  { id: 'forest', name: 'Лес', hint: 'Тёмно-зелёная' },
+  { id: 'dusk', name: 'Сумерки', hint: 'Тёплая фиолетовая' },
 ];
 
 const currentTheme = () => document.documentElement.dataset.theme || 'sozvon';
 
+let themeSwitchTimer;
 function setTheme(id) {
+  // На время смены цвета перетекают (см. html.theme-switching в styles.css)
+  document.documentElement.classList.add('theme-switching');
+  clearTimeout(themeSwitchTimer);
+  themeSwitchTimer = setTimeout(() => document.documentElement.classList.remove('theme-switching'), 400);
   document.documentElement.dataset.theme = id;
   store.set('theme', id);
   renderThemePicker();
