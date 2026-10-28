@@ -284,6 +284,9 @@ function renderRoomView() {
   const room = roomById(state.selectedRoomId);
   if (!room) return;
   $('room-icon').innerHTML = roomIcon(room);
+  // Свой фон комнаты — под перепиской и разговором
+  $('room-view').classList.toggle('has-bg', Boolean(room.backgroundUrl));
+  $('room-view').style.setProperty('--room-bg', room.backgroundUrl ? `url("${Api.base}${room.backgroundUrl}")` : 'none');
   $('room-title').textContent = room.name;
   const count = room.members.length;
   $('room-sub').textContent = `${room.kind === 'voice' ? 'Голосовая' : 'Текстовая'} комната · ${count} ${plural(count, 'участник', 'участника', 'участников')}`;

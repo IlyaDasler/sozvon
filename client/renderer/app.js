@@ -1394,6 +1394,30 @@ async function makeAvatarBlob(file) {
   throw new Error('Картинка получилась слишком большой');
 }
 
+// Фон комнаты: уменьшаем до 1920 по большей стороне и сжимаем в WebP до 1,9 МБ
+const BACKGROUND_SIDE = 1920;
+async function makeBackgroundBlob(file) {
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error('Не получилось открыть картинку. Попробуйте JPG или PNG');
+  }
+  const scale = Math.min(1, BACKGROUND_SIDE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  for (const quality of [0.82, 0.68, 0.5]) {
+    const blob = await new Promise((r) => canvas.toBlob(r, 'image/webp', quality));
+    if (blob && blob.size < 1.9 * 1024 * 1024) return blob;
+  }
+  throw new Error('Картинка получилась слишком большой');
+}
+
 function applyMe(me) {
   state.me = me;
   renderMe();
