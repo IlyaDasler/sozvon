@@ -1,32 +1,54 @@
 // Звонки через WebRTC: звук, камера и демонстрация экрана, звуки вызова и индикатор «говорит».
 // Один и тот же код работает и для звонка один на один, и для голосовой комнаты (там каждый соединён с каждым).
 
-// Звуки генерируются на лету, без аудиофайлов. Паттерн: [начало, длительность, частота]
+// Звуки генерируются на лету, без аудиофайлов. Паттерн: [начало, длительность, частота] — ноты.
+// Каждая нота — мягкий «колокольчик»: чистый тон с тихими обертонами, быстро звучит и плавно тает,
+// а общий фильтр срезает резкость и даёт лёгкое эхо. Ноты — из пентатоники, поэтому всё звучит созвучно.
 const PATTERNS = {
-  ring: [[0, 0.18, 880], [0.22, 0.18, 660], [0.44, 0.18, 880]],
-  ringback: [[0, 1.0, 425]],
-  end: [[0, 0.12, 660], [0.14, 0.18, 440]],
-  mute: [[0, 0.07, 520]],
-  unmute: [[0, 0.07, 880]],
-  join: [[0, 0.1, 587], [0.1, 0.14, 880]],
-  leave: [[0, 0.1, 880], [0.1, 0.14, 587]],
-  test: [[0, 0.25, 523], [0.3, 0.25, 659], [0.6, 0.25, 784], [0.9, 0.45, 1047]],
-  notify: [[0, 0.09, 784], [0.11, 0.14, 1175]],
+  // Входящий звонок: узнаваемый мотив вверх-вниз (соль — си — ре — си), повторяется
+  ring: [[0, 0.55, 784], [0.15, 0.55, 988], [0.3, 0.6, 1175], [0.52, 1.1, 988]],
+  // Ждём ответа: два тихих низких тона
+  ringback: [[0, 1.2, 523], [0.5, 1.4, 659]],
+  end: [[0, 0.45, 659], [0.16, 0.8, 494]],
+  mute: [[0, 0.25, 440]],
+  unmute: [[0, 0.25, 659]],
+  join: [[0, 0.35, 587], [0.1, 0.6, 880]],
+  leave: [[0, 0.35, 880], [0.1, 0.6, 587]],
+  test: [[0, 0.5, 523], [0.18, 0.5, 659], [0.36, 0.5, 784], [0.54, 1.0, 1047]],
+  notify: [[0, 0.3, 1047], [0.1, 0.7, 1568]],
 };
+
+// Обертоны колокольчика: [во сколько раз выше, громкость]
+const BELL = [[1, 1], [2, 0.16], [3.01, 0.05]];
 
 function playPattern(ctx, pattern, volume = 0.12) {
   const now = ctx.currentTime + 0.02;
+  // Общий выход: мягкий фильтр и короткое тихое эхо
+  const out = ctx.createBiquadFilter();
+  out.type = 'lowpass';
+  out.frequency.value = 3800;
+  const echo = ctx.createDelay();
+  echo.delayTime.value = 0.16;
+  const echoGain = ctx.createGain();
+  echoGain.gain.value = 0.18;
+  out.connect(ctx.destination);
+  out.connect(echo).connect(echoGain).connect(ctx.destination);
   for (const [at, dur, freq] of pattern) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0, now + at);
-    gain.gain.linearRampToValueAtTime(volume, now + at + 0.015);
-    gain.gain.setValueAtTime(volume, now + at + dur - 0.03);
-    gain.gain.linearRampToValueAtTime(0, now + at + dur);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now + at);
-    osc.stop(now + at + dur);
+    const t = now + at;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(volume, t + 0.012);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    env.connect(out);
+    for (const [mult, level] of BELL) {
+      const osc = ctx.createOscillator();
+      osc.frequency.value = freq * mult;
+      const g = ctx.createGain();
+      g.gain.value = level;
+      osc.connect(g).connect(env);
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+    }
   }
 }
 
@@ -53,7 +75,7 @@ class Tone {
     this.ctx = newAudioContext(this.sinkId);
     const beep = () => playPattern(this.ctx, PATTERNS[kind]);
     beep();
-    this.timer = setInterval(beep, kind === 'ring' ? 2000 : 4000);
+    this.timer = setInterval(beep, kind === 'ring' ? 2400 : 3600);
   }
 
   stop() {
