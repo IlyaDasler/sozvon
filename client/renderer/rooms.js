@@ -332,11 +332,17 @@ function renderRoomView() {
 
 function renderRoomMessages() {
   const id = state.selectedRoomId;
+  const room = roomById(id);
   renderMessageList(
     $('room-messages'),
     state.roomHistory.get(id) || [],
     state.roomHistory.has(id),
-    'Сообщений пока нет. Напишите первым!'
+    'Сообщений пока нет. Напишите первым!',
+    // Своё — всегда, чужое — тот, кто настраивает комнату и старше автора (как решает сервер)
+    {
+      canDelete: (m) => m.fromId === state.me.id || (can(room, PERMS.manage) && outranks(room, m.fromId)),
+      remove: (m) => Api.del(`/rooms/${id}/messages/${m.id}`),
+    }
   );
 }
 
@@ -391,6 +397,9 @@ function handleRoomEvent(msg) {
     }
     case 'room:message':
       return addRoomMessage(msg.message);
+    case 'room:message:deleted':
+      if (dropMessage(state.roomHistory, msg.roomId, msg.id) && msg.roomId === state.selectedRoomId) renderRoomMessages();
+      return;
     case 'room:voice':
       return onRoomVoice(msg);
     case 'room:joined':
