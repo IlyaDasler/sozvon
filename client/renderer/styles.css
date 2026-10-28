@@ -1189,6 +1189,9 @@ kbd {
 /* ---------- Пригласить и кикнуть ---------- */
 
 .invite-card h3, .kick-card h3 { font-size: 18px; margin-bottom: 12px; }
+.dialog-card { width: min(420px, calc(100% - 32px)); }
+.dialog-card h3 { font-size: 18px; margin-bottom: 8px; }
+.dialog-card p { margin: 0 0 18px; line-height: 1.5; }
 .invite-card .friend-search { margin-bottom: 10px; }
 .invite-list { max-height: 360px; overflow-y: auto; margin-bottom: 14px; }
 .error-text { color: var(--danger); }

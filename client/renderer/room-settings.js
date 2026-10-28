@@ -351,13 +351,13 @@ function setMemberRole(room, member, roleId) {
   return roomAction(Api.put(`/rooms/${room.id}/members/${member.id}/role`, { roleId }));
 }
 
-function removeRoomMember(room, member) {
-  if (!confirm(`Исключить ${member.displayName} из комнаты «${room.name}»? Пригласить обратно можно будет в любой момент.`)) return;
+async function removeRoomMember(room, member) {
+  if (!(await ask(`Пригласить ${member.displayName} обратно в «${room.name}» можно будет в любой момент.`, { title: 'Исключить из комнаты?', ok: 'Исключить', danger: true }))) return;
   roomAction(Api.del(`/rooms/${room.id}/members/${member.id}`), `${member.displayName} исключён из комнаты`);
 }
 
-function banMember(room, member) {
-  if (!confirm(`Забанить ${member.displayName}? Он пропадёт из комнаты «${room.name}», и позвать его обратно не получится, пока бан не снимут.`)) return;
+async function banMember(room, member) {
+  if (!(await ask(`${member.displayName} пропадёт из комнаты «${room.name}», и позвать обратно не получится, пока бан не снимут.`, { title: 'Забанить?', ok: 'Забанить', danger: true }))) return;
   roomAction(Api.post(`/rooms/${room.id}/bans`, { userId: member.id }), `${member.displayName} забанен`);
 }
 
@@ -369,8 +369,8 @@ function liftKick(room, member) {
   roomAction(Api.del(`/rooms/${room.id}/timeouts/${member.id}`), `Кик снят: ${member.displayName} снова может всё, что даёт роль`);
 }
 
-function deleteRole(room, role) {
-  if (!confirm(`Удалить роль «${role.name}»? У её участников останутся права «Все без роли».`)) return;
+async function deleteRole(room, role) {
+  if (!(await ask(`У участников роли «${role.name}» останутся права «Все без роли».`, { title: 'Удалить роль?', ok: 'Удалить', danger: true }))) return;
   roomAction(Api.del(`/rooms/${room.id}/roles/${role.id}`));
 }
 
@@ -467,7 +467,7 @@ async function leaveOrDeleteRoom(room) {
   const question = remove
     ? `Удалить комнату «${room.name}» вместе с сообщениями? Это нельзя отменить.`
     : `Выйти из комнаты «${room.name}»? Вернуть вас сможет любой, у кого есть право звать друзей.`;
-  if (!confirm(question)) return false;
+  if (!(await ask(question, { title: remove ? 'Удалить комнату?' : 'Выйти из комнаты?', ok: remove ? 'Удалить' : 'Выйти', danger: true }))) return false;
   if (remove) await Api.del(`/rooms/${room.id}`);
   else await Api.del(`/rooms/${room.id}/members/${state.me.id}`);
   if (manageRoomId === room.id) closeRoomManage();

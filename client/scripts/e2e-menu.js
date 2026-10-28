@@ -2,7 +2,7 @@
 // Буфер обмена здесь подменяет тест: он отвечает на clipboard:write так же, как main.js.
 // Запуск (сервер должен работать): npx electron scripts/e2e-menu.js [адрес сервера]
 const { ipcMain } = require('electron');
-const { api, befriend, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
+const { ACCEPT_DIALOGS, api, befriend, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
 
 let clipboard = null;
 ipcMain.handle('clipboard:write', (_e, text) => (clipboard = text));
@@ -20,7 +20,7 @@ const rightClick = (win, selector) =>
     })()`
   );
 const items = (win) => js(win, `[...document.querySelectorAll('#popup-menu:not(.hidden) .popup-item')].map((b) => b.textContent)`);
-const choose = (win, label) => js(win, `window.confirm = () => true; [...document.querySelectorAll('#popup-menu .popup-item')].find((b) => b.textContent === ${JSON.stringify(label)}).click(); true`);
+const choose = (win, label) => js(win, `${ACCEPT_DIALOGS} [...document.querySelectorAll('#popup-menu .popup-item')].find((b) => b.textContent === ${JSON.stringify(label)}).click(); true`);
 const expectItems = async (win, want, what, absent = []) => {
   const got = await items(win);
   for (const w of want) if (!got.includes(w)) throw new Error(`${what}: нет пункта «${w}» (есть: ${got.join(', ')})`);

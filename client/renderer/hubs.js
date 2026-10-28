@@ -445,7 +445,7 @@ $('hub-menu-btn').onclick = () => {
 };
 
 async function deleteHub(hub) {
-  if (!confirm(`Удалить канал «${hub.name}» вместе со всеми комнатами и перепиской? Это нельзя отменить.`)) return;
+  if (!(await ask(`Канал «${hub.name}» удалится вместе со всеми комнатами и перепиской. Это нельзя отменить.`, { title: 'Удалить канал?', ok: 'Удалить', danger: true }))) return;
   try {
     await Api.del(`/hubs/${hub.id}`);
     forgetHub(hub.id);
@@ -456,7 +456,7 @@ async function deleteHub(hub) {
 }
 
 async function leaveHub(hub) {
-  if (!confirm(`Выйти из канала «${hub.name}»? Вернуться можно будет только по новому приглашению.`)) return;
+  if (!(await ask(`Вернуться в «${hub.name}» можно будет только по новому приглашению.`, { title: 'Выйти из канала?', ok: 'Выйти', danger: true }))) return;
   try {
     await Api.del(`/hubs/${hub.id}/members/${state.me.id}`);
     forgetHub(hub.id);
@@ -711,12 +711,12 @@ function hubMembersPane(hub) {
     }
     if (!mine && myRank >= 2 && myRank > hubRank(hub, m.id)) {
       actions.append(
-        smallButton('Выгнать', 'warn-outline', () => {
-          if (confirm(`Выгнать ${m.displayName} из канала? Пригласить снова можно будет в любой момент.`))
+        smallButton('Выгнать', 'warn-outline', async () => {
+          if (await ask(`Пригласить ${m.displayName} снова можно будет в любой момент.`, { title: 'Выгнать из канала?', ok: 'Выгнать', danger: true }))
             hubAction(Api.del(`/hubs/${hub.id}/members/${m.id}`), `${m.displayName} больше не в канале`);
         }),
-        smallButton('Забанить', 'danger', () => {
-          if (confirm(`Забанить ${m.displayName}? Он пропадёт из канала и всех его комнат, позвать его будет нельзя, пока не снимете бан.`))
+        smallButton('Забанить', 'danger', async () => {
+          if (await ask(`${m.displayName} пропадёт из канала и всех его комнат, позвать его будет нельзя, пока не снимете бан.`, { title: 'Забанить?', ok: 'Забанить', danger: true }))
             hubAction(Api.post(`/hubs/${hub.id}/bans`, { userId: m.id }), `${m.displayName} забанен`);
         })
       );
