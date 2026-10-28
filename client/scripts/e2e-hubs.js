@@ -147,8 +147,27 @@ runTest(async () => {
   winB.destroy();
   await waitFor(winA, `[...document.querySelectorAll('#members-list .members-group')].some((g) => g.textContent.startsWith('Не в сети — 1'))`, 'Вася не в сети');
 
+  // Снимки окон сходки (для глаз; на проверку не влияют)
+  const escape = () => js(winA, `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); true`);
+  winA.focus();
+  await js(winA, `openHubSettings(${hubId}, 'members'); true`);
+  await screenshot(winA, 'hubs-settings-members');
+  await js(winA, `openHubSettings(${hubId}, 'overview'); true`);
+  await screenshot(winA, 'hubs-settings-overview');
+  await escape();
+  await js(winA, `openHubCreate(); true`);
+  await screenshot(winA, 'hubs-create-modal');
+  await escape();
+  await js(winA, `document.getElementById('hub-menu-btn').click(); true`);
+  await screenshot(winA, 'hubs-menu');
+  await escape();
+  await js(winA, `selectContact(null); true`);
+  await sleep(200);
+  await screenshot(winA, 'hubs-home');
+  await js(winA, `openHub(${hubId}); true`);
+
   // Вид во всех темах и в узком окне
-  await js(winA, `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); true`);
+  await escape();
   for (const theme of THEMES) {
     await js(winA, `document.documentElement.dataset.theme = '${theme}'; true`);
     await sleep(150);
