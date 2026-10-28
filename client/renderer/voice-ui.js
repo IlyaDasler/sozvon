@@ -7,7 +7,9 @@ let focusedTile = null; // плитка, развёрнутая на всю па
 let voiceTimer = null;
 
 // Без права говорить в комнате микрофон выключен, что бы ни стояло на кнопке
-const audioFlags = () => ({ muted: state.muted || state.deafened || forcedMute(), deafened: state.deafened });
+// Рация включена — микрофон слышно, только пока держат клавишу
+const pttMode = () => Boolean(state.settings.ptt && state.settings.pttBinding && window.desktop?.ptt);
+const audioFlags = () => ({ muted: state.muted || state.deafened || forcedMute() || (pttMode() && !state.pttDown), deafened: state.deafened });
 
 function newSession(sendSignal) {
   return new MediaSession({

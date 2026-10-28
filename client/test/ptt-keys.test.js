@@ -1,7 +1,7 @@
 // Рация (push-to-talk): какие клавиши и кнопки мыши можно назначить, как они называются и что им соответствует
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { bindingFrom, matches, bindingLabel, parseBinding } = require('../ptt-keys');
+const { bindingFrom, matches, bindingLabel, parseBinding } = require('../renderer/ptt-keys');
 
 // Названия клавиш, как их отдаёт глобальный перехватчик (uiohook): код → имя
 const NAMES = { 57: 'Space', 41: 'Backquote', 29: 'Ctrl', 47: 'V', 59: 'F1' };
