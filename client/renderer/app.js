@@ -667,9 +667,16 @@ function renderMessages() {
   );
 }
 
+// Что уже было на экране в каждой ленте: анимируем только новые сообщения той же переписки,
+// а не всю ленту при каждой перерисовке и не чужую переписку при переключении
+const shownMessages = new WeakMap();
+
 // Лента сообщений: и для чата с другом, и для комнаты
 function renderMessageList(box, list, loaded, emptyText) {
   box.replaceChildren();
+  const before = shownMessages.get(box);
+  const isNew = (m) => before?.list === list && !before.ids.has(m.id);
+  shownMessages.set(box, { list, ids: new Set(list.map((m) => m.id)) });
 
   if (!list.length) {
     const hint = document.createElement('div');
@@ -693,7 +700,7 @@ function renderMessageList(box, list, loaded, emptyText) {
     const continued = !newDay && prev.fromId === m.fromId && m.createdAt - prev.createdAt < 5 * 60_000;
 
     const row = document.createElement('div');
-    row.className = `msg${continued ? ' cont' : ''}`;
+    row.className = `msg${continued ? ' cont' : ''}${isNew(m) ? ' msg-new' : ''}`;
     const avatar = makeAvatar(author);
     if (author.id) avatar.dataset.profile = author.id;
     row.append(avatar);
@@ -1619,14 +1626,6 @@ $('settings-cancel').onclick = closeSettings;
 $('logout-btn').onclick = () => logout();
 
 window.desktop?.onHotkey((name) => (name === 'toggle-mute' ? toggleMute() : toggleDeafen()));
-
-window.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape') return;
-  closeFullView();
-  if (settingsOpen()) closeSettings();
-  for (const id of ['room-create', 'room-manage', 'room-invite', 'room-kick']) $(id).classList.add('hidden');
-  if (!$('screen-picker').classList.contains('hidden')) closeScreenPicker();
-});
 
 window.addEventListener('focus', () => {
   if (state.selectedId && state.unread.has(state.selectedId)) {

@@ -864,9 +864,4 @@ function handleHubEvent(msg) {
   }
 }
 
-window.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape') return;
-  hideMenu();
-  for (const id of HUB_MODALS) $(id).classList.add('hidden');
-  settingsHubId = null;
-});
+

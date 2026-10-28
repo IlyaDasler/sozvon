@@ -1,110 +1,121 @@
 /* Темы оформления. Все цвета интерфейса берутся отсюда: тема — это только набор значений.
-   Слои фона от тёмного к светлому: --bg-deep (меню, нижняя панель), --bg-2 (боковая панель),
-   --bg (чат), --bg-3 (поля ввода, карточки), --bg-4 (выбранное), --bg-5 (наведение).
+   Слои фона от тёмного к светлому: --bg-deep (фон окна, столбец каналов, меню), --bg-2 (боковая панель,
+   участники), --bg (чат), --bg-3 (поля ввода, карточки), --bg-4 (выбранное), --bg-5 (наведение).
+   --accent и --accent-2 — пара для градиентов главных кнопок и подсветок, --glow — мягкое свечение акцента.
    Цвета статусов (--ok, --idle, --danger) от темы почти не зависят — «в сети» всегда зелёный. */
 
+/* Созвон — тёмная, по умолчанию: глубокий сине-чёрный и фиолетовый, как на экране входа */
 :root,
 [data-theme='sozvon'] {
-  --bg-deep: #1e1f22;
-  --bg: #313338;
-  --bg-2: #2b2d31;
-  --bg-3: #383a40;
-  --bg-4: #404249;
-  --bg-5: #4e5058;
-  --line: #3f4147;
-  --line-strong: #4e5058;
-  --text: #f2f3f5;
-  --text-2: #dbdee1;
-  --muted: #949ba4;
-  --accent: #5865f2;
-  --accent-hover: #4752c4;
+  --bg-deep: #0b0c11;
+  --bg: #15171f;
+  --bg-2: #101219;
+  --bg-3: #1c1f2a;
+  --bg-4: #252937;
+  --bg-5: #2f3445;
+  --line: #222632;
+  --line-strong: #30364a;
+  --text: #eef0f7;
+  --text-2: #c8ccda;
+  --muted: #8a90a3;
+  --accent: #7b6cff;
+  --accent-2: #a855f7;
+  --accent-hover: #6d5cf5;
   --on-accent: #ffffff;
-  --link: #00a8fc;
-  --ok: #23a55a;
+  --link: #8fb8ff;
+  --ok: #2bc46f;
   --idle: #f0b232;
   --warn: #f0b232;
-  --danger: #f23f43;
-  --danger-hover: #da373c;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --header-shadow: 0 1px 0 rgba(4, 4, 5, 0.2), 0 1.5px 0 rgba(6, 6, 7, 0.05), 0 2px 0 rgba(4, 4, 5, 0.05);
+  --danger: #f2484d;
+  --danger-hover: #dc3b40;
+  --glow: color-mix(in srgb, var(--accent) 34%, transparent);
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --header-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
   color-scheme: dark;
 }
 
 /* Полночь: настоящий чёрный — для OLED-экранов и игр ночью */
 [data-theme='midnight'] {
   --bg-deep: #000000;
-  --bg: #0b0b0d;
-  --bg-2: #111114;
-  --bg-3: #1a1a1e;
-  --bg-4: #24242a;
-  --bg-5: #2e2e35;
-  --line: #222228;
-  --line-strong: #34343c;
+  --bg: #08080a;
+  --bg-2: #050506;
+  --bg-3: #131317;
+  --bg-4: #1c1c22;
+  --bg-5: #26262e;
+  --line: #19191e;
+  --line-strong: #2a2a32;
   --text: #f2f3f5;
-  --text-2: #d6d8dc;
-  --muted: #8e939b;
-  --accent: #5865f2;
-  --accent-hover: #4752c4;
-  --header-shadow: 0 1px 0 #1c1c22;
+  --text-2: #d0d2d8;
+  --muted: #858a94;
+  --accent: #6f7bff;
+  --accent-2: #8f6bff;
+  --accent-hover: #5d69f0;
+  --link: #8fb8ff;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --header-shadow: 0 1px 0 #16161b;
 }
 
 [data-theme='light'] {
-  --bg-deep: #e3e5e8;
+  --bg-deep: #e9ebf2;
   --bg: #ffffff;
-  --bg-2: #f2f3f5;
-  --bg-3: #ebedef;
-  --bg-4: #dfe1e5;
-  --bg-5: #d4d7dc;
-  --line: #dcdee2;
-  --line-strong: #c4c9ce;
-  --text: #060607;
-  --text-2: #313338;
-  --muted: #5c5e66;
-  --accent: #5865f2;
-  --accent-hover: #4752c4;
-  --link: #006ce7;
-  --ok: #1f8b4c;
-  --danger: #da373c;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
-  --header-shadow: 0 1px 0 rgba(6, 6, 7, 0.08), 0 2px 0 rgba(6, 6, 7, 0.03);
+  --bg-2: #f5f6fa;
+  --bg-3: #eef0f6;
+  --bg-4: #e2e5ef;
+  --bg-5: #d6dae6;
+  --line: #e1e4ec;
+  --line-strong: #c9cedb;
+  --text: #11131a;
+  --text-2: #353947;
+  --muted: #646a7b;
+  --accent: #6656f0;
+  --accent-2: #9a4de8;
+  --accent-hover: #5546dc;
+  --link: #2f62d8;
+  --ok: #1f9a55;
+  --danger: #d9363b;
+  --glow: color-mix(in srgb, var(--accent) 22%, transparent);
+  --shadow: 0 16px 40px rgba(28, 32, 56, 0.16), 0 0 0 1px rgba(28, 32, 56, 0.06);
+  --header-shadow: 0 1px 0 rgba(28, 32, 56, 0.07);
   color-scheme: light;
 }
 
-/* Лес: зелёный Созвон, каким он был до 1.8 */
+/* Лес: зелёный Созвон, каким он был до 1.8, — глубже и мягче */
 [data-theme='forest'] {
-  --bg-deep: #141519;
-  --bg: #17181c;
-  --bg-2: #1e2025;
-  --bg-3: #26292f;
-  --bg-4: #30343b;
-  --bg-5: #3a3f47;
-  --line: #2f3238;
-  --line-strong: #4f545c;
-  --text: #e8eaed;
-  --text-2: #c7cad1;
-  --muted: #9aa0a8;
+  --bg-deep: #0a0f0d;
+  --bg: #121916;
+  --bg-2: #0e1411;
+  --bg-3: #19221e;
+  --bg-4: #222e29;
+  --bg-5: #2c3a34;
+  --line: #1f2a25;
+  --line-strong: #2e3d36;
+  --text: #e9f1ec;
+  --text-2: #c4d1c9;
+  --muted: #8a9a91;
   --accent: #2fc98a;
+  --accent-2: #20b2c9;
   --accent-hover: #25a873;
-  --on-accent: #0b2a1d;
-  --link: #4ea1ff;
+  --on-accent: #06221a;
+  --link: #6fc3ff;
   --ok: #2fc98a;
 }
 
-/* Сумерки: фиолетовые тона */
+/* Сумерки: тёплые фиолетовые тона */
 [data-theme='dusk'] {
-  --bg-deep: #17141f;
-  --bg: #221d2e;
-  --bg-2: #1c1826;
-  --bg-3: #2c2639;
-  --bg-4: #372f47;
-  --bg-5: #42395a;
-  --line: #342d44;
-  --line-strong: #4a4060;
-  --text: #f1edf8;
-  --text-2: #d8d0e6;
-  --muted: #a397b8;
-  --accent: #a970ff;
-  --accent-hover: #9156ee;
+  --bg-deep: #110d18;
+  --bg: #1d1727;
+  --bg-2: #17121f;
+  --bg-3: #261f33;
+  --bg-4: #312840;
+  --bg-5: #3d3250;
+  --line: #2c2439;
+  --line-strong: #3f3452;
+  --text: #f3eefa;
+  --text-2: #d8cfe7;
+  --muted: #a194b6;
+  --accent: #b06bff;
+  --accent-2: #ff6ba8;
+  --accent-hover: #9a55f0;
   --on-accent: #ffffff;
-  --link: #7cc4ff;
+  --link: #8fc9ff;
 }
