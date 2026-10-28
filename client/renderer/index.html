@@ -148,7 +148,7 @@
 
   <!-- Основной экран -->
   <section id="main" class="screen main hidden">
-    <!-- Столбец каналов: дом (друзья и личные сообщения), свои каналы и группы в личном порядке, «Собрать канал» -->
+    <!-- Столбец каналов: дом (друзья и личные сообщения), свои каналы и группы в личном порядке, «Создать канал» -->
     <nav class="rail" id="rail" aria-label="Каналы">
       <div class="rail-item" id="rail-home-item">
         <button type="button" class="rail-tile rail-home" id="rail-home" data-tip="Друзья и личные сообщения">
@@ -159,7 +159,7 @@
       <div class="rail-sep"></div>
       <div class="rail-list" id="rail-list"></div>
       <div class="rail-item">
-        <button type="button" class="rail-tile rail-add" id="rail-add" data-tip="Собрать канал">
+        <button type="button" class="rail-tile rail-add" id="rail-add" data-tip="Создать канал">
           <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
         </button>
       </div>
@@ -190,7 +190,7 @@
           <div class="name">Друзья</div>
           <span class="badge hidden" id="friends-nav-badge"></span>
         </button>
-        <div class="list-title">Личные сообщения — <span id="contact-count">0</span></div>
+        <div class="list-title">Личные чаты — <span id="contact-count">0</span></div>
         <ul id="contact-list" class="contact-list"></ul>
         </div>
 
@@ -198,7 +198,7 @@
         <ul id="room-list" class="contact-list room-list hidden"></ul>
       </div>
 
-      <!-- «На связи»: видно из любого места, пока идёт звонок или ты в голосовой комнате -->
+      <!-- «В голосе»: видно из любого места, пока идёт звонок или ты в голосовой комнате -->
       <div class="voice-panel hidden" id="voice-panel">
         <div class="voice-info">
           <div class="voice-state-row"><span class="q-bars" id="voice-quality"></span><span id="voice-state">Подключение…</span></div>
@@ -608,13 +608,13 @@
     </form>
   </div>
 
-  <!-- Собрать канал -->
+  <!-- Создать канал -->
   <div id="hub-create" class="modal hidden">
     <form class="modal-card room-card hub-create-card" id="hub-create-form">
       <div class="hub-create-top">
         <div class="hub-tile big" id="hub-create-preview"></div>
         <div>
-          <h3>Собрать канал</h3>
+          <h3>Создать канал</h3>
           <p class="muted small">Своё место для своих: голосовые и текстовые комнаты, куда заходят только те, кого вы позовёте.</p>
         </div>
       </div>
@@ -630,7 +630,7 @@
       <div class="row">
         <div class="spacer"></div>
         <button type="button" class="btn" id="hub-create-cancel">Отмена</button>
-        <button class="btn primary" id="hub-create-submit">Собрать канал</button>
+        <button class="btn primary" id="hub-create-submit">Создать канал</button>
       </div>
     </form>
   </div>
@@ -658,7 +658,7 @@
   </div>
   <input type="file" id="hub-icon-input" accept="image/*" hidden>
 
-  <!-- Позвать друзей в канал -->
+  <!-- Пригласить друзей в канал -->
   <div id="hub-invite" class="modal hidden">
     <div class="modal-card invite-card">
       <h3 id="hi-title"></h3>

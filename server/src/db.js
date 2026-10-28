@@ -635,6 +635,9 @@ transaction(() => {
 // В комнатах из версий без ролей создатель получает готовую роль администратора, которую можно раздать
 for (const { id } of q.roomsWithoutRoles.all()) roles.create(id, ADMIN_ROLE);
 
+// Версия 2.0 называла каналы, созданные из старых комнат, «Сходка <имя>»; с 2.1 это «Канал <имя>»
+db.prepare("UPDATE hubs SET name = 'Канал' || substr(name, 7) WHERE substr(name, 1, 7) = 'Сходка '").run();
+
 /** id всех, кому важны обновления пользователя: друзья и соседи по комнатам */
 export function relatedUserIds(userId) {
   const ids = new Set(q.listContacts.all(userId).map((u) => u.id));

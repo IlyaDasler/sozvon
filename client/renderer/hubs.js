@@ -1,6 +1,6 @@
 // Каналы — свой «сервер» для своих: комнаты внутри, участники, приглашения друзей.
 // Здесь: столбец каналов слева (личный порядок и группы — rail-layout.js), шапка канала с меню,
-// список участников справа, окна «Собрать канал», настройки, приглашения. Комнаты канала — в rooms.js
+// список участников справа, окна «Создать канал», настройки, приглашения. Комнаты канала — в rooms.js
 
 const HUB_MODALS = ['hub-create', 'hub-settings', 'hub-invite', 'hub-join', 'folder-edit'];
 const lastRoomOf = new Map(); // id канала -> последняя открытая в нём комната
@@ -116,7 +116,7 @@ function renderHubEmpty(hub) {
   if (manager)
     actions.append(
       smallButton('Создать комнату', 'primary', () => openRoomCreate('voice')),
-      smallButton('Позвать друзей', '', () => openHubInvite(hub.id))
+      smallButton('Пригласить друзей', '', () => openHubInvite(hub.id))
     );
 }
 
@@ -407,7 +407,7 @@ document.addEventListener(
 function hubMenuItems(hub) {
   const manager = canManageHub(hub);
   return [
-    manager && { label: 'Позвать друзей', onclick: () => openHubInvite(hub.id) },
+    manager && { label: 'Пригласить друзей', onclick: () => openHubInvite(hub.id) },
     manager && { label: 'Создать комнату', onclick: () => openRoomCreate('voice', hub.id) },
     { label: manager ? 'Настройки канала' : 'Участники канала', onclick: () => openHubSettings(hub.id, manager ? 'overview' : 'members') },
     'sep',
@@ -510,7 +510,7 @@ for (const b of document.querySelectorAll('.members-toggle'))
     renderMembers();
   };
 
-// ---------- Собрать канал ----------
+// ---------- Создать канал ----------
 
 let newHubColor = COLORS[0];
 
@@ -652,7 +652,7 @@ function hubOverviewPane(hub) {
     el('div', {}, el('span', { className: 'muted small', textContent: 'Создатель' }), el('b', { textContent: owner?.displayName || '—' })),
     el('div', {}, el('span', { className: 'muted small', textContent: 'Участников' }), el('b', { textContent: hub.members.length })),
     el('div', {}, el('span', { className: 'muted small', textContent: 'Комнат' }), el('b', { textContent: roomsOfHub(hub.id).length })),
-    el('div', {}, el('span', { className: 'muted small', textContent: 'Собрана' }), el('b', { textContent: formatDay(hub.createdAt) })));
+    el('div', {}, el('span', { className: 'muted small', textContent: 'Создан' }), el('b', { textContent: formatDay(hub.createdAt) })));
   return [form, facts];
 }
 
@@ -665,7 +665,7 @@ function hubMembersPane(hub) {
     renderHubSettings();
   };
   const top = el('div', { className: 'rs-row' }, search);
-  if (canManageHub(hub)) top.append(smallButton('Позвать друзей', 'primary', () => openHubInvite(hub.id)));
+  if (canManageHub(hub)) top.append(smallButton('Пригласить друзей', 'primary', () => openHubInvite(hub.id)));
   out.push(top);
 
   const q = hubMemberQuery.trim().toLowerCase();
@@ -693,7 +693,7 @@ function hubMembersPane(hub) {
     if (!mine && myRank >= 2 && myRank > hubRank(hub, m.id)) {
       actions.append(
         smallButton('Выгнать', 'warn-outline', () => {
-          if (confirm(`Выгнать ${m.displayName} из канала? Позвать снова можно будет в любой момент.`))
+          if (confirm(`Выгнать ${m.displayName} из канала? Пригласить снова можно будет в любой момент.`))
             hubAction(Api.del(`/hubs/${hub.id}/members/${m.id}`), `${m.displayName} больше не в канале`);
         }),
         smallButton('Забанить', 'danger', () => {
@@ -739,7 +739,7 @@ $('hub-icon-input').onchange = async (e) => {
   }
 };
 
-// ---------- Позвать друзей в канал ----------
+// ---------- Пригласить друзей в канал ----------
 
 let inviteHubId = null;
 
@@ -756,7 +756,7 @@ function openHubInvite(id) {
 function renderHubInvite() {
   const hub = hubById(inviteHubId);
   if (!hub) return $('hub-invite').classList.add('hidden');
-  $('hi-title').textContent = `Позвать друзей в «${hub.name}»`;
+  $('hi-title').textContent = `Пригласить друзей в «${hub.name}»`;
   const q = $('hi-search').value.trim().toLowerCase();
   const inHub = new Set(hub.members.map((m) => m.id));
   const invited = new Set(hub.invited);
@@ -766,7 +766,7 @@ function renderHubInvite() {
     .sort((a, b) => inHub.has(a.id) - inHub.has(b.id) || a.displayName.localeCompare(b.displayName, 'ru'));
   const list = $('hi-list');
   list.replaceChildren();
-  if (!state.contacts.size) list.append(el('p', { className: 'muted', textContent: 'Позвать можно только друзей, а их пока нет. Добавьте их в разделе «Друзья».' }));
+  if (!state.contacts.size) list.append(el('p', { className: 'muted', textContent: 'Пригласить можно только друзей, а их пока нет. Добавьте их в разделе «Друзья».' }));
   else if (!friends.length) list.append(el('p', { className: 'muted', textContent: 'Никого не нашли' }));
   for (const f of friends) {
     const info = el('div', { className: 'grow ellipsis' }, el('div', { className: 'ellipsis', textContent: f.displayName }), el('div', { className: 'muted small', textContent: `@${f.username}` }));
@@ -775,7 +775,7 @@ function renderHubInvite() {
     else if (banned.has(f.id)) action = el('span', { className: 'small error-text', textContent: 'Забанен' });
     else if (invited.has(f.id)) action = el('span', { className: 'muted small', textContent: 'Позвали' });
     else
-      action = smallButton('Позвать', 'primary', async () => {
+      action = smallButton('Пригласить', 'primary', async () => {
         $('hi-error').textContent = '';
         try {
           applyHub(await Api.post(`/hubs/${hub.id}/invites`, { userIds: [f.id] }));
