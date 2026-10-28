@@ -120,8 +120,8 @@ db.exec(`
     PRIMARY KEY (room_id, user_id)
   );
 
-  -- Сходки (в коде — hubs; не путать с hub.js, рассылкой по WebSocket): свой «сервер» с комнатами внутри.
-  -- Участник сходки — участник её комнат (кроме тех, где забанен); создатель может всё,
+  -- Каналы (в коде — hubs; не путать с hub.js, рассылкой по WebSocket): свой «сервер» с комнатами внутри.
+  -- Участник канала — участник его комнат (кроме тех, где забанен); создатель может всё,
   -- управляющий (manager = 1) — создавать и удалять комнаты, переименовывать, звать, выгонять и банить
   CREATE TABLE IF NOT EXISTS hubs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -141,7 +141,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS hub_members_user ON hub_members (user_id);
 
-  -- Приглашения: друг вступает в сходку, только когда сам примет
+  -- Приглашения: друг вступает в канал, только когда сам примет
   CREATE TABLE IF NOT EXISTS hub_invites (
     hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -182,7 +182,7 @@ if (!columnsOf('rooms').includes('default_perms'))
 if (!columnsOf('room_members').includes('role_id')) db.exec('ALTER TABLE room_members ADD COLUMN role_id INTEGER');
 // Кик на время: до этого момента (мс) участник может только читать чат
 if (!columnsOf('room_members').includes('timeout_until')) db.exec('ALTER TABLE room_members ADD COLUMN timeout_until INTEGER');
-// Сходка комнаты (с 2.0); комнаты старых версий переносятся ниже
+// Канал комнаты (с 2.0); комнаты старых версий переносятся ниже
 if (!columnsOf('rooms').includes('hub_id')) db.exec('ALTER TABLE rooms ADD COLUMN hub_id INTEGER REFERENCES hubs(id) ON DELETE CASCADE');
 db.exec('CREATE INDEX IF NOT EXISTS rooms_hub ON rooms (hub_id)');
 
@@ -319,7 +319,7 @@ const q = {
   removeBan: db.prepare('DELETE FROM room_bans WHERE room_id = ? AND user_id = ?'),
   addRoomMember: db.prepare('INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) VALUES (?, ?, ?)'),
   removeRoomMember: db.prepare('DELETE FROM room_members WHERE room_id = ? AND user_id = ?'),
-  // Все, с кем человек в одной комнате или сходке: им тоже нужны его статус «в сети» и новый профиль
+  // Все, с кем человек в одной комнате или канале: им тоже нужны его статус «в сети» и новый профиль
   roomNeighbours: db.prepare(`
     SELECT b.user_id AS id FROM room_members a JOIN room_members b ON a.room_id = b.room_id
     WHERE a.user_id = ? AND b.user_id != a.user_id
@@ -347,7 +347,7 @@ const q = {
   removeHubMember: db.prepare('DELETE FROM hub_members WHERE hub_id = ? AND user_id = ?'),
   setManager: db.prepare('UPDATE hub_members SET manager = ? WHERE hub_id = ? AND user_id = ?'),
   hubRooms: db.prepare('SELECT * FROM rooms WHERE hub_id = ? ORDER BY id'),
-  // Участники комнаты становятся участниками её сходки (перенос старых комнат, приглашения из старых версий)
+  // Участники комнаты становятся участниками её канала (перенос старых комнат, приглашения из старых версий)
   roomMembersToHub: db.prepare(`
     INSERT OR IGNORE INTO hub_members (hub_id, user_id, created_at) SELECT ?, user_id, created_at FROM room_members WHERE room_id = ?
   `),
@@ -468,7 +468,7 @@ export const messages = {
 export const rooms = {
   byId: (id) => q.roomById.get(id),
   of: (userId) => q.roomsOf.all(userId),
-  /** Комната в сходке hubId. everyone — сразу позвать всех участников сходки (старые версии зовут поимённо) */
+  /** Комната в канале hubId. everyone — сразу позвать всех участников канала (старые версии зовут поимённо) */
   create(ownerId, name, kind, hubId, { everyone = true } = {}) {
     const now = Date.now();
     const id = Number(q.insertRoom.run(name, kind, ownerId, hubId, now).lastInsertRowid);
@@ -495,7 +495,7 @@ export const rooms = {
     return role ? role.perms : room.default_perms;
   },
 
-  /** Положение в комнате: создатель комнаты и создатель её сходки могут всё, управляющий сходкой — как администратор.
+  /** Положение в комнате: создатель комнаты и создатель её канала могут всё, управляющий каналом — как администратор.
    *  rank — старшинство (см. rankOf): действовать можно только на тех, кто младше */
   standing(room, userId) {
     const hub = room.hub_id && q.hubById.get(room.hub_id);
@@ -524,7 +524,7 @@ export const rooms = {
   unban: (roomId, userId) => q.removeBan.run(roomId, userId),
 };
 
-/** Сходки. Участник сходки — участник её комнат, кроме тех, где его забанили */
+/** Каналы. Участник канала — участник его комнат, кроме тех, где его забанили */
 export const hubs = {
   byId: (id) => q.hubById.get(id),
   of: (userId) => q.hubsOf.all(userId),
@@ -536,12 +536,12 @@ export const hubs = {
     return hubs.byId(id);
   },
 
-  /** Куда класть комнату без сходки (старые версии и перенос): в первую свою сходку, а нет — в новую «Сходка <имя>» */
+  /** Куда класть комнату без канала (старые версии и перенос): в первый свой канал, а нет — в новый «Канал <имя>» */
   defaultFor(owner) {
-    return q.firstOwnedHub.get(owner.id) || hubs.create(owner.id, `Сходка ${owner.display_name}`.slice(0, 40), owner.avatar_color);
+    return q.firstOwnedHub.get(owner.id) || hubs.create(owner.id, `Канал ${owner.display_name}`.slice(0, 40), owner.avatar_color);
   },
 
-  /** Переносит комнату в сходку вместе с её участниками */
+  /** Переносит комнату в канал вместе с его участниками */
   attachRoom(hubId, roomId) {
     q.setRoomHub.run(hubId, roomId);
     q.roomMembersToHub.run(hubId, roomId);
@@ -555,14 +555,14 @@ export const hubs = {
   isMember: (hubId, userId) => Boolean(q.hubMember.get(hubId, userId)),
   setManager: (hubId, userId, manager) => q.setManager.run(manager ? 1 : 0, hubId, userId),
 
-  /** Старшинство в сходке: создатель 3, управляющий 2, участник 1, чужой 0 */
+  /** Старшинство в канале: создатель 3, управляющий 2, участник 1, чужой 0 */
   rankOf(hub, userId) {
     if (hub.owner_id === userId) return 3;
     const member = q.hubMember.get(hub.id, userId);
     return member ? (member.manager ? 2 : 1) : 0;
   },
 
-  /** Вступить: сходка и все её комнаты, кроме тех, где забанен. Возвращает комнаты, куда попал */
+  /** Вступить: канал и все его комнаты, кроме тех, где забанен. Возвращает комнаты, куда попал */
   join(hubId, userId) {
     const now = Date.now();
     const joined = [];
@@ -620,7 +620,7 @@ for (const { id, email } of db.prepare('SELECT id, email FROM users WHERE email 
   if (canonical !== email && !q.userByEmail.get(canonical)) q.setEmail.run(canonical, id);
 }
 
-// Комнаты из версий до 2.0 жили сами по себе: у каждого создателя собираем их в сходку вместе с участниками
+// Комнаты из версий до 2.0 жили сами по себе: у каждого создателя собираем их в канал вместе с участниками
 transaction(() => {
   for (const { owner_id } of q.ownersOfLooseRooms.all()) {
     const hub = hubs.defaultFor(q.userById.get(owner_id));

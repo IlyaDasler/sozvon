@@ -281,7 +281,7 @@ function membersPane(room) {
     if (role) name.style.color = role.color;
     const tags = el('div', { className: 'member-tags' }, el('span', { className: 'muted small', textContent: `@${m.username}` }));
     const tag = (text, cls = '') => tags.append(el('span', { className: `tag ${cls}`, textContent: text }));
-    if (isRoomOwner(room, m.id)) tag(m.id === room.ownerId ? 'Создатель' : 'Создатель сходки', 'owner');
+    if (isRoomOwner(room, m.id)) tag(m.id === room.ownerId ? 'Создатель' : 'Создатель канала', 'owner');
     else tag(role?.name || 'Без роли');
     if (inVoice.has(m.id)) tag('В голосе', 'live');
     if (until) tag(`Кик до ${timeText(until)}`, 'kicked');
@@ -422,10 +422,10 @@ function openRoomInvite(roomId) {
 function renderRoomInvite() {
   const room = roomById(inviteRoomId);
   if (!room) return $('room-invite').classList.add('hidden');
-  // В комнату сходки зовут её участников (например, тех, кого из комнаты убрали); новых друзей — в саму сходку
+  // В комнату канала зовут её участников (например, тех, кого из комнаты убрали); новых друзей — в сам канал
   const hub = state.hubs.get(room.hubId);
   const people = hub ? hub.members.filter((m) => m.id !== state.me.id) : [...state.contacts.values()];
-  $('ri-title').textContent = hub ? `Позвать участников сходки в «${room.name}»` : `Пригласить друзей в «${room.name}»`;
+  $('ri-title').textContent = hub ? `Позвать участников канала в «${room.name}»` : `Пригласить друзей в «${room.name}»`;
   const q = $('ri-search').value.trim().toLowerCase();
   const inRoom = new Set(room.members.map((m) => m.id));
   const banned = new Set((room.bans || []).map((b) => b.id));
@@ -435,7 +435,7 @@ function renderRoomInvite() {
   const list = $('ri-list');
   list.replaceChildren();
   if (!people.length)
-    list.append(el('p', { className: 'muted', textContent: hub ? 'В сходке пока никого, кроме вас. Друзей зовут в саму сходку — через её меню.' : 'Позвать можно только друзей, а их пока нет. Добавьте их в разделе «Друзья».' }));
+    list.append(el('p', { className: 'muted', textContent: hub ? 'В канале пока никого, кроме вас. Друзей зовут в сам канал — через его меню.' : 'Позвать можно только друзей, а их пока нет. Добавьте их в разделе «Друзья».' }));
   else if (!friends.length) list.append(el('p', { className: 'muted', textContent: 'Никого не нашли' }));
   for (const f of friends) {
     const info = el('div', { className: 'grow ellipsis' }, el('div', { className: 'ellipsis', textContent: f.displayName }), el('div', { className: 'muted small', textContent: `@${f.username}` }));
