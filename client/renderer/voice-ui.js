@@ -301,7 +301,7 @@ function renderVoice() {
   $('hangup-btn').title = state.room ? 'Выйти из голосового канала' : 'Завершить звонок';
   renderNoiseButton();
 
-  // Панель «На связи» над профилем — видна из любого места приложения
+  // Панель «В голосе» над профилем — видна из любого места приложения
   $('voice-panel').classList.toggle('hidden', !session);
   document.body.classList.toggle('has-voice', Boolean(session));
   $('voice-where').textContent = voiceTitle();
@@ -357,7 +357,7 @@ function renderVoiceStatus() {
   }
 
   updateFullView();
-  $('voice-state').textContent = connected ? 'На связи' : 'Подключение…';
+  $('voice-state').textContent = connected ? 'В голосе' : 'Подключение…';
   $('voice-state').classList.toggle('ok', connected);
   setQualityBars($('voice-quality'), connected ? q : null);
 }
