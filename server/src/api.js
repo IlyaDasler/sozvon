@@ -130,7 +130,7 @@ setInterval(() => {
 /** Вложения удалённого сообщения больше не нужны: файл с диска и запись о загрузке */
 function removeAttachments(row) {
   for (const a of parseAttachments(row.attachments)) {
-    fs.rm(path.join(FILES_DIR, a.id), { force: true }, () => {});
+    fs.rmSync(path.join(FILES_DIR, a.id), { force: true });
     uploads.remove(a.id);
   }
 }
@@ -168,8 +168,9 @@ async function messageFrom(req) {
 const isWebp = (buf) =>
   buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP';
 
+// Удаляем сразу, до ответа: после «картинка убрана» по старому адресу её уже не должно быть
 function removeAvatarFile(id) {
-  if (id) fs.rm(path.join(AVATAR_DIR, `${id}.webp`), { force: true }, () => {});
+  if (id) fs.rmSync(path.join(AVATAR_DIR, `${id}.webp`), { force: true });
 }
 
 // Логин для нового профиля из почты или имени: ivan.petrov@yandex.ru -> ivan.petrov, при совпадении добавляем цифры
