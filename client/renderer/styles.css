@@ -364,7 +364,13 @@ body { display: flex; flex-direction: column; }
   font-weight: 700; font-size: 16px;
   border-bottom: 1px solid var(--line);
 }
-.conn-dot { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+.conn-dot { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex: none; }
+/* Шапка узкой панели: значок и кнопки не сжимаются, название обрезается, а совсем узко — остаётся только логотип */
+.sidebar { container: sidebar / inline-size; }
+.sidebar-head > .icon-btn { flex: none; }
+.head-home > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.head-home img { flex: none; }
+@container sidebar (max-width: 236px) { .head-home > span { display: none; } }
 .sidebar-head .icon-btn { width: 28px; height: 28px; margin-right: -6px; }
 .conn-dot.ok { background: var(--ok); }
 
@@ -1123,7 +1129,6 @@ kbd {
 .room-tool svg { width: 15px; height: 15px; }
 .room-row:hover .room-tool, .room-row.active .room-tool { opacity: 1; }
 .room-tool:hover { background: var(--bg-5); color: var(--text); }
-.voice-users { padding-left: 90px; }
 
 /* ---------- Настройки комнаты ---------- */
 
