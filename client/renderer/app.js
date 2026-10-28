@@ -562,6 +562,7 @@ function renderContacts() {
   for (const c of sorted) {
     const li = document.createElement('li');
     li.className = `contact${c.id === state.selectedId ? ' active' : ''}${isAvailable(c) ? '' : ' offline'}`;
+    li.dataset.contact = c.id;
     li.append(makeAvatar(c, presenceOf(c)));
 
     const name = document.createElement('div');
@@ -724,6 +725,9 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
 
     const row = document.createElement('div');
     row.className = `msg${continued ? ' cont' : ''}${isNew(m) ? ' msg-new' : ''}`;
+    // Для меню по правой кнопке: само сообщение и что с ним можно сделать в этой ленте
+    row.message = m;
+    row.actions = actions;
     const avatar = makeAvatar(author);
     if (author.id) avatar.dataset.profile = author.id;
     row.append(avatar);
