@@ -3,6 +3,7 @@ const { app, BrowserWindow, desktopCapturer, ipcMain, session } = require('elect
 const fs = require('node:fs');
 const path = require('node:path');
 const { applyPermissions } = require('../permissions');
+const { fetchPreview } = require('../link-preview');
 
 const SERVER = process.argv.find((a) => /^https?:\/\//.test(a)) || 'http://127.0.0.1:3000'; // localhost клиент считает старым адресом и сбрасывает вход
 
@@ -72,6 +73,7 @@ ipcMain.handle('screen:choose', (_e, id) => {
   return Boolean(screenChoice);
 });
 ipcMain.handle('update:status', () => ({ state: 'idle', current: 'e2e' }));
+ipcMain.handle('preview:fetch', (_e, url) => fetchPreview(String(url)));
 
 // root — папка с preload.js и renderer/ (по умолчанию текущая версия; для проверки совместимости — старая)
 async function openClient(name, auth, root = path.join(__dirname, '..')) {
