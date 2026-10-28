@@ -375,118 +375,162 @@
 
   <!-- Настройки -->
   <div id="settings" class="modal hidden">
-    <form class="modal-card settings-card" id="settings-form">
-      <h3>Настройки</h3>
+    <form class="modal-card settings-card set-card" id="settings-form">
+      <nav class="rs-nav set-nav" id="set-nav">
+        <div class="rs-room">Настройки</div>
+        <button type="button" data-tab="profile">Профиль</button>
+        <button type="button" data-tab="look">Оформление</button>
+        <button type="button" data-tab="sound">Звук и видео</button>
+        <button type="button" data-tab="notify">Уведомления</button>
+        <button type="button" data-tab="account">Аккаунт</button>
+        <button type="button" data-tab="about">О приложении</button>
+        <div class="rs-sep"></div>
+        <button type="button" class="rs-danger" id="logout-btn">Выйти из аккаунта</button>
+      </nav>
+      <section class="rs-main">
+        <header class="rs-head">
+          <h3 id="set-title">Профиль</h3>
+          <button type="button" class="icon-btn" id="settings-close" title="Закрыть (Esc)"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </header>
+        <div class="rs-body set-body">
 
-      <h4>Профиль</h4>
-      <div class="avatar-edit">
-        <div class="avatar big" id="set-avatar"></div>
-        <div class="avatar-actions">
-          <button type="button" class="btn" id="avatar-upload-btn">Загрузить фото</button>
-          <button type="button" class="btn danger-outline hidden" id="avatar-remove-btn">Удалить фото</button>
-          <span class="muted small">JPG, PNG или WebP — обрежем до квадрата</span>
-        </div>
-        <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
-      </div>
-      <label class="field">
-        <span>Имя</span>
-        <input id="set-display" maxlength="32">
-      </label>
-      <div class="field">
-        <span>Цвет аватара</span>
-        <div id="color-picker" class="colors"></div>
-      </div>
-      <div class="field">
-        <span>Цвет баннера</span>
-        <div id="banner-picker" class="colors"></div>
-      </div>
-      <label class="field">
-        <span>О себе <em class="muted small">— можно с разметкой, до 190 символов</em></span>
-        <textarea id="set-bio" maxlength="190" rows="3" placeholder="Во что играете, когда вас звать"></textarea>
-      </label>
-
-      <h4>Оформление</h4>
-      <div class="theme-grid" id="theme-grid"></div>
-
-      <h4>Звук</h4>
-      <label class="field">
-        <span>Микрофон</span>
-        <select id="set-mic"></select>
-      </label>
-      <label class="field">
-        <span>Динамики / наушники</span>
-        <select id="set-speaker"></select>
-      </label>
-      <label class="check"><input type="checkbox" id="set-ns"> Шумоподавление — убирает фоновый шум, клавиатуру и вентилятор</label>
-      <div class="field">
-        <span>Проверка звука</span>
-        <div class="meter" title="Громкость микрофона"><div class="meter-fill" id="mic-meter"></div></div>
-        <div class="row wrap">
-          <button type="button" class="btn" id="mic-monitor-btn">Слушать себя</button>
-          <button type="button" class="btn" id="mic-test-btn">Проверить микрофон</button>
-          <button type="button" class="btn" id="speaker-test-btn">Проверить динамики</button>
-        </div>
-        <span class="hint-text">Скажите что-нибудь — полоска должна двигаться. «Слушать себя» сразу выводит микрофон в выбранные наушники: слышно качество и как работает шумоподавление (без наушников может засвистеть). «Проверить микрофон» запишет 5 секунд и проиграет запись так, как вас слышат друзья.</span>
-        <p class="error" id="mic-test-hint"></p>
-      </div>
-
-      <h4>Уведомления</h4>
-      <label class="check"><input type="checkbox" id="set-notify-desktop"> Уведомления на рабочем столе, когда окно свёрнуто</label>
-      <label class="check"><input type="checkbox" id="set-notify-preview"> Показывать текст сообщения в уведомлении</label>
-      <label class="check"><input type="checkbox" id="set-notify-sound"> Звук уведомлений</label>
-      <span class="hint-text">В статусе «Не беспокоить» на рабочий стол ничего не приходит и звонки не звенят — всё остаётся в колокольчике.</span>
-
-      <h4>Камера</h4>
-      <div class="row">
-        <label class="field grow"><span>Камера</span><select id="set-cam"></select></label>
-        <button type="button" class="btn cam-test" id="cam-test-btn">Проверить камеру</button>
-      </div>
-      <video id="cam-preview" class="cam-preview mirror hidden" autoplay playsinline muted></video>
-
-      <div id="identities-section">
-        <h4>Способы входа</h4>
-        <div id="identity-list" class="identity-list"></div>
-        <!-- Привязка почты: адрес, код из письма -->
-        <div id="email-link" class="email-link hidden">
-          <div class="row code-row">
-            <input id="link-email" type="email" placeholder="name@yandex.ru" spellcheck="false">
-            <button type="button" class="btn" id="link-send">Отправить код</button>
+          <div class="set-pane" data-pane="profile">
+            <div class="set-block">
+              <div class="avatar-edit">
+                <div class="avatar big" id="set-avatar"></div>
+                <div class="avatar-actions">
+                  <button type="button" class="btn" id="avatar-upload-btn">Загрузить фото</button>
+                  <button type="button" class="btn danger-outline hidden" id="avatar-remove-btn">Удалить фото</button>
+                  <span class="muted small">JPG, PNG или WebP — обрежем до квадрата</span>
+                </div>
+                <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+              </div>
+              <label class="field">
+                <span>Имя</span>
+                <input id="set-display" maxlength="32">
+              </label>
+            </div>
+            <div class="set-block">
+              <div class="field">
+                <span>Цвет аватара</span>
+                <div id="color-picker" class="colors"></div>
+              </div>
+              <div class="field">
+                <span>Цвет баннера</span>
+                <div id="banner-picker" class="colors"></div>
+              </div>
+            </div>
+            <div class="set-block">
+              <label class="field">
+                <span>О себе <em class="muted small">— можно с разметкой, до 190 символов</em></span>
+                <textarea id="set-bio" maxlength="190" rows="3" placeholder="Во что играете, когда вас звать"></textarea>
+              </label>
+            </div>
           </div>
-          <div class="row code-row">
-            <input id="link-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Код из письма">
-            <button type="button" class="btn primary" id="link-confirm">Привязать</button>
+
+          <div class="set-pane" data-pane="look">
+            <div class="set-block">
+              <h4>Тема</h4>
+              <div class="theme-grid" id="theme-grid"></div>
+            </div>
           </div>
-          <span class="hint-text" id="link-hint"></span>
+
+          <div class="set-pane" data-pane="sound">
+            <div class="set-block">
+              <h4>Звук</h4>
+              <label class="field">
+                <span>Микрофон</span>
+                <select id="set-mic"></select>
+              </label>
+              <label class="field">
+                <span>Динамики / наушники</span>
+                <select id="set-speaker"></select>
+              </label>
+              <label class="check"><input type="checkbox" id="set-ns"> Шумоподавление — убирает фоновый шум, клавиатуру и вентилятор</label>
+            </div>
+            <div class="set-block">
+              <h4>Проверка звука</h4>
+              <div class="meter" title="Громкость микрофона"><div class="meter-fill" id="mic-meter"></div></div>
+              <div class="row wrap">
+                <button type="button" class="btn" id="mic-monitor-btn">Слушать себя</button>
+                <button type="button" class="btn" id="mic-test-btn">Проверить микрофон</button>
+                <button type="button" class="btn" id="speaker-test-btn">Проверить динамики</button>
+              </div>
+              <span class="hint-text">Скажите что-нибудь — полоска должна двигаться. «Слушать себя» сразу выводит микрофон в выбранные наушники: слышно качество и как работает шумоподавление (без наушников может засвистеть). «Проверить микрофон» запишет 5 секунд и проиграет запись так, как вас слышат друзья.</span>
+              <p class="error" id="mic-test-hint"></p>
+            </div>
+            <div class="set-block">
+              <h4>Камера</h4>
+              <div class="row">
+                <label class="field grow"><span>Камера</span><select id="set-cam"></select></label>
+                <button type="button" class="btn cam-test" id="cam-test-btn">Проверить камеру</button>
+              </div>
+              <video id="cam-preview" class="cam-preview mirror hidden" autoplay playsinline muted></video>
+            </div>
+            <div class="set-block">
+              <h4>Горячие клавиши</h4>
+              <p class="muted small">Работают и в игре: <b>Ctrl+Shift+M</b> — микрофон, <b>Ctrl+Shift+D</b> — звук.</p>
+            </div>
+          </div>
+
+          <div class="set-pane" data-pane="notify">
+            <div class="set-block">
+              <h4>Уведомления</h4>
+              <label class="check"><input type="checkbox" id="set-notify-desktop"> Уведомления на рабочем столе, когда окно свёрнуто</label>
+              <label class="check"><input type="checkbox" id="set-notify-preview"> Показывать текст сообщения в уведомлении</label>
+              <label class="check"><input type="checkbox" id="set-notify-sound"> Звук уведомлений</label>
+              <span class="hint-text">В статусе «Не беспокоить» на рабочий стол ничего не приходит и звонки не звенят — всё остаётся в колокольчике.</span>
+            </div>
+          </div>
+
+          <div class="set-pane" data-pane="account">
+            <div class="set-block" id="identities-section">
+              <h4>Способы входа</h4>
+              <div id="identity-list" class="identity-list"></div>
+              <!-- Привязка почты: адрес, код из письма -->
+              <div id="email-link" class="email-link hidden">
+                <div class="row code-row">
+                  <input id="link-email" type="email" placeholder="name@yandex.ru" spellcheck="false">
+                  <button type="button" class="btn" id="link-send">Отправить код</button>
+                </div>
+                <div class="row code-row">
+                  <input id="link-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Код из письма">
+                  <button type="button" class="btn primary" id="link-confirm">Привязать</button>
+                </div>
+                <span class="hint-text" id="link-hint"></span>
+              </div>
+            </div>
+            <div class="set-block">
+              <h4 id="password-title">Сменить пароль</h4>
+              <div class="row">
+                <label class="field grow" id="cur-pass-field"><span>Текущий</span><input type="password" id="set-cur-pass" autocomplete="current-password"></label>
+                <label class="field grow"><span>Новый</span><input type="password" id="set-new-pass" autocomplete="new-password"></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="set-pane" data-pane="about">
+            <div class="set-block" id="about-section">
+              <h4>О приложении</h4>
+              <div class="row">
+                <div>
+                  <div>Версия <b id="app-version"></b></div>
+                  <div class="muted small" id="update-status"></div>
+                </div>
+                <div class="spacer"></div>
+                <button type="button" class="btn" id="update-check-btn">Проверить обновления</button>
+              </div>
+            </div>
+          </div>
+
         </div>
-      </div>
-
-      <h4 id="password-title">Сменить пароль</h4>
-      <div class="row">
-        <label class="field grow" id="cur-pass-field"><span>Текущий</span><input type="password" id="set-cur-pass" autocomplete="current-password"></label>
-        <label class="field grow"><span>Новый</span><input type="password" id="set-new-pass" autocomplete="new-password"></label>
-      </div>
-
-      <div id="about-section" class="hidden">
-        <h4>О приложении</h4>
-        <div class="row">
-          <div>
-            <div>Версия <b id="app-version"></b></div>
-            <div class="muted small" id="update-status"></div>
-          </div>
+        <footer class="set-foot">
+          <p class="error" id="settings-error"></p>
           <div class="spacer"></div>
-          <button type="button" class="btn" id="update-check-btn">Проверить обновления</button>
-        </div>
-      </div>
-
-      <p class="muted small">Горячие клавиши работают и в игре: <b>Ctrl+Shift+M</b> — микрофон, <b>Ctrl+Shift+D</b> — звук.</p>
-      <p class="error" id="settings-error"></p>
-
-      <div class="row">
-        <button type="button" class="btn danger-outline" id="logout-btn">Выйти</button>
-        <div class="spacer"></div>
-        <button type="button" class="btn" id="settings-cancel">Отмена</button>
-        <button class="btn primary">Сохранить</button>
-      </div>
+          <button type="button" class="btn" id="settings-cancel">Отмена</button>
+          <button class="btn primary">Сохранить</button>
+        </footer>
+      </section>
     </form>
   </div>
 
