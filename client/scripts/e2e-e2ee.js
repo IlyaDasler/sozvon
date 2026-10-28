@@ -32,6 +32,18 @@ runTest(async () => {
   if (!last.enc?.ct || !last.text.startsWith('🔒')) throw new Error('Сообщение ушло без шифрования');
   console.log('✔ личное сообщение: на сервере только шифр, собеседник читает');
 
+  // Код шифрования в карточке профиля: у Ани про Борю и у Бори про Аню — один и тот же
+  const cardCode = async (win, userId) => {
+    await js(win, `openProfileCard(${userId}, document.getElementById('peer-avatar')); true`);
+    await waitFor(win, `/\\d{4} \\d{4}/.test(document.querySelector('#profile-card .pc-keycode-value')?.textContent || '')`, 'код в карточке');
+    const code = await js(win, `document.querySelector('#profile-card .pc-keycode-value').textContent`);
+    await js(win, `closeProfileCard(); true`);
+    return code;
+  };
+  const codeAB = await cardCode(winA, b.user.id);
+  if (codeAB !== (await cardCode(winB, a.user.id))) throw new Error('Коды шифрования у собеседников разные');
+  console.log('✔ код шифрования в карточке профиля совпадает у обоих');
+
   // Файл: на сервере зашифрованные байты, у Бори — исходный файл
   await js(winA, `dmComposer.addFiles([new File(['файл-секрет-222'], 'план.txt', { type: 'text/plain' })]); true`);
   await waitFor(winA, `dmComposer.files.length === 1 && dmComposer.files.every((f) => f.attachment)`, 'загрузка файла');
