@@ -108,4 +108,28 @@ runTest(async () => {
   }
   await js(win, `leaveRoomVoice(); setTheme('sozvon'); true`);
   await js(winB, `leaveRoomVoice(); true`);
+
+  // Ширина боковых панелей: тянем край мышью (настоящие события ввода), двойной щелчок — как было
+  const width = (sel) => js(win, `Math.round(document.querySelector('${sel}').getBoundingClientRect().width)`);
+  const drag = async (sel, dx) => {
+    const r = await js(win, `(() => { const b = document.querySelector('${sel} > .panel-resizer').getBoundingClientRect(); return { x: Math.round(b.left + b.width / 2), y: Math.round(b.top + 200) }; })()`);
+    const wc = win.webContents;
+    wc.sendInputEvent({ type: 'mouseDown', x: r.x, y: r.y, button: 'left', clickCount: 1 });
+    for (let i = 1; i <= 8; i++) wc.sendInputEvent({ type: 'mouseMove', x: r.x + Math.round((dx * i) / 8), y: r.y, button: 'left' });
+    wc.sendInputEvent({ type: 'mouseUp', x: r.x + dx, y: r.y, button: 'left', clickCount: 1 });
+    await sleep(300);
+  };
+  const sidebarBefore = await width('.sidebar');
+  await drag('.sidebar', 80);
+  const sidebarAfter = await width('.sidebar');
+  if (Math.abs(sidebarAfter - sidebarBefore - 80) > 3) throw new Error(`Левая панель: было ${sidebarBefore}, стало ${sidebarAfter}`);
+  const membersBefore = await width('#members-panel');
+  await drag('#members-panel', -60);
+  const membersAfter = await width('#members-panel');
+  if (Math.abs(membersAfter - membersBefore - 60) > 3) throw new Error(`Участники: было ${membersBefore}, стало ${membersAfter}`);
+  await shot('1280-resized');
+  if ((await js(win, `store.get('panelWidths').sidebar`)) !== sidebarAfter) throw new Error('Ширина не запомнилась');
+  await js(win, `document.querySelector('.sidebar > .panel-resizer').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); true`);
+  if ((await width('.sidebar')) !== sidebarBefore) throw new Error('Двойной щелчок не вернул ширину');
+  console.log('✔ боковые панели тянутся мышью, ширина запоминается, двойной щелчок возвращает');
 });
