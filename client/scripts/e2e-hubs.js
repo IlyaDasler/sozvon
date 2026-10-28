@@ -41,21 +41,21 @@ runTest(async () => {
 
   // Илья собирает канал через «+» внизу столбца
   await js(winA, `document.getElementById('rail-add').click(); true`);
-  await waitFor(winA, `!document.getElementById('hub-create').classList.contains('hidden')`, 'окно «Собрать канал»');
+  await waitFor(winA, `!document.getElementById('hub-create').classList.contains('hidden')`, 'окно «Создать канал»');
   await js(winA, `document.getElementById('hub-name').value = 'Наш двор'; document.getElementById('hub-create-submit').click(); true`);
   await waitFor(winA, `state.view !== 'home' && document.getElementById('hub-menu-name').textContent === 'Наш двор'`, 'канал открылась');
   const hubId = await js(winA, 'state.view');
   await waitFor(winA, `document.querySelector('${tile(hubId)}')?.textContent === 'НД'`, 'иконка канала в столбце');
   await waitFor(winA, `document.querySelectorAll('#room-list .room-row').length === 2`, 'две комнаты в канале');
-  if (!(await js(winA, `document.getElementById('room-title').textContent === 'Болталка'`))) throw new Error('Открылась не текстовая комната');
+  if (!(await js(winA, `document.getElementById('room-title').textContent === 'Общий чат'`))) throw new Error('Открылась не текстовая комната');
   if (await js(winA, `document.getElementById('members-panel').classList.contains('hidden')`)) throw new Error('Список участников не виден');
   await screenshot(winA, 'hubs-created');
-  console.log('✔ канал собрана: в столбце, в шапке, с двумя комнатами и списком участников');
+  console.log('✔ канал создан: в столбце, в шапке, с двумя комнатами и списком участников');
 
   // Зовёт Васю через меню канала
   await js(winA, `document.getElementById('hub-menu-btn').click(); true`);
-  await js(winA, `[...document.querySelectorAll('#popup-menu .popup-item')].find((b) => b.textContent === 'Позвать друзей').click(); true`);
-  await waitFor(winA, `!document.getElementById('hub-invite').classList.contains('hidden')`, 'окно «Позвать друзей»');
+  await js(winA, `[...document.querySelectorAll('#popup-menu .popup-item')].find((b) => b.textContent === 'Пригласить друзей').click(); true`);
+  await waitFor(winA, `!document.getElementById('hub-invite').classList.contains('hidden')`, 'окно «Пригласить друзей»');
   await js(winA, `[...document.querySelectorAll('#hi-list .member-row')].find((r) => r.textContent.includes('Вася')).querySelector('button').click(); true`);
   await waitFor(winA, `[...document.querySelectorAll('#hi-list .member-row')].some((r) => r.textContent.includes('Позвали'))`, 'отметка «Позвали»');
   await js(winA, `document.getElementById('hi-close').click(); true`);
@@ -75,7 +75,7 @@ runTest(async () => {
   await js(winA, `document.getElementById('room-name').value = 'Мемы'; document.getElementById('room-create-submit').click(); true`);
   await waitFor(winB, `[...document.querySelectorAll('#room-list .room-row .name')].some((n) => n.textContent === 'Мемы')`, 'новая комната у Васи');
   const names = await sectionRooms(winB);
-  if (names.join() !== 'Общий голос,Болталка,Мемы') throw new Error(`Комнаты не по разделам: ${names}`);
+  if (names.join() !== 'Голосовая,Мемы,Общий чат') throw new Error(`Комнаты не по разделам: ${names}`);
   // Переписка в комнате канала
   const memes = await js(winA, `[...state.rooms.values()].find((r) => r.name === 'Мемы').id`);
   await api('POST', `/rooms/${memes}/messages`, { text: 'Свежий мем' }, b.token);

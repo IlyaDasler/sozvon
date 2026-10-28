@@ -268,3 +268,27 @@ test('миграция: комнаты без канала переезжают 
     await again.stop({ keepData: run === 0 });
   }
 });
+
+test('миграция 2.2: каналы «Сходка <имя>» из версии 2.0 становятся «Канал <имя>», свои названия не трогаем', async () => {
+  const s = await startServer();
+  const owner = await s.reg('sk_owner');
+  const auto = (await s.api('POST', '/hubs', { name: 'Канал временно' }, owner.token)).body;
+  const own = (await s.api('POST', '/hubs', { name: 'Наша сходка' }, owner.token)).body;
+  await s.stop({ keepData: true });
+
+  // Так назвала канал миграция версии 2.0
+  const db = new DatabaseSync(path.join(s.dataDir, 'sozvon.db'));
+  db.prepare('UPDATE hubs SET name = ? WHERE id = ?').run('Сходка Соломон Ицхакович', auto.id);
+  db.close();
+
+  for (let run = 0; run < 2; run++) {
+    const again = await startServer({ dataDir: s.dataDir });
+    try {
+      const names = Object.fromEntries((await again.api('GET', '/hubs', null, owner.token)).body.map((h) => [h.id, h.name]));
+      assert.equal(names[auto.id], 'Канал Соломон Ицхакович');
+      assert.equal(names[own.id], 'Наша сходка');
+    } finally {
+      await again.stop({ keepData: run === 0 });
+    }
+  }
+});
