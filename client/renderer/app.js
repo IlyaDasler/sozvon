@@ -201,8 +201,11 @@ function renderAuthFields() {
   $('code-field').classList.toggle('hidden', !reset && !register);
   $('password-field').classList.remove('hidden');
   $('invite-field').classList.toggle('hidden', !register || !state.inviteRequired);
-  $('forgot-row').classList.toggle('hidden', mode !== 'login' || !state.emailCodes);
+  $('forgot-row').classList.toggle('hidden', mode !== 'login');
+  $('auth-forgot').hidden = !state.emailCodes;
   $('password-label').textContent = reset ? 'Новый пароль' : 'Пароль';
+  $('auth-title').textContent = register ? 'Создайте аккаунт' : reset ? 'Сброс пароля' : 'Войдите в Созвон';
+  $('auth-eyebrow').textContent = register ? 'Первый раз здесь' : reset ? 'Восстановление доступа' : 'С возвращением';
   $('auth-submit').textContent = register ? 'Создать аккаунт' : reset ? 'Сменить пароль' : 'Войти';
   $('auth-subtitle').textContent = register
     ? 'Создайте аккаунт по своей почте — это займёт полминуты'
@@ -277,8 +280,12 @@ function showPendingSignup(ticket, provider) {
 }
 
 function finishLogin(base, { token, user, created }) {
+  // «Запомнить меня»: без галочки вход действует до закрытия приложения
+  const remember = $('auth-remember')?.checked !== false;
   Api.token = token;
-  store.set('session', { base, token });
+  store.set('session', { base, token, remember });
+  if (remember) sessionStorage.removeItem('sozvon.tab');
+  else sessionStorage.setItem('sozvon.tab', '1');
   store.set('server', base);
   $('auth-password').value = '';
   enterMain(user);
@@ -1644,6 +1651,11 @@ async function boot() {
   loadProviders(isWeb ? location.origin : normalizeServer($('server-url').value));
 
   let session = store.get('session', null);
+  // «Запомнить меня» снят на странице входа: сессия живёт только в этой вкладке
+  if (session && session.remember === false && !sessionStorage.getItem('sozvon.tab')) {
+    store.set('session', null);
+    session = null;
+  }
   if (session && !isWeb && session.base === SAME_SERVER_OLD) {
     session = { ...session, base: DEFAULT_SERVER };
     store.set('session', session);
