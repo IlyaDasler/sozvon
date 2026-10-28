@@ -142,4 +142,15 @@ runTest(async () => {
   await js(winB, `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); document.getElementById('peer-avatar').click(); true`);
   await waitFor(winB, `document.querySelector('#profile-card .pc-note')?.value === 'знакомы с универа'`, 'заметка сохранилась');
   console.log('✔ карточка профиля: «О себе» с разметкой, баннер, заметка, своя карточка');
+
+  // Удаление: корзина есть только у своих сообщений; с Shift — без вопроса, у собеседника пропадает сразу
+  await js(winB, `closeProfileCard(); selectContact(${a.user.id})`);
+  await send(winA, 'это сообщение я удалю');
+  await waitFor(winB, `${lastMsg}?.textContent === 'это сообщение я удалю'`, 'сообщение дошло');
+  if (await js(winB, `Boolean([...document.querySelectorAll('#messages .msg')].at(-1).querySelector('.msg-tool'))`))
+    throw new Error('У чужого сообщения есть корзина');
+  await js(winA, `[...document.querySelectorAll('#messages .msg')].at(-1).querySelector('.msg-tool.danger').dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true })); true`);
+  await waitFor(winB, `${lastMsg}?.textContent !== 'это сообщение я удалю' && !state.history.get(${a.user.id}).some((m) => m.text === 'это сообщение я удалю')`, 'сообщение пропало у Бори');
+  await waitFor(winA, `!state.history.get(${b.user.id}).some((m) => m.text === 'это сообщение я удалю')`, 'сообщение пропало у Ани');
+  console.log('✔ своё сообщение удаляется, у собеседника пропадает сразу');
 });
