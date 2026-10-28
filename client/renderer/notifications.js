@@ -106,6 +106,8 @@ const NOTIF_ICONS = {
   friend: '👋',
   'room-invite': '➕',
   'room-removed': '⛔',
+  'hub-invite': '🏠',
+  'hub-removed': '⛔',
 };
 
 const notifKey = () => `notifications:${state.me?.id}`;
@@ -162,6 +164,7 @@ function openNotifTarget(open) {
   if (open?.contact && state.contacts.has(open.contact)) selectContact(open.contact);
   else if (open?.room && state.rooms.has(open.room)) selectRoom(open.room);
   else if (open?.friends) showFriendsTab(open.friends);
+  else if (open?.hub) openHubJoin(open.hub);
 }
 
 function openNotifPanel() {
@@ -197,7 +200,8 @@ document.addEventListener('click', (e) => {
 
 /**
  * Событие для человека: попадает в центр уведомлений; если окно не в фокусе — ещё и на рабочий стол со звуком.
- * kind: message, room, missed, friend, room-invite, room-removed; open: { contact } или { room } — куда перейти по щелчку
+ * kind: message, room, missed, friend, room-invite, room-removed, hub-invite, hub-removed;
+ * open: { contact }, { room } или { hub } — куда перейти по щелчку
  */
 function notify(title, body, { kind = 'message', open = null } = {}) {
   const list = loadNotifs();

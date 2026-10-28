@@ -74,10 +74,31 @@
 
   <!-- Основной экран -->
   <section id="main" class="screen main hidden">
+    <!-- Столбец сходок: дом (друзья и личные сообщения), свои сходки и группы в личном порядке, «Собрать сходку» -->
+    <nav class="rail" id="rail" aria-label="Сходки">
+      <div class="rail-item" id="rail-home-item">
+        <button type="button" class="rail-tile rail-home" id="rail-home" data-tip="Друзья и личные сообщения">
+          <img src="logo.svg" alt="" width="28" height="28">
+        </button>
+        <span class="rail-badge hidden" id="rail-home-badge"></span>
+      </div>
+      <div class="rail-sep"></div>
+      <div class="rail-list" id="rail-list"></div>
+      <div class="rail-item">
+        <button type="button" class="rail-tile rail-add" id="rail-add" data-tip="Собрать сходку">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+    </nav>
+    <div class="rail-tip hidden" id="rail-tip"></div>
+
     <aside class="sidebar">
       <div class="sidebar-head">
-        <img src="logo.svg" alt="" width="24" height="24">
-        <span>Созвон</span>
+        <span class="head-home" id="head-home"><img src="logo.svg" alt="" width="24" height="24"><span>Созвон</span></span>
+        <button type="button" class="hub-menu-btn hidden" id="hub-menu-btn" title="Меню сходки">
+          <span class="ellipsis" id="hub-menu-name"></span>
+          <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
         <span class="conn-dot" id="conn-dot" title="Соединение с сервером"></span>
         <button class="icon-btn notif-btn" id="notif-btn" title="Уведомления">
           <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
@@ -89,21 +110,18 @@
       </div>
 
       <div class="sidebar-scroll">
+        <div id="home-nav">
         <button type="button" class="contact friends-nav" id="friends-nav">
           <span class="room-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></span>
           <div class="name">Друзья</div>
           <span class="badge hidden" id="friends-nav-badge"></span>
         </button>
-        <div class="list-title with-action">
-          <span>Комнаты</span>
-          <button class="icon-btn" id="new-room-btn" title="Создать комнату">
-            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-          </button>
-        </div>
-        <ul id="room-list" class="contact-list room-list"></ul>
-
         <div class="list-title">Личные сообщения — <span id="contact-count">0</span></div>
         <ul id="contact-list" class="contact-list"></ul>
+        </div>
+
+        <!-- Комнаты открытой сходки: голосовые и текстовые -->
+        <ul id="room-list" class="contact-list room-list hidden"></ul>
       </div>
 
       <!-- «На связи»: видно из любого места, пока идёт звонок или ты в голосовой комнате -->
@@ -234,9 +252,10 @@
             <div class="muted small ellipsis" id="room-sub"></div>
           </div>
           <div class="spacer"></div>
-          <button class="icon-btn" id="room-manage-btn" title="Участники и настройки комнаты">
-            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>
+          <button class="icon-btn" id="room-manage-btn" title="Настройки комнаты">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
           </button>
+          <button class="icon-btn members-toggle" title="Скрыть участников"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></button>
         </header>
         <div id="room-lobby" class="room-lobby hidden"></div>
         <div id="room-messages" class="messages"></div>
@@ -244,7 +263,27 @@
           <textarea id="room-message-input" rows="1" placeholder="Написать в комнату" maxlength="2000"></textarea>
         </form>
       </div>
+
+      <!-- Сходка без комнат -->
+      <div id="hub-empty" class="chat hidden">
+        <header class="chat-head">
+          <div class="peer-name ellipsis" id="hub-empty-title"></div>
+          <div class="spacer"></div>
+          <button class="icon-btn members-toggle" title="Скрыть участников"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></button>
+        </header>
+        <div class="empty hub-empty">
+          <div class="hub-empty-icon" id="hub-empty-icon"></div>
+          <h2>Тут пока пусто</h2>
+          <p class="muted" id="hub-empty-text"></p>
+          <div class="row center" id="hub-empty-actions"></div>
+        </div>
+      </div>
     </main>
+
+    <!-- Участники сходки или открытой комнаты: по ролям, «В сети» и «Не в сети» -->
+    <aside class="members-panel hidden" id="members-panel">
+      <div class="members-scroll" id="members-list"></div>
+    </aside>
   </section>
 
   <!-- Входящий звонок -->
@@ -440,10 +479,7 @@
         <span>Название</span>
         <input id="room-name" maxlength="40" placeholder="Например: Вечерние катки">
       </label>
-      <div class="field">
-        <span>Позвать друзей</span>
-        <div class="friend-list" id="room-friends"></div>
-      </div>
+      <p class="muted small" id="room-create-hint"></p>
       <p class="error" id="room-create-error"></p>
       <div class="row">
         <div class="spacer"></div>
@@ -454,6 +490,106 @@
   </div>
 
   <!-- Настройки комнаты: обзор, роли и права, участники, баны -->
+  <!-- Собрать сходку -->
+  <div id="hub-create" class="modal hidden">
+    <form class="modal-card room-card hub-create-card" id="hub-create-form">
+      <div class="hub-create-top">
+        <div class="hub-tile big" id="hub-create-preview"></div>
+        <div>
+          <h3>Собрать сходку</h3>
+          <p class="muted small">Своё место для своих: голосовые и текстовые комнаты, куда заходят только те, кого вы позовёте.</p>
+        </div>
+      </div>
+      <label class="field">
+        <span>Название сходки</span>
+        <input id="hub-name" maxlength="40" placeholder="Например: Наш двор">
+      </label>
+      <div class="field">
+        <span>Цвет</span>
+        <div class="colors" id="hub-colors"></div>
+      </div>
+      <p class="error" id="hub-create-error"></p>
+      <div class="row">
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="hub-create-cancel">Отмена</button>
+        <button class="btn primary" id="hub-create-submit">Собрать сходку</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Настройки сходки: обзор, участники, баны -->
+  <div id="hub-settings" class="modal hidden">
+    <div class="modal-card rs-card">
+      <nav class="rs-nav" id="hs-nav">
+        <div class="rs-room ellipsis" id="hs-hub-name"></div>
+        <button type="button" data-tab="overview">Обзор</button>
+        <button type="button" data-tab="members">Участники <span class="rs-count" id="hs-member-count"></span></button>
+        <button type="button" data-tab="bans">Баны <span class="rs-count" id="hs-ban-count"></span></button>
+        <div class="rs-sep"></div>
+        <button type="button" class="rs-danger" id="hs-leave"></button>
+      </nav>
+      <section class="rs-main">
+        <header class="rs-head">
+          <h3 id="hs-title"></h3>
+          <button type="button" class="icon-btn" id="hs-close" title="Закрыть (Esc)"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </header>
+        <p class="error" id="hs-error"></p>
+        <div class="rs-body" id="hs-body"></div>
+      </section>
+    </div>
+  </div>
+  <input type="file" id="hub-icon-input" accept="image/*" hidden>
+
+  <!-- Позвать друзей в сходку -->
+  <div id="hub-invite" class="modal hidden">
+    <div class="modal-card invite-card">
+      <h3 id="hi-title"></h3>
+      <p class="muted small">Друг вступит в сходку, когда примет приглашение, — и сразу попадёт во все её комнаты.</p>
+      <input id="hi-search" class="friend-search" placeholder="Поиск друзей" spellcheck="false">
+      <p class="error" id="hi-error"></p>
+      <div class="member-list invite-list" id="hi-list"></div>
+      <div class="row"><div class="spacer"></div><button type="button" class="btn" id="hi-close">Готово</button></div>
+    </div>
+  </div>
+
+  <!-- Приглашение в сходку -->
+  <div id="hub-join" class="modal hidden">
+    <div class="modal-card incoming-card">
+      <div class="hub-tile big" id="hj-icon"></div>
+      <h3 id="hj-name"></h3>
+      <p class="muted" id="hj-text"></p>
+      <p class="error" id="hj-error"></p>
+      <div class="row">
+        <button type="button" class="btn" id="hj-decline">Отказаться</button>
+        <button type="button" class="btn primary" id="hj-accept">Вступить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Группа сходок в столбце: название и цвет (видно только вам) -->
+  <div id="folder-edit" class="modal hidden">
+    <form class="modal-card room-card" id="folder-form">
+      <h3>Группа сходок</h3>
+      <p class="muted small">Группы и порядок сходок — только в вашем приложении, другие их не видят.</p>
+      <label class="field">
+        <span>Название</span>
+        <input id="folder-name" maxlength="32" placeholder="Например: Игры">
+      </label>
+      <div class="field">
+        <span>Цвет</span>
+        <div class="colors" id="folder-colors"></div>
+      </div>
+      <div class="row">
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="folder-cancel">Отмена</button>
+        <button class="btn primary">Готово</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Всплывающее меню: сходка, группа, шапка сходки -->
+  <div class="popup-menu hidden" id="popup-menu"></div>
+
   <div id="room-manage" class="modal hidden">
     <div class="modal-card rs-card">
       <nav class="rs-nav" id="rs-nav">
@@ -563,6 +699,8 @@
   <script src="rooms.js"></script>
   <script src="room-settings.js"></script>
   <script src="friends.js"></script>
+  <script src="rail-layout.js"></script>
+  <script src="hubs.js"></script>
   <script src="notifications.js"></script>
   <script src="composer.js"></script>
   <script src="chat-content.js"></script>
