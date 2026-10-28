@@ -8,22 +8,54 @@ import { broadcastPresence, setAutoIdle, userGone } from './presence.js';
 import { MAX_VOICE_PARTICIPANTS, voice } from './voice.js';
 
 const RING_TIMEOUT_MS = 45_000;
+const MAX_CALL_PARTICIPANTS = 10;
 
-// callId -> { id, state: 'ringing' | 'active', caller: { uid, ws }, callee: { uid, ws }, timer }
+// Звонок: участники (members) и те, кому сейчас звонят (ringing). Пока никто не ответил, state — 'ringing'.
+// На двоих звонок идёт ровно как в версиях до 2.2: call:accepted звонившему и сигналы без адресата.
+// group — версия приложения умеет групповые звонки: добавлять людей можно, только если умеют все.
+// callId -> { id, state, members: Map<uid, { ws, group }>, ringing: Map<uid, { timer, group }> }
 const calls = new Map();
 
-const inCall = (uid) => [...calls.values()].some((c) => c.caller.uid === uid || c.callee.uid === uid);
-// Занят: в звонке один на один или сидит в голосовой комнате
+const inCall = (uid) => [...calls.values()].some((c) => c.members.has(uid) || c.ringing.has(uid));
+// Занят: в звонке или сидит в голосовой комнате
 const isBusy = (uid) => inCall(uid) || voice.roomOf(uid) !== null;
+
+function memberBySocket(call, ws) {
+  for (const [uid, m] of call.members) if (m.ws === ws) return uid;
+  return null;
+}
+
+function toMembers(call, message, except = null) {
+  for (const [uid, m] of call.members) if (uid !== except) hub.sendTo(m.ws, message);
+}
 
 function endCall(call, reason) {
   if (!calls.delete(call.id)) return;
-  clearTimeout(call.timer);
   const message = { type: 'call:ended', callId: call.id, reason };
-  hub.sendTo(call.caller.ws, message);
-  // Пока звонок не принят, он звонит на всех устройствах собеседника
-  if (call.callee.ws) hub.sendTo(call.callee.ws, message);
-  else hub.send(call.callee.uid, message);
+  toMembers(call, message);
+  // Пока звонок не принят, он звонит на всех устройствах человека
+  for (const [uid, r] of call.ringing) {
+    clearTimeout(r.timer);
+    hub.send(uid, message);
+  }
+}
+
+/** Человек вышел из звонка; когда остаётся один участник — звонок закончен */
+function leaveCall(call, uid, reason) {
+  if (call.state === 'ringing') return endCall(call, reason);
+  call.members.delete(uid);
+  toMembers(call, { type: 'call:member', callId: call.id, userId: uid, state: 'left' });
+  if (call.members.size < 2) endCall(call, reason);
+}
+
+/** Тому, кого позвали, так и не ответили (или он отказался) — звонок у остальных продолжается */
+function stopRinging(call, uid, state) {
+  const r = call.ringing.get(uid);
+  if (!r) return;
+  clearTimeout(r.timer);
+  call.ringing.delete(uid);
+  hub.send(uid, { type: 'call:ended', callId: call.id, reason: state === 'missed' ? 'timeout' : 'declined' });
+  toMembers(call, { type: 'call:member', callId: call.id, userId: uid, state });
 }
 
 const handlers = {
@@ -36,43 +68,81 @@ const handlers = {
     const call = {
       id: crypto.randomUUID(),
       state: 'ringing',
-      caller: { uid: user.id, ws },
-      callee: { uid: to, ws: null },
+      members: new Map([[user.id, { ws, group: Boolean(msg.group) }]]),
+      ringing: new Map(),
     };
-    call.timer = setTimeout(() => endCall(call, 'timeout'), RING_TIMEOUT_MS);
+    call.ringing.set(to, { timer: setTimeout(() => endCall(call, 'timeout'), RING_TIMEOUT_MS) });
     calls.set(call.id, call);
 
     hub.sendTo(ws, { type: 'call:ringing', callId: call.id, to });
     hub.send(to, { type: 'call:incoming', callId: call.id, from: toPublicUser(user) });
   },
 
+  // Позвать друга в идущий звонок: позвать может любой участник, если все участники — версии 2.2+
+  'call:add'(ws, user, msg) {
+    const call = calls.get(msg.callId);
+    if (!call || call.state !== 'active' || memberBySocket(call, ws) !== user.id) return;
+    const to = Number(msg.to);
+    const fail = (reason) => hub.sendTo(ws, { type: 'call:add:failed', callId: call.id, to, reason });
+    if (!contacts.has(user.id, to)) return fail('not-contact');
+    if (!hub.isOnline(to)) return fail('offline');
+    if (isBusy(to)) return fail('busy');
+    if (call.members.size + call.ringing.size >= MAX_CALL_PARTICIPANTS) return fail('full');
+    if ([...call.members.values()].some((m) => !m.group)) return fail('old-version');
+
+    call.ringing.set(to, { timer: setTimeout(() => stopRinging(call, to, 'missed'), RING_TIMEOUT_MS) });
+    const others = [...call.members.keys()].map((uid) => toPublicUser(users.byId(uid)));
+    hub.send(to, { type: 'call:incoming', callId: call.id, from: toPublicUser(user), group: true, others });
+    toMembers(call, { type: 'call:member', callId: call.id, userId: to, state: 'ringing' });
+  },
+
   'call:accept'(ws, user, msg) {
     const call = calls.get(msg.callId);
-    if (!call || call.state !== 'ringing' || call.callee.uid !== user.id) return;
-    clearTimeout(call.timer);
-    call.state = 'active';
-    call.callee.ws = ws;
+    const r = call?.ringing.get(user.id);
+    if (!r) return;
+    // В групповой звонок старая версия не попадёт: она умеет только звонки на двоих
+    if (call.state === 'active' && !msg.group) {
+      clearTimeout(r.timer);
+      call.ringing.delete(user.id);
+      hub.sendTo(ws, { type: 'call:ended', callId: call.id, reason: 'old-version' });
+      toMembers(call, { type: 'call:member', callId: call.id, userId: user.id, state: 'declined' });
+      return;
+    }
+    clearTimeout(r.timer);
+    call.ringing.delete(user.id);
+    const peers = [...call.members.keys()];
+    call.members.set(user.id, { ws, group: Boolean(msg.group) });
     hub.send(user.id, { type: 'call:ended', callId: call.id, reason: 'answered-elsewhere' }, ws);
-    hub.sendTo(call.caller.ws, { type: 'call:accepted', callId: call.id });
+    if (call.state === 'ringing') {
+      // Первый ответ — обычный звонок на двоих: соединение предлагает звонивший
+      call.state = 'active';
+      toMembers(call, { type: 'call:accepted', callId: call.id }, user.id);
+    } else {
+      // Новенький сам предлагает соединение каждому, как в голосовых комнатах
+      hub.sendTo(ws, { type: 'call:joined', callId: call.id, peers });
+      toMembers(call, { type: 'call:member', callId: call.id, userId: user.id, state: 'joined' }, user.id);
+    }
   },
 
   'call:decline'(_ws, user, msg) {
     const call = calls.get(msg.callId);
-    if (call && call.state === 'ringing' && call.callee.uid === user.id) endCall(call, 'declined');
+    if (!call?.ringing.has(user.id)) return;
+    if (call.state === 'ringing') endCall(call, 'declined');
+    else stopRinging(call, user.id, 'declined');
   },
 
   'call:hangup'(ws, user, msg) {
     const call = calls.get(msg.callId);
-    if (!call) return;
-    if (call.caller.ws === ws || call.callee.ws === ws) endCall(call, 'hangup');
+    if (call && memberBySocket(call, ws) === user.id) leaveCall(call, user.id, 'hangup');
   },
 
-  // Пересылаем SDP и ICE-кандидаты второму участнику звонка
-  signal(ws, _user, msg) {
+  // Пересылаем SDP и ICE-кандидаты: адресату (to) или, в звонке на двоих, второму участнику
+  signal(ws, user, msg) {
     const call = calls.get(msg.callId);
-    if (!call || call.state !== 'active') return;
-    const target = call.caller.ws === ws ? call.callee.ws : call.callee.ws === ws ? call.caller.ws : null;
-    hub.sendTo(target, { type: 'signal', callId: call.id, data: msg.data });
+    if (!call || call.state !== 'active' || memberBySocket(call, ws) !== user.id) return;
+    let target = msg.to != null ? call.members.get(Number(msg.to)) : null;
+    if (msg.to == null && call.members.size === 2) target = [...call.members.values()].find((m) => m.ws !== ws);
+    if (target) hub.sendTo(target.ws, { type: 'signal', callId: call.id, from: user.id, data: msg.data });
   },
 
   // ---------- Голосовые комнаты ----------
@@ -152,8 +222,9 @@ function onConnection(ws, user) {
   });
 
   ws.on('close', () => {
-    for (const call of calls.values()) {
-      if (call.caller.ws === ws || call.callee.ws === ws) endCall(call, 'disconnected');
+    for (const call of [...calls.values()]) {
+      const uid = memberBySocket(call, ws);
+      if (uid !== null) leaveCall(call, uid, 'disconnected');
     }
     voice.leaveSocket(ws);
     if (hub.remove(user.id, ws)) userGone(user.id);
