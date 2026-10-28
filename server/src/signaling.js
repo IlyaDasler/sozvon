@@ -159,12 +159,12 @@ const handlers = {
     const perms = rooms.permsOf(room, user.id);
     if (!has(perms, PERMS.connect)) return fail('no-access');
     if (inCall(user.id)) return fail('in-call');
-    const others = voice.participants(roomId).filter((p) => p.userId !== user.id);
-    if (others.length >= MAX_VOICE_PARTICIPANTS) return fail('full');
-
     // Большая комната — через LiveKit (решено, когда разговор начался); версии до 2.3.1 его не умеют
     const media = voice.mediaOf(roomId) ?? mediaFor(rooms.members(roomId).length);
     if (media === 'sfu' && !msg.sfu) return fail('old-version');
+    // Каждый с каждым — не больше 10 человек; через медиасервер — сколько участников в комнате
+    const others = voice.participants(roomId).filter((p) => p.userId !== user.id);
+    if (media === 'p2p' && others.length >= MAX_VOICE_PARTICIPANTS) return fail('full');
 
     // В голосе можно быть только в одном месте: со старого устройства или из другой комнаты выходим
     const current = voice.roomOf(user.id);

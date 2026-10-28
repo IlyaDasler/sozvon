@@ -12,7 +12,12 @@ const pttMode = () => Boolean(state.settings.ptt && state.settings.pttBinding &&
 const audioFlags = () => ({ muted: state.muted || state.deafened || forcedMute() || (pttMode() && !state.pttDown), deafened: state.deafened });
 
 function newSession(sendSignal) {
-  return new MediaSession({
+  return new MediaSession(sessionOptions(sendSignal));
+}
+
+// Что сессия разговора сообщает интерфейсу — одинаково для «каждый с каждым» и для медиасервера
+function sessionOptions(sendSignal) {
+  return {
     settings: state.settings,
     sendSignal,
     onChange() {
@@ -24,7 +29,7 @@ function newSession(sendSignal) {
     onStats: renderVoiceStatus,
     volumeOf: (id) => store.get(`volume:${id}`, 100) / 100,
     allowed: voiceAllowed,
-  });
+  };
 }
 
 function mediaErrorText(err, what = 'микрофон') {
