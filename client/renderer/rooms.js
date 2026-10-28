@@ -1,4 +1,5 @@
-// Комнаты: голосовые (общий голосовой канал с видео и демонстрацией экрана + чат) и текстовые (только чат)
+// Комнаты: голосовые (общий голосовой канал с видео и демонстрацией экрана + чат) и текстовые (только чат).
+// Каждая комната — в сходке (hubs.js); в боковой панели видны комнаты открытой сходки
 
 const ROOM_ERRORS = {
   'not-member': 'Вы не участник этой комнаты',
@@ -24,22 +25,32 @@ const PERMS = { connect: 1, speak: 2, video: 4, write: 8, invite: 16, kick: 32, 
 const ALL_PERMS = 511;
 const memberOf = (room, userId) => room?.members.find((m) => m.id === userId);
 
+// Как на сервере (rooms.standing): создатель комнаты и создатель её сходки могут всё, управляющий сходкой — как администратор
+const isRoomOwner = (room, userId) => room.ownerId === userId || state.hubs.get(room.hubId)?.ownerId === userId;
+const managesHubOf = (room, userId) => Boolean(state.hubs.get(room.hubId)?.members.find((m) => m.id === userId)?.manager);
+// Удалить комнату может её создатель и тот, кто управляет сходкой
+const canRemoveRoom = (room) => isRoomOwner(room, state.me.id) || managesHubOf(room, state.me.id);
+
 /** До какого момента участник кикнут на время (создателя не кикают), или null */
 function timeoutOf(room, userId = state.me.id) {
   const until = memberOf(room, userId)?.timeoutUntil;
-  return room.ownerId !== userId && until > Date.now() ? until : null;
+  return !isRoomOwner(room, userId) && until > Date.now() ? until : null;
 }
 const roleOf = (room, userId) => {
   const m = memberOf(room, userId);
   return (m?.roleId && room.roles?.find((r) => r.id === m.roleId)) || null;
 };
 
+/** Права по роли (кик на время не учитывается) */
+const rolePermsIn = (room, userId) =>
+  (roleOf(room, userId)?.perms ?? room.defaultPerms ?? ALL_PERMS) | (managesHubOf(room, userId) ? PERMS.admin : 0);
+
 function permsIn(room, userId = state.me.id) {
-  if (!room || room.ownerId === userId) return ALL_PERMS;
+  if (!room || isRoomOwner(room, userId)) return ALL_PERMS;
   if (!memberOf(room, userId)) return 0;
   // Кикнутый на время только читает чат
   if (timeoutOf(room, userId)) return 0;
-  const perms = roleOf(room, userId)?.perms ?? room.defaultPerms ?? ALL_PERMS;
+  const perms = rolePermsIn(room, userId);
   return perms & PERMS.admin ? ALL_PERMS : perms;
 }
 
@@ -47,8 +58,8 @@ const can = (room, perm, userId) => Boolean(permsIn(room, userId) & perm);
 
 // Старшинство: создатель > администратор > модератор > остальные — как на сервере
 function rankIn(room, userId) {
-  if (room.ownerId === userId) return 4;
-  const perms = roleOf(room, userId)?.perms ?? room.defaultPerms ?? 0;
+  if (isRoomOwner(room, userId)) return 4;
+  const perms = rolePermsIn(room, userId);
   return perms & PERMS.admin ? 3 : perms & (PERMS.kick | PERMS.ban | PERMS.manage) ? 2 : 1;
 }
 
@@ -69,7 +80,7 @@ async function refreshRooms() {
     state.rooms = new Map(list.map((r) => [r.id, r]));
     renderRooms();
     scheduleKickExpiry();
-    if (state.selectedRoomId && !state.rooms.has(state.selectedRoomId)) selectRoom(null);
+    if (state.selectedRoomId && !state.rooms.has(state.selectedRoomId)) leaveSelectedRoom();
     else if (state.selectedRoomId) renderRoomView();
   } catch (err) {
     toast(err.message);
@@ -79,86 +90,107 @@ async function refreshRooms() {
 // ---------- Список в боковой панели ----------
 
 function renderRooms() {
+  renderRail();
   const list = $('room-list');
   list.replaceChildren();
-  const sorted = [...state.rooms.values()].sort(
+  const hub = currentHub();
+  if (!hub) return;
+  const sorted = roomsOfHub(hub.id).sort(
     (a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name, 'ru') : a.kind === 'voice' ? -1 : 1)
   );
 
-  if (!sorted.length) {
-    const li = document.createElement('li');
-    li.className = 'muted small pad';
-    li.textContent = 'Создайте комнату и позовите друзей — разговаривать можно сразу всем вместе.';
-    list.append(li);
+  // Разделы «Голосовые» и «Текстовые»; кто управляет сходкой, создаёт комнаты прямо отсюда
+  for (const [kind, title] of [['voice', 'Голосовые'], ['text', 'Текстовые']]) {
+    const head = document.createElement('li');
+    head.className = 'list-title with-action room-section';
+    head.dataset.section = kind;
+    head.append(Object.assign(document.createElement('span'), { textContent: title }));
+    if (canManageHub(hub)) {
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'icon-btn';
+      add.title = kind === 'voice' ? 'Создать голосовую комнату' : 'Создать текстовую комнату';
+      add.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+      add.onclick = () => openRoomCreate(kind);
+      head.append(add);
+    }
+    list.append(head);
+    if (!sorted.some((r) => r.kind === kind)) {
+      const li = document.createElement('li');
+      li.className = 'muted small pad room-none';
+      li.textContent = kind === 'voice' ? 'Голосовых комнат нет' : 'Текстовых комнат нет';
+      list.append(li);
+    }
+    for (const room of sorted.filter((r) => r.kind === kind)) list.append(roomItem(room));
   }
+}
 
-  for (const room of sorted) {
-    const li = document.createElement('li');
-    li.className = 'room-item';
-    const row = document.createElement('div');
-    row.className = `contact room-row${room.id === state.selectedRoomId ? ' active' : ''}`;
-    const tool = (kind, title, onclick) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = `room-tool ${kind}`;
-      b.title = title;
-      b.innerHTML = ROOM_TOOLS[kind];
-      b.onclick = (e) => {
-        e.stopPropagation();
-        onclick();
-      };
-      return b;
+function roomItem(room) {
+  const li = document.createElement('li');
+  li.className = 'room-item';
+  const row = document.createElement('div');
+  row.className = `contact room-row${room.id === state.selectedRoomId ? ' active' : ''}`;
+  const tool = (kind, title, onclick) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `room-tool ${kind}`;
+    b.title = title;
+    b.innerHTML = ROOM_TOOLS[kind];
+    b.onclick = (e) => {
+      e.stopPropagation();
+      onclick();
     };
-    const tools = document.createElement('span');
-    tools.className = 'room-tools';
-    tools.append(tool('settings', 'Настройки комнаты', () => openRoomManage(room.id)));
-    if (can(room, PERMS.invite)) tools.append(tool('invite', 'Пригласить друзей', () => openRoomInvite(room.id)));
-    row.append(tools);
-    row.insertAdjacentHTML('beforeend', `<span class="room-icon">${roomIcon(room)}</span>`);
-    const name = document.createElement('div');
-    name.className = 'name ellipsis';
-    name.textContent = room.name;
-    row.append(name);
-    const unread = state.roomUnread.get(room.id);
-    if (unread) {
-      const badge = document.createElement('span');
-      badge.className = 'badge';
-      badge.textContent = unread > 99 ? '99+' : unread;
-      row.append(badge);
-    }
-    // Голосовая комната: щелчок сразу переносит в её голосовой канал (из другого — тоже)
-    row.onclick = () => openRoom(room.id);
-    if (room.kind === 'voice')
-      row.title = can(room, PERMS.connect) ? 'Подключиться к голосовому каналу' : 'Вам нельзя заходить в голосовой канал';
-    li.append(row);
-
-    // Кто сейчас в голосовом канале
-    if (room.voice?.length) {
-      const users = document.createElement('ul');
-      users.className = 'voice-users';
-      for (const p of room.voice) {
-        const user = room.members.find((m) => m.id === p.userId) || userById(p.userId);
-        if (!user) continue;
-        const item = document.createElement('li');
-        item.dataset.voiceUser = p.userId;
-        if (speaking.get(p.userId === state.me.id ? 'me' : p.userId)) item.classList.add('speaking');
-        item.append(makeAvatar(user, undefined, 'tiny'));
-        const n = document.createElement('span');
-        n.className = 'ellipsis';
-        n.textContent = user.displayName;
-        const role = roleOf(room, p.userId);
-        if (role) n.style.color = role.color;
-        item.append(n);
-        if (p.screen) item.insertAdjacentHTML('beforeend', '<b class="live">В ЭФИРЕ</b>');
-        if (p.video) item.insertAdjacentHTML('beforeend', ICONS.cam);
-        if (p.deafened) item.insertAdjacentHTML('beforeend', ICONS.soundOff);
-        else if (p.muted) item.insertAdjacentHTML('beforeend', ICONS.micOff);
-        users.append(item);
-      }
-      li.append(users);
-    }
-    list.append(li);
+    return b;
+  };
+  const tools = document.createElement('span');
+  tools.className = 'room-tools';
+  tools.append(tool('settings', 'Настройки комнаты', () => openRoomManage(room.id)));
+  if (can(room, PERMS.invite)) tools.append(tool('invite', 'Пригласить друзей', () => openRoomInvite(room.id)));
+  row.append(tools);
+  row.insertAdjacentHTML('beforeend', `<span class="room-icon">${roomIcon(room)}</span>`);
+  const name = document.createElement('div');
+  name.className = 'name ellipsis';
+  name.textContent = room.name;
+  row.append(name);
+  const unread = state.roomUnread.get(room.id);
+  if (unread) {
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = unread > 99 ? '99+' : unread;
+    row.append(badge);
   }
+  // Голосовая комната: щелчок сразу переносит в её голосовой канал (из другого — тоже)
+  row.onclick = () => openRoom(room.id);
+  if (room.kind === 'voice')
+    row.title = can(room, PERMS.connect) ? 'Подключиться к голосовому каналу' : 'Вам нельзя заходить в голосовой канал';
+  li.append(row);
+
+  // Кто сейчас в голосовом канале
+  if (room.voice?.length) {
+    const users = document.createElement('ul');
+    users.className = 'voice-users';
+    for (const p of room.voice) {
+      const user = room.members.find((m) => m.id === p.userId) || userById(p.userId);
+      if (!user) continue;
+      const item = document.createElement('li');
+      item.dataset.voiceUser = p.userId;
+      if (speaking.get(p.userId === state.me.id ? 'me' : p.userId)) item.classList.add('speaking');
+      item.append(makeAvatar(user, undefined, 'tiny'));
+      const n = document.createElement('span');
+      n.className = 'ellipsis';
+      n.textContent = user.displayName;
+      const role = roleOf(room, p.userId);
+      if (role) n.style.color = role.color;
+      item.append(n);
+      if (p.screen) item.insertAdjacentHTML('beforeend', '<b class="live">В ЭФИРЕ</b>');
+      if (p.video) item.insertAdjacentHTML('beforeend', ICONS.cam);
+      if (p.deafened) item.insertAdjacentHTML('beforeend', ICONS.soundOff);
+      else if (p.muted) item.insertAdjacentHTML('beforeend', ICONS.micOff);
+      users.append(item);
+    }
+    li.append(users);
+  }
+  return li;
 }
 
 /** Свежие данные комнаты: список, страница, голос и открытые окна */
@@ -169,6 +201,7 @@ function applyRoomUpdate(room) {
   if (state.room?.roomId === room.id) applyRoomPerms();
   if (manageRoomId === room.id) renderRoomManage();
   if (inviteRoomId === room.id && !$('room-invite').classList.contains('hidden')) renderRoomInvite();
+  renderMembers();
   scheduleKickExpiry();
 }
 
@@ -180,8 +213,9 @@ function forgetRoom(id) {
   if (state.room?.roomId === id) finishRoomVoice();
   if (manageRoomId === id) closeRoomManage();
   if (inviteRoomId === id) $('room-invite').classList.add('hidden');
-  if (state.selectedRoomId === id) selectRoom(null);
+  if (state.selectedRoomId === id) leaveSelectedRoom();
   renderRooms();
+  renderMembers();
 }
 
 // Когда кик закончится, права вернутся сами: перерисовываем всё к ближайшему окончанию
@@ -207,16 +241,21 @@ function openRoom(id) {
 }
 
 function selectRoom(id) {
-  state.selectedRoomId = state.rooms.has(id) ? id : null;
+  const room = roomById(id);
+  if (room) {
+    state.view = room.hubId;
+    lastRoomOf.set(room.hubId, room.id);
+  }
+  state.selectedRoomId = room ? id : null;
   state.selectedId = null;
   state.roomUnread.delete(id);
   renderContacts();
   renderRooms();
 
-  const room = roomById(state.selectedRoomId);
   $('chat').classList.add('hidden');
   $('room-view').classList.toggle('hidden', !room);
-  $('empty-state').classList.toggle('hidden', Boolean(room));
+  $('empty-state').classList.toggle('hidden', Boolean(room) || state.view !== 'home');
+  renderHubChrome();
   renderVoice();
   if (!room) return;
 
@@ -322,7 +361,8 @@ function handleRoomEvent(msg) {
     case 'room:updated': {
       const room = msg.room;
       const old = roomById(room.id);
-      if (!old && room.ownerId !== state.me.id) {
+      // Комнаты сходки появляются у всех её участников сами — об этом не шумим
+      if (!old && room.ownerId !== state.me.id && !room.hubId) {
         toast(`Вас добавили в комнату «${room.name}»`);
         notify('Новая комната', `Вас добавили в «${room.name}»`, { kind: 'room-invite', open: { room: room.id } });
       }
@@ -339,7 +379,8 @@ function handleRoomEvent(msg) {
     case 'room:removed': {
       const room = roomById(msg.roomId);
       forgetRoom(msg.roomId);
-      if (!room || msg.reason === 'left') return;
+      // hub — ушли из сходки целиком: об этом скажет hub:removed
+      if (!room || msg.reason === 'left' || msg.reason === 'hub') return;
       if (msg.reason === 'banned' || msg.reason === 'kicked') {
         const text = msg.reason === 'banned' ? `Вас забанили в комнате «${room.name}»` : `Вас убрали из комнаты «${room.name}»`;
         toast(text);
@@ -496,46 +537,20 @@ function onVoiceSocketStatus(ok) {
 
 // ---------- Создание комнаты ----------
 
-function friendChecklist(box, exclude = new Set()) {
-  box.replaceChildren();
-  const friends = [...state.contacts.values()]
-    .filter((c) => !exclude.has(c.id))
-    .sort((a, b) => a.displayName.localeCompare(b.displayName, 'ru'));
-  if (!friends.length) {
-    const p = document.createElement('p');
-    p.className = 'muted small';
-    p.textContent = exclude.size ? 'Все ваши друзья уже здесь.' : 'Друзей пока нет — их можно будет добавить позже.';
-    box.append(p);
-  }
-  for (const c of friends) {
-    const label = document.createElement('label');
-    label.className = 'friend-check';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.value = c.id;
-    const name = document.createElement('span');
-    name.className = 'ellipsis';
-    name.textContent = c.displayName;
-    const login = document.createElement('span');
-    login.className = 'muted small';
-    login.textContent = `@${c.username}`;
-    label.append(cb, makeAvatar(c, undefined, 'small'), name, login);
-    box.append(label);
-  }
-}
+let createHubId = null;
 
-const checkedIds = (box) => [...box.querySelectorAll('input:checked')].map((cb) => Number(cb.value));
-
-function openRoomCreate() {
+function openRoomCreate(kind = 'voice', hubId = state.view) {
+  const hub = hubById(hubId);
+  if (!hub) return;
+  createHubId = hub.id;
   $('room-name').value = '';
   $('room-create-error').textContent = '';
-  document.querySelector('input[name="room-kind"][value="voice"]').checked = true;
-  friendChecklist($('room-friends'));
+  $('room-create-hint').textContent = `Комната появится в «${hub.name}» у всех участников сходки.`;
+  document.querySelector(`input[name="room-kind"][value="${kind}"]`).checked = true;
   $('room-create').classList.remove('hidden');
   $('room-name').focus();
 }
 
-$('new-room-btn').onclick = openRoomCreate;
 $('room-create-cancel').onclick = () => $('room-create').classList.add('hidden');
 $('room-create-form').onsubmit = async (e) => {
   e.preventDefault();
@@ -545,7 +560,7 @@ $('room-create-form').onsubmit = async (e) => {
   const button = $('room-create-submit');
   button.disabled = true;
   try {
-    const room = await Api.post('/rooms', { name, kind, memberIds: checkedIds($('room-friends')) });
+    const room = await Api.post('/rooms', { hubId: createHubId, name, kind });
     state.rooms.set(room.id, room);
     $('room-create').classList.add('hidden');
     selectRoom(room.id);

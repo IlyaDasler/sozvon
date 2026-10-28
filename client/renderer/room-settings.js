@@ -61,7 +61,7 @@ const TAB_TITLES = { overview: 'Обзор', roles: 'Роли и права', me
 function renderRoomManage() {
   const room = manageRoom();
   if (!room) return closeRoomManage();
-  const isOwner = room.ownerId === state.me.id;
+  const isOwner = canRemoveRoom(room);
   $('rs-room-name').textContent = room.name;
   $('rs-title').textContent = TAB_TITLES[manageTab];
   const bans = room.bans || [];
@@ -118,7 +118,7 @@ function overviewPane(room) {
     if (key === 'admin') continue;
     list.append(el('li', { className: mine & PERMS[key] ? 'yes' : 'no', textContent: label }));
   }
-  const myRole = room.ownerId === state.me.id ? 'Вы создатель — можно всё' : `Ваша роль: ${roleOf(room, state.me.id)?.name || 'без роли'}`;
+  const myRole = isRoomOwner(room, state.me.id) ? 'Вы создатель — можно всё' : `Ваша роль: ${roleOf(room, state.me.id)?.name || 'без роли'}`;
   out.push(el('h4', { textContent: 'Что можно вам' }), el('p', { className: 'muted small', textContent: myRole }), list);
   return out;
 }
@@ -127,7 +127,7 @@ function overviewPane(room) {
 
 function rolesPane(room) {
   const manage = can(room, PERMS.manage);
-  const isOwner = room.ownerId === state.me.id;
+  const isOwner = isRoomOwner(room, state.me.id);
   if (selectedRoleId !== 'default' && !room.roles?.some((r) => r.id === selectedRoleId)) selectedRoleId = 'default';
 
   const list = el('div', { className: 'rs-role-list' });
@@ -147,7 +147,7 @@ function rolesPane(room) {
     };
     return b;
   };
-  const withoutRole = room.members.filter((m) => m.id !== room.ownerId && !m.roleId).length;
+  const withoutRole = room.members.filter((m) => !isRoomOwner(room, m.id) && !m.roleId).length;
   list.append(item('default', 'Все без роли', 'var(--muted)', withoutRole));
   for (const r of room.roles || []) list.append(item(r.id, r.name, r.color, room.members.filter((m) => m.roleId === r.id).length));
   if (manage) {
@@ -175,7 +175,7 @@ function rolesPane(room) {
 }
 
 function roleEditor(room, role, editable) {
-  const isOwner = room.ownerId === state.me.id;
+  const isOwner = isRoomOwner(room, state.me.id);
   const form = el('form', { className: 'rs-role-editor', id: 'rm-role-editor' });
   let nameInput = null;
   let colorInput = null;
@@ -226,7 +226,7 @@ function roleEditor(room, role, editable) {
       box.append(chip);
     }
     if (!holders.length) box.append(el('span', { className: 'muted small', textContent: 'Пока ни у кого' }));
-    const candidates = room.members.filter((m) => m.id !== room.ownerId && m.roleId !== role.id && (outranks(room, m.id) || m.id === state.me.id));
+    const candidates = room.members.filter((m) => !isRoomOwner(room, m.id) && m.roleId !== role.id && (outranks(room, m.id) || m.id === state.me.id));
     const add = editable && candidates.length && el('select', { className: 'role-select', id: 'rm-role-assign' }, new Option('+ Назначить участнику', ''), ...candidates.map((m) => new Option(m.displayName, m.id)));
     if (add) add.onchange = () => add.value && setMemberRole(room, memberOf(room, Number(add.value)), role.id);
     form.append(el('h4', { textContent: `С этой ролью — ${holders.length}` }), box, add);
@@ -281,7 +281,7 @@ function membersPane(room) {
     if (role) name.style.color = role.color;
     const tags = el('div', { className: 'member-tags' }, el('span', { className: 'muted small', textContent: `@${m.username}` }));
     const tag = (text, cls = '') => tags.append(el('span', { className: `tag ${cls}`, textContent: text }));
-    if (m.id === room.ownerId) tag('Создатель', 'owner');
+    if (isRoomOwner(room, m.id)) tag(m.id === room.ownerId ? 'Создатель' : 'Создатель сходки', 'owner');
     else tag(role?.name || 'Без роли');
     if (inVoice.has(m.id)) tag('В голосе', 'live');
     if (until) tag(`Кик до ${timeText(until)}`, 'kicked');
@@ -292,11 +292,11 @@ function membersPane(room) {
     const actions = el('div', { className: 'member-actions' });
 
     // Роль назначает тот, у кого есть право, и только тем, кто младше (себе — тоже можно, кроме создателя)
-    if (manage && m.id !== room.ownerId && (above || mine)) {
+    if (manage && !isRoomOwner(room, m.id) && (above || mine)) {
       const select = el('select', { className: 'role-select', title: 'Роль' }, new Option('Без роли', ''));
       for (const r of room.roles || []) {
         const opt = new Option(r.name, r.id);
-        opt.disabled = Boolean(r.perms & PERMS.admin) && room.ownerId !== state.me.id;
+        opt.disabled = Boolean(r.perms & PERMS.admin) && !isRoomOwner(room, state.me.id);
         select.add(opt);
       }
       select.value = m.roleId ?? '';
@@ -422,16 +422,20 @@ function openRoomInvite(roomId) {
 function renderRoomInvite() {
   const room = roomById(inviteRoomId);
   if (!room) return $('room-invite').classList.add('hidden');
-  $('ri-title').textContent = `Пригласить друзей в «${room.name}»`;
+  // В комнату сходки зовут её участников (например, тех, кого из комнаты убрали); новых друзей — в саму сходку
+  const hub = state.hubs.get(room.hubId);
+  const people = hub ? hub.members.filter((m) => m.id !== state.me.id) : [...state.contacts.values()];
+  $('ri-title').textContent = hub ? `Позвать участников сходки в «${room.name}»` : `Пригласить друзей в «${room.name}»`;
   const q = $('ri-search').value.trim().toLowerCase();
   const inRoom = new Set(room.members.map((m) => m.id));
   const banned = new Set((room.bans || []).map((b) => b.id));
-  const friends = [...state.contacts.values()]
+  const friends = people
     .filter((c) => !q || `${c.displayName} ${c.username}`.toLowerCase().includes(q))
     .sort((a, b) => inRoom.has(a.id) - inRoom.has(b.id) || a.displayName.localeCompare(b.displayName, 'ru'));
   const list = $('ri-list');
   list.replaceChildren();
-  if (!state.contacts.size) list.append(el('p', { className: 'muted', textContent: 'Позвать можно только друзей, а их пока нет. Добавьте их в разделе «Друзья».' }));
+  if (!people.length)
+    list.append(el('p', { className: 'muted', textContent: hub ? 'В сходке пока никого, кроме вас. Друзей зовут в саму сходку — через её меню.' : 'Позвать можно только друзей, а их пока нет. Добавьте их в разделе «Друзья».' }));
   else if (!friends.length) list.append(el('p', { className: 'muted', textContent: 'Никого не нашли' }));
   for (const f of friends) {
     const info = el('div', { className: 'grow ellipsis' }, el('div', { className: 'ellipsis', textContent: f.displayName }), el('div', { className: 'muted small', textContent: `@${f.username}` }));
@@ -460,7 +464,7 @@ $('rm-close').onclick = closeRoomManage;
 $('rm-leave').onclick = async () => {
   const room = manageRoom();
   if (!room) return;
-  const isOwner = room.ownerId === state.me.id;
+  const isOwner = canRemoveRoom(room);
   const question = isOwner
     ? `Удалить комнату «${room.name}» вместе с сообщениями? Это нельзя отменить.`
     : `Выйти из комнаты «${room.name}»? Вернуть вас сможет любой, у кого есть право звать друзей.`;
