@@ -14,6 +14,9 @@ for (const file of ['main.js', 'preload.js', ...fs.readdirSync(root).filter((f) 
   required.add(file);
   const source = fs.readFileSync(path.join(root, file), 'utf8');
   for (const [, dep] of source.matchAll(/require\(['"](\.\/[^'"]+)['"]\)/g)) required.add(path.posix.normalize(dep.endsWith('.js') ? dep : `${dep}.js`));
+  // Файлы рядом с приложением: path.join(__dirname, 'assets', 'tray.png') и т. п. — значок трея, страница, preload
+  for (const [, args] of source.matchAll(/path\.join\(__dirname, ((?:'[^']+'(?:, )?)+)\)/g))
+    required.add(args.split(', ').map((a) => a.slice(1, -1)).join('/'));
 }
 // Всё, что подключает страница
 const html = fs.readFileSync(path.join(root, 'renderer', 'index.html'), 'utf8');
