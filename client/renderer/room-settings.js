@@ -306,7 +306,7 @@ function membersPane(room) {
     if (above && can(room, PERMS.kick)) {
       actions.append(until ? smallButton('Снять кик', '', () => liftKick(room, m)) : smallButton('Кик', 'warn-outline', () => openKick(room, m)));
       if (inVoice.has(m.id)) actions.append(smallButton('Отключить', '', () => disconnectMember(room, m)));
-      actions.append(smallButton('Убрать', 'danger-outline', () => removeRoomMember(room, m)));
+      actions.append(smallButton('Исключить', 'danger-outline', () => removeRoomMember(room, m)));
     }
     if (above && can(room, PERMS.ban)) actions.append(smallButton('Бан', 'danger', () => banMember(room, m)));
     list.append(el('div', { className: 'member-row' }, avatar, info, actions));
@@ -352,8 +352,8 @@ function setMemberRole(room, member, roleId) {
 }
 
 function removeRoomMember(room, member) {
-  if (!confirm(`Убрать ${member.displayName} из комнаты «${room.name}»? Позвать обратно можно будет в любой момент.`)) return;
-  roomAction(Api.del(`/rooms/${room.id}/members/${member.id}`), `${member.displayName} убран из комнаты`);
+  if (!confirm(`Исключить ${member.displayName} из комнаты «${room.name}»? Пригласить обратно можно будет в любой момент.`)) return;
+  roomAction(Api.del(`/rooms/${room.id}/members/${member.id}`), `${member.displayName} исключён из комнаты`);
 }
 
 function banMember(room, member) {
@@ -425,7 +425,7 @@ function renderRoomInvite() {
   // В комнату канала зовут её участников (например, тех, кого из комнаты убрали); новых друзей — в сам канал
   const hub = state.hubs.get(room.hubId);
   const people = hub ? hub.members.filter((m) => m.id !== state.me.id) : [...state.contacts.values()];
-  $('ri-title').textContent = hub ? `Позвать участников канала в «${room.name}»` : `Пригласить друзей в «${room.name}»`;
+  $('ri-title').textContent = hub ? `Пригласить участников канала в «${room.name}»` : `Пригласить друзей в «${room.name}»`;
   const q = $('ri-search').value.trim().toLowerCase();
   const inRoom = new Set(room.members.map((m) => m.id));
   const banned = new Set((room.bans || []).map((b) => b.id));

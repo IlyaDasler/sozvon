@@ -866,7 +866,7 @@ export function createApi() {
         throw new HttpError(400, `В канале может быть не больше ${MAX_HUB_ROOMS} комнат`);
       const room = rooms.create(req.user.id, name, kind, hubRow.id, { everyone: !legacy });
       addMembers(req, room, memberIds);
-      // Канал могла только что появиться — новые версии на других устройствах должны о нём узнать
+      // Канал мог только что появиться — новые версии на других устройствах должны о нём узнать
       if (legacy) notifyHub(hubRow.id);
       return notifyRoom(room.id);
     })
@@ -929,7 +929,7 @@ export function createApi() {
       const room = requireRoom(req);
       const userId = Number(req.params.userId);
       if (userId === room.owner_id)
-        throw new HttpError(400, 'Создатель не может выйти из своей комнаты — его можно только удалить');
+        throw new HttpError(400, 'Создатель не может выйти из своей комнаты — её можно только удалить');
       if (!rooms.isMember(room.id, userId)) throw new HttpError(404, 'Этого человека нет в комнате');
       if (userId !== req.user.id) requireOutranks(requirePerm(req, room, PERMS.kick, 'Нет права выгонять участников'), room, userId);
       removeFromRoom(room, userId, userId === req.user.id ? 'left' : 'kicked');
@@ -1111,7 +1111,7 @@ export function createApi() {
 
   function requireHub(req, id = Number(req.params.id)) {
     const hubRow = hubs.byId(id);
-    if (!hubRow || !hubs.isMember(hubRow.id, req.user.id)) throw new HttpError(404, 'Канал не найдена');
+    if (!hubRow || !hubs.isMember(hubRow.id, req.user.id)) throw new HttpError(404, 'Канал не найден');
     return hubRow;
   }
 
@@ -1141,7 +1141,7 @@ export function createApi() {
 
   api.get('/hubs', handle((req) => hubs.of(req.user.id).map(toHub)));
 
-  // Собрать канал: в нём сразу голосовая и текстовая комнаты, чтобы было куда зайти
+  // Создать канал: в нём сразу голосовая и текстовая комнаты, чтобы было куда зайти
   api.post(
     '/hubs',
     handle((req) => {
@@ -1149,10 +1149,10 @@ export function createApi() {
       validateHubName(name);
       const iconColor = COLOR_RE.test(req.body.iconColor) ? req.body.iconColor : COLORS[crypto.randomInt(COLORS.length)];
       if (hubs.ownedCount(req.user.id) >= MAX_OWNED_HUBS)
-        throw new HttpError(400, `Можно собрать не больше ${MAX_OWNED_HUBS} каналов`);
+        throw new HttpError(400, `Можно создать не больше ${MAX_OWNED_HUBS} каналов`);
       const hubRow = hubs.create(req.user.id, name, iconColor);
-      rooms.create(req.user.id, 'Общий голос', 'voice', hubRow.id);
-      rooms.create(req.user.id, 'Болталка', 'text', hubRow.id);
+      rooms.create(req.user.id, 'Голосовая', 'voice', hubRow.id);
+      rooms.create(req.user.id, 'Общий чат', 'text', hubRow.id);
       for (const room of hubs.rooms(hubRow.id)) notifyRoom(room.id);
       return notifyHub(hubRow.id);
     })
@@ -1216,7 +1216,7 @@ export function createApi() {
     })
   );
 
-  // Позвать друзей: вступят, когда сами примут приглашение
+  // Пригласить друзей: вступят, когда сами примут приглашение
   api.post(
     '/hubs/:id/invites',
     handle((req) => {
