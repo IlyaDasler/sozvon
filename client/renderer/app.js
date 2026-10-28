@@ -1229,7 +1229,29 @@ function renderPasswordSection() {
   $('cur-pass-field').classList.toggle('hidden', !state.me.hasPassword);
 }
 
-async function openSettings() {
+// Разделы настроек: какой открыт и как он называется в шапке
+const SETTINGS_TABS = {
+  profile: 'Профиль',
+  look: 'Оформление',
+  sound: 'Звук и видео',
+  notify: 'Уведомления',
+  account: 'Аккаунт',
+  about: 'О приложении',
+};
+
+function showSettingsTab(tab) {
+  const current = SETTINGS_TABS[tab] ? tab : 'profile';
+  $('set-title').textContent = SETTINGS_TABS[current];
+  for (const b of document.querySelectorAll('#set-nav [data-tab]')) b.classList.toggle('active', b.dataset.tab === current);
+  for (const p of document.querySelectorAll('#settings .set-pane')) p.classList.toggle('hidden', p.dataset.pane !== current);
+  $('settings').querySelector('.set-body').scrollTop = 0;
+}
+
+for (const b of document.querySelectorAll('#set-nav [data-tab]')) b.onclick = () => showSettingsTab(b.dataset.tab);
+
+/** tab — раздел, который открыть (по кнопке настроек приходит событие щелчка — тогда «Профиль») */
+async function openSettings(tab) {
+  showSettingsTab(typeof tab === 'string' ? tab : 'profile');
   renderThemePicker();
   renderNotifySettings();
   $('email-link').classList.add('hidden');
@@ -1623,6 +1645,7 @@ $('deafen-btn').onclick = toggleDeafen;
 $('call-deafen').onclick = toggleDeafen;
 $('settings-btn').onclick = openSettings;
 $('settings-cancel').onclick = closeSettings;
+$('settings-close').onclick = closeSettings;
 $('logout-btn').onclick = () => logout();
 
 window.desktop?.onHotkey((name) => (name === 'toggle-mute' ? toggleMute() : toggleDeafen()));
