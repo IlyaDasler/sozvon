@@ -127,7 +127,14 @@ input:not([type=checkbox]):not([type=range]):focus, select:focus { border-color:
 
 /* ---------- Экран входа ---------- */
 
-.screen { height: 100%; }
+/* Полоса окна вместо системной (высота — TITLEBAR_H в main.js); экраны занимают всё под ней */
+body { display: flex; flex-direction: column; }
+.titlebar {
+  height: 32px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  background: var(--bg-deep); color: var(--muted); font-size: 12px; user-select: none; -webkit-app-region: drag;
+}
+.titlebar img { opacity: .9; }
+.screen { flex: 1; min-height: 0; }
 
 /* Вход: слева — рассказ о приложении, справа — форма.
    Цвета берутся из темы, поэтому светлая тема тоже остаётся опрятной. */
