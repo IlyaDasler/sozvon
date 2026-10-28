@@ -122,38 +122,60 @@ function cameraConstraints(settings) {
   return {
     video: {
       deviceId: settings.camId ? { ideal: settings.camId } : undefined,
-      width: { ideal: 640 },
-      height: { ideal: 360 },
-      frameRate: { ideal: 24, max: 30 },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      frameRate: { ideal: 30, max: 30 },
     },
   };
 }
 
-// Режимы демонстрации экрана: плавность для игр или чёткость для текста
-// motion — 720p 60 кадров/с (игры, видео): при нехватке скорости держим плавность;
-// detail — 1080p 30 кадров/с (текст, фильмы): держим чёткость
+// Режимы демонстрации экрана: разрешение, частота кадров и скорость на одного зрителя.
+// При нехватке скорости держим плавность; галочка «Для текста» (text) — держим чёткость
 const SCREEN_MODES = {
-  motion: { width: 1280, height: 720, frameRate: 60, bitrate: 5_000_000, hint: 'motion', degradation: 'maintain-framerate' },
-  detail: { width: 1920, height: 1080, frameRate: 30, bitrate: 6_000_000, hint: 'detail', degradation: 'maintain-resolution' },
+  '1440p60': { width: 2560, height: 1440, frameRate: 60, bitrate: 14_000_000 },
+  '1080p60': { width: 1920, height: 1080, frameRate: 60, bitrate: 9_000_000 },
+  '720p90': { width: 1280, height: 720, frameRate: 90, bitrate: 7_000_000 },
 };
+const DEFAULT_SCREEN_MODE = '1080p60';
+// Режимы версий до 2.2 (сохранённые в настройках) — на ближайшие новые
+const OLD_SCREEN_MODES = { motion: '720p90', detail: '1080p60' };
+const screenMode = (id) => SCREEN_MODES[OLD_SCREEN_MODES[id] || id] ? OLD_SCREEN_MODES[id] || id : DEFAULT_SCREEN_MODE;
+
+// Кодек для экрана: VP9 даёт картинку чище при той же скорости, H.264 — запасной (часто аппаратный)
+const SCREEN_CODECS = ['video/VP9', 'video/H264', 'video/VP8'];
+function preferScreenCodecs(transceiver) {
+  const caps = RTCRtpReceiver.getCapabilities?.('video');
+  if (!caps || !transceiver.setCodecPreferences) return;
+  const rank = (c) => (SCREEN_CODECS.indexOf(c.mimeType) + SCREEN_CODECS.length + 1) % (SCREEN_CODECS.length + 1);
+  const codecs = [...caps.codecs].sort((a, b) => rank(a) - rank(b));
+  try {
+    transceiver.setCodecPreferences(codecs);
+  } catch {}
+}
 
 // Каждое соединение несёт четыре «слота» в одном и том же порядке. Включить камеру или экран —
 // значит просто подставить дорожку в готовый слот, без пересогласования соединения
 const SLOTS = ['mic', 'cam', 'screen', 'screenAudio'];
 const SLOT_KIND = { mic: 'audio', cam: 'video', screen: 'video', screenAudio: 'audio' };
 
-// Голос в Opus — 64 кбит/с вместо 32 по умолчанию, с защитой от потерь пакетов
+// Голос в Opus — 64 кбит/с вместо 32 по умолчанию, с защитой от потерь пакетов.
+// Видео сразу стартует с 2,5 Мбит/с, а не разгоняется с малого — первые секунды трансляции не «мыльные»
 const tuneSdp = (sdp) =>
-  sdp.replace(/a=fmtp:(\d+) (.*useinbandfec=1.*)/g, (line, pt, params) =>
-    params.includes('maxaveragebitrate') ? line : `a=fmtp:${pt} ${params};maxaveragebitrate=64000`
-  );
+  sdp
+    .replace(/a=fmtp:(\d+) (.*useinbandfec=1.*)/g, (line, pt, params) =>
+      params.includes('maxaveragebitrate') ? line : `a=fmtp:${pt} ${params};maxaveragebitrate=64000`
+    )
+    .replace(/a=fmtp:(\d+) ((?:.*;)?(?:profile-id|level-asymmetry-allowed|x-google)[^\r\n]*)/g, (line, pt, params) =>
+      params.includes('x-google-start-bitrate') ? line : `a=fmtp:${pt} ${params};x-google-start-bitrate=2500;x-google-min-bitrate=800`
+    );
 
 // Свои микрофон, камера и экран — общие для всех соединений звонка
 class LocalMedia {
   constructor(onChange) {
     this.tracks = { mic: null, cam: null, screen: null, screenAudio: null };
     this.muted = false;
-    this.screenMode = 'motion';
+    this.screenMode = DEFAULT_SCREEN_MODE;
+    this.screenText = false;
     this.onChange = onChange;
   }
 
@@ -179,16 +201,20 @@ class LocalMedia {
     this.replace('cam', null);
   }
 
-  async startScreen({ mode = 'motion', audio = false } = {}) {
-    const m = SCREEN_MODES[mode] || SCREEN_MODES.motion;
+  /** mode — один из SCREEN_MODES; text — держать чёткость (мелкий текст, код), а не плавность */
+  async startScreen({ mode = DEFAULT_SCREEN_MODE, text = false, audio = false } = {}) {
+    const id = screenMode(mode);
+    const m = SCREEN_MODES[id];
     const limits = { width: { max: m.width }, height: { max: m.height }, frameRate: { ideal: m.frameRate, max: m.frameRate } };
-    const stream = await navigator.mediaDevices.getDisplayMedia({ video: limits, audio });
+    // Звук компьютера — без звука самого Созвона: иначе друзья слышат в трансляции собственные голоса
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: limits, audio: audio && { restrictOwnAudio: true, suppressLocalAudioPlayback: false } });
     const video = stream.getVideoTracks()[0];
-    video.contentHint = m.hint;
+    video.contentHint = text ? 'detail' : 'motion';
     await video.applyConstraints(limits).catch(() => {});
     // «Остановить показ» из системы или закрытое окно — заканчиваем демонстрацию
     video.onended = () => this.stopScreen();
-    this.screenMode = mode;
+    this.screenMode = id;
+    this.screenText = text;
     this.replace('screenAudio', stream.getAudioTracks()[0] || null);
     this.replace('screen', video);
   }
@@ -229,11 +255,12 @@ class LocalMedia {
 // Соединение с одним собеседником. Предложение (offer) делает только initiator, второй лишь отвечает —
 // поэтому встречных предложений не бывает
 class PeerLink {
-  constructor({ iceServers, initiator, local, send, onTrack, onState, onMedia }) {
+  constructor({ iceServers, certificate, initiator, local, send, onTrack, onState, onMedia, onFingerprint }) {
     this.initiator = initiator;
     this.local = local;
     this.send = send;
     this.onMedia = onMedia;
+    this.onFingerprint = onFingerprint;
     this.bound = false;
     this.pending = [];
     this.queue = Promise.resolve();
@@ -242,7 +269,8 @@ class PeerLink {
     // Все дорожки в одном «потоке» — так их правильно разберут и версии приложения до 1.5
     this.msid = new MediaStream();
 
-    const pc = (this.pc = new RTCPeerConnection({ iceServers }));
+    // Один сертификат на все соединения звонка — тогда у каждого участника один ключ и код у всех общий
+    const pc = (this.pc = new RTCPeerConnection({ iceServers, ...(certificate && { certificates: [certificate] }) }));
     pc.onicecandidate = (e) => e.candidate && send({ candidate: e.candidate });
     pc.ontrack = (e) => {
       const slot = SLOTS[pc.getTransceivers().indexOf(e.transceiver)];
@@ -257,8 +285,10 @@ class PeerLink {
     };
 
     if (initiator) {
-      for (const slot of SLOTS)
-        pc.addTransceiver(local.tracks[slot] || SLOT_KIND[slot], { direction: 'sendrecv', streams: [this.msid] });
+      for (const slot of SLOTS) {
+        const t = pc.addTransceiver(local.tracks[slot] || SLOT_KIND[slot], { direction: 'sendrecv', streams: [this.msid] });
+        if (slot === 'screen') preferScreenCodecs(t);
+      }
       this.bound = true;
       pc.onnegotiationneeded = () => this.enqueue(() => this.offer());
     }
@@ -293,6 +323,7 @@ class PeerLink {
       } else {
         await pc.setRemoteDescription(data.sdp);
       }
+      this.onFingerprint?.(fingerprintOf(data.sdp.sdp));
       for (const c of this.pending.splice(0)) await pc.addIceCandidate(c).catch(() => {});
     } else if (data.candidate) {
       if (pc.remoteDescription) await pc.addIceCandidate(data.candidate).catch(() => {});
@@ -312,6 +343,7 @@ class PeerLink {
     for (const slot of SLOTS) {
       const t = this.transceiver(slot);
       if (!t) continue;
+      if (slot === 'screen') preferScreenCodecs(t);
       t.direction = 'sendrecv';
       t.sender.setStreams?.(this.msid);
       t.sender.replaceTrack(this.local.tracks[slot] || null).catch(() => {});
@@ -326,7 +358,7 @@ class PeerLink {
     this.tune(slot);
   }
 
-  // Ограничения скорости: голос важнее всего, экран — до 5–6 Мбит/с, камера — до 0,8
+  // Ограничения скорости: голос важнее всего, экран — по режиму (7–14 Мбит/с), камера — до 2,5
   async tune(slot) {
     const t = this.transceiver(slot);
     if (!t || !this.local.tracks[slot]) return;
@@ -336,13 +368,15 @@ class PeerLink {
     if (slot === 'mic') {
       enc.priority = enc.networkPriority = 'high';
     } else if (slot === 'cam') {
-      enc.maxBitrate = 800_000;
+      enc.maxBitrate = 2_500_000;
+      enc.maxFramerate = 30;
     } else if (slot === 'screen') {
       const mode = SCREEN_MODES[this.local.screenMode];
       enc.maxBitrate = mode.bitrate;
       enc.maxFramerate = mode.frameRate;
       enc.scaleResolutionDownBy = 1;
-      params.degradationPreference = mode.degradation;
+      enc.priority = enc.networkPriority = 'high';
+      params.degradationPreference = this.local.screenText ? 'maintain-resolution' : 'maintain-framerate';
     } else {
       return;
     }
@@ -421,17 +455,33 @@ class MediaSession {
     this.sinkId = settings.speakerId || '';
     this.meter = null;
     this.closed = false;
+    this.code = null; // код шифрования: { emoji, digits }, когда соединились со всеми
     this.statsTimer = setInterval(() => this.collectStats(), 2000);
   }
 
   async start({ muted, deafened }) {
     this.local.muted = muted;
     this.deafened = deafened;
-    const [{ iceServers }] = await Promise.all([
+    const [{ iceServers }, certificate] = await Promise.all([
       Api.get('/ice').catch(() => ({ iceServers: [] })),
+      Promise.resolve()
+        .then(() => RTCPeerConnection.generateCertificate({ name: 'ECDSA', namedCurve: 'P-256' }))
+        .catch(() => null),
       this.local.openMic(this.settings),
     ]);
     this.iceServers = iceServers;
+    this.certificate = certificate;
+    this.fingerprint = certificate?.getFingerprints?.()[0]?.value?.toUpperCase() || null;
+  }
+
+  /** Код шифрования — когда соединились со всеми и знаем ключ каждого; иначе нет */
+  async updateCode() {
+    const peers = [...this.peers.values()];
+    const ready = this.fingerprint && peers.length && peers.every((p) => p.state === 'connected' && p.fingerprint);
+    const code = ready ? await securityCode([this.fingerprint, ...peers.map((p) => p.fingerprint)]) : null;
+    if (this.closed || JSON.stringify(code) === JSON.stringify(this.code)) return;
+    this.code = code;
+    this.onChange();
   }
 
   mediaState() {
@@ -473,7 +523,12 @@ class MediaSession {
     };
     peer.link = new PeerLink({
       iceServers: this.iceServers,
+      certificate: this.certificate,
       initiator,
+      onFingerprint: (fp) => {
+        peer.fingerprint = fp;
+        this.updateCode();
+      },
       local: this.local,
       send: (data) => this.sendSignal(id, { ...data, link: peer.link.id }),
       onTrack: (slot, track) => this.onRemoteTrack(peer, slot, track),
@@ -481,6 +536,7 @@ class MediaSession {
         peer.state = st;
         if (st === 'connected') this.sendSignal(id, { media: this.mediaState() });
         this.onPeerState?.(id, st);
+        this.updateCode();
         this.onChange();
       },
       onMedia: (media) => {
@@ -503,6 +559,7 @@ class MediaSession {
       el.srcObject = null;
     }
     if (peer.speaking) this.onSpeaking(id, false);
+    this.updateCode();
     this.onChange();
   }
 
