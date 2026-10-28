@@ -27,6 +27,8 @@ function toPage(channel, ...args) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, ...args);
 }
 
+const TITLEBAR_H = 32; // как .titlebar в styles.css
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1100,
@@ -36,6 +38,10 @@ function createWindow() {
     title: 'Созвон',
     backgroundColor: '#17181c',
     autoHideMenuBar: true,
+    // Своя полоса окна в цветах темы: системную прячем, кнопки «свернуть, развернуть, закрыть» Windows
+    // рисует поверх полосы страницы; их цвета страница присылает при смене темы (window:titlebar)
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: '#07080c', symbolColor: '#c8ccda', height: TITLEBAR_H },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -48,6 +54,9 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  ipcMain.on('window:titlebar', (_e, { color, symbolColor }) => {
+    if (/^#[0-9a-f]{6}$/i.test(color) && /^#[0-9a-f]{6}$/i.test(symbolColor)) win.setTitleBarOverlay({ color, symbolColor, height: TITLEBAR_H });
+  });
   win.on('focus', () => win.flashFrame(false));
   // Крестик прячет окно в трей: звонки, голос и уведомления продолжают работать
   win.on('close', (event) => {
