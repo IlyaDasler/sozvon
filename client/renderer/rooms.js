@@ -5,7 +5,8 @@ const ROOM_ERRORS = {
   'not-member': 'Вы не участник этой комнаты',
   'no-access': 'Вам нельзя заходить в голосовой канал этой комнаты',
   'in-call': 'Сначала завершите звонок',
-  full: 'В голосовом канале уже 10 человек — больше не поместится',
+  full: 'В голосовом канале уже нет мест',
+  'old-version': 'В этой комнате голос идёт через медиасервер — обновите Созвон',
 };
 
 // Почему сервер отключил от голоса
@@ -443,6 +444,7 @@ function onRoomVoice({ roomId, participants }) {
   if (v?.roomId === roomId && v.joined) {
     const ids = new Set(participants.map((p) => p.userId));
     for (const id of [...v.session.peers.keys()]) if (!ids.has(id)) v.session.removePeer(id);
+    v.session.applyVoiceState(participants);
     // Звуки входа и выхода других участников
     if (v.lastIds) {
       const joined = [...ids].some((id) => !v.lastIds.has(id));
@@ -479,14 +481,33 @@ async function joinRoomVoice(roomId) {
     return finishRoomVoice(mediaErrorText(err));
   }
   if (state.room !== v) return;
-  if (!socket?.send({ type: 'room:join', roomId, ...audioFlags() })) finishRoomVoice('Нет связи с сервером');
+  if (!sendRoomJoin(roomId)) finishRoomVoice('Нет связи с сервером');
 }
 
-// Сервер прислал, кто уже в канале: новичок сам соединяется с каждым
-function onRoomJoined({ roomId, peers }) {
+// sfu — умеем голос через медиасервер (большие комнаты)
+const sendRoomJoin = (roomId) => socket?.send({ type: 'room:join', roomId, sfu: true, ...audioFlags() });
+
+// Каждый с каждым соединения рвутся вместе с сервером; медиасервер живёт своей связью — его собеседников не трогаем
+function dropP2pPeers(v) {
+  if (v.session instanceof SfuSession) return;
+  for (const id of [...v.session.peers.keys()]) v.session.removePeer(id);
+}
+
+// Сервер прислал, кто уже в канале: новичок сам соединяется с каждым.
+// Большая комната — подключаемся к медиасерверу, забрав уже открытый микрофон
+async function onRoomJoined({ roomId, peers, media, livekit }) {
   const v = state.room;
   if (!v || v.roomId !== roomId) return;
-  for (const id of [...v.session.peers.keys()]) v.session.removePeer(id);
+  if (media === 'sfu' && !(v.session instanceof SfuSession)) {
+    try {
+      await startSfu(v, livekit);
+    } catch (err) {
+      if (state.room === v) leaveRoomVoice();
+      return toast(err.message, 6000);
+    }
+    if (state.room !== v) return;
+  }
+  dropP2pPeers(v);
   v.joined = true;
   v.connectedAt ??= Date.now();
   v.lastIds = null;
@@ -497,6 +518,16 @@ function onRoomJoined({ roomId, peers }) {
   tone.blip('join');
   renderVoice();
   renderRooms();
+}
+
+/** Голос через медиасервер, зашифрованный ключом комнаты (его же ключом шифруется переписка комнаты) */
+async function startSfu(v, grant) {
+  if (!e2eeReady()) throw new Error('Для голоса в большой комнате нужен ключ шифрования — перенесите его на это устройство (Настройки → Аккаунт)');
+  const { key } = await sendKey(roomConvOf(v.roomId));
+  const session = new SfuSession(sessionOptions(), v.session);
+  session.onDisconnected = () => state.room === v && finishRoomVoice('Связь с медиасервером прервалась');
+  v.session = session;
+  await session.connect(grant, key);
 }
 
 function leaveRoomVoice() {
@@ -552,12 +583,12 @@ function onVoiceSocketStatus(ok) {
   if (!ok) {
     if (v.joined) {
       v.joined = false;
-      for (const id of [...v.session.peers.keys()]) v.session.removePeer(id);
+      dropP2pPeers(v);
       renderVoice();
     }
     return;
   }
-  if (!v.joined) socket.send({ type: 'room:join', roomId: v.roomId, ...audioFlags() });
+  if (!v.joined) sendRoomJoin(v.roomId);
 }
 
 // ---------- Создание комнаты ----------
