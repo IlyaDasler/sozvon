@@ -755,6 +755,17 @@ video.mirror { transform: scaleX(-1); }
 .msg-text .spoiler.open { color: inherit; background: var(--bg-3); cursor: text; }
 .msg-text.emoji-only { font-size: 40px; line-height: 1.2; }
 .messages .hint { margin: auto; color: var(--muted); text-align: center; }
+.jump-bar {
+  flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 0 16px -4px; padding: 6px 14px 10px; border: 0; border-radius: var(--r-m) var(--r-m) 0 0;
+  background: var(--bg-4); color: var(--text-2); font-size: 13px; cursor: pointer; animation: jump-in var(--mid) var(--ease-out);
+}
+.jump-bar b { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.jump-bar svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.jump-bar:hover { background: var(--bg-5); }
+.jump-bar.fresh { background: var(--accent); color: var(--on-accent); }
+.jump-bar.fresh:hover { background: var(--accent-hover); }
+@keyframes jump-in { from { opacity: 0; transform: translateY(6px); } }
 
 
 
