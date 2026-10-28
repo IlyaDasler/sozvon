@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('desktop', {
   oauth: (authUrl) => ipcRenderer.invoke('oauth', authUrl),
   // Буфер обмена и правка текста (вырезать, вставить…) — средствами Electron, они надёжнее браузерных
   copy: (text) => ipcRenderer.invoke('clipboard:write', String(text)),
+  // Превью ссылки: { url, title, description, image, siteName } или null
+  preview: (url) => ipcRenderer.invoke('preview:fetch', String(url)),
   edit: (command) => ipcRenderer.send('edit', command),
   screen: {
     sources: () => ipcRenderer.invoke('screen:sources'),
