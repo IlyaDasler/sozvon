@@ -33,4 +33,4 @@ function bindingLabel(binding, names = {}) {
 /** Сохранённая привязка из настроек: проверяем и возвращаем её или null */
 const parseBinding = (value) => (value && typeof value === 'object' ? bindingFrom(value.type === 'key' ? { kind: 'key', keycode: value.code } : { kind: value.type, button: value.code }) : null);
 
-module.exports = { bindingFrom, matches, bindingLabel, parseBinding };
+if (typeof module !== 'undefined') module.exports = { bindingFrom, matches, bindingLabel, parseBinding };
