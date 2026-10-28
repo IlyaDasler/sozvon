@@ -659,12 +659,33 @@ function renderChatHeader() {
 // ---------- Сообщения ----------
 
 function renderMessages() {
+  const peerId = state.selectedId;
   renderMessageList(
     $('messages'),
-    state.history.get(state.selectedId) || [],
-    state.history.has(state.selectedId),
-    'Здесь пока пусто. Напишите что-нибудь или позвоните!'
+    state.history.get(peerId) || [],
+    state.history.has(peerId),
+    'Здесь пока пусто. Напишите что-нибудь или позвоните!',
+    // В личной переписке удалить можно только своё
+    { canDelete: (m) => m.fromId === state.me.id, remove: (m) => Api.del(`/messages/${peerId}/${m.id}`) }
   );
+}
+
+/** Сообщение удалили (здесь или на другом устройстве) — убираем из истории и с экрана */
+function dropMessage(history, key, id) {
+  const list = history.get(key);
+  const i = list ? list.findIndex((m) => m.id === id) : -1;
+  if (i >= 0) list.splice(i, 1);
+  return i >= 0;
+}
+
+// Корзина у сообщения: Shift — удалить сразу, без вопроса
+async function deleteMessage(m, remove, skipConfirm) {
+  if (!skipConfirm && !confirm('Удалить это сообщение? Его не увидит никто. Совет: с Shift — без этого вопроса.')) return;
+  try {
+    await remove(m);
+  } catch (err) {
+    toast(err.message);
+  }
 }
 
 // Что уже было на экране в каждой ленте: анимируем только новые сообщения той же переписки,
@@ -672,7 +693,8 @@ function renderMessages() {
 const shownMessages = new WeakMap();
 
 // Лента сообщений: и для чата с другом, и для комнаты
-function renderMessageList(box, list, loaded, emptyText) {
+/** actions: { canDelete(m), remove(m) } — можно ли удалить сообщение и как */
+function renderMessageList(box, list, loaded, emptyText, actions) {
   box.replaceChildren();
   const before = shownMessages.get(box);
   const isNew = (m) => before?.list === list && !before.ids.has(m.id);
@@ -720,6 +742,18 @@ function renderMessageList(box, list, loaded, emptyText) {
     }
     body.append(messageContent(m));
     row.append(body);
+    if (actions?.canDelete(m)) {
+      const tools = document.createElement('div');
+      tools.className = 'msg-tools';
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'msg-tool danger';
+      del.title = 'Удалить (с Shift — без вопроса)';
+      del.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
+      del.onclick = (e) => deleteMessage(m, actions.remove, e.shiftKey);
+      tools.append(del);
+      row.append(tools);
+    }
     box.append(row);
     prev = m;
   }
@@ -788,6 +822,11 @@ function handleEvent(msg) {
       return updateUser(msg.user.id, msg.user);
     case 'message':
       return addMessage(msg.message);
+    case 'message:deleted': {
+      const peerId = msg.fromId === state.me.id ? msg.toId : msg.fromId;
+      if (dropMessage(state.history, peerId, msg.id) && peerId === state.selectedId) renderMessages();
+      return;
+    }
     case 'call:incoming':
       return onIncoming(msg);
     case 'call:ringing':
