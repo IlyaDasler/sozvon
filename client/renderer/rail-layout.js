@@ -1,6 +1,6 @@
-// Раскладка столбца сходок — личная настройка в этом приложении: свой порядок и свои группы (папки).
-// Другие люди её не видят. Вид: { items: [id сходки | { folder, name, color, collapsed, hubs: [id, ...] }] }.
-// Папок внутри папок нет, в папке — от двух сходок. Все функции чистые: берут раскладку и возвращают новую.
+// Раскладка столбца каналов — личная настройка в этом приложении: свой порядок и свои группы (папки).
+// Другие люди её не видят. Вид: { items: [id канала | { folder, name, color, collapsed, hubs: [id, ...] }] }.
+// Папок внутри папок нет, в папке — от двух каналов. Все функции чистые: берут раскладку и возвращают новую.
 
 const FOLDER_NAME_MAX = 32;
 const FOLDER_COLOR_RE = /^#[0-9a-f]{6}$/i;
@@ -9,13 +9,13 @@ const isHubId = (v) => Number.isInteger(v) && v > 0;
 const isFolder = (v) =>
   Boolean(v) && typeof v === 'object' && !Array.isArray(v) && typeof v.folder === 'string' && v.folder !== '' && Array.isArray(v.hubs);
 
-// Папка с одной сходкой — уже не группа, пустая — не нужна
+// Папка с одним каналом — уже не группа, пустая — не нужна
 const tidy = (items) => items.flatMap((item) => (typeof item === 'number' ? [item] : item.hubs.length > 1 ? [item] : item.hubs));
 
 const copyItems = (layout) => layout.items.map((i) => (typeof i === 'number' ? i : { ...i, hubs: [...i.hubs] }));
 const folderWith = (items, hubId) => items.find((i) => typeof i !== 'number' && i.hubs.includes(hubId));
 
-/** Вынимает сходку отовсюду (папки пока не схлопывает — так проще вставить её обратно рядом) */
+/** Вынимает канал отовсюду (папки пока не схлопывает — так проще вставить его обратно рядом) */
 const pluck = (items, hubId) =>
   items.filter((i) => i !== hubId).map((i) => (typeof i === 'number' ? i : { ...i, hubs: i.hubs.filter((h) => h !== hubId) }));
 
@@ -25,8 +25,8 @@ const cleanFolderFields = ({ name, color, collapsed }) => ({
   collapsed: collapsed === true,
 });
 
-/** Раскладка из сохранённых данных (каких угодно) для нынешнего списка сходок: чужое и повторы выкидываем,
- *  новые сходки — в конец */
+/** Раскладка из сохранённых данных (каких угодно) для нынешнего списка каналов: чужое и повторы выкидываем,
+ *  новые каналы — в конец */
 function normalizeLayout(raw, hubIds) {
   const known = new Set(hubIds);
   const placed = new Set();
@@ -51,7 +51,7 @@ function normalizeLayout(raw, hubIds) {
   return { items: tidy(items) };
 }
 
-/** Сходку перетащили на другую: группа на месте цели, а если цель уже в группе — в ту же группу следом за ней */
+/** Канал перетащили на другой: группа на месте цели, а если цель уже в группе — в ту же группу следом за ним */
 function groupHubs(layout, dragId, targetId, newFolderId) {
   if (dragId === targetId) return layout;
   const items = pluck(copyItems(layout), dragId);
@@ -65,8 +65,8 @@ function groupHubs(layout, dragId, targetId, newFolderId) {
   return { items: tidy(items) };
 }
 
-/** Переставить сходку (число) или группу (строка) перед beforeKey; null — в конец.
- *  Сходка перед сходкой из группы попадает в эту группу; группа — встаёт перед той группой */
+/** Переставить канал (число) или группу (строка) перед beforeKey; null — в конец.
+ *  Канал перед каналом из группы попадает в эту группу; группа — встаёт перед той группой */
 function moveItem(layout, key, beforeKey) {
   if (key === beforeKey) return layout;
   const isHub = typeof key === 'number';
@@ -96,12 +96,12 @@ function updateFolder(layout, folderId, patch) {
   };
 }
 
-/** Разобрать группу: сходки встают на её место */
+/** Разобрать группу: каналы встают на его место */
 function ungroup(layout, folderId) {
   return { items: layout.items.flatMap((i) => (typeof i !== 'number' && i.folder === folderId ? i.hubs : [i])) };
 }
 
-/** Все сходки по порядку, как в столбце */
+/** Все каналы по порядку, как в столбце */
 const hubOrder = (layout) => layout.items.flatMap((i) => (typeof i === 'number' ? [i] : i.hubs));
 
 if (typeof module !== 'undefined') module.exports = { normalizeLayout, groupHubs, moveItem, updateFolder, ungroup, hubOrder };

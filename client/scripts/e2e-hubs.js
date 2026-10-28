@@ -1,12 +1,12 @@
-// Сквозной тест сходок: собрать сходку, позвать друга, он вступает и видит комнаты, новая комната — у обоих,
-// группа из двух сходок перетаскиванием (раскладка у каждого своя), список участников и его скрытие,
+// Сквозной тест каналов: собрать канал, позвать друга, он вступает и видит комнаты, новая комната — у обоих,
+// группа из двух каналов перетаскиванием (раскладка у каждого своя), список участников и его скрытие,
 // вид во всех темах и в узком окне.
 // Запуск (сервер должен работать): npx electron scripts/e2e-hubs.js [адрес сервера]
 const { api, befriend, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
 
 const THEMES = ['sozvon', 'midnight', 'light', 'forest', 'dusk'];
 
-// Перетаскивание в столбце сходок — теми же событиями, что шлёт браузер.
+// Перетаскивание в столбце каналов — теми же событиями, что шлёт браузер.
 // where: 'center' — на середину цели, 'before' — в её верхнюю часть, 'end' — в пустое место столбца
 const drag = (win, srcSel, dstSel, where = 'center') =>
   js(
@@ -39,20 +39,20 @@ runTest(async () => {
   const winB = await openClient('hb', b);
   console.log('✔ два клиента вошли');
 
-  // Илья собирает сходку через «+» внизу столбца
+  // Илья собирает канал через «+» внизу столбца
   await js(winA, `document.getElementById('rail-add').click(); true`);
-  await waitFor(winA, `!document.getElementById('hub-create').classList.contains('hidden')`, 'окно «Собрать сходку»');
+  await waitFor(winA, `!document.getElementById('hub-create').classList.contains('hidden')`, 'окно «Собрать канал»');
   await js(winA, `document.getElementById('hub-name').value = 'Наш двор'; document.getElementById('hub-create-submit').click(); true`);
-  await waitFor(winA, `state.view !== 'home' && document.getElementById('hub-menu-name').textContent === 'Наш двор'`, 'сходка открылась');
+  await waitFor(winA, `state.view !== 'home' && document.getElementById('hub-menu-name').textContent === 'Наш двор'`, 'канал открылась');
   const hubId = await js(winA, 'state.view');
-  await waitFor(winA, `document.querySelector('${tile(hubId)}')?.textContent === 'НД'`, 'иконка сходки в столбце');
-  await waitFor(winA, `document.querySelectorAll('#room-list .room-row').length === 2`, 'две комнаты в сходке');
+  await waitFor(winA, `document.querySelector('${tile(hubId)}')?.textContent === 'НД'`, 'иконка канала в столбце');
+  await waitFor(winA, `document.querySelectorAll('#room-list .room-row').length === 2`, 'две комнаты в канале');
   if (!(await js(winA, `document.getElementById('room-title').textContent === 'Болталка'`))) throw new Error('Открылась не текстовая комната');
   if (await js(winA, `document.getElementById('members-panel').classList.contains('hidden')`)) throw new Error('Список участников не виден');
   await screenshot(winA, 'hubs-created');
-  console.log('✔ сходка собрана: в столбце, в шапке, с двумя комнатами и списком участников');
+  console.log('✔ канал собрана: в столбце, в шапке, с двумя комнатами и списком участников');
 
-  // Зовёт Васю через меню сходки
+  // Зовёт Васю через меню канала
   await js(winA, `document.getElementById('hub-menu-btn').click(); true`);
   await js(winA, `[...document.querySelectorAll('#popup-menu .popup-item')].find((b) => b.textContent === 'Позвать друзей').click(); true`);
   await waitFor(winA, `!document.getElementById('hub-invite').classList.contains('hidden')`, 'окно «Позвать друзей»');
@@ -66,7 +66,7 @@ runTest(async () => {
   await js(winB, `document.querySelector('#rail-list .rail-item.invite .rail-tile').click(); true`);
   await waitFor(winB, `!document.getElementById('hub-join').classList.contains('hidden')`, 'окно приглашения');
   await js(winB, `document.getElementById('hj-accept').click(); true`);
-  await waitFor(winB, `state.view === ${hubId} && document.querySelectorAll('#room-list .room-row').length === 2`, 'Вася в сходке и видит комнаты');
+  await waitFor(winB, `state.view === ${hubId} && document.querySelectorAll('#room-list .room-row').length === 2`, 'Вася в канале и видит комнаты');
   await waitFor(winA, `document.querySelectorAll('#members-list .member-item').length === 2`, 'Вася в списке участников у Ильи');
   console.log('✔ друг позван, вступил и видит комнаты');
 
@@ -76,21 +76,21 @@ runTest(async () => {
   await waitFor(winB, `[...document.querySelectorAll('#room-list .room-row .name')].some((n) => n.textContent === 'Мемы')`, 'новая комната у Васи');
   const names = await sectionRooms(winB);
   if (names.join() !== 'Общий голос,Болталка,Мемы') throw new Error(`Комнаты не по разделам: ${names}`);
-  // Переписка в комнате сходки
+  // Переписка в комнате канала
   const memes = await js(winA, `[...state.rooms.values()].find((r) => r.name === 'Мемы').id`);
   await api('POST', `/rooms/${memes}/messages`, { text: 'Свежий мем' }, b.token);
-  await waitFor(winA, `[...document.querySelectorAll('#room-messages .msg-text')].some((el) => el.textContent === 'Свежий мем')`, 'сообщение в комнате сходки');
+  await waitFor(winA, `[...document.querySelectorAll('#room-messages .msg-text')].some((el) => el.textContent === 'Свежий мем')`, 'сообщение в комнате канала');
   console.log('✔ новая комната у обоих, переписка работает');
 
-  // Вторая сходка; Вася тоже в ней
+  // Второй канал; Вася тоже в нём
   const second = await api('POST', '/hubs', { name: 'Гаражи', iconColor: '#30a46c' }, a.token);
   await api('POST', `/hubs/${second.id}/invites`, { userIds: [b.user.id] }, a.token);
   await api('POST', `/hub-invites/${second.id}/accept`, null, b.token);
-  for (const win of [winA, winB]) await waitFor(win, `document.querySelector('${tile(second.id)}')`, 'вторая сходка в столбце');
+  for (const win of [winA, winB]) await waitFor(win, `document.querySelector('${tile(second.id)}')`, 'вторая канал в столбце');
 
   // Илья перетаскивает «Гаражи» на «Наш двор» — получается группа
   await drag(winA, `#rail-list [data-hub="${second.id}"]`, tile(hubId));
-  await waitFor(winA, `document.querySelectorAll('#rail-list .rail-folder [data-hub]').length === 2`, 'группа из двух сходок');
+  await waitFor(winA, `document.querySelectorAll('#rail-list .rail-folder [data-hub]').length === 2`, 'группа из двух каналов');
   let layoutA = await layoutOf(winA);
   if (!layoutA.items[0].folder || layoutA.items[0].hubs.join() !== `${hubId},${second.id}`) throw new Error(`Раскладка Ильи: ${JSON.stringify(layoutA)}`);
   // У Васи раскладка своя: никакой группы
@@ -118,7 +118,7 @@ runTest(async () => {
   await waitFor(winA, `!document.querySelector('#rail-list .rail-folder')`, 'группа распалась');
   layoutA = await layoutOf(winA);
   if (layoutA.items.join() !== `${hubId},${second.id}`) throw new Error(`После вытаскивания: ${JSON.stringify(layoutA)}`);
-  console.log('✔ группу назвали, свернули, сходку вытащили обратно');
+  console.log('✔ группу назвали, свернули, канал вытащили обратно');
 
   // Битая раскладка в хранилище не ломает столбец
   await js(winA, `localStorage.setItem('rail:' + state.me.id, '{"items":[null,"x",{"folder":5},[1],${second.id},${second.id}]}'); renderRail(); true`);
@@ -147,7 +147,7 @@ runTest(async () => {
   winB.destroy();
   await waitFor(winA, `[...document.querySelectorAll('#members-list .members-group')].some((g) => g.textContent.startsWith('Не в сети — 1'))`, 'Вася не в сети');
 
-  // Снимки окон сходки (для глаз; на проверку не влияют)
+  // Снимки окон канала (для глаз; на проверку не влияют)
   const escape = () => js(winA, `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); true`);
   winA.focus();
   await js(winA, `openHubSettings(${hubId}, 'members'); true`);
@@ -184,8 +184,8 @@ runTest(async () => {
   await js(winA, `document.documentElement.dataset.theme = 'sozvon'; true`);
   console.log('✔ темы и узкое окно');
 
-  // Удаление сходки создателем: пропадает из столбца
+  // Удаление канала создателем: пропадает из столбца
   await js(winA, `window.confirm = () => true; deleteHub(hubById(${second.id})); true`);
-  await waitFor(winA, `!document.querySelector('${tile(second.id)}')`, 'удалённая сходка пропала');
-  console.log('✔ удалённая сходка пропала из столбца');
+  await waitFor(winA, `!document.querySelector('${tile(second.id)}')`, 'удалённый канал пропал');
+  console.log('✔ удалённый канал пропал из столбца');
 });

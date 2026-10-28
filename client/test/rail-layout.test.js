@@ -1,11 +1,11 @@
-// Раскладка столбца сходок: личный порядок и группы, починка сохранённых данных и перетаскивание
+// Раскладка столбца каналов: личный порядок и группы, починка сохранённых данных и перетаскивание
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { normalizeLayout, groupHubs, moveItem, updateFolder, ungroup, hubOrder } = require('../renderer/rail-layout');
 
 const folder = (id, hubs, extra = {}) => ({ folder: id, name: '', color: null, collapsed: false, hubs, ...extra });
 
-test('новые сходки — в конец, ушедшие пропадают, порядок сохраняется', () => {
+test('новые каналы — в конец, ушедшие пропадают, порядок сохраняется', () => {
   assert.deepEqual(normalizeLayout({ items: [3, 1] }, [1, 2, 3]), { items: [3, 1, 2] });
   assert.deepEqual(normalizeLayout({ items: [3, folder('a', [1, 4]), 2] }, [1, 2, 3, 5]), { items: [3, 1, 2, 5] });
   assert.deepEqual(normalizeLayout(undefined, [2, 1]), { items: [2, 1] });
@@ -14,7 +14,7 @@ test('новые сходки — в конец, ушедшие пропадаю
 test('битые данные не ломают столбец', () => {
   for (const raw of [null, 'мусор', 42, { items: 'нет' }, { items: [null, 'x', {}, { folder: 5 }, [1]] }])
     assert.deepEqual(normalizeLayout(raw, [1, 2]), { items: [1, 2] });
-  // Повторы, сходка в двух местах, папка внутри папки
+  // Повторы, канал в двух местах, папка внутри папки
   assert.deepEqual(
     normalizeLayout({ items: [1, 1, folder('a', [1, 2, 2, folder('b', [3])]), 3] }, [1, 2, 3]),
     { items: [1, 2, 3] }
@@ -27,10 +27,10 @@ test('битые данные не ломают столбец', () => {
   assert.notEqual(twins.items[0].folder, twins.items[1].folder);
 });
 
-test('перетащить сходку на сходку — группа на месте цели', () => {
+test('перетащить канал на канал — группа на месте цели', () => {
   const layout = { items: [1, 2, 3] };
   assert.deepEqual(groupHubs(layout, 3, 1, 'g'), { items: [folder('g', [1, 3]), 2] });
-  // На сходку внутри группы — в ту же группу, сразу после неё
+  // На канал внутри группы — в ту же группу, сразу после него
   const inFolder = { items: [folder('g', [1, 3]), 2] };
   assert.deepEqual(groupHubs(inFolder, 2, 1, 'h'), { items: [folder('g', [1, 2, 3])] });
   // На саму себя — ничего не меняется
@@ -39,16 +39,16 @@ test('перетащить сходку на сходку — группа на 
 
 test('порядок перетаскиванием и вытаскивание из группы', () => {
   const layout = { items: [1, folder('g', [2, 3]), 4] };
-  // Сходку — перед другой
+  // Канал — перед другим каналом
   assert.deepEqual(moveItem(layout, 4, 1), { items: [4, 1, folder('g', [2, 3])] });
   // В конец
   assert.deepEqual(moveItem(layout, 1, null), { items: [folder('g', [2, 3]), 4, 1] });
   // Из группы наружу; в группе осталась одна — группа распадается
   assert.deepEqual(moveItem(layout, 3, 4), { items: [1, 2, 3, 4] });
-  // Внутри группы — перед другой сходкой этой группы
+  // Внутри группы — перед другим каналом этой группы
   const three = { items: [folder('g', [2, 3, 5])] };
   assert.deepEqual(moveItem(three, 5, 2), { items: [folder('g', [5, 2, 3])] });
-  // Группу целиком; «перед сходкой в группе» для группы — перед этой группой
+  // Группу целиком; «перед каналом в группе» для группы — перед этой группой
   assert.deepEqual(moveItem(layout, 'g', 1), { items: [folder('g', [2, 3]), 1, 4] });
   assert.deepEqual(moveItem({ items: [folder('a', [1, 2]), folder('b', [3, 4])] }, 'b', 2), {
     items: [folder('b', [3, 4]), folder('a', [1, 2])],

@@ -1,15 +1,15 @@
-// Сходки — свой «сервер» для своих: комнаты внутри, участники, приглашения друзей.
-// Здесь: столбец сходок слева (личный порядок и группы — rail-layout.js), шапка сходки с меню,
-// список участников справа, окна «Собрать сходку», настройки, приглашения. Комнаты сходки — в rooms.js
+// Каналы — свой «сервер» для своих: комнаты внутри, участники, приглашения друзей.
+// Здесь: столбец каналов слева (личный порядок и группы — rail-layout.js), шапка канала с меню,
+// список участников справа, окна «Собрать канал», настройки, приглашения. Комнаты канала — в rooms.js
 
 const HUB_MODALS = ['hub-create', 'hub-settings', 'hub-invite', 'hub-join', 'folder-edit'];
-const lastRoomOf = new Map(); // id сходки -> последняя открытая в ней комната
+const lastRoomOf = new Map(); // id канала -> последняя открытая в нём комната
 
 const hubById = (id) => state.hubs.get(id);
 const currentHub = () => (state.view === 'home' ? null : hubById(state.view) || null);
 const roomsOfHub = (hubId) => [...state.rooms.values()].filter((r) => r.hubId === hubId);
 
-/** Старшинство в сходке, как на сервере: создатель 3, управляющий 2, участник 1 */
+/** Старшинство в канале, как на сервере: создатель 3, управляющий 2, участник 1 */
 function hubRank(hub, userId = state.me.id) {
   if (hub.ownerId === userId) return 3;
   const member = hub.members.find((m) => m.id === userId);
@@ -46,7 +46,7 @@ async function refreshHubs() {
   }
 }
 
-/** Свежие данные сходки: столбец, шапка, права в её комнатах и открытые окна */
+/** Свежие данные канала: столбец, шапка, права в его комнатах и открытые окна */
 function applyHub(hub) {
   state.hubs.set(hub.id, hub);
   state.hubInvites = state.hubInvites.filter((i) => i.hub.id !== hub.id);
@@ -58,7 +58,7 @@ function applyHub(hub) {
   if (inviteHubId === hub.id) renderHubInvite();
 }
 
-/** Сходки больше нет (вышли, выгнали, удалили) */
+/** Канала больше нет (вышли, выгнали, удалили) */
 function forgetHub(id) {
   state.hubs.delete(id);
   for (const room of roomsOfHub(id)) forgetRoom(room.id);
@@ -69,9 +69,9 @@ function forgetHub(id) {
   renderRail();
 }
 
-// ---------- Что открыто: дом или сходка ----------
+// ---------- Что открыто: дом или канал ----------
 
-/** Открыть сходку: её последнюю комнату, иначе первую текстовую, иначе любую; комнат нет — «Тут пока пусто» */
+/** Открыть канал: его последнюю комнату, иначе первую текстовую, иначе любую; комнат нет — «Тут пока пусто» */
 function openHub(id) {
   if (!hubById(id)) return;
   const rooms = roomsOfHub(id);
@@ -87,10 +87,10 @@ function openHub(id) {
   renderVoice();
 }
 
-/** Открытая комната пропала: в сходке — другая её комната, дома — раздел «Друзья» */
+/** Открытая комната пропала: в канале — другая его комната, дома — раздел «Друзья» */
 const leaveSelectedRoom = () => (currentHub() ? openHub(state.view) : selectRoom(null));
 
-/** Боковая панель и центр под то, что открыто: дом (друзья и личные сообщения) или сходка */
+/** Боковая панель и центр под то, что открыто: дом (друзья и личные сообщения) или канал */
 function renderHubChrome() {
   const hub = currentHub();
   $('home-nav').classList.toggle('hidden', Boolean(hub));
@@ -110,7 +110,7 @@ function renderHubEmpty(hub) {
   const manager = canManageHub(hub);
   $('hub-empty-text').textContent = manager
     ? 'Создайте первую комнату: голосовую — чтобы разговаривать, текстовую — чтобы переписываться.'
-    : 'Комнат пока нет — их создаёт тот, кто управляет сходкой.';
+    : 'Комнат пока нет — их создаёт тот, кто управляет каналом.';
   const actions = $('hub-empty-actions');
   actions.replaceChildren();
   if (manager)
@@ -120,11 +120,11 @@ function renderHubEmpty(hub) {
     );
 }
 
-// ---------- Столбец сходок ----------
+// ---------- Столбец каналов ----------
 
 const layoutKey = () => `rail:${state.me.id}`;
 
-/** Своя раскладка, починенная под нынешний список сходок */
+/** Своя раскладка, починенная под нынешний список каналов */
 const currentLayout = () => normalizeLayout(store.get(layoutKey(), null), [...state.hubs.keys()]);
 
 function saveLayout(layout) {
@@ -132,7 +132,7 @@ function saveLayout(layout) {
   renderRail();
 }
 
-let dragKey = null; // что тащим: id сходки (число) или id группы (строка)
+let dragKey = null; // что тащим: id канала (число) или id группы (строка)
 let railDirty = false;
 
 const hubUnread = (hubId) => roomsOfHub(hubId).some((r) => state.roomUnread.get(r.id));
@@ -202,7 +202,7 @@ function folderItem(folder) {
   tile.className = 'rail-tile folder-tile';
   tile.dataset.tip = folder.name || hubs.map((h) => h.name).join(', ');
   if (folder.collapsed) {
-    // Свёрнутая группа — мозаика из первых четырёх сходок
+    // Свёрнутая группа — мозаика из первых четырёх каналов
     for (const hub of hubs.slice(0, 4)) {
       const mini = document.createElement('span');
       fillHubIcon(mini, hub);
@@ -235,7 +235,7 @@ function folderItem(folder) {
   return box;
 }
 
-// Приглашение — сходка с пунктирной рамкой в начале столбца: щелчок открывает «Вступить / Отказаться»
+// Приглашение — канал с пунктирной рамкой в начале столбца: щелчок открывает «Вступить / Отказаться»
 function inviteItem(invite) {
   const tile = document.createElement('button');
   tile.type = 'button';
@@ -259,7 +259,7 @@ function markHubRead(hubId) {
 const keyOf = (item) => (item.dataset.hub ? Number(item.dataset.hub) : item.dataset.folder);
 const newFolderId = () => `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
-/** Куда бросят: в верхнюю треть — перед элементом, на середину сходки — в группу с ней, на группу — внутрь.
+/** Куда бросят: в верхнюю треть — перед элементом, на середину канала — в группу с ним, на группу — внутрь.
  *  Группу можно только переставить. Мимо элементов — в конец */
 function dropTarget(e) {
   const item = e.target.closest('#rail-list .rail-item[draggable="true"]');
@@ -402,18 +402,18 @@ document.addEventListener(
   true
 );
 
-// ---------- Меню сходки ----------
+// ---------- Меню канала ----------
 
 function hubMenuItems(hub) {
   const manager = canManageHub(hub);
   return [
     manager && { label: 'Позвать друзей', onclick: () => openHubInvite(hub.id) },
     manager && { label: 'Создать комнату', onclick: () => openRoomCreate('voice', hub.id) },
-    { label: manager ? 'Настройки сходки' : 'Участники сходки', onclick: () => openHubSettings(hub.id, manager ? 'overview' : 'members') },
+    { label: manager ? 'Настройки канала' : 'Участники канала', onclick: () => openHubSettings(hub.id, manager ? 'overview' : 'members') },
     'sep',
     hub.ownerId === state.me.id
-      ? { label: 'Удалить сходку', danger: true, onclick: () => deleteHub(hub) }
-      : { label: 'Выйти из сходки', danger: true, onclick: () => leaveHub(hub) },
+      ? { label: 'Удалить канал', danger: true, onclick: () => deleteHub(hub) }
+      : { label: 'Выйти из канала', danger: true, onclick: () => leaveHub(hub) },
   ];
 }
 
@@ -426,18 +426,18 @@ $('hub-menu-btn').onclick = () => {
 };
 
 async function deleteHub(hub) {
-  if (!confirm(`Удалить сходку «${hub.name}» вместе со всеми комнатами и перепиской? Это нельзя отменить.`)) return;
+  if (!confirm(`Удалить канал «${hub.name}» вместе со всеми комнатами и перепиской? Это нельзя отменить.`)) return;
   try {
     await Api.del(`/hubs/${hub.id}`);
     forgetHub(hub.id);
-    toast(`Сходка «${hub.name}» удалена`);
+    toast(`Канал «${hub.name}» удалён`);
   } catch (err) {
     toast(err.message);
   }
 }
 
 async function leaveHub(hub) {
-  if (!confirm(`Выйти из сходки «${hub.name}»? Вернуться можно будет только по новому приглашению.`)) return;
+  if (!confirm(`Выйти из канала «${hub.name}»? Вернуться можно будет только по новому приглашению.`)) return;
   try {
     await Api.del(`/hubs/${hub.id}/members/${state.me.id}`);
     forgetHub(hub.id);
@@ -462,7 +462,7 @@ function renderMembers() {
   }
   if (!show) return;
 
-  // Открыта комната — её участники по её ролям; иначе — вся сходка
+  // Открыта комната — её участники по её ролям; иначе — весь канал
   const room = roomById(state.selectedRoomId);
   const people = room ? room.members : hub.members;
   const inVoice = new Set((room?.voice || []).map((p) => p.userId));
@@ -480,7 +480,7 @@ function renderMembers() {
   box.append(
     el('div', { className: 'members-head' },
       el('b', { textContent: 'Участники' }),
-      el('span', { className: 'muted small ellipsis', textContent: room ? `· ${room.name}` : `· вся сходка` }))
+      el('span', { className: 'muted small ellipsis', textContent: room ? `· ${room.name}` : `· весь канал` }))
   );
   for (const g of [...groups, online, offline]) {
     if (!g.people.length) continue;
@@ -490,14 +490,14 @@ function renderMembers() {
       const name = el('div', { className: 'member-nick ellipsis', textContent: m.displayName });
       if (g.role) name.style.color = g.role.color;
       const sub = inVoice.has(m.id) ? 'В голосе'
-        : m.id === hub.ownerId ? 'Создатель сходки'
-        : hubMember?.manager ? 'Управляет сходкой'
+        : m.id === hub.ownerId ? 'Создатель канала'
+        : hubMember?.manager ? 'Управляет каналом'
         : presenceIn(m) === 'idle' || presenceIn(m) === 'dnd' ? STATUS[presenceIn(m)].label : '';
       const row = el('div', { className: `member-item${g.offline ? ' offline' : ''}` },
         makeAvatar(m, presenceIn(m), 'small'),
         el('div', { className: 'member-text' }, name, sub && el('div', { className: 'muted small ellipsis', textContent: sub })));
       if (m.id === hub.ownerId)
-        row.insertAdjacentHTML('beforeend', '<svg class="crown" viewBox="0 0 24 24"><title>Создатель сходки</title><path d="m3 7 4.5 4L12 4l4.5 7L21 7l-2 12H5z"/></svg>');
+        row.insertAdjacentHTML('beforeend', '<svg class="crown" viewBox="0 0 24 24"><title>Создатель канала</title><path d="m3 7 4.5 4L12 4l4.5 7L21 7l-2 12H5z"/></svg>');
       row.dataset.profile = m.id;
       box.append(row);
     }
@@ -510,14 +510,14 @@ for (const b of document.querySelectorAll('.members-toggle'))
     renderMembers();
   };
 
-// ---------- Собрать сходку ----------
+// ---------- Собрать канал ----------
 
 let newHubColor = COLORS[0];
 
 function openHubCreate() {
   newHubColor = COLORS[Math.floor(Math.random() * COLORS.length)];
   $('hub-name').value = '';
-  $('hub-name').placeholder = `Сходка ${state.me.displayName}`.slice(0, 40);
+  $('hub-name').placeholder = `Канал ${state.me.displayName}`.slice(0, 40);
   $('hub-create-error').textContent = '';
   renderHubCreate();
   $('hub-create').classList.remove('hidden');
@@ -543,7 +543,7 @@ $('hub-create-form').onsubmit = async (e) => {
   try {
     const hub = await Api.post('/hubs', { name: $('hub-name').value.trim() || $('hub-name').placeholder, iconColor: newHubColor });
     applyHub(hub);
-    // Комнаты новой сходки приходят отдельно — дождёмся их, чтобы сразу открыть
+    // Комнаты нового канала приходят отдельно — дождёмся их, чтобы сразу открыть
     await refreshRooms();
     $('hub-create').classList.add('hidden');
     openHub(hub.id);
@@ -556,7 +556,7 @@ $('hub-create-form').onsubmit = async (e) => {
 
 $('rail-home').onclick = () => selectContact(null);
 
-// ---------- Настройки сходки ----------
+// ---------- Настройки канала ----------
 
 let settingsHubId = null;
 let settingsTab = 'overview';
@@ -591,7 +591,7 @@ function renderHubSettings() {
     t.classList.toggle('active', t.dataset.tab === settingsTab);
     t.classList.toggle('hidden', !manager && t.dataset.tab !== 'members');
   }
-  $('hs-leave').textContent = hub.ownerId === state.me.id ? 'Удалить сходку' : 'Выйти из сходки';
+  $('hs-leave').textContent = hub.ownerId === state.me.id ? 'Удалить канал' : 'Выйти из канала';
 
   const body = $('hs-body');
   const focused = document.activeElement?.dataset?.keep;
@@ -686,18 +686,18 @@ function hubMembersPane(hub) {
     const actions = el('div', { className: 'member-actions' });
     // Право управлять раздаёт создатель; выгнать и забанить — только тех, кто младше
     if (hub.ownerId === state.me.id && !mine) {
-      const sw = el('input', { type: 'checkbox', className: 'switch', checked: Boolean(m.manager), title: 'Может управлять сходкой' });
+      const sw = el('input', { type: 'checkbox', className: 'switch', checked: Boolean(m.manager), title: 'Может управлять каналом' });
       sw.onchange = () => hubAction(Api.put(`/hubs/${hub.id}/members/${m.id}/manager`, { manager: sw.checked }));
       actions.append(el('label', { className: 'manager-switch' }, el('span', { className: 'small', textContent: 'Управляет' }), sw));
     }
     if (!mine && myRank >= 2 && myRank > hubRank(hub, m.id)) {
       actions.append(
         smallButton('Выгнать', 'warn-outline', () => {
-          if (confirm(`Выгнать ${m.displayName} из сходки? Позвать снова можно будет в любой момент.`))
-            hubAction(Api.del(`/hubs/${hub.id}/members/${m.id}`), `${m.displayName} больше не в сходке`);
+          if (confirm(`Выгнать ${m.displayName} из канала? Позвать снова можно будет в любой момент.`))
+            hubAction(Api.del(`/hubs/${hub.id}/members/${m.id}`), `${m.displayName} больше не в канале`);
         }),
         smallButton('Забанить', 'danger', () => {
-          if (confirm(`Забанить ${m.displayName}? Он пропадёт из сходки и всех её комнат, позвать его будет нельзя, пока не снимете бан.`))
+          if (confirm(`Забанить ${m.displayName}? Он пропадёт из канала и всех его комнат, позвать его будет нельзя, пока не снимете бан.`))
             hubAction(Api.post(`/hubs/${hub.id}/bans`, { userId: m.id }), `${m.displayName} забанен`);
         })
       );
@@ -709,7 +709,7 @@ function hubMembersPane(hub) {
 }
 
 function hubBansPane(hub) {
-  if (!hub.bans.length) return [el('p', { className: 'muted', textContent: 'Банов нет. Забаненный пропадает из сходки и всех её комнат, и позвать его нельзя, пока бан не снимут.' })];
+  if (!hub.bans.length) return [el('p', { className: 'muted', textContent: 'Банов нет. Забаненный пропадает из канала и всех его комнат, и позвать его нельзя, пока бан не снимут.' })];
   const list = el('div', { className: 'member-list' });
   for (const b of hub.bans)
     list.append(el('div', { className: 'member-row' }, makeAvatar(b, undefined, 'small'),
@@ -733,13 +733,13 @@ $('hub-icon-input').onchange = async (e) => {
   e.target.value = '';
   if (!file || !settingsHubId) return;
   try {
-    await hubAction(Api.upload('PUT', `/hubs/${settingsHubId}/icon`, await makeAvatarBlob(file)), 'Картинка сходки обновлена');
+    await hubAction(Api.upload('PUT', `/hubs/${settingsHubId}/icon`, await makeAvatarBlob(file)), 'Картинка канала обновлена');
   } catch (err) {
     $('hs-error').textContent = err.message;
   }
 };
 
-// ---------- Позвать друзей в сходку ----------
+// ---------- Позвать друзей в канал ----------
 
 let inviteHubId = null;
 
@@ -771,7 +771,7 @@ function renderHubInvite() {
   for (const f of friends) {
     const info = el('div', { className: 'grow ellipsis' }, el('div', { className: 'ellipsis', textContent: f.displayName }), el('div', { className: 'muted small', textContent: `@${f.username}` }));
     let action;
-    if (inHub.has(f.id)) action = el('span', { className: 'muted small', textContent: 'Уже в сходке' });
+    if (inHub.has(f.id)) action = el('span', { className: 'muted small', textContent: 'Уже в канале' });
     else if (banned.has(f.id)) action = el('span', { className: 'small error-text', textContent: 'Забанен' });
     else if (invited.has(f.id)) action = el('span', { className: 'muted small', textContent: 'Позвали' });
     else
@@ -795,7 +795,7 @@ $('hi-close').onclick = () => $('hub-invite').classList.add('hidden');
 
 let joinHubId = null;
 
-/** Щелчок по приглашению (в столбце или в уведомлении); если уже в сходке — просто открыть её */
+/** Щелчок по приглашению (в столбце или в уведомлении); если уже в канале — просто открыть его */
 function openHubJoin(hubId) {
   if (state.hubs.has(hubId)) return openHub(hubId);
   const invite = state.hubInvites.find((i) => i.hub.id === hubId);
@@ -804,7 +804,7 @@ function openHubJoin(hubId) {
   fillHubIcon($('hj-icon'), invite.hub);
   $('hj-name').textContent = invite.hub.name;
   const n = invite.hub.memberCount;
-  $('hj-text').textContent = `${invite.from.displayName} зовёт вас в сходку. Там уже ${n} ${plural(n, 'участник', 'участника', 'участников')}.`;
+  $('hj-text').textContent = `${invite.from.displayName} зовёт вас в канал. Там уже ${n} ${plural(n, 'участник', 'участника', 'участников')}.`;
   $('hj-error').textContent = '';
   $('hub-join').classList.remove('hidden');
 }
@@ -844,22 +844,22 @@ function handleHubEvent(msg) {
       forgetHub(msg.hubId);
       if (!hub || msg.reason === 'left') return;
       const text =
-        msg.reason === 'banned' ? `Вас забанили в сходке «${hub.name}»`
-        : msg.reason === 'kicked' ? `Вас выгнали из сходки «${hub.name}»`
-        : hub.ownerId !== state.me.id ? `Сходку «${hub.name}» распустили`
+        msg.reason === 'banned' ? `Вас забанили в канале «${hub.name}»`
+        : msg.reason === 'kicked' ? `Вас выгнали из канала «${hub.name}»`
+        : hub.ownerId !== state.me.id ? `Канал «${hub.name}» распустили`
         : '';
       if (!text) return;
       toast(text);
-      notify('Сходка', text, { kind: 'hub-removed' });
+      notify('Канал', text, { kind: 'hub-removed' });
       return;
     }
     case 'hub:invite': {
       const { invite } = msg;
       state.hubInvites = [invite, ...state.hubInvites.filter((i) => i.hub.id !== invite.hub.id)];
       renderRail();
-      const text = `${invite.from.displayName} зовёт вас в сходку «${invite.hub.name}»`;
+      const text = `${invite.from.displayName} зовёт вас в канал «${invite.hub.name}»`;
       toast(text);
-      notify('Приглашение в сходку', text, { kind: 'hub-invite', open: { hub: invite.hub.id } });
+      notify('Приглашение в канал', text, { kind: 'hub-invite', open: { hub: invite.hub.id } });
     }
   }
 }
