@@ -100,7 +100,7 @@ function openProfileCard(userId, anchor) {
     body.append(section('В Созвоне с', since));
   }
 
-  // Роль в открытой комнате и общие сходки (комнаты в разных сходках часто называются одинаково)
+  // Роль в открытой комнате и общие каналы (комнаты в разных каналах часто называются одинаково)
   const openRoom = state.selectedRoomId && roomById(state.selectedRoomId);
   if (openRoom && memberOf(openRoom, userId)) {
     const roles = document.createElement('div');
@@ -117,14 +117,14 @@ function openProfileCard(userId, anchor) {
       for (const h of shared) {
         const c = chip(h.name, h.iconColor);
         c.classList.add('link');
-        c.title = 'Открыть сходку';
+        c.title = 'Открыть канал';
         c.onclick = () => {
           closeProfileCard();
           openHub(h.id);
         };
         list.append(c);
       }
-      body.append(section(`Общие сходки — ${shared.length}`, list));
+      body.append(section(`Общие каналы — ${shared.length}`, list));
     }
 
     const note = document.createElement('textarea');

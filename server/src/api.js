@@ -175,7 +175,7 @@ function notifyRelated(userId, message) {
 const ROOM_KINDS = ['voice', 'text'];
 const MAX_OWNED_HUBS = 10;
 const MAX_HUB_ROOMS = 30;
-// Участники комнаты — из участников сходки, поэтому предел один
+// Участники комнаты — из участников канала, поэтому предел один
 const MAX_HUB_MEMBERS = 50;
 const MAX_ROOM_MEMBERS = MAX_HUB_MEMBERS;
 const MAX_ROLES = 20;
@@ -203,7 +203,7 @@ const toRoom = (row) => ({
   voice: voice.participants(row.id),
 });
 
-// Свежие данные комнаты — всем её участникам
+// Свежие данные комнаты — всем его участникам
 function notifyRoom(roomId) {
   const room = toRoom(rooms.byId(roomId));
   for (const m of room.members) hub.send(m.id, { type: 'room:updated', room });
@@ -211,7 +211,7 @@ function notifyRoom(roomId) {
 }
 
 function validateHubName(name) {
-  if (name.length < 1 || name.length > 40) throw new HttpError(400, 'Название сходки — от 1 до 40 символов');
+  if (name.length < 1 || name.length > 40) throw new HttpError(400, 'Название канала — от 1 до 40 символов');
 }
 
 const hubIconUrl = (row) => (row.icon ? `/api/avatars/${row.icon}.webp` : null);
@@ -228,7 +228,7 @@ const toHub = (row) => ({
   bans: hubs.bans(row.id).map((b) => ({ ...toPublicUser(b), bannedAt: b.banned_at })),
 });
 
-// Приглашение глазами приглашённого: сходку он ещё не видит, поэтому только её вывеска
+// Приглашение глазами приглашённого: канал он ещё не видит, поэтому только его вывеска
 function toHubInvite(row) {
   const hubRow = hubs.byId(row.hub_id);
   return {
@@ -238,7 +238,7 @@ function toHubInvite(row) {
   };
 }
 
-// Свежие данные сходки — всем её участникам
+// Свежие данные канала — всем его участникам
 function notifyHub(hubId) {
   const data = toHub(hubs.byId(hubId));
   for (const m of data.members) hub.send(m.id, { type: 'hub:updated', hub: data });
@@ -762,11 +762,11 @@ export function createApi() {
     return who;
   }
 
-  // Удалить комнату может её создатель и тот, кто управляет её сходкой
+  // Удалить комнату может её создатель и тот, кто управляет её каналом
   function requireRoomRemover(req, room) {
     const hubRow = room.hub_id && hubs.byId(room.hub_id);
     if (room.owner_id !== req.user.id && !(hubRow && hubs.rankOf(hubRow, req.user.id) >= 2))
-      throw new HttpError(403, 'Удалить комнату может только её создатель или тот, кто управляет сходкой');
+      throw new HttpError(403, 'Удалить комнату может только её создатель или тот, кто управляет каналом');
   }
 
   // Над участником может действовать только тот, кто старше по роли
@@ -775,7 +775,7 @@ export function createApi() {
       throw new HttpError(403, 'Нельзя: у этого участника такие же или более высокие права');
   }
 
-  // Звать в комнату можно своих друзей и участников её сходки. Друг, которого ещё нет в сходке,
+  // Звать в комнату можно своих друзей и участников её канала. Друг, которого ещё нет в канале,
   // входит в неё только с этой комнатой — так зовут версии до 2.0
   function addMembers(req, room, ids) {
     const count = rooms.members(room.id).length;
@@ -784,7 +784,7 @@ export function createApi() {
       if (!hubs.isMember(room.hub_id, id) && !contacts.has(req.user.id, id))
         throw new HttpError(400, 'Добавлять в комнату можно только своих друзей');
       if (rooms.isBanned(room.id, id)) throw new HttpError(400, `${users.byId(id).display_name} заблокирован в этой комнате`);
-      if (hubs.isBanned(room.hub_id, id)) throw new HttpError(400, `${users.byId(id).display_name} заблокирован в этой сходке`);
+      if (hubs.isBanned(room.hub_id, id)) throw new HttpError(400, `${users.byId(id).display_name} заблокирован в этом канале`);
     }
     if (count + fresh.length > MAX_ROOM_MEMBERS)
       throw new HttpError(400, `В комнате может быть не больше ${MAX_ROOM_MEMBERS} человек`);
@@ -823,15 +823,15 @@ export function createApi() {
       // Проверяем друзей до создания, чтобы не оставить пустую комнату при ошибке
       if (memberIds.some((id) => !contacts.has(req.user.id, Number(id))))
         throw new HttpError(400, 'Добавлять в комнату можно только своих друзей');
-      // Версии до 2.0 не знают о сходках: их комната попадает в сходку создателя и только к тем, кого позвали
+      // Версии до 2.0 не знают о каналах: их комната попадает в канал создателя и только к тем, кого позвали
       const legacy = req.body.hubId == null;
       const hubRow = legacy ? hubs.defaultFor(req.user) : requireHub(req, Number(req.body.hubId));
       if (!legacy) requireHubManager(req, hubRow);
       if (hubs.rooms(hubRow.id).length >= MAX_HUB_ROOMS)
-        throw new HttpError(400, `В сходке может быть не больше ${MAX_HUB_ROOMS} комнат`);
+        throw new HttpError(400, `В канале может быть не больше ${MAX_HUB_ROOMS} комнат`);
       const room = rooms.create(req.user.id, name, kind, hubRow.id, { everyone: !legacy });
       addMembers(req, room, memberIds);
-      // Сходка могла только что появиться — новые версии на других устройствах должны о ней узнать
+      // Канал могла только что появиться — новые версии на других устройствах должны о нём узнать
       if (legacy) notifyHub(hubRow.id);
       return notifyRoom(room.id);
     })
@@ -894,7 +894,7 @@ export function createApi() {
       const room = requireRoom(req);
       const userId = Number(req.params.userId);
       if (userId === room.owner_id)
-        throw new HttpError(400, 'Создатель не может выйти из своей комнаты — её можно только удалить');
+        throw new HttpError(400, 'Создатель не может выйти из своей комнаты — его можно только удалить');
       if (!rooms.isMember(room.id, userId)) throw new HttpError(404, 'Этого человека нет в комнате');
       if (userId !== req.user.id) requireOutranks(requirePerm(req, room, PERMS.kick, 'Нет права выгонять участников'), room, userId);
       removeFromRoom(room, userId, userId === req.user.id ? 'left' : 'kicked');
@@ -1056,18 +1056,18 @@ export function createApi() {
     })
   );
 
-  // ---------- Сходки ----------
+  // ---------- Каналы ----------
 
   function requireHub(req, id = Number(req.params.id)) {
     const hubRow = hubs.byId(id);
-    if (!hubRow || !hubs.isMember(hubRow.id, req.user.id)) throw new HttpError(404, 'Сходка не найдена');
+    if (!hubRow || !hubs.isMember(hubRow.id, req.user.id)) throw new HttpError(404, 'Канал не найдена');
     return hubRow;
   }
 
   /** Создатель или управляющий; возвращает старшинство */
   function requireHubManager(req, hubRow) {
     const rank = hubs.rankOf(hubRow, req.user.id);
-    if (rank < 2) throw new HttpError(403, 'Нет права управлять сходкой');
+    if (rank < 2) throw new HttpError(403, 'Нет права управлять каналом');
     return rank;
   }
 
@@ -1077,10 +1077,10 @@ export function createApi() {
   }
 
   function requireHubOwner(req, hubRow) {
-    if (hubRow.owner_id !== req.user.id) throw new HttpError(403, 'Это может только создатель сходки');
+    if (hubRow.owner_id !== req.user.id) throw new HttpError(403, 'Это может только создатель канала');
   }
 
-  // Из сходки — значит из всех её комнат: вышел сам (left), выгнали (kicked) или забанили (banned)
+  // Из канала — значит из всех его комнат: вышел сам (left), выгнали (kicked) или забанили (banned)
   function removeFromHub(hubRow, userId, reason) {
     for (const room of hubs.rooms(hubRow.id)) if (rooms.isMember(room.id, userId)) removeFromRoom(room, userId, 'hub');
     hubs.removeMember(hubRow.id, userId);
@@ -1090,7 +1090,7 @@ export function createApi() {
 
   api.get('/hubs', handle((req) => hubs.of(req.user.id).map(toHub)));
 
-  // Собрать сходку: в ней сразу голосовая и текстовая комнаты, чтобы было куда зайти
+  // Собрать канал: в нём сразу голосовая и текстовая комнаты, чтобы было куда зайти
   api.post(
     '/hubs',
     handle((req) => {
@@ -1098,7 +1098,7 @@ export function createApi() {
       validateHubName(name);
       const iconColor = COLOR_RE.test(req.body.iconColor) ? req.body.iconColor : COLORS[crypto.randomInt(COLORS.length)];
       if (hubs.ownedCount(req.user.id) >= MAX_OWNED_HUBS)
-        throw new HttpError(400, `Можно собрать не больше ${MAX_OWNED_HUBS} сходок`);
+        throw new HttpError(400, `Можно собрать не больше ${MAX_OWNED_HUBS} каналов`);
       const hubRow = hubs.create(req.user.id, name, iconColor);
       rooms.create(req.user.id, 'Общий голос', 'voice', hubRow.id);
       rooms.create(req.user.id, 'Болталка', 'text', hubRow.id);
@@ -1121,7 +1121,7 @@ export function createApi() {
     })
   );
 
-  // Картинка сходки — как аватарка: приложение заранее обрезает её до квадрата WebP
+  // Картинка канала — как аватарка: приложение заранее обрезает её до квадрата WebP
   api.put(
     '/hubs/:id/icon',
     express.raw({ type: 'image/webp', limit: AVATAR_MAX_BYTES }),
@@ -1148,7 +1148,7 @@ export function createApi() {
     })
   );
 
-  // Удалить сходку может только создатель; комнаты пропадают вместе с ней
+  // Удалить канал может только создатель; комнаты пропадают вместе с ним
   api.delete(
     '/hubs/:id',
     handle((req) => {
@@ -1175,11 +1175,11 @@ export function createApi() {
         (id) => !hubs.isMember(hubRow.id, id)
       );
       for (const id of ids) {
-        if (!contacts.has(req.user.id, id)) throw new HttpError(400, 'Звать в сходку можно только своих друзей');
-        if (hubs.isBanned(hubRow.id, id)) throw new HttpError(400, `${users.byId(id).display_name} заблокирован в этой сходке`);
+        if (!contacts.has(req.user.id, id)) throw new HttpError(400, 'Звать в канал можно только своих друзей');
+        if (hubs.isBanned(hubRow.id, id)) throw new HttpError(400, `${users.byId(id).display_name} заблокирован в этом канале`);
       }
       if (hubs.members(hubRow.id).length + ids.length > MAX_HUB_MEMBERS)
-        throw new HttpError(400, `В сходке может быть не больше ${MAX_HUB_MEMBERS} человек`);
+        throw new HttpError(400, `В канале может быть не больше ${MAX_HUB_MEMBERS} человек`);
       for (const id of ids) {
         hubs.addInvite(hubRow.id, id, req.user.id);
         hub.send(id, { type: 'hub:invite', invite: toHubInvite(hubs.invite(hubRow.id, id)) });
@@ -1190,7 +1190,7 @@ export function createApi() {
 
   api.get('/hub-invites', handle((req) => hubs.invitesOf(req.user.id).map(toHubInvite)));
 
-  // Принять приглашение: сходка и все её комнаты, кроме тех, где забанен
+  // Принять приглашение: канал и все его комнаты, кроме тех, где забанен
   api.post(
     '/hub-invites/:hubId/accept',
     handle((req) => {
@@ -1198,7 +1198,7 @@ export function createApi() {
       if (!hubs.byId(hubId) || !hubs.invite(hubId, req.user.id) || hubs.isBanned(hubId, req.user.id))
         throw new HttpError(404, 'Приглашение не найдено');
       if (hubs.members(hubId).length >= MAX_HUB_MEMBERS)
-        throw new HttpError(400, `В сходке может быть не больше ${MAX_HUB_MEMBERS} человек`);
+        throw new HttpError(400, `В канале может быть не больше ${MAX_HUB_MEMBERS} человек`);
       for (const room of hubs.join(hubId, req.user.id)) notifyRoom(room.id);
       return notifyHub(hubId);
     })
@@ -1214,45 +1214,45 @@ export function createApi() {
     })
   );
 
-  // Выйти самому или выгнать (позвать снова можно); создатель не выходит — сходку можно только удалить
+  // Выйти самому или выгнать (позвать снова можно); создатель не выходит — канал можно только удалить
   api.delete(
     '/hubs/:id/members/:userId',
     handle((req) => {
       const hubRow = requireHub(req);
       const userId = Number(req.params.userId);
       if (userId === req.user.id) {
-        if (userId === hubRow.owner_id) throw new HttpError(400, 'Создатель не может выйти из сходки — её можно только удалить');
+        if (userId === hubRow.owner_id) throw new HttpError(400, 'Создатель не может выйти из канала — его можно только удалить');
         return removeFromHub(hubRow, userId, 'left');
       }
       requireHubOutranks(req, hubRow, userId);
-      if (!hubs.isMember(hubRow.id, userId)) throw new HttpError(404, 'Этого человека нет в сходке');
+      if (!hubs.isMember(hubRow.id, userId)) throw new HttpError(404, 'Этого человека нет в канале');
       return removeFromHub(hubRow, userId, 'kicked');
     })
   );
 
-  // Право управлять сходкой раздаёт только создатель
+  // Право управлять каналом раздаёт только создатель
   api.put(
     '/hubs/:id/members/:userId/manager',
     handle((req) => {
       const hubRow = requireHub(req);
       requireHubOwner(req, hubRow);
       const userId = Number(req.params.userId);
-      if (userId === hubRow.owner_id) throw new HttpError(400, 'Создатель сходки и так может всё');
-      if (!hubs.isMember(hubRow.id, userId)) throw new HttpError(404, 'Этого человека нет в сходке');
+      if (userId === hubRow.owner_id) throw new HttpError(400, 'Создатель канала и так может всё');
+      if (!hubs.isMember(hubRow.id, userId)) throw new HttpError(404, 'Этого человека нет в канале');
       hubs.setManager(hubRow.id, userId, req.body.manager === true);
       for (const room of hubs.rooms(hubRow.id)) enforceVoice(room);
       return notifyHub(hubRow.id);
     })
   );
 
-  // Бан: человек пропадает из сходки и всех её комнат, позвать его нельзя, пока не снимут
+  // Бан: человек пропадает из канала и всех его комнат, позвать его нельзя, пока не снимут
   api.post(
     '/hubs/:id/bans',
     handle((req) => {
       const hubRow = requireHub(req);
       const userId = Number(req.body.userId);
       requireHubOutranks(req, hubRow, userId);
-      if (!hubs.isMember(hubRow.id, userId)) throw new HttpError(404, 'Этого человека нет в сходке');
+      if (!hubs.isMember(hubRow.id, userId)) throw new HttpError(404, 'Этого человека нет в канале');
       hubs.ban(hubRow.id, userId, req.user.id);
       return removeFromHub(hubRow, userId, 'banned');
     })
