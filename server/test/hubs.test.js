@@ -1,4 +1,4 @@
-// Сходки: свой «сервер» с комнатами внутри, приглашения друзей, права, баны и перенос старых комнат
+// Каналы: свой «сервер» с комнатами внутри, приглашения друзей, права, баны и перенос старых комнат
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
@@ -16,7 +16,7 @@ after(() => server.stop());
 
 const hubRooms = async (token, hubId) => (await api('GET', '/rooms', null, token)).body.filter((r) => r.hubId === hubId);
 
-// Позвать в сходку и сразу принять приглашение
+// Позвать в канал и сразу принять приглашение
 async function join(hub, by, who) {
   assert.equal((await api('POST', `/hubs/${hub.id}/invites`, { userIds: [who.user.id] }, by.token)).status, 200);
   const res = await api('POST', `/hub-invites/${hub.id}/accept`, null, who.token);
@@ -24,7 +24,7 @@ async function join(hub, by, who) {
   return res.body;
 }
 
-test('сходки: создание, приглашение, вступление, комнаты внутри, выход и удаление', async () => {
+test('каналы: создание, приглашение, вступление, комнаты внутри, выход и удаление', async () => {
   const owner = await reg('hub_owner');
   const friend = await reg('hub_friend');
   const stranger = await reg('hub_stranger');
@@ -39,10 +39,10 @@ test('сходки: создание, приглашение, вступлени
   assert.equal(hub.iconColor, '#30a46c');
   assert.equal(hub.ownerId, owner.user.id);
   assert.deepEqual(hub.members.map((m) => m.id), [owner.user.id]);
-  // В новой сходке сразу есть голосовая и текстовая комнаты
+  // В новом канале сразу есть голосовая и текстовая комнаты
   assert.deepEqual((await hubRooms(owner.token, hub.id)).map((r) => r.kind).sort(), ['text', 'voice']);
 
-  // Чужой сходку не видит и ничего в ней не может
+  // Чужого канала не видит и ничего в нём не может
   assert.deepEqual((await api('GET', '/hubs', null, stranger.token)).body, []);
   assert.equal((await api('PATCH', `/hubs/${hub.id}`, { name: 'Моё' }, stranger.token)).status, 404);
   assert.equal((await api('POST', '/rooms', { hubId: hub.id, name: 'Чужая', kind: 'text' }, stranger.token)).status, 404);
@@ -58,7 +58,7 @@ test('сходки: создание, приглашение, вступлени
   assert.equal(invite.hub.name, 'Подъезд');
   assert.equal(invite.from.id, owner.user.id);
   assert.deepEqual((await api('GET', '/hub-invites', null, friend.token)).body.map((i) => i.hub.id), [hub.id]);
-  // Пока не вступил — комнат сходки не видит
+  // Пока не вступил — комнат канала не видит
   assert.deepEqual(await hubRooms(friend.token, hub.id), []);
   assert.equal((await api('POST', `/hub-invites/${hub.id}/accept`, null, stranger.token)).status, 404);
 
@@ -72,7 +72,7 @@ test('сходки: создание, приглашение, вступлени
   assert.equal(rooms.length, 2);
   for (const r of rooms) assert.ok(r.members.some((m) => m.id === friend.user.id));
 
-  // Новая комната в сходке — сразу у всех её участников
+  // Новая комната в канале — сразу у всех его участников
   const memes = await api('POST', '/rooms', { hubId: hub.id, name: 'Мемы', kind: 'text' }, owner.token);
   assert.equal(memes.status, 200);
   assert.equal(memes.body.hubId, hub.id);
@@ -81,14 +81,14 @@ test('сходки: создание, приглашение, вступлени
   do update = await cf.next('room:updated');
   while (update.room.id !== memes.body.id);
 
-  // Обычный участник сходкой не управляет
+  // Обычный участник каналом не управляет
   assert.equal((await api('POST', '/rooms', { hubId: hub.id, name: 'Моя', kind: 'text' }, friend.token)).status, 403);
   assert.equal((await api('PATCH', `/hubs/${hub.id}`, { name: 'Наш двор' }, friend.token)).status, 403);
   assert.equal((await api('POST', `/hubs/${hub.id}/invites`, { userIds: [owner.user.id] }, friend.token)).status, 403);
   assert.equal((await api('DELETE', `/rooms/${memes.body.id}`, null, friend.token)).status, 403);
   assert.equal((await api('PUT', `/hubs/${hub.id}/members/${friend.user.id}/manager`, { manager: true }, friend.token)).status, 403);
 
-  // Право «управлять сходкой» даёт только создатель
+  // Право «управлять каналом» даёт только создатель
   const promoted = await api('PUT', `/hubs/${hub.id}/members/${friend.user.id}/manager`, { manager: true }, owner.token);
   assert.equal(promoted.status, 200);
   assert.equal(promoted.body.members.find((m) => m.id === friend.user.id).manager, true);
@@ -97,20 +97,20 @@ test('сходки: создание, приглашение, вступлени
   assert.equal(renamed.body.name, 'Наш двор');
   assert.equal((await cf.next('hub:updated')).hub.id, hub.id);
   assert.equal((await api('POST', '/rooms', { hubId: hub.id, name: 'Кино', kind: 'voice' }, friend.token)).status, 200);
-  // Управляющий в комнатах сходки — как администратор: переименовывает и удаляет чужие комнаты
+  // Управляющий в комнатах канала — как администратор: переименовывает и удаляет чужие комнаты
   assert.equal((await api('PATCH', `/rooms/${memes.body.id}`, { name: 'Мемасы' }, friend.token)).status, 200);
   assert.equal((await api('DELETE', `/rooms/${memes.body.id}`, null, friend.token)).status, 200);
-  // Но удалить сходку может только создатель
+  // Но удалить канал может только создатель
   assert.equal((await api('DELETE', `/hubs/${hub.id}`, null, friend.token)).status, 403);
 
-  // Выход: из сходки и всех её комнат
+  // Выход: из канала и всех его комнат
   assert.equal((await api('DELETE', `/hubs/${hub.id}/members/${owner.user.id}`, null, owner.token)).status, 400);
   assert.equal((await api('DELETE', `/hubs/${hub.id}/members/${friend.user.id}`, null, friend.token)).status, 200);
   assert.equal((await cf.next('hub:removed')).reason, 'left');
   assert.deepEqual(await hubRooms(friend.token, hub.id), []);
   assert.deepEqual((await api('GET', '/hubs', null, friend.token)).body, []);
 
-  // Удаление: комнаты пропадают вместе со сходкой, приглашения — тоже
+  // Удаление: комнаты пропадают вместе со каналом, приглашения — тоже
   await api('POST', `/hubs/${hub.id}/invites`, { userIds: [friend.user.id] }, owner.token);
   const co = connect(owner.token);
   await co.open;
@@ -125,7 +125,7 @@ test('сходки: создание, приглашение, вступлени
   for (const c of [cf, co]) c.ws.close();
 });
 
-test('сходки: кик и бан из сходки, старшинство, баны комнат при вступлении', async () => {
+test('каналы: кик и бан из канала, старшинство, баны комнат при вступлении', async () => {
   const owner = await reg('hb_owner');
   const mod = await reg('hb_mod');
   const guest = await reg('hb_guest');
@@ -142,11 +142,11 @@ test('сходки: кик и бан из сходки, старшинство, 
   assert.equal((await api('POST', `/hubs/${hub.id}/bans`, { userId: owner.user.id }, mod.token)).status, 403);
   assert.equal((await api('POST', `/hubs/${hub.id}/bans`, { userId: mod.user.id }, guest.token)).status, 403);
 
-  // Бан в одной комнате сходки переживает повторное вступление
+  // Бан в одной комнате канала переживает повторное вступление
   const text = (await hubRooms(owner.token, hub.id)).find((r) => r.kind === 'text');
   assert.equal((await api('POST', `/rooms/${text.id}/bans`, { userId: guest.user.id }, mod.token)).status, 200);
 
-  // Кик из сходки: пропадает из всех комнат, но позвать снова можно
+  // Кик из канала: пропадает из всех комнат, но позвать снова можно
   const cg = connect(guest.token);
   await cg.open;
   assert.equal((await api('DELETE', `/hubs/${hub.id}/members/${guest.user.id}`, null, mod.token)).status, 200);
@@ -156,7 +156,7 @@ test('сходки: кик и бан из сходки, старшинство, 
   const back = await hubRooms(guest.token, hub.id);
   assert.deepEqual(back.map((r) => r.kind), ['voice']);
 
-  // Бан из сходки: пропадает, и позвать нельзя, пока не снимут
+  // Бан из канала: пропадает, и позвать нельзя, пока не снимут
   const banned = await api('POST', `/hubs/${hub.id}/bans`, { userId: guest.user.id }, mod.token);
   assert.equal(banned.status, 200);
   assert.deepEqual(banned.body.bans.map((b) => b.id), [guest.user.id]);
@@ -182,7 +182,7 @@ test('сходки: кик и бан из сходки, старшинство, 
   cg.ws.close();
 });
 
-test('сходки: картинка-иконка', async () => {
+test('каналы: картинка-иконка', async () => {
   const owner = await reg('hi_owner');
   const hub = (await api('POST', '/hubs', { name: 'С иконкой' }, owner.token)).body;
   assert.equal(hub.iconUrl, null);
@@ -204,27 +204,27 @@ test('сходки: картинка-иконка', async () => {
   assert.equal((await fetch(server.base + iconUrl)).status, 404);
 });
 
-test('старые клиенты: комната без сходки попадает в сходку создателя', async () => {
+test('старые клиенты: комната без канала попадает в канал создателя', async () => {
   const owner = await reg('legacy_owner');
   const friend = await reg('legacy_friend');
   await befriend(owner, friend);
   const first = await api('POST', '/rooms', { name: 'Старая', kind: 'voice', memberIds: [friend.user.id] }, owner.token);
   assert.equal(first.status, 200);
   const hubs = (await api('GET', '/hubs', null, owner.token)).body;
-  assert.deepEqual(hubs.map((h) => h.name), ['Сходка legacy_owner']);
+  assert.deepEqual(hubs.map((h) => h.name), ['Канал legacy_owner']);
   assert.equal(first.body.hubId, hubs[0].id);
-  // Друг из старого клиента попал в сходку, но только в эту комнату
+  // Друг из старого клиента попал в канал, но только в эту комнату
   assert.deepEqual((await api('GET', '/hubs', null, friend.token)).body.map((h) => h.id), [hubs[0].id]);
   assert.deepEqual((await hubRooms(friend.token, hubs[0].id)).map((r) => r.name), ['Старая']);
   const second = await api('POST', '/rooms', { name: 'Ещё одна', kind: 'text' }, owner.token);
   assert.equal(second.body.hubId, hubs[0].id);
-  // И позвать из старого клиента в комнату сходки можно друга, который ещё не в сходке
+  // И позвать из старого клиента в комнату канала можно друга, который ещё не в канале
   const late = await reg('legacy_late');
   await befriend(owner, late);
   assert.equal((await api('POST', `/rooms/${second.body.id}/members`, { userId: late.user.id }, owner.token)).status, 200);
   assert.ok((await api('GET', '/hubs', null, late.token)).body[0].members.some((m) => m.id === late.user.id));
 
-  // Первая комната из старого клиента без друзей: новая сходка всё равно приходит на другие устройства создателя
+  // Первая комната из старого клиента без друзей: новый канал всё равно приходит на другие устройства создателя
   const solo = await reg('legacy_solo');
   const cs = connect(solo.token);
   await cs.open;
@@ -233,7 +233,7 @@ test('старые клиенты: комната без сходки попад
   cs.ws.close();
 });
 
-test('миграция: комнаты без сходки переезжают в «Сходку <имя создателя>» вместе с участниками', async () => {
+test('миграция: комнаты без канала переезжают в «Канал <имя создателя>» вместе с участниками', async () => {
   const s = await startServer();
   const owner = await s.reg('mig_owner');
   const friend = await s.reg('mig_friend');
@@ -246,7 +246,7 @@ test('миграция: комнаты без сходки переезжают 
   await s.api('POST', `/rooms/${voice.id}/messages`, { text: 'не потеряйся' }, friend.token);
   await s.stop({ keepData: true });
 
-  // Делаем базу такой, какой её оставила версия 1.9: у комнат нет сходок
+  // Делаем базу такой, какой её оставила версия 1.9: у комнат нет каналов
   const db = new DatabaseSync(path.join(s.dataDir, 'sozvon.db'));
   db.exec('UPDATE rooms SET hub_id = NULL; DELETE FROM hubs;');
   db.close();
@@ -254,7 +254,7 @@ test('миграция: комнаты без сходки переезжают 
   for (let run = 0; run < 2; run++) {
     const again = await startServer({ dataDir: s.dataDir });
     const hubs = (await again.api('GET', '/hubs', null, owner.token)).body;
-    assert.deepEqual(hubs.map((h) => h.name), ['Сходка Илья']);
+    assert.deepEqual(hubs.map((h) => h.name), ['Канал Илья']);
     assert.deepEqual(hubs[0].members.map((m) => m.id).sort(), [owner.user.id, friend.user.id].sort());
     const rooms = (await again.api('GET', '/rooms', null, owner.token)).body;
     assert.deepEqual(rooms.map((r) => [r.id, r.hubId]).sort(), [[voice.id, hubs[0].id], [text.id, hubs[0].id]].sort());
@@ -263,7 +263,7 @@ test('миграция: комнаты без сходки переезжают 
     assert.deepEqual(friendRooms.map((r) => r.id), [voice.id]);
     assert.equal((await again.api('GET', `/rooms/${voice.id}/messages`, null, owner.token)).body[0].text, 'не потеряйся');
     const otherHubs = (await again.api('GET', '/hubs', null, other.token)).body;
-    assert.deepEqual(otherHubs.map((h) => h.name), ['Сходка mig_other']);
+    assert.deepEqual(otherHubs.map((h) => h.name), ['Канал mig_other']);
     assert.equal((await again.api('GET', '/rooms', null, other.token)).body[0].id, otherRoom.id);
     await again.stop({ keepData: run === 0 });
   }

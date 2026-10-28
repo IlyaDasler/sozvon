@@ -43,15 +43,15 @@ runTest(async () => {
   const all = [[winA, a], [winB, b], [winC, c]];
   console.log('✔ три клиента вошли');
 
-  // Комнаты живут в сходках: Аня собирает сходку, друзья вступают (подробно — в e2e-hubs.js)
+  // Комнаты живут в каналах: Аня собирает канал, друзья вступают (подробно — в e2e-hubs.js)
   const hub = await api('POST', '/hubs', { name: 'Клуб' }, a.token);
   for (const u of [b, c]) {
     await api('POST', `/hubs/${hub.id}/invites`, { userIds: [u.user.id] }, a.token);
     await api('POST', `/hub-invites/${hub.id}/accept`, null, u.token);
   }
-  for (const [win] of all) await waitFor(win, `state.hubs.get(${hub.id})?.members.length === 3`, 'сходка у всех');
+  for (const [win] of all) await waitFor(win, `state.hubs.get(${hub.id})?.members.length === 3`, 'канал у всех');
 
-  // Аня создаёт комнату через окно создания — в комнате сразу все участники сходки
+  // Аня создаёт комнату через окно создания — в комнате сразу все участники канала
   await js(winA, `openHub(${hub.id}); openRoomCreate('voice')`);
   await js(winA, `
     document.getElementById('room-name').value = 'Вечерние катки';
@@ -188,7 +188,7 @@ runTest(async () => {
   await js(winA, `Api.patch('/rooms/${roomId}', { defaultPerms: 31 }).then(() => true)`);
   console.log('✔ права ролей: без права говорить человека не слышно, роль возвращает голос');
 
-  // Настройки комнаты открываются шестерёнкой в списке, не заходя в комнату (открыта другая комната сходки)
+  // Настройки комнаты открываются шестерёнкой в списке, не заходя в комнату (открыта другая комната канала)
   await js(winA, `openHub(${hub.id}); selectRoom([...state.rooms.values()].find((r) => r.hubId === ${hub.id} && r.kind === 'text').id)`);
   await roomTool(winA, roomId, 'settings');
   await waitFor(winA, `!document.getElementById('room-manage').classList.contains('hidden') && document.getElementById('rs-room-name').textContent === roomById(${roomId}).name`, 'настройки комнаты');
