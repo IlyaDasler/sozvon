@@ -209,8 +209,7 @@ function updateTile(el, t, focused) {
   const icons = el.querySelector('.tile-icons');
   icons.replaceChildren();
   if (t.screen) icons.insertAdjacentHTML('beforeend', '<b class="live">В ЭФИРЕ</b>');
-  if (t.deafened) icons.insertAdjacentHTML('beforeend', ICONS.soundOff);
-  else if (t.muted) icons.insertAdjacentHTML('beforeend', ICONS.micOff);
+  icons.insertAdjacentHTML('beforeend', voiceStateIcons({ userId: t.user.id, muted: t.muted, deafened: t.deafened }));
   if (!t.isMe && !t.screen && !t.connecting) icons.append(qualityBars(t.quality));
   el.title = t.connecting ? 'Соединение…' : t.quality ? qualityText(t.quality) : '';
   el.querySelector('.tile-stats').textContent = t.screen ? videoStatsText(t.stats) : '';

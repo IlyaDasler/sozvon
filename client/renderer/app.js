@@ -23,6 +23,7 @@ const ICONS = {
   hash: '<svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>',
   speaker: '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>',
   volume: '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7"/></svg>',
+  volumeOff: '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6"/></svg>',
   noise: '<svg viewBox="0 0 24 24"><path d="M2 12h2M6 8v8M10 5v14M14 8v8M18 10v4M22 12h0"/></svg>',
   noiseOff: '<svg viewBox="0 0 24 24"><path d="M2 12h2M6 8v8M10 5v14M14 8v8M18 10v4M3 3l18 18"/></svg>',
   expand: '<svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>',
@@ -163,6 +164,19 @@ function userByUsername(username) {
     if (m) return m;
   }
   return null;
+}
+
+/** Заглушил ли я этого человека у себя (громкость 0 — «Заглушить для себя») */
+const mutedForMe = (userId) => store.get(`volume:${userId}`, 100) === 0;
+
+/** Значки голоса: выключен микрофон и выключен звук — оба, если оба; «заглушён для вас» — свой */
+function voiceStateIcons({ userId, muted, deafened }) {
+  const icon = (name, title, svg) => svg.replace('<svg', `<svg data-icon="${name}"`).replace('>', `><title>${title}</title>`);
+  return (
+    (muted ? icon('mic-off', 'Микрофон выключен', ICONS.micOff) : '') +
+    (deafened ? icon('sound-off', 'Звук выключен', ICONS.soundOff) : '') +
+    (userId !== state.me.id && mutedForMe(userId) ? icon('muted-for-me', 'Заглушён для вас', ICONS.volumeOff) : '')
+  );
 }
 
 /** Упомянули ли меня в сообщении (чужом) */

@@ -189,8 +189,7 @@ function roomItem(room) {
       item.append(n);
       if (p.screen) item.insertAdjacentHTML('beforeend', '<b class="live">В ЭФИРЕ</b>');
       if (p.video) item.insertAdjacentHTML('beforeend', ICONS.cam);
-      if (p.deafened) item.insertAdjacentHTML('beforeend', ICONS.soundOff);
-      else if (p.muted) item.insertAdjacentHTML('beforeend', ICONS.micOff);
+      item.insertAdjacentHTML('beforeend', voiceStateIcons(p));
       users.append(item);
     }
     li.append(users);
