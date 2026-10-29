@@ -328,6 +328,10 @@ class Capture : public Napi::ObjectWrap<Capture> {
     tsfn_.Release();
     for (auto& h : handles_)
       if (h) CloseHandle(h), h = nullptr;
+    // Захват монитора отпускаем сразу, а не при сборке мусора: Windows не даёт второй захват того же
+    // монитора, пока жив первый, — иначе повторный показ (смена окна на ходу) уходил бы в Chromium
+    dup_.Reset();
+    output_.Reset();
   }
 
   int outputIndex_ = 0, width_ = 0, height_ = 0, fps_ = 60, srcW_ = 0, srcH_ = 0;

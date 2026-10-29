@@ -114,10 +114,17 @@ runTest(async () => {
   await waitFor(winB, `Boolean(activeSession().local.tracks.screen)`, 'демонстрация у Бори');
   await waitFor(
     winB,
-    `(() => {
-      const c = activeSession().local.tracks.screen.getConstraints();
+    // Проверяем то, что уходит: кадр не выше 720 и кодировщику заданы 90 к/с — и для своего захвата монитора, и для Chromium
+    `(async () => {
       const p = [...activeSession().peers.values()][0].link.transceiver('screen').sender.getParameters().encodings[0];
-      return c.frameRate?.ideal === 90 && c.height?.max === 720 && p.maxFramerate === 90 && p.maxBitrate === 7000000;
+      const t = activeSession().local.tracks.screen.clone();
+      const reader = new MediaStreamTrackProcessor({ track: t }).readable.getReader();
+      const { value } = await reader.read();
+      const height = value?.displayHeight;
+      value?.close();
+      reader.cancel();
+      t.stop();
+      return height <= 720 && p.maxFramerate === 90 && p.maxBitrate === 7000000;
     })()`,
     'настройки качества 720p90'
   );

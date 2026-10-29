@@ -9,6 +9,10 @@ const { applyPermissions } = require('./permissions');
 const { fetchPreview } = require('./link-preview');
 const { restoreBounds, readState, trackWindow } = require('./window-state');
 const { runStartup, CHECK_TIMEOUT_MS } = require('./startup');
+const { registerNativeScreen } = require('./screen-native');
+const { applyChromiumFlags } = require('./chromium-flags');
+
+applyChromiumFlags(app);
 
 // --profile=имя запускает отдельный экземпляр со своим входом (удобно, чтобы проверить звонок на одном ПК)
 const profileArg = process.argv.find((a) => a.startsWith('--profile='));
@@ -344,6 +348,8 @@ ipcMain.handle('screen:sources', async () => {
 });
 
 // audio — передавать и звук компьютера (Windows умеет захватывать весь системный звук)
+registerNativeScreen(() => screenChoice?.source);
+
 ipcMain.handle('screen:choose', (_event, id, audio) => {
   const source = screenSources.get(id);
   screenChoice = source ? { source, audio: Boolean(audio) && process.platform === 'win32' } : null;
