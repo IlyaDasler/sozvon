@@ -232,7 +232,6 @@ class LocalMedia {
     const stream = await navigator.mediaDevices.getDisplayMedia({ video: limits, audio: audio && { restrictOwnAudio: true, suppressLocalAudioPlayback: false } });
     const video = stream.getVideoTracks()[0];
     video.contentHint = text ? 'detail' : 'motion';
-    await video.applyConstraints(limits).catch(() => {});
     // «Остановить показ» из системы или закрытое окно — заканчиваем демонстрацию
     video.onended = () => this.stopScreen();
     this.screenMode = id;
@@ -280,6 +279,7 @@ class PeerLink {
   constructor({ iceServers, certificate, initiator, local, send, onTrack, onState, onMedia, onFingerprint }) {
     this.initiator = initiator;
     this.local = local;
+    this.screenWanted = true; // смотрит ли собеседник нашу трансляцию; версии до 2.4 не говорят — значит, да
     this.send = send;
     this.onMedia = onMedia;
     this.onFingerprint = onFingerprint;
@@ -308,7 +308,7 @@ class PeerLink {
 
     if (initiator) {
       for (const slot of SLOTS) {
-        const t = pc.addTransceiver(local.tracks[slot] || SLOT_KIND[slot], { direction: 'sendrecv', streams: [this.msid] });
+        const t = pc.addTransceiver(this.localTrack(slot) || SLOT_KIND[slot], { direction: 'sendrecv', streams: [this.msid] });
         if (slot === 'screen') preferScreenCodecs(t);
       }
       this.bound = true;
@@ -352,6 +352,9 @@ class PeerLink {
       else this.pending.push(data.candidate);
     } else if (data.media) {
       this.onMedia(data.media);
+    } else if (typeof data.watch === 'boolean') {
+      // Собеседник начал или перестал смотреть нашу трансляцию
+      this.setScreenWanted(data.watch);
     }
   }
 
@@ -368,7 +371,7 @@ class PeerLink {
       if (slot === 'screen') preferScreenCodecs(t);
       t.direction = 'sendrecv';
       t.sender.setStreams?.(this.msid);
-      t.sender.replaceTrack(this.local.tracks[slot] || null).catch(() => {});
+      t.sender.replaceTrack(this.localTrack(slot)).catch(() => {});
     }
     this.bound = true;
   }
@@ -376,8 +379,30 @@ class PeerLink {
   async updateTrack(slot) {
     const t = this.bound && this.transceiver(slot);
     if (!t) return;
-    await t.sender.replaceTrack(this.local.tracks[slot] || null).catch(() => {});
+    await t.sender.replaceTrack(this.localTrack(slot)).catch(() => {});
     this.tune(slot);
+  }
+
+  /** Своя дорожка для этого собеседника: экран и его звук — только если он смотрит трансляцию */
+  localTrack(slot) {
+    if ((slot === 'screen' || slot === 'screenAudio') && !this.screenWanted) return null;
+    return this.local.tracks[slot] || null;
+  }
+
+  setScreenWanted(on) {
+    if (this.screenWanted === on) return;
+    this.screenWanted = on;
+    this.updateTrack('screen');
+    this.updateTrack('screenAudio');
+  }
+
+  /** Что сейчас уходит или приходит по видео слота: кадры/с, размер, кодек */
+  async videoStats(slot, dir) {
+    const t = this.transceiver(slot);
+    if (!t) return null;
+    this.prevVideo ??= {};
+    const prev = (this.prevVideo[slot + dir] ??= {});
+    return readVideoStats(await (dir === 'out' ? t.sender : t.receiver).getStats(), dir, prev);
   }
 
   // Ограничения скорости: голос важнее всего, экран — по режиму (7–14 Мбит/с), камера — до 2,5
@@ -442,6 +467,28 @@ class PeerLink {
   }
 }
 
+/** Видео одного направления из отчёта getStats: кадры/с (по разнице с прошлым замером), размер, кодек, ограничение.
+ *  prev — объект, где храним прошлый замер этого направления */
+function readVideoStats(report, dir, prev) {
+  let s = null;
+  report.forEach((x) => {
+    if (x.type === (dir === 'out' ? 'outbound-rtp' : 'inbound-rtp') && x.kind === 'video' && (!s || (x.frameWidth || 0) > (s.frameWidth || 0))) s = x;
+  });
+  if (!s) return null;
+  const frames = dir === 'out' ? s.framesEncoded : s.framesDecoded;
+  const fps = prev.at && frames >= prev.frames ? ((frames - prev.frames) * 1000) / (s.timestamp - prev.at) : s.framesPerSecond || 0;
+  Object.assign(prev, { frames, at: s.timestamp });
+  const codec = report.get(s.codecId)?.mimeType?.split('/')[1] || '';
+  return { fps, width: s.frameWidth, height: s.frameHeight, codec, limit: dir === 'out' ? s.qualityLimitationReason : 'none' };
+}
+
+const LIMIT_TEXT = { bandwidth: 'упирается в интернет', cpu: 'упирается в процессор' };
+/** «48 к/с · 2560×1440 · VP9 · упирается в интернет» — для плитки трансляции */
+function videoStatsText(s) {
+  if (!s?.width) return '';
+  return [`${Math.round(s.fps)} к/с`, `${s.width}×${s.height}`, s.codec, LIMIT_TEXT[s.limit]].filter(Boolean).join(' · ');
+}
+
 /** Оценка связи для значка: 3 — отлично, 2 — нормально, 1 — плохо */
 function qualityLevel(q) {
   if (q?.sfu) return q.level || 0;
@@ -482,6 +529,8 @@ class MediaSession {
     this.meter = null;
     this.closed = false;
     this.code = null; // код шифрования: { emoji, digits }, когда соединились со всеми
+    this.watching = new Set(); // чьи трансляции смотрим (по умолчанию — ничьи)
+    this.screenStats = null; // своя трансляция: что уходит
     this.statsTimer = setInterval(() => this.collectStats(), 2000);
   }
 
@@ -560,13 +609,18 @@ class MediaSession {
       onTrack: (slot, track) => this.onRemoteTrack(peer, slot, track),
       onState: (st) => {
         peer.state = st;
-        if (st === 'connected') this.sendSignal(id, { media: this.mediaState() });
+        if (st === 'connected') {
+          this.sendSignal(id, { media: this.mediaState() });
+          this.sendSignal(id, { watch: this.watching.has(id) });
+        }
         this.onPeerState?.(id, st);
         this.updateCode();
         this.onChange();
       },
       onMedia: (media) => {
         peer.media = { ...peer.media, ...media };
+        // Показ закончился — перестаём смотреть: начнётся снова — снова по желанию
+        if (!peer.media.screen) this.watching.delete(id);
         this.onChange();
       },
     });
@@ -631,9 +685,19 @@ class MediaSession {
     const allowed = this.allowed?.(peer.id) ?? { speak: true, video: true };
     for (const [slot, el] of Object.entries(peer.audio)) {
       el.volume = volume;
-      el.muted = this.deafened || !(slot === 'mic' ? allowed.speak : allowed.video);
+      el.muted = this.deafened || !(slot === 'mic' ? allowed.speak : allowed.video) || (slot === 'screenAudio' && !this.watching.has(peer.id));
       if (el.setSinkId && el.sinkId !== this.sinkId) el.setSinkId(this.sinkId).catch(() => {});
     }
+  }
+
+  /** Смотреть трансляцию человека или перестать: он шлёт нам экран, только пока мы смотрим */
+  setWatching(id, on) {
+    if (on) this.watching.add(id);
+    else this.watching.delete(id);
+    this.sendSignal(id, { watch: on });
+    const peer = this.peers.get(id);
+    if (peer) this.applyPeerAudio(peer);
+    this.onChange();
   }
 
   setVolume(id, volume) {
@@ -680,12 +744,17 @@ class MediaSession {
   }
 
   async collectStats() {
+    let own = null;
     for (const peer of this.peers.values()) {
       if (peer.state !== 'connected') continue;
       try {
         peer.quality = await peer.link.stats();
+        peer.screenStats = this.watching.has(peer.id) ? await peer.link.videoStats('screen', 'in') : null;
+        // Своя трансляция — по любому, кому она уходит
+        if (this.local.tracks.screen && peer.link.localTrack('screen')) own ??= await peer.link.videoStats('screen', 'out');
       } catch {}
     }
+    this.screenStats = this.local.tracks.screen ? own : null;
     if (!this.closed) this.onStats?.();
   }
 
