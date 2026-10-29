@@ -259,4 +259,15 @@ runTest(async () => {
   await waitFor(winB, `${lastMsg}?.querySelector('.mention.me')?.textContent === '@Боря' && ${lastMsg}.closest('.msg').classList.contains('mentions-me')`, 'метка упоминания и подсветка у Бори');
   await waitFor(winA, `${lastMsg}?.querySelector('.mention')?.textContent === '@Боря' && !${lastMsg}.closest('.msg').classList.contains('mentions-me')`, 'метка у Ани без подсветки');
   console.log('✔ упоминания: подсказка по «@», метка с именем, подсветка у упомянутого');
+
+  // Тема чата: «у обоих» — меняется и у собеседника; «только у меня» — только у себя
+  const themeOf = `(document.getElementById('chat').dataset.chatTheme || 'default')`;
+  const pickTheme = (win, theme, scope) => js(win, `document.getElementById('chat-theme-btn').click(); document.querySelector('#chat-theme-pop [name="chat-theme-scope"][value="${scope}"]').click(); document.querySelector('#chat-theme-pop [data-theme-id="${theme}"]').click(); true`);
+  await pickTheme(winA, 'sunset', 'both');
+  for (const win of [winA, winB]) await waitFor(win, `${themeOf} === 'sunset'`, 'тема «Закат» у обоих');
+  await pickTheme(winB, 'ocean', 'me');
+  await waitFor(winB, `${themeOf} === 'ocean'`, 'своя тема у Бори');
+  await sleep(500);
+  if ((await js(winA, themeOf)) !== 'sunset') throw new Error('Тема «только у меня» поменялась и у собеседника');
+  console.log('✔ тема чата: «у обоих» — у обоих, «только у меня» — только у себя');
 });
