@@ -3,7 +3,7 @@
 // без копирования через процессор; там из них собирается дорожка для WebRTC.
 // Окно приложения как источник, другая ОС, модуль не собран или первый кадр не дошёл (две видеокарты) — null,
 // и окно снимает экран по-старому, через Chromium.
-const { ipcMain, screen, sharedTexture } = require('electron');
+const { app, ipcMain, screen, sharedTexture } = require('electron');
 const capture = require('./native/capture');
 const { fitSize } = require('./screen-size');
 
@@ -27,9 +27,19 @@ function fallback(reason) {
   return Promise.resolve(null);
 }
 
+// Пока идёт показ, процессы Созвона — с приоритетом «выше обычного»: окно (кодировщик), видеокарта (передача
+// кадров) и главный (захват). Иначе тяжёлая игра забирает процессор и 1440p падает до 17 к/с (e2e-screen-fps, E2E_CPU_LOAD)
+let boosted = [];
+
+function boost(frame) {
+  const gpu = app.getAppMetrics().find((m) => m.type === 'GPU')?.pid;
+  boosted = [process.pid, frame.osProcessId, gpu].filter((pid) => pid && capture.setPriority(pid, 'above'));
+}
+
 function stop() {
   session?.stop();
   session = null;
+  for (const pid of boosted.splice(0)) capture.setPriority(pid, 'normal');
 }
 
 /** Запустить захват монитора в окно frame; { width, height, id } — когда первый кадр дошёл, иначе null */
@@ -62,6 +72,7 @@ function start(frame, source, mode) {
           });
           await sharedTexture.sendSharedTexture({ frame, importedSharedTexture: imported });
           imported.release();
+          if (first) boost(frame);
           done({ ...size, id });
         } catch (err) {
           current.release(slot);
