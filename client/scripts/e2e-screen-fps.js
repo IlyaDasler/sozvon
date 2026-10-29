@@ -3,13 +3,15 @@
 // каким кодировщиком и что ограничивает качество. Запуск (сервер должен работать): npx electron scripts/e2e-screen-fps.js
 // Нужен настоящий захват экрана: process.env.E2E_REAL_DEVICES ставится до загрузки e2e-lib.
 // E2E_FPS_MIN — сколько кадров/с считать нормой для режимов 60 (по умолчанию 40; на ПК разработки с анимацией рядом захват даёт ~48)
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, powerSaveBlocker } = require('electron');
 process.env.E2E_REAL_DEVICES = '1';
 const { befriend, register, js, waitFor, sleep, openClient, runTest } = require('./e2e-lib');
 
 const MIN = Number(process.env.E2E_FPS_MIN) || 40;
 
 runTest(async () => {
+  // Погасший экран не обновляется — захватывать нечего, замер врёт. Пока идёт тест, экран не гаснет
+  powerSaveBlocker.start('prevent-display-sleep');
   // «Игра»: окно во весь экран с быстрой анимацией — чтобы захвату экрана было что передавать
   const game = new BrowserWindow({ fullscreen: true, show: true, backgroundColor: '#000', webPreferences: { backgroundThrottling: false } });
   await game.loadURL('data:text/html,' + encodeURIComponent(`<canvas id=c style="width:100vw;height:100vh;display:block"></canvas><script>
