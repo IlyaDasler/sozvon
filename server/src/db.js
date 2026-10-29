@@ -198,6 +198,8 @@ for (const table of ['messages', 'room_messages']) {
 // Карточка профиля: «О себе» и цвет баннера (пусто — по цвету аватара)
 if (!columnsOf('users').includes('bio')) db.exec("ALTER TABLE users ADD COLUMN bio TEXT NOT NULL DEFAULT ''");
 if (!columnsOf('users').includes('banner_color')) db.exec('ALTER TABLE users ADD COLUMN banner_color TEXT');
+// Цвет ника в чате, голосе и участниках; пусто — как цвет аватара
+if (!columnsOf('users').includes('name_color')) db.exec('ALTER TABLE users ADD COLUMN name_color TEXT');
 if (!columnsOf('users').includes('status')) db.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'online'");
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE email IS NOT NULL');
 if (!columnsOf('rooms').includes('default_perms'))
@@ -264,6 +266,7 @@ export const toPublicUser = (row) =>
     avatarUrl: row.avatar ? `/api/avatars/${row.avatar}.webp` : null,
     bio: row.bio || '',
     bannerColor: row.banner_color || null,
+    nameColor: row.name_color || null,
     memberSince: row.created_at,
     publicKey: row.public_key || null,
   };
@@ -298,7 +301,7 @@ const q = {
   insertUser: db.prepare(
     'INSERT INTO users (username, password_hash, display_name, avatar_color, created_at) VALUES (?, ?, ?, ?, ?)'
   ),
-  updateProfile: db.prepare('UPDATE users SET display_name = ?, avatar_color = ?, bio = ?, banner_color = ? WHERE id = ?'),
+  updateProfile: db.prepare('UPDATE users SET display_name = ?, avatar_color = ?, bio = ?, banner_color = ?, name_color = ? WHERE id = ?'),
   updatePassword: db.prepare('UPDATE users SET password_hash = ? WHERE id = ?'),
   updateAvatar: db.prepare('UPDATE users SET avatar = ? WHERE id = ?'),
 
@@ -466,7 +469,8 @@ export const users = {
     if (email) q.setEmail.run(email, emailShown, Number(res.lastInsertRowid));
     return users.byId(Number(res.lastInsertRowid));
   },
-  updateProfile: (id, { displayName, avatarColor, bio, bannerColor }) => q.updateProfile.run(displayName, avatarColor, bio, bannerColor, id),
+  updateProfile: (id, { displayName, avatarColor, bio, bannerColor, nameColor }) =>
+    q.updateProfile.run(displayName, avatarColor, bio, bannerColor, nameColor, id),
   updatePassword: (id, passwordHash) => q.updatePassword.run(passwordHash, id),
   updateAvatar: (id, avatar) => q.updateAvatar.run(avatar, id),
 };

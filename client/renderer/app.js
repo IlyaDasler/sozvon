@@ -1044,7 +1044,7 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
       head.className = 'msg-head';
       const name = document.createElement('b');
       name.textContent = author.displayName;
-      name.style.color = author.avatarColor;
+      name.style.color = author.nameColor || author.avatarColor;
       if (author.id) name.dataset.profile = author.id;
       const time = document.createElement('time');
       time.textContent = formatTime(m.createdAt);
@@ -1591,6 +1591,7 @@ function applySpeaker() {
 
 let pickedColor = null;
 let pickedBanner = null;
+let pickedName = null;
 
 async function fillDeviceSelect(select, kind, selected) {
   let devices = await navigator.mediaDevices.enumerateDevices();
@@ -1620,6 +1621,7 @@ function colorChoices(box, colors, current, onPick) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = `color${color === current ? ' selected' : ''}${color ? '' : ' auto'}`;
+    b.dataset.color = color || '';
     b.style.background = color || pickedColor;
     if (!color) b.title = 'Как у аватара';
     b.onclick = () => onPick(color);
@@ -1634,6 +1636,10 @@ function renderColorPicker() {
   });
   colorChoices($('banner-picker'), [null, ...COLORS], pickedBanner, (color) => {
     pickedBanner = color;
+    renderColorPicker();
+  });
+  colorChoices($('name-picker'), [null, ...COLORS], pickedName, (color) => {
+    pickedName = color;
     renderColorPicker();
   });
 }
@@ -1898,6 +1904,7 @@ async function openSettings(tab) {
   $('set-display').value = state.me.displayName;
   pickedColor = state.me.avatarColor;
   pickedBanner = state.me.bannerColor || null;
+  pickedName = state.me.nameColor || null;
   $('set-bio').value = state.me.bio || '';
   renderColorPicker();
   $('set-ns').checked = state.settings.noiseSuppression;
@@ -2079,6 +2086,7 @@ $('settings-form').onsubmit = async (e) => {
   if (displayName !== state.me.displayName) body.displayName = displayName;
   if (pickedColor !== state.me.avatarColor) body.avatarColor = pickedColor;
   if (pickedBanner !== (state.me.bannerColor || null)) body.bannerColor = pickedBanner;
+  if (pickedName !== (state.me.nameColor || null)) body.nameColor = pickedName;
   const bio = $('set-bio').value.trim();
   if (bio !== (state.me.bio || '')) body.bio = bio;
   if ($('set-new-pass').value) {
