@@ -43,6 +43,17 @@ runTest(async () => {
   for (const win of wins) await waitFor(win, `${heard} >= 3`, 'слышно остальных (расшифровка работает)', 30000);
   console.log('✔ звук зашифрован ключом комнаты, код у всех одинаковый, все слышат друг друга');
 
+  // Аня выключает и снова включает шумоподавление — Боря её по-прежнему слышит
+  const anya = people[0].user.id;
+  const hearsAnya = `(() => { const p = state.room.session.peers.get(${anya}); window.anyaLevel = Math.max(window.anyaLevel || 0, p?.meter?.level ?? (p?.speaking ? 1 : 0)); return p?.speaking; })()`;
+  await js(wins[0], 'setNoiseSuppression(false)');
+  await sleep(2000);
+  await js(wins[0], 'setNoiseSuppression(true)');
+  await sleep(1500);
+  await js(wins[1], `window.anyaHeard = false; const t = setInterval(() => { if (${hearsAnya}) { window.anyaHeard = true; clearInterval(t); } }, 50); true`);
+  await waitFor(wins[1], 'window.anyaHeard', 'Боря слышит Аню после выкл/вкл шумоподавления', 15000);
+  console.log('✔ шумоподавление выключили и включили — через медиасервер голос идёт');
+
   // Камера Бори видна остальным
   await js(wins[1], 'toggleCamera(); true');
   for (const win of [wins[0], wins[2], wins[3], wins[4]]) await waitFor(win, tilePlaying(win, `u${people[1].user.id}`), 'камера Бори', 20000);
