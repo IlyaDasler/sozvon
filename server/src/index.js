@@ -5,6 +5,7 @@ import { config } from './config.js';
 import { createApi } from './api.js';
 import { attachSignaling } from './signaling.js';
 import { startEmbeddedTurn } from './turn.js';
+import { UPDATE_REQUIRED, unsupportedClient } from './client-version.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -20,6 +21,8 @@ app.use((req, res, next) => {
   next();
 });
 
+// Приложение версий ниже 2.0 — только «обновите» (CORS выше, чтобы ответ дошёл до страницы)
+app.use('/api', (req, res, next) => (unsupportedClient(req.get('user-agent')) ? res.status(426).json({ error: UPDATE_REQUIRED }) : next()));
 app.use('/api', createApi());
 
 // Веб-версия клиента (та же страница, что и в приложении для Windows)

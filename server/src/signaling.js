@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { WebSocketServer } from 'ws';
+import { unsupportedClient } from './client-version.js';
 import { verifyToken } from './auth.js';
 import { contacts, rooms, toPublicUser, users } from './db.js';
 import { hub } from './hub.js';
@@ -252,6 +253,10 @@ export function attachSignaling(server) {
   server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname !== '/ws') return socket.destroy();
+    if (unsupportedClient(req.headers['user-agent'])) {
+      socket.write('HTTP/1.1 426 Upgrade Required\r\n\r\n');
+      return socket.destroy();
+    }
     const user = users.byId(verifyToken(url.searchParams.get('token')) ?? -1);
     if (!user) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
