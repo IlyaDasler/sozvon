@@ -142,7 +142,8 @@ function createTile(t) {
     const watch = document.createElement('button');
     watch.type = 'button';
     watch.className = 'tile-watch';
-    watch.innerHTML = `${ICONS.eye}<span>Смотреть трансляцию</span>`;
+    watch.title = 'Смотреть трансляцию';
+    watch.innerHTML = `${ICONS.eye}<span>Смотреть</span>`;
     watch.onclick = (e) => {
       e.stopPropagation();
       activeSession()?.setWatching(t.id, true);
