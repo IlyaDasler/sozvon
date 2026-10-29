@@ -82,6 +82,19 @@ runTest(async () => {
   await waitFor(winA, `[...document.querySelectorAll('#room-messages .msg-text')].some((el) => el.textContent === 'Свежий мем')`, 'сообщение в комнате канала');
   console.log('✔ новая комната у обоих, переписка работает');
 
+  // Колокольчик: открыл комнату — её уведомления прочитаны; уведомления без места («вас убрали») — когда вернулся в окно
+  const badge = `document.getElementById('notif-badge')`;
+  await js(winA, `selectContact(null); localStorage.removeItem('notifications:' + state.me.id); renderNotifBadge(); true`);
+  await api('POST', `/rooms/${memes}/messages`, { text: 'Мем для колокольчика' }, b.token);
+  await waitFor(winA, `${badge}.textContent === '1' && !${badge}.classList.contains('hidden')`, 'уведомление о сообщении в комнате');
+  await js(winA, `selectRoom(${memes}); true`);
+  await waitFor(winA, `${badge}.classList.contains('hidden')`, 'открыл комнату — уведомление прочитано');
+  await js(winA, `notify('Канал', 'Вас убрали из канала', { kind: 'hub-removed' }); true`);
+  await waitFor(winA, `!${badge}.classList.contains('hidden')`, 'уведомление без места');
+  await js(winA, `window.dispatchEvent(new Event('focus')); true`);
+  await waitFor(winA, `${badge}.classList.contains('hidden')`, 'вернулся в окно — прочитано');
+  console.log('✔ колокольчик гаснет: комната открыта, уведомление без места — при возврате в окно');
+
   // Свой фон: Аня ставит картинку в настройках комнаты — фон виден и у неё, и у Васи; убирается
   await js(winA, `openRoomManage(${memes}); true`);
   await waitFor(winA, `Boolean(document.getElementById('rm-bg-pick'))`, 'кнопка выбора фона');
