@@ -5,5 +5,5 @@
   "description": "Захват экрана для трансляции: DXGI → уменьшение на видеокарте → общая текстура для Electron sharedTexture",
   "main": "index.js",
   "scripts": { "build": "node-gyp rebuild" },
-  "devDependencies": { "node-addon-api": "8.3.1", "node-gyp": "11.2.0" }
+  "devDependencies": { "node-addon-api": "8.3.1", "node-gyp": "13.1.0" }
 }
