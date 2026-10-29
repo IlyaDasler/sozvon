@@ -480,6 +480,7 @@ function enterMain(user) {
   showScreen('main');
   selectContact(null);
   setupE2EE();
+  loadCustomSounds();
 
   socket = new ServerSocket({
     onMessage: handleEvent,
@@ -1857,6 +1858,7 @@ async function openSettings(tab) {
   renderThemePicker();
   renderPttSettings();
   renderNotifySettings();
+  renderSoundSettings();
   $('email-link').classList.add('hidden');
   $('link-email').value = '';
   renderIdentities();
