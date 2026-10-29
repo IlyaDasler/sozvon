@@ -227,7 +227,8 @@ function setupUpdater() {
     setUpdateStatus({ state: 'available', version: info.version, notes: releaseNotes(info), percent: 0, checkedAt: Date.now() })
   );
   autoUpdater.on('download-progress', (p) => setUpdateStatus({ state: 'downloading', percent: Math.round(p.percent) }));
-  autoUpdater.on('update-not-available', () => setUpdateStatus({ state: 'latest', checkedAt: Date.now() }));
+  // Последняя версия — вместе с её описанием: в окне проверки видно, что нового
+  autoUpdater.on('update-not-available', (info) => setUpdateStatus({ state: 'latest', notes: releaseNotes(info), checkedAt: Date.now() }));
   autoUpdater.on('update-downloaded', (info) => setUpdateStatus({ state: 'ready', version: info.version }));
   autoUpdater.on('error', (err) => setUpdateStatus({ state: 'error', message: err.message, checkedAt: Date.now() }));
 
