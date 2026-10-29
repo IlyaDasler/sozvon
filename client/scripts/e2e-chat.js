@@ -311,4 +311,18 @@ runTest(async () => {
   await js(winB, `[...document.querySelectorAll('#messages .gif-save')].at(-1).click(); true`);
   await waitFor(winB, `listGifs().then((l) => l.length === 1 && l[0].name === 'кот.gif')`, 'гифка сохранена у Бори');
   console.log('✔ мои гифки: отправка одним щелчком, полученную можно сохранить себе');
+
+  // Правка — прямо в поле ввода, без отдельного окна: полоса «Изменение сообщения», Enter сохраняет, Esc отменяет
+  await send(winA, 'черновик с опечаткой');
+  await waitFor(winB, `${lastMsg}?.textContent === 'черновик с опечаткой'`, 'сообщение для правки у Бори');
+  await js(winA, `editMessage(state.history.get(${b.user.id}).findLast((m) => messageView(m).text === 'черновик с опечаткой'), { kind: 'dm', peerId: ${b.user.id} }); true`);
+  await waitFor(winA, `document.getElementById('message-input').value === 'черновик с опечаткой' && !document.getElementById('chat-reply').classList.contains('hidden') && document.getElementById('chat-reply').textContent.includes('Изменение сообщения')`, 'текст в поле ввода и полоса правки');
+  if (await js(winA, `!document.getElementById('dialog').classList.contains('hidden')`)) throw new Error('Правка открыла отдельное окно');
+  await js(winA, `document.getElementById('message-input').value = 'черновик без опечатки'; document.getElementById('message-form').requestSubmit(); true`);
+  await waitFor(winB, `${lastMsg}?.textContent === 'черновик без опечатки'`, 'исправленный текст у Бори');
+  await waitFor(winA, `document.getElementById('message-input').value === '' && document.getElementById('chat-reply').classList.contains('hidden')`, 'поле очистилось после правки');
+  if ((await js(winA, `state.history.get(${b.user.id}).filter((m) => messageView(m).text.startsWith('черновик')).length`)) !== 1) throw new Error('Правка отправила новое сообщение вместо изменения');
+  await js(winA, `editMessage(state.history.get(${b.user.id}).findLast((m) => messageView(m).text === 'черновик без опечатки'), { kind: 'dm', peerId: ${b.user.id} }); document.getElementById('message-input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true`);
+  await waitFor(winA, `document.getElementById('message-input').value === '' && document.getElementById('chat-reply').classList.contains('hidden')`, 'Esc отменил правку');
+  console.log('✔ правка сообщения — в поле ввода: Enter сохраняет, Esc отменяет');
 });

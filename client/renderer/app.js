@@ -861,10 +861,13 @@ function startReply(m, chat) {
   setReplyDraft({ id: m.id, fromId: m.fromId, text: m.plain?.text || '' }, chat);
 }
 
-/** Правка: новый конверт с новым текстом, сервер текста не видит */
-async function editMessage(m, chat) {
-  const next = await askText('Изменить сообщение', m.plain?.text || '');
-  if (next == null) return;
+/** Правка — в поле ввода чата (полоса «Изменение сообщения» над ним), см. startEdit в composer.js */
+function editMessage(m, chat) {
+  startEdit(m, chat);
+}
+
+/** Сохранить правку: новый конверт с новым текстом, сервер текста не видит */
+async function saveEdit(m, chat, next) {
   const text = next.trim();
   if (!text || text === m.plain?.text) return;
   try {
@@ -1284,7 +1287,8 @@ function handleEvent(msg) {
       const list = state.history.get(peerId) || [];
       const i = list.findIndex((x) => x.id === msg.message.id);
       if (i >= 0) {
-        list[i] = { ...list[i], ...msg.message, plain: list[i].plain };
+        // Новый конверт — старый расшифрованный текст не оставляем, иначе расшифровка его пропустит и видна старая версия
+        list[i] = { ...list[i], ...msg.message, plain: null };
         decryptMessages([list[i]], dmConvOf(peerId)).then(() => {
           if (peerId === state.selectedId) renderMessages();
         });

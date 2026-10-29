@@ -446,11 +446,28 @@ document.addEventListener('click', () => emojiPopover?.classList.add('hidden'));
 
 let replyDraft = null;
 let replyChat = null;
+// Правка своего сообщения: { m, chat } — текст в поле ввода, над ним полоса «Изменение сообщения»
+let editDraft = null;
 
 function renderReplyBars() {
   for (const [id, kind] of [['chat-reply', 'dm'], ['room-reply', 'room']]) {
     const bar = $(id);
     if (!bar) continue;
+    bar.classList.toggle('editing', editDraft?.chat.kind === kind);
+    if (editDraft?.chat.kind === kind) {
+      const label = document.createElement('b');
+      label.textContent = 'Изменение сообщения';
+      const hint = document.createElement('span');
+      hint.textContent = 'Enter — сохранить, Esc — отменить';
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.title = 'Отменить правку';
+      close.textContent = '×';
+      close.onclick = () => cancelEdit();
+      bar.replaceChildren(label, hint, close);
+      bar.classList.remove('hidden');
+      continue;
+    }
     if (!replyDraft || replyChat?.kind !== kind) {
       bar.classList.add('hidden');
       bar.replaceChildren();
@@ -484,9 +501,45 @@ function clearReply() {
   renderReplyBars();
 }
 
+const composerOf = (chat) => (chat.kind === 'dm' ? dmComposer : roomComposer);
+
+function setComposerText(composer, text) {
+  composer.area.value = text;
+  composer.area.dispatchEvent(new Event('input')); // высота поля под текст
+  composer.area.focus();
+  composer.area.setSelectionRange(text.length, text.length);
+}
+
+function startEdit(m, chat) {
+  if (editDraft) cancelEdit();
+  clearReply();
+  editDraft = { m, chat };
+  renderReplyBars();
+  setComposerText(composerOf(chat), m.plain?.text || '');
+}
+
+function cancelEdit() {
+  if (!editDraft) return;
+  const composer = composerOf(editDraft.chat);
+  editDraft = null;
+  renderReplyBars();
+  setComposerText(composer, '');
+}
+
+/** Отправка из поля, пока идёт правка: сохраняем правку вместо нового сообщения */
+async function finishEdit(kind, payload) {
+  if (editDraft?.chat.kind !== kind) return false;
+  const { m, chat } = editDraft;
+  editDraft = null;
+  renderReplyBars();
+  await saveEdit(m, chat, payload.text || '');
+  return true;
+}
+
 // ---------- Два поля ввода: чат с другом и комната ----------
 
 const dmComposer = new Composer($('message-form'), $('message-input'), async (payload) => {
+  if (await finishEdit('dm', payload)) return;
   const peerId = state.selectedId;
   if (!peerId) return;
   const reply = replyDraft && replyChat?.kind === 'dm' ? replyDraft : null;
@@ -497,6 +550,7 @@ const dmComposer = new Composer($('message-form'), $('message-input'), async (pa
 dmComposer.acceptDrops($('chat'));
 
 const roomComposer = new Composer($('room-message-form'), $('room-message-input'), async (payload) => {
+  if (await finishEdit('room', payload)) return;
   const roomId = state.selectedRoomId;
   if (!roomId) return;
   const reply = replyDraft && replyChat?.kind === 'room' ? replyDraft : null;
@@ -505,3 +559,11 @@ const roomComposer = new Composer($('room-message-form'), $('room-message-input'
   if (reply) clearReply();
 }, { mentionCandidates: () => (roomById(state.selectedRoomId)?.members || []).filter((m) => m.id !== state.me.id) });
 roomComposer.acceptDrops($('room-view'));
+
+// Esc в поле во время правки — отменить её
+for (const [composer, kind] of [[dmComposer, 'dm'], [roomComposer, 'room']])
+  composer.area.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || editDraft?.chat.kind !== kind) return;
+    e.preventDefault();
+    cancelEdit();
+  });
