@@ -71,6 +71,20 @@ function messageContent(m) {
       img.loading = 'lazy';
       img.title = `${a.name} — нажмите, чтобы открыть`;
       img.onclick = () => openImageViewer(a);
+      // Гифку можно сохранить себе в «Мои гифки»
+      if (/gif|webp/.test(a.mime || a.name || '')) {
+        const cell = document.createElement('div');
+        cell.className = 'gif-cell';
+        const save = Object.assign(document.createElement('button'), { type: 'button', className: 'gif-save', title: 'В мои гифки' });
+        save.innerHTML = '<svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.6 6.2.9-4.5 4.4 1 6.1L12 17.2 6.5 20l1-6.1L3 9.5l6.2-.9z"/></svg>';
+        save.onclick = (e) => {
+          e.stopPropagation();
+          saveGifFromMessage(img, a);
+        };
+        cell.append(img, save);
+        grid.append(cell);
+        continue;
+      }
       grid.append(img);
     }
     box.append(grid);
