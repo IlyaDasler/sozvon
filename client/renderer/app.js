@@ -650,6 +650,8 @@ async function selectContact(id) {
   state.selectedRoomId = null;
   state.unread.delete(id);
   if (id) readNotifsOf({ contact: id });
+  // Открыли чат — на последнем сообщении, даже если в прошлый раз листали вверх
+  $('messages').stick = true;
   renderContacts();
   renderRooms();
 
