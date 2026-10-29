@@ -10,9 +10,10 @@ const POPOVERS = [
   () => closeNotifPanel(),
   () => document.querySelector('.emoji-popover')?.classList.add('hidden'),
   () => hideRailTip(),
+  () => $('chat-theme-pop').classList.add('hidden'),
 ];
 
-const POPOVER_SELECTOR = '#popup-menu, #profile-card, #status-menu, #notif-panel, .emoji-popover';
+const POPOVER_SELECTOR = '#popup-menu, #profile-card, #status-menu, #notif-panel, .emoji-popover, #chat-theme-pop';
 const anyPopoverOpen = () => [...document.querySelectorAll(POPOVER_SELECTOR)].some((el) => !el.classList.contains('hidden'));
 
 function closePopovers() {

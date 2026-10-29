@@ -645,6 +645,7 @@ async function selectContact(id) {
   if (!contact) return;
 
   renderChatHeader();
+  applyChatTheme();
   renderMessages();
   dmComposer.focus();
 
@@ -1218,6 +1219,8 @@ function handleEvent(msg) {
       if (state.selectedId === msg.userId) selectContact(null);
       else renderContacts();
       return;
+    case 'chat:theme':
+      return onChatTheme(msg);
     case 'user:updated':
       onUserKey(msg.user);
       return updateUser(msg.user.id, msg.user);
