@@ -11,6 +11,7 @@ const { restoreBounds, readState, trackWindow } = require('./window-state');
 const { runStartup, CHECK_TIMEOUT_MS } = require('./startup');
 const { registerNativeScreen } = require('./screen-native');
 const { applyChromiumFlags } = require('./chromium-flags');
+const { UPDATE_EVERY_MS, checkDue } = require('./update-schedule');
 
 applyChromiumFlags(app);
 
@@ -197,9 +198,9 @@ function watchIdle() {
 // ---------- Автообновление ----------
 // Новая версия скачивается в фоне с GitHub Releases; ставится по кнопке или при следующем закрытии приложения.
 
-// Обновления проверяем один раз при запуске, дальше — только по кнопке «Проверить обновления»
+// Обновления проверяем при запуске и дальше сами (update-schedule.js); кнопка «Проверить обновления» — в любой момент
 let updateStatus = { state: 'idle' };
-const UPDATE_EVERY_MS = 4 * 60 * 60 * 1000;
+let lastUpdateCheck = 0;
 
 function setUpdateStatus(status) {
   updateStatus = { ...updateStatus, ...status };
@@ -219,6 +220,7 @@ function checkForUpdates() {
   }
   // Пока качаем или уже скачали, повторно не проверяем
   if (updateStatus.state === 'downloading' || updateStatus.state === 'ready') return;
+  lastUpdateCheck = Date.now();
   autoUpdater.checkForUpdates().catch(() => {}); // ошибка придёт через событие 'error'
 }
 
@@ -244,8 +246,10 @@ function setupUpdater({ checkNow = true } = {}) {
   autoUpdater.on('error', (err) => setUpdateStatus({ state: 'error', message: err.message, checkedAt: Date.now() }));
 
   if (checkNow) checkForUpdates();
-  // И дальше раз в несколько часов: Созвон неделями живёт в трее, и новую версию иначе не заметить
+  // И дальше сами: каждые 10 минут, при возврате в окно и после сна — Созвон неделями живёт в трее
   setInterval(checkForUpdates, UPDATE_EVERY_MS);
+  win.on('focus', () => checkDue('focus', lastUpdateCheck, Date.now()) && checkForUpdates());
+  powerMonitor.on('resume', checkForUpdates);
 }
 
 // ---------- Окошко загрузки ----------
