@@ -186,6 +186,8 @@ const columnsOf = (table) => db.prepare(`PRAGMA table_info(${table})`).all().map
 if (!columnsOf('users').includes('avatar')) db.exec('ALTER TABLE users ADD COLUMN avatar TEXT');
 // Почта для входа (в нижнем регистре); у старых профилей её нет
 if (!columnsOf('users').includes('email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT');
+// email — единый вид адреса (по нему вход и «ящик занят»), email_shown — как человек его ввёл, его и показываем
+if (!columnsOf('users').includes('email_shown')) db.exec('ALTER TABLE users ADD COLUMN email_shown TEXT');
 // Выбранный статус: online, idle, dnd, invisible (см. presence.js)
 // Вложения и предпросмотр ссылки хранятся в сообщении как JSON
 for (const table of ['messages', 'room_messages']) {
@@ -291,7 +293,7 @@ const q = {
   userById: db.prepare('SELECT * FROM users WHERE id = ?'),
   userByName: db.prepare('SELECT * FROM users WHERE username = ?'),
   userByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
-  setEmail: db.prepare('UPDATE users SET email = ? WHERE id = ?'),
+  setEmail: db.prepare('UPDATE users SET email = ?, email_shown = ? WHERE id = ?'),
   setStatus: db.prepare('UPDATE users SET status = ? WHERE id = ?'),
   insertUser: db.prepare(
     'INSERT INTO users (username, password_hash, display_name, avatar_color, created_at) VALUES (?, ?, ?, ?, ?)'
@@ -457,11 +459,11 @@ export const users = {
   byId: (id) => q.userById.get(id),
   byUsername: (username) => q.userByName.get(username),
   byEmail: (email) => q.userByEmail.get(email),
-  setEmail: (id, email) => q.setEmail.run(email, id),
+  setEmail: (id, email, shown = email) => q.setEmail.run(email, shown, id),
   setStatus: (id, status) => q.setStatus.run(status, id),
-  create({ username, passwordHash, displayName, avatarColor, email }) {
+  create({ username, passwordHash, displayName, avatarColor, email, emailShown = email }) {
     const res = q.insertUser.run(username, passwordHash, displayName, avatarColor, Date.now());
-    if (email) q.setEmail.run(email, Number(res.lastInsertRowid));
+    if (email) q.setEmail.run(email, emailShown, Number(res.lastInsertRowid));
     return users.byId(Number(res.lastInsertRowid));
   },
   updateProfile: (id, { displayName, avatarColor, bio, bannerColor }) => q.updateProfile.run(displayName, avatarColor, bio, bannerColor, id),
@@ -521,7 +523,7 @@ export const identities = {
 // Данные о себе: публичный профиль плюс способы входа
 export const toSelf = (row) => ({
   ...toPublicUser(row),
-  email: row.email || null,
+  email: row.email_shown || row.email || null,
   status: row.status || 'online',
   hasPassword: Boolean(row.password_hash),
   identities: identities.of(row.id).map((i) => ({ provider: i.provider, email: i.email })),
@@ -697,7 +699,7 @@ export const roles = {
 // Адреса из версий до 1.8 приводим к одному виду (у Яндекса много доменов). Если такой ящик уже у другого профиля, не трогаем
 for (const { id, email } of db.prepare('SELECT id, email FROM users WHERE email IS NOT NULL').all()) {
   const canonical = canonicalEmail(email);
-  if (canonical !== email && !q.userByEmail.get(canonical)) q.setEmail.run(canonical, id);
+  if (canonical !== email && !q.userByEmail.get(canonical)) q.setEmail.run(canonical, email, id);
 }
 
 // Комнаты из версий до 2.0 жили сами по себе: у каждого создателя собираем их в канал вместе с участниками

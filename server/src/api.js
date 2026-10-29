@@ -61,6 +61,8 @@ function validatePassword(password) {
 
 // Один ящик — один адрес (у Яндекса много доменов, см. email-address.js)
 const normEmail = canonicalEmail;
+/** Адрес, как его ввели (без пробелов и заглавных), — его показываем человеку */
+const shownEmail = (value) => String(value ?? '').trim().toLowerCase();
 
 function validateEmail(email) {
   if (email.length > 254 || !EMAIL_RE.test(email)) throw new HttpError(400, 'Проверьте адрес почты');
@@ -402,6 +404,7 @@ export function createApi() {
       displayName,
       avatarColor: COLORS[crypto.randomInt(COLORS.length)],
       email,
+      emailShown: shownEmail(req.body.email),
     });
     return { token: signToken(user.id), user: toSelf(user), created: true };
   }
@@ -624,7 +627,7 @@ export function createApi() {
       const owner = users.byEmail(email);
       if (owner && owner.id !== req.user.id) throw new HttpError(409, 'Эта почта уже привязана к другому профилю');
       requireCode('link', email, req.body.code);
-      users.setEmail(req.user.id, email);
+      users.setEmail(req.user.id, email, shownEmail(req.body.email));
       return toSelf(users.byId(req.user.id));
     })
   );
