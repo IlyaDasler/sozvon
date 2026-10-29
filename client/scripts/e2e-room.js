@@ -93,6 +93,20 @@ runTest(async () => {
   await waitFor(winC, `document.querySelectorAll('#room-list .voice-users li').length === 3`, 'участники голоса в списке комнат');
   console.log('✔ в списке комнат видно, кто в голосе');
 
+  // Боря выключил звук (а с ним и микрофон) — у Вики видно оба значка: и в списке голоса, и на его плитке
+  await js(winB, 'toggleDeafen(); true');
+  const icons = (where) => `[...document.querySelectorAll('${where}')].map((el) => el.dataset.icon).sort().join()`;
+  await waitFor(winC, `${icons(`#room-list [data-voice-user="${b.user.id}"] [data-icon]`)} === 'mic-off,sound-off' && ${icons(`#stage .tile[data-key="u${b.user.id}"] .tile-icons [data-icon]`)} === 'mic-off,sound-off'`, 'оба значка Бори у Вики');
+  await js(winB, 'toggleDeafen(); true');
+  await waitFor(winC, `!document.querySelector('#room-list [data-voice-user="${b.user.id}"] [data-icon]')`, 'значки Бори пропали');
+  // Вика заглушила Аню для себя — у неё на Ане знак «заглушён для вас», у остальных его нет
+  await js(winC, `toggleMuteFor(${a.user.id}); true`);
+  await waitFor(winC, `Boolean(document.querySelector('#room-list [data-voice-user="${a.user.id}"] [data-icon="muted-for-me"]')) && Boolean(document.querySelector('#stage .tile[data-key="u${a.user.id}"] [data-icon="muted-for-me"]'))`, 'знак «заглушён для вас» у Вики');
+  if (await js(winB, `Boolean(document.querySelector('[data-icon="muted-for-me"]'))`)) throw new Error('Знак заглушения виден не тому, кто глушил');
+  await js(winC, `toggleMuteFor(${a.user.id}); true`);
+  await waitFor(winC, `!document.querySelector('[data-icon="muted-for-me"]')`, 'знак пропал после включения звука');
+  console.log('✔ выключены и микрофон, и звук — видны оба значка; «заглушён для вас» — свой значок');
+
   // Аня включает камеру — её видят оба
   await js(winA, 'toggleCamera()');
   for (const [win, u] of [[winB, b], [winC, c]])
