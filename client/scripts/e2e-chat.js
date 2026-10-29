@@ -270,4 +270,17 @@ runTest(async () => {
   await sleep(500);
   if ((await js(winA, themeOf)) !== 'sunset') throw new Error('Тема «только у меня» поменялась и у собеседника');
   console.log('✔ тема чата: «у обоих» — у обоих, «только у меня» — только у себя');
+
+  // Мои гифки: добавил один раз — дальше отправляется одним щелчком; полученную можно сохранить себе
+  // (маленькая настоящая GIF: два кадра 2×2)
+  const gif = `new File([Uint8Array.from(atob('R0lGODlhAgACAPEAAP8AAAAA/wAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQACgAAACwAAAAAAgACAAACAoRRACH5BAAKAAAALAAAAAACAAIAAAICjFMAOw=='), (c) => c.charCodeAt(0))], 'кот.gif', { type: 'image/gif' })`;
+  await js(winA, `addGif(${gif}).then(() => true)`);
+  await js(winA, `document.querySelector('#message-form .composer-btn.gif').click(); true`);
+  await waitFor(winA, `document.querySelectorAll('.gif-popover:not(.hidden) .gif-item').length === 1`, 'гифка в «Моих гифках»');
+  await js(winA, `document.querySelector('.gif-popover .gif-item').click(); true`);
+  await waitFor(winB, `(() => { const img = [...document.querySelectorAll('#messages .msg-images img')].at(-1); return img?.complete && img.naturalWidth === 2 && img.alt === 'кот.gif'; })()`, 'гифка у Бори', 20000);
+  if (!(await js(winA, `document.querySelector('.gif-popover').classList.contains('hidden')`))) throw new Error('Панель гифок не закрылась после отправки');
+  await js(winB, `[...document.querySelectorAll('#messages .gif-save')].at(-1).click(); true`);
+  await waitFor(winB, `listGifs().then((l) => l.length === 1 && l[0].name === 'кот.gif')`, 'гифка сохранена у Бори');
+  console.log('✔ мои гифки: отправка одним щелчком, полученную можно сохранить себе');
 });
