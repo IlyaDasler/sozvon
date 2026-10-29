@@ -79,15 +79,20 @@ class Composer {
     };
     this.attachBtn = button('attach', 'Прикрепить файл (до 25 МБ) — можно и перетащить в чат', COMPOSER_ICONS.attach);
     this.emojiBtn = button('emoji', 'Смайлики', COMPOSER_ICONS.emoji);
+    this.gifBtn = button('gif', 'Мои гифки', '<b>GIF</b>');
     this.sendBtn = button('send', 'Отправить (Enter)', COMPOSER_ICONS.send, 'submit');
     this.picker = Object.assign(document.createElement('input'), { type: 'file', multiple: true, hidden: true });
-    bar.append(this.attachBtn, area, this.emojiBtn, this.sendBtn);
+    bar.append(this.attachBtn, area, this.gifBtn, this.emojiBtn, this.sendBtn);
     form.append(this.mentionBox, this.filesBox, this.previewBox, bar, this.picker);
 
     this.attachBtn.onclick = () => this.picker.click();
     this.picker.onchange = () => {
       this.addFiles([...this.picker.files]);
       this.picker.value = '';
+    };
+    this.gifBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleGifPicker(this);
     };
     this.emojiBtn.onclick = (e) => {
       e.stopPropagation();
@@ -186,6 +191,12 @@ class Composer {
     this.mentionBox?.classList.add('hidden');
   }
 
+  /** Отправить файл сразу отдельным сообщением (гифка из «Моих гифок»): шифруем, загружаем, отправляем */
+  async sendFileNow(file) {
+    const attachment = await uploadEncrypted(file, () => {}).done;
+    await this.send({ text: '', files: [attachment], preview: null });
+  }
+
   /** Перетаскивание файлов в область чата */
   acceptDrops(zone) {
     zone.addEventListener('dragover', (e) => {
@@ -205,7 +216,7 @@ class Composer {
   }
 
   setDisabled(disabled, placeholder) {
-    for (const el of [this.area, this.attachBtn, this.emojiBtn, this.sendBtn]) el.disabled = disabled;
+    for (const el of [this.area, this.attachBtn, this.gifBtn, this.emojiBtn, this.sendBtn]) el.disabled = disabled;
     this.area.placeholder = placeholder;
   }
 
