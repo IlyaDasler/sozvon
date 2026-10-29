@@ -153,6 +153,21 @@ function userById(id) {
   return [...state.requests.incoming, ...state.requests.outgoing, ...state.blocked].find((u) => u.id === id) || null;
 }
 
+// Человек по логину (для упоминаний @логин): я, друзья, участники комнат и каналов
+function userByUsername(username) {
+  const n = username.toLowerCase();
+  if (state.me?.username.toLowerCase() === n) return state.me;
+  for (const c of state.contacts.values()) if (c.username.toLowerCase() === n) return c;
+  for (const group of [...state.rooms.values(), ...state.hubs.values()]) {
+    const m = group.members.find((u) => u.username?.toLowerCase() === n);
+    if (m) return m;
+  }
+  return null;
+}
+
+/** Упомянули ли меня в сообщении (чужом) */
+const mentionsMe = (m) => m.fromId !== state.me.id && findMentions(messageView(m).text).includes(state.me.username.toLowerCase());
+
 // Статус «в сети» и профиль обновляем везде, где этот человек виден
 function updateUser(id, patch) {
   const c = state.contacts.get(id);
@@ -997,6 +1012,7 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
     const row = document.createElement('div');
     row.className = `msg${continued ? ' cont' : ''}${isNew(m) ? ' msg-new' : ''}`;
     row.dataset.msgId = m.id;
+    if (mentionsMe(m)) row.classList.add('mentions-me');
     // Для меню по правой кнопке: само сообщение и что с ним можно сделать в этой ленте
     row.message = m;
     row.actions = actions;
