@@ -1211,8 +1211,9 @@ kbd {
   display: flex; align-items: center; gap: 10px; margin: 16px 0 8px; padding: 4px 4px 4px 12px;
   border-radius: 8px; background: var(--bg-deep); border: 1px solid var(--line);
 }
-.friend-add-row:focus-within { border-color: var(--accent); }
-.friend-add-row input { flex: 1; min-width: 0; border: 0 !important; background: none !important; padding: 0 !important; }
+/* Подсвечивается вся строка, а не поле внутри неё */
+.friend-add-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+.friend-add-row input { flex: 1; min-width: 0; border: 0 !important; background: none !important; padding: 0 !important; box-shadow: none !important; outline: none !important; }
 .ok-text { color: var(--ok); }
 
 /* ---------- Комнаты: кнопки в списке ---------- */
@@ -1259,6 +1260,15 @@ kbd {
     var(--room-bg) center / cover no-repeat, var(--bg);
 }
 #room-view.has-bg .call-panel { background: color-mix(in srgb, var(--bg-deep) 72%, transparent); }
+/* Светлая тема: белый слой той же плотности закрывал картинку целиком — делаем его прозрачнее */
+[data-theme='light'] #room-view.has-bg {
+  background:
+    linear-gradient(color-mix(in srgb, var(--bg) 40%, transparent), color-mix(in srgb, var(--bg) 58%, transparent)),
+    var(--room-bg) center / cover no-repeat, var(--bg);
+}
+/* Перенос ключа: поле не прилипает к кнопкам, «Создать новый ключ» — в одну строку */
+.e2ee-card .row { margin-top: 14px; }
+.e2ee-card .row .btn { white-space: nowrap; }
 .rs-bg { display: grid; gap: 10px; margin-bottom: 8px; }
 .rs-bg-preview {
   height: 120px; border-radius: var(--r-m); background: var(--bg-3) center / cover no-repeat;
