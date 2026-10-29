@@ -37,6 +37,28 @@ runTest(async () => {
   if (!(after[0] > before[0] && after[1] > before[1])) throw new Error(`Звук не идёт: ${before} -> ${after}`);
   console.log(`✔ звук идёт в обе стороны (получено байт: А ${after[0]}, Б ${after[1]})`);
 
+  // Аня выключает и снова включает шумоподавление — Боря её по-прежнему слышит (громкость, а не просто байты)
+  const loudness = () =>
+    js(winB, `(async () => {
+      let level = 0;
+      for (let i = 0; i < 10; i++) {
+        await new Promise((r) => setTimeout(r, 150));
+        for (const p of activeSession().peers.values()) (await p.link.pc.getStats()).forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'audio') level = Math.max(level, s.audioLevel || 0); });
+      }
+      return level;
+    })()`);
+  await js(winA, 'setNoiseSuppression(true)');
+  await sleep(1500);
+  const heardOn = await loudness();
+  await js(winA, 'setNoiseSuppression(false)');
+  await sleep(1500);
+  await js(winA, 'setNoiseSuppression(true)');
+  await sleep(1500);
+  const heardAgain = await loudness();
+  console.log(`  Боря слышит Аню: ${heardOn.toFixed(3)}, после выкл/вкл шумоподавления ${heardAgain.toFixed(3)}`);
+  if (!(heardAgain > 0.01 && heardAgain > heardOn * 0.3)) throw new Error('После выключения и включения шумоподавления Аню не слышно');
+  console.log('✔ шумоподавление выключили и включили — собеседник слышит');
+
   // Камера включается посреди разговора, без переподключения
   await js(winA, 'toggleCamera()');
   await waitFor(winB, tilePlaying(winB, `u${a.user.id}`), 'видео А у Б');

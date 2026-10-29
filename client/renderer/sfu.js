@@ -36,7 +36,7 @@ class SfuSession extends MediaSession {
       .on(LK.RoomEvent.ParticipantConnected, (p) => this.addRemote(p))
       .on(LK.RoomEvent.ParticipantDisconnected, (p) => this.removePeer(Number(p.identity)))
       .on(LK.RoomEvent.TrackSubscribed, (track, pub, p) => this.setRemoteTrack(p, pub.source, track.mediaStreamTrack, track))
-      .on(LK.RoomEvent.TrackUnsubscribed, (_track, pub, p) => this.setRemoteTrack(p, pub.source, null))
+      .on(LK.RoomEvent.TrackUnsubscribed, (track, pub, p) => this.setRemoteTrack(p, pub.source, null, track))
       .on(LK.RoomEvent.ConnectionQualityChanged, (q, p) => {
         if (p === room.localParticipant) this.quality = { sfu: true, level: LK_QUALITY[q] || 0 };
       })
@@ -147,6 +147,9 @@ class SfuSession extends MediaSession {
     const peer = this.peers.get(Number(p.identity));
     if (!peer) return;
     peer.lk ??= {};
+    // Дорожку заменили (выкл/вкл шумоподавления): новую уже подписали, а отписка от старой пришла позже —
+    // убираем только ту, что сейчас играет, иначе человек замолкает
+    if (!track && lkTrack && peer.lk[slot] && peer.lk[slot] !== lkTrack) return;
     peer.lk[slot] = track ? lkTrack : null;
     if (track) return this.onRemoteTrack(peer, slot, track);
     delete peer.tracks[slot];
