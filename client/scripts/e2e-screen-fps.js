@@ -43,8 +43,9 @@ runTest(async () => {
   await waitFor(winB, `!document.getElementById('incoming').classList.contains('hidden')`, 'входящий звонок');
   await js(winB, 'acceptIncoming()');
   await waitFor(winA, `state.call?.phase === 'connected'`, 'звонок', 20000);
+  // Поверх всех окон: иначе перекрытая «игра» почти не рисует и замер врёт
+  game.setAlwaysOnTop(true, 'screen-saver');
   game.focus();
-  game.moveTop();
 
   const report = [];
   for (const mode of ['1440p60', '1080p60', '720p90']) {
