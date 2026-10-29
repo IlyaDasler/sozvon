@@ -70,6 +70,15 @@ runTest(async () => {
   await waitFor(winA, `document.getElementById('notif-badge').classList.contains('hidden')`, 'открыл чат — уведомление прочитано');
   console.log('✔ открыл чат — его уведомления в колокольчике прочитаны');
 
+  // Кнопки «Назад» и «Вперёд» в полосе окна: из чата можно уйти назад и вернуться
+  await js(winA, 'selectContact(null)');
+  await js(winA, `document.getElementById('nav-back').click(); true`);
+  await waitFor(winA, `state.selectedId === ${b.user.id}`, '«Назад» вернул в чат');
+  await waitFor(winA, `!document.getElementById('nav-forward').disabled`, '«Вперёд» доступна');
+  await js(winA, `document.getElementById('nav-forward').click(); true`);
+  await waitFor(winA, `state.selectedId === null && document.getElementById('nav-forward').disabled`, '«Вперёд» — снова «Друзья»');
+  console.log('✔ кнопки «Назад» и «Вперёд» переходят между чатами');
+
   // Пропущенный звонок: Боря звонит и сбрасывает. В «не беспокоить» звонок не звенит и не всплывает
   await pick('dnd');
   await js(winA, 'selectContact(null)');
