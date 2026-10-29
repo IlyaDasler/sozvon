@@ -10,9 +10,11 @@
 #include <napi.h>
 #include <windows.h>
 #include <d3d11_1.h>
+#include <d2d1.h>
 #include <dxgi1_2.h>
 #include <wrl/client.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <mutex>
@@ -134,7 +136,14 @@ class Capture : public Napi::ObjectWrap<Capture> {
     d.SampleDesc.Count = 1;
     d.Usage = D3D11_USAGE_DEFAULT;
     d.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-    if (FAILED(device_->CreateTexture2D(&d, nullptr, &staging_))) return "Не создать текстуру кадра";
+    if (FAILED(device_->CreateTexture2D(&d, nullptr, &staging_)) || FAILED(device_->CreateTexture2D(&d, nullptr, &desk_)))
+      return "Не создать текстуру кадра";
+    // Курсор рисуем Direct2D прямо на кадре в видеопамяти
+    ComPtr<IDXGISurface> surface;
+    staging_.As(&surface);
+    if (FAILED(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, d2d_.GetAddressOf())) ||
+        FAILED(d2d_->CreateDxgiSurfaceRenderTarget(surface.Get(), D2D1::RenderTargetProperties(D2D1_RENDER_TARGET_TYPE_DEFAULT, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)), &target_)))
+      return "Не подготовить рисование курсора";
 
     // Слоты на выход: уменьшенный кадр BGRA, общий по NT HANDLE
     d.Width = width_;
@@ -176,16 +185,18 @@ class Capture : public Napi::ObjectWrap<Capture> {
     return "";
   }
 
-  // Новый кадр монитора → свободный слот → onFrame. Чаще fps не шлём: монитор 144 Гц, трансляция 60
+  // Каждое изменение экрана сразу копируем в desk_ (иначе пропущенный между отправками кадр потерялся бы),
+  // а наружу шлём не чаще fps: монитор 144 Гц, трансляция 60. Сдвинулся только курсор — тоже новый кадр
   void Loop() {
     using clock = std::chrono::steady_clock;
     const auto interval = std::chrono::microseconds(1000000 / fps_);
     auto next = clock::now();
+    bool dirty = false;
     while (running_) {
+      auto wait = std::chrono::duration_cast<std::chrono::milliseconds>(next - clock::now()).count();
       DXGI_OUTDUPL_FRAME_INFO fi;
       ComPtr<IDXGIResource> res;
-      HRESULT hr = dup_->AcquireNextFrame(100, &fi, &res);
-      if (hr == DXGI_ERROR_WAIT_TIMEOUT) continue;
+      HRESULT hr = dup_->AcquireNextFrame(dirty ? (UINT)std::clamp<long long>(wait, 1, 100) : 100, &fi, &res);
       if (hr == DXGI_ERROR_ACCESS_LOST) {
         // Сменился режим экрана или открылся UAC — пересоздаём захват
         dup_.Reset();
@@ -194,33 +205,99 @@ class Capture : public Napi::ObjectWrap<Capture> {
         if (!dup_) std::this_thread::sleep_for(std::chrono::milliseconds(500));
         continue;
       }
-      if (FAILED(hr)) break;
-      bool fresh = fi.LastPresentTime.QuadPart != 0;
-      auto now = clock::now();
-      int slot = fresh && now >= next ? TakeSlot() : -1;
-      if (slot >= 0) {
-        ComPtr<ID3D11Texture2D> frame;
-        res.As(&frame);
-        context_->CopyResource(staging_.Get(), frame.Get());
-        dup_->ReleaseFrame();
-        D3D11_VIDEO_PROCESSOR_STREAM stream = {};
-        stream.Enable = TRUE;
-        stream.pInputSurface = inView_.Get();
-        vctx_->VideoProcessorBlt(vproc_.Get(), outView_[slot].Get(), 0, 1, &stream);
-        context_->End(done_.Get());
-        context_->Flush();
-        while (context_->GetData(done_.Get(), nullptr, 0, 0) == S_FALSE && running_) std::this_thread::yield();
-        next = std::max(next + interval, now);
-        auto msg = new FrameMsg{slot, (double)std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()};
-        if (tsfn_.BlockingCall(msg, [this](Napi::Env env, Napi::Function cb, FrameMsg* m) {
-              cb.Call({Napi::Number::New(env, m->slot), HandleOf(env, m->slot), Napi::Number::New(env, m->timestampUs)});
-              delete m;
-            }) != napi_ok)
-          delete msg;
-      } else {
+      if (FAILED(hr) && hr != DXGI_ERROR_WAIT_TIMEOUT) break;
+      if (SUCCEEDED(hr)) {
+        if (fi.LastPresentTime.QuadPart != 0) {
+          ComPtr<ID3D11Texture2D> frame;
+          res.As(&frame);
+          context_->CopyResource(desk_.Get(), frame.Get());
+          dirty = true;
+        }
+        if (fi.LastMouseUpdateTime.QuadPart != 0) {
+          UpdatePointer(fi);
+          dirty = true;
+        }
         dup_->ReleaseFrame();
       }
+      auto now = clock::now();
+      if (!dirty || now < next) continue;
+      int slot = TakeSlot();
+      if (slot < 0) continue;  // окно не успевает забирать — отправим, когда освободится слот
+      dirty = false;
+      next = std::max(next + interval, now);
+      Compose(slot);
+      auto msg = new FrameMsg{slot, (double)std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()};
+      if (tsfn_.BlockingCall(msg, [this](Napi::Env env, Napi::Function cb, FrameMsg* m) {
+            // Кадр ждал в очереди, а захват уже остановили: ручки текстур закрыты — не отдаём
+            if (!running_) return delete m;
+            cb.Call({Napi::Number::New(env, m->slot), HandleOf(env, m->slot), Napi::Number::New(env, m->timestampUs)});
+            delete m;
+          }) != napi_ok)
+        delete msg;
     }
+  }
+
+  // Кадр для отправки: экран + курсор → уменьшение видеопроцессором в слот; ждём, пока видеокарта закончит
+  void Compose(int slot) {
+    context_->CopyResource(staging_.Get(), desk_.Get());
+    if (pointerVisible_ && cursor_) {
+      target_->BeginDraw();
+      auto size = cursor_->GetSize();
+      target_->DrawBitmap(cursor_.Get(), D2D1::RectF((float)pointerX_, (float)pointerY_, pointerX_ + size.width, pointerY_ + size.height));
+      target_->EndDraw();
+    }
+    D3D11_VIDEO_PROCESSOR_STREAM stream = {};
+    stream.Enable = TRUE;
+    stream.pInputSurface = inView_.Get();
+    vctx_->VideoProcessorBlt(vproc_.Get(), outView_[slot].Get(), 0, 1, &stream);
+    context_->End(done_.Get());
+    context_->Flush();
+    while (context_->GetData(done_.Get(), nullptr, 0, 0) == S_FALSE && running_) std::this_thread::yield();
+  }
+
+  // Курсор: Desktop Duplication отдаёт его отдельно — где он и (при смене) как выглядит
+  void UpdatePointer(const DXGI_OUTDUPL_FRAME_INFO& fi) {
+    pointerVisible_ = fi.PointerPosition.Visible;
+    pointerX_ = fi.PointerPosition.Position.x;
+    pointerY_ = fi.PointerPosition.Position.y;
+    if (!fi.PointerShapeBufferSize) return;
+    std::vector<uint8_t> buf(fi.PointerShapeBufferSize);
+    UINT used = 0;
+    DXGI_OUTDUPL_POINTER_SHAPE_INFO si;
+    if (FAILED(dup_->GetFramePointerShape((UINT)buf.size(), buf.data(), &used, &si))) return;
+    cursor_ = CursorBitmap(buf, si);
+  }
+
+  // Форма курсора → картинка BGRA с прозрачностью (premultiplied) для Direct2D.
+  // Инверсию цвета под курсором (I-образный курсор текста) заменяем чёрным — на трансляции её не повторить
+  ComPtr<ID2D1Bitmap> CursorBitmap(const std::vector<uint8_t>& buf, const DXGI_OUTDUPL_POINTER_SHAPE_INFO& si) {
+    const bool mono = si.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME;
+    const UINT w = si.Width, h = mono ? si.Height / 2 : si.Height;
+    std::vector<uint32_t> px(w * h);
+    for (UINT y = 0; y < h; y++)
+      for (UINT x = 0; x < w; x++) {
+        uint32_t out = 0;
+        if (mono) {
+          const uint8_t bit = 0x80 >> (x % 8);
+          const bool andBit = buf[y * si.Pitch + x / 8] & bit, xorBit = buf[(y + h) * si.Pitch + x / 8] & bit;
+          if (!andBit) out = xorBit ? 0xFFFFFFFF : 0xFF000000;
+          else if (xorBit) out = 0xFF000000;
+        } else {
+          uint32_t c = *reinterpret_cast<const uint32_t*>(&buf[y * si.Pitch + x * 4]);
+          if (si.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MASKED_COLOR) {
+            const bool xorMask = (c >> 24) == 0xFF;
+            out = xorMask ? ((c & 0xFFFFFF) ? 0xFF000000 : 0) : (c | 0xFF000000);
+          } else {
+            const uint32_t a = c >> 24;
+            out = (a << 24) | ((((c >> 16) & 0xFF) * a / 255) << 16) | ((((c >> 8) & 0xFF) * a / 255) << 8) | ((c & 0xFF) * a / 255);
+          }
+        }
+        px[y * w + x] = out;
+      }
+    ComPtr<ID2D1Bitmap> bmp;
+    D2D1_BITMAP_PROPERTIES props = D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED));
+    target_->CreateBitmap(D2D1::SizeU(w, h), px.data(), w * 4, props, &bmp);
+    return bmp;
   }
 
   int TakeSlot() {
@@ -259,6 +336,12 @@ class Capture : public Napi::ObjectWrap<Capture> {
   ComPtr<IDXGIOutput1> output_;
   ComPtr<IDXGIOutputDuplication> dup_;
   ComPtr<ID3D11Texture2D> staging_;
+  ComPtr<ID3D11Texture2D> desk_;  // последний кадр экрана без курсора
+  ComPtr<ID2D1Factory> d2d_;
+  ComPtr<ID2D1RenderTarget> target_;
+  ComPtr<ID2D1Bitmap> cursor_;
+  bool pointerVisible_ = false;
+  int pointerX_ = 0, pointerY_ = 0;
   ComPtr<ID3D11Texture2D> slots_[SLOTS];
   HANDLE handles_[SLOTS] = {};
   ComPtr<ID3D11VideoDevice> vdev_;
