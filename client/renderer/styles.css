@@ -547,13 +547,13 @@ video.mirror { transform: scaleX(-1); }
 /* Чужая трансляция, которую пока не смотрим: карточка с кнопкой «Смотреть» (как в Discord) */
 .tile-watch { display: none; }
 .tile.not-watching .tile-watch {
-  display: inline-flex; align-items: center; gap: 8px; position: relative; z-index: 1;
-  padding: 9px 16px; border: 0; border-radius: 999px; cursor: pointer;
-  background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; font-size: 13px;
-  box-shadow: 0 6px 18px var(--glow); transition: transform var(--fast) var(--ease), background var(--fast);
+  display: inline-flex; align-items: center; gap: 6px; position: relative; z-index: 1; white-space: nowrap;
+  padding: 5px 12px; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; font-size: 12px;
+  box-shadow: 0 3px 10px var(--glow); transition: transform var(--fast) var(--ease), background var(--fast);
 }
 .tile.not-watching .tile-watch:hover { background: var(--accent-hover); transform: translateY(-1px); }
-.tile-watch svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; }
+.tile-watch svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
 .tile.not-watching .tile-avatar { display: none; }
 .tile.not-watching .tile-unwatch { display: none; }
 /* Сколько кадров доходит, размер, кодек — на плитке трансляции */

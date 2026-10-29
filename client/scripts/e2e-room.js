@@ -151,6 +151,9 @@ runTest(async () => {
     if (await js(win, `${bScreen}.classList.contains('focused') || ${bScreen}.classList.contains('has-video')`)) throw new Error('Чужая трансляция открылась сама');
   }
   await waitFor(winC, `[...document.querySelectorAll('#room-list .live')].length === 1`, 'значок «в эфире» в списке');
+  // Кнопка «Смотреть» — аккуратная пилюля в одну строку, не закрывает подпись плитки
+  const watchBox = await js(winA, `(() => { const r = ${bScreen}.querySelector('.tile-watch').getBoundingClientRect(), t = ${bScreen}.getBoundingClientRect(); return { h: r.height, part: r.width / t.width }; })()`);
+  if (watchBox.h > 32 || watchBox.part > 0.5) throw new Error(`Кнопка «Смотреть» крупная: ${JSON.stringify(watchBox)}`);
   // Аня нажимает «Смотреть» — видит и разворачивает; Вика не смотрит — Боря ей экран не шлёт
   await js(winA, `${bScreen}.querySelector('.tile-watch').click(); true`);
   await waitFor(winA, tilePlaying(winA, `u${b.user.id}:screen`), 'экран Бори у Ани', 20000);
