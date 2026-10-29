@@ -429,7 +429,8 @@ function handleRoomEvent(msg) {
       const list = state.roomHistory.get(msg.message.roomId) || [];
       const i = list.findIndex((x) => x.id === msg.message.id);
       if (i >= 0) {
-        list[i] = { ...list[i], ...msg.message, plain: list[i].plain };
+        // Новый конверт — старый расшифрованный текст не оставляем, иначе расшифровка его пропустит и видна старая версия
+        list[i] = { ...list[i], ...msg.message, plain: null };
         decryptMessages([list[i]], roomConvOf(msg.message.roomId)).then(() => {
           if (msg.message.roomId === state.selectedRoomId) renderRoomMessages();
         });
