@@ -325,4 +325,17 @@ runTest(async () => {
   await js(winA, `editMessage(state.history.get(${b.user.id}).findLast((m) => messageView(m).text === 'черновик без опечатки'), { kind: 'dm', peerId: ${b.user.id} }); document.getElementById('message-input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true`);
   await waitFor(winA, `document.getElementById('message-input').value === '' && document.getElementById('chat-reply').classList.contains('hidden')`, 'Esc отменил правку');
   console.log('✔ правка сообщения — в поле ввода: Enter сохраняет, Esc отменяет');
+
+  // Вернулся в уже прочитанный чат (с высокой картинкой в истории) — он открывается на последнем сообщении
+  for (let i = 0; i < 3; i++) {
+    // Перед уходом листал вверх — читал старое
+    await js(winB, `(() => { const m = document.getElementById('messages'); m.scrollTop = 0; m.dispatchEvent(new Event('scroll')); return true; })()`);
+    await js(winB, 'selectContact(null); true');
+    await sleep(300);
+    await js(winB, `selectContact(${a.user.id}); true`);
+    await sleep(1500);
+    if (!(await js(winB, `${atBottom} && ${jumpHidden}`)))
+      throw new Error(`Чат открылся не на последнем сообщении (попытка ${i + 1}): ${await js(winB, `(() => { const m = document.getElementById('messages'); return m.scrollHeight - m.scrollTop - m.clientHeight; })()`)} px до низа`);
+  }
+  console.log('✔ уже прочитанный чат открывается на последнем сообщении');
 });
