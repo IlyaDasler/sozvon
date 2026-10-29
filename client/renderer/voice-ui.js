@@ -105,7 +105,7 @@ function createTile(t) {
   el.innerHTML = `
     <video autoplay playsinline muted></video>
     <div class="tile-avatar"></div>
-    <div class="tile-label"><span class="tile-icons"></span><span class="tile-name ellipsis"></span></div>
+    <div class="tile-label"><span class="tile-name ellipsis"></span><span class="tile-icons"></span></div>
     <div class="tile-tools"></div>`;
   const tools = el.querySelector('.tile-tools');
 

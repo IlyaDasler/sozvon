@@ -110,7 +110,17 @@ const QUOTE = /^>\s?(.*)$/;
 const BULLET = /^\s*[-*+]\s+(.*)$/;
 const NUMBERED = /^\s*(\d{1,9})[.)]\s+(.*)$/;
 const HEADING = /^(#{1,3})\s+(.+)$/;
-const isSpecial = (line) => FENCE.test(line) || QUOTE.test(line) || BULLET.test(line) || NUMBERED.test(line) || HEADING.test(line);
+const TABLE_ROW = /^\s*\|(.+)\|\s*$/;
+const TABLE_SEP = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/;
+const cellsOf = (line) =>
+  line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((c) => c.trim());
+const isSpecial = (line) =>
+  FENCE.test(line) || QUOTE.test(line) || BULLET.test(line) || NUMBERED.test(line) || HEADING.test(line) || TABLE_ROW.test(line);
 
 function parseMarkdown(text) {
   const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n');
@@ -140,12 +150,20 @@ function parseMarkdown(text) {
         items.push(parseInline(ordered ? item[2] : item[1]));
       }
       blocks.push({ type: 'list', ordered, start, items });
-    } else if ((m = HEADING.exec(line))) {
-      blocks.push({ type: 'heading', level: m[1].length, inlines: parseInline(m[2]) });
+    } else if (HEADING.test(line)) {
+      const heading = HEADING.exec(line);
+      blocks.push({ type: 'heading', level: heading[1].length, inlines: parseInline(heading[2]) });
       i++;
+    } else if (TABLE_ROW.test(line) && i + 1 < lines.length && TABLE_SEP.test(lines[i + 1])) {
+      // Таблица: строка заголовков, линия-разделитель, затем строки
+      const head = cellsOf(line);
+      const rows = [];
+      for (i += 2; i < lines.length && TABLE_ROW.test(lines[i]); i++) rows.push(cellsOf(lines[i]));
+      blocks.push({ type: 'table', head, rows });
     } else {
-      const para = [];
-      for (; i < lines.length && lines[i].trim() && !isSpecial(lines[i]); i++) para.push(lines[i]);
+      // Первую строку берём всегда: иначе строка «|», не ставшая таблицей, зациклила бы разбор
+      const para = [lines[i]];
+      for (i++; i < lines.length && lines[i].trim() && !isSpecial(lines[i]); i++) para.push(lines[i]);
       blocks.push({ type: 'paragraph', inlines: paragraphInlines(para) });
     }
   }
@@ -201,6 +219,75 @@ function renderInlines(doc, nodes, parent) {
   }
 }
 
+const KEYWORDS =
+  /^(?:abstract|and|as|assert|async|await|base|bool|break|byte|case|catch|char|class|const|continue|def|default|delegate|delete|do|double|echo|elif|else|enum|esac|event|except|explicit|export|extends|extern|false|fi|final|finally|float|for|foreach|from|func|function|get|global|go|if|implements|implicit|import|in|init|instanceof|int|interface|internal|is|lambda|let|local|lock|long|namespace|new|nil|None|nonlocal|not|null|object|operator|or|out|override|package|params|pass|private|protected|public|raise|readonly|ref|return|sealed|select|set|short|sizeof|static|string|struct|super|switch|then|this|throw|true|True|False|try|type|typeof|uint|ulong|using|var|virtual|void|volatile|when|where|while|with|yield|done)$/;
+
+/** Подсветка кода в духе VS Code: ключевые слова, функции, свойства, строки, числа, классы и теги */
+function highlightInto(doc, target, text, lang) {
+  const l = String(lang || '').toLowerCase();
+  const hashComments = /^(?:bash|sh|shell|zsh|yaml|yml|python|py|ruby|rb|perl|toml|ini|conf)$/.test(l);
+  const sqlComments = l === 'sql';
+  const css = /^(?:css|scss|less)$/.test(l);
+  const json = l === 'json';
+
+  const strings = '"""[\\s\\S]*?"""|\'\'\'[\\s\\S]*?\'\'\'|@"(?:""|[^"])*"|"(?:\\\\.|[^"\\\\])*"|\'(?:\\\\.|[^\'\\\\])*\'|`(?:\\\\.|[^`\\\\])*`';
+  const comments = ['//[^\\n]*', '/\\*[\\s\\S]*?\\*/'];
+  if (hashComments) comments.push('#[^\\n]*');
+  if (sqlComments) comments.push('--[^\\n]*');
+  const token = new RegExp(
+    `(${strings})|(${comments.join('|')})|(\\b\\d+(?:\\.\\d+)?\\b)|(\\$\\{?[A-Za-z_]\\w*\\}?)|([A-Za-z_$][\\w$]*)`,
+    'g'
+  );
+  const push = (value, cls) => {
+    if (!value) return;
+    if (!cls) {
+      target.append(doc.createTextNode(value));
+      return;
+    }
+    const span = doc.createElement('span');
+    span.className = cls;
+    span.textContent = value;
+    target.append(span);
+  };
+
+  let last = 0;
+  let prevWord = '';
+  let m;
+  while ((m = token.exec(text))) {
+    push(text.slice(last, m.index));
+    if (m[1]) {
+      // Строка-ключ в JSON или перед двоеточием — как свойство
+      const after = text.slice(token.lastIndex);
+      push(m[1], json || /^\s*:/.test(after) ? 'tok-prop' : 'tok-string');
+      prevWord = '';
+    } else if (m[2]) {
+      push(m[2], 'tok-comment');
+      prevWord = '';
+    } else if (m[3]) {
+      push(m[3], 'tok-number');
+      prevWord = '';
+    } else if (m[4]) {
+      push(m[4], 'tok-prop');
+      prevWord = '';
+    } else {
+      const id = m[5];
+      const before = text[m.index - 1] || '';
+      const after = text.slice(token.lastIndex);
+      let cls = '';
+      if (KEYWORDS.test(id)) cls = 'tok-keyword';
+      else if (prevWord === 'function' || prevWord === 'def' || prevWord === 'func' || /^\s*\(/.test(after)) cls = 'tok-func';
+      else if (before === '.') cls = 'tok-prop';
+      else if (css && /^\s*:/.test(after)) cls = 'tok-prop';
+      else if (before === '<' || /<\/$/.test(text.slice(0, m.index))) cls = 'tok-keyword';
+      else if (/^[A-Z]/.test(id)) cls = 'tok-type';
+      push(id, cls);
+      prevWord = id;
+    }
+    last = token.lastIndex;
+  }
+  push(text.slice(last));
+}
+
 function renderBlocks(doc, blocks, parent) {
   for (const b of blocks) {
     let el;
@@ -208,10 +295,19 @@ function renderBlocks(doc, blocks, parent) {
       el = doc.createElement('p');
       renderInlines(doc, b.inlines, el);
     } else if (b.type === 'codeblock') {
-      el = doc.createElement('pre');
+      el = doc.createElement('div');
+      el.className = 'code-block';
+      if (b.lang) {
+        const cap = doc.createElement('span');
+        cap.className = 'code-lang';
+        cap.textContent = b.lang;
+        el.append(cap);
+      }
+      const pre = doc.createElement('pre');
       const code = doc.createElement('code');
-      code.textContent = b.text;
-      el.append(code);
+      highlightInto(doc, code, b.text, b.lang);
+      pre.append(code);
+      el.append(pre);
     } else if (b.type === 'quote') {
       el = doc.createElement('blockquote');
       renderBlocks(doc, b.blocks, el);
@@ -226,6 +322,28 @@ function renderBlocks(doc, blocks, parent) {
     } else if (b.type === 'heading') {
       el = doc.createElement(`h${b.level + 3}`);
       renderInlines(doc, b.inlines, el);
+    } else if (b.type === 'table') {
+      el = doc.createElement('table');
+      const thead = doc.createElement('thead');
+      const headRow = doc.createElement('tr');
+      for (const cell of b.head) {
+        const th = doc.createElement('th');
+        renderInlines(doc, parseInline(cell), th);
+        headRow.append(th);
+      }
+      thead.append(headRow);
+      el.append(thead);
+      const tbody = doc.createElement('tbody');
+      for (const row of b.rows) {
+        const tr = doc.createElement('tr');
+        for (const cell of row) {
+          const td = doc.createElement('td');
+          renderInlines(doc, parseInline(cell), td);
+          tr.append(td);
+        }
+        tbody.append(tr);
+      }
+      el.append(tbody);
     }
     parent.append(el);
   }
