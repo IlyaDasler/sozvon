@@ -14,6 +14,8 @@ import {
   hubs,
   identities,
   messages,
+  pins,
+  reactions,
   relatedUserIds,
   roles,
   roomMessages,
@@ -171,6 +173,37 @@ async function messageFrom(req, conv) {
   const previewUrl = !enc && previewableUrl(req.body.previewUrl);
   const preview = previewUrl && linkInText(text, req.body.previewUrl) ? await fetchPreview(previewUrl) : null;
   return { text, attachments: rows.map(toAttachment), preview, enc };
+}
+
+// ---------- Реакции, закреп и ответ: только id и смайлики, текст остаётся зашифрованным ----------
+
+const EMOJI_RE = /^(?:\p{Extended_Pictographic}|\u200d|\uFE0F){1,8}$/u;
+
+function takeEmoji(value) {
+  const emoji = String(value || '').trim();
+  if (!EMOJI_RE.test(emoji)) throw new HttpError(400, 'Неизвестный смайлик');
+  return emoji;
+}
+
+/** Дополняет сообщения реакциями и признаком закрепа */
+function withMessageMeta(list, kind, chatId, me) {
+  const react = reactions.ofMessages(kind, list.map((m) => m.id), me);
+  const pinned = new Set(pins.of(kind, chatId));
+  for (const m of list) {
+    m.reactions = react[m.id] || [];
+    m.pinned = pinned.has(m.id);
+  }
+  return list;
+}
+
+/** id сообщения, на которое отвечают: оно должно быть из этой же переписки или комнаты */
+function replyTarget(value, belongs) {
+  if (value == null || value === '') return null;
+  const id = Number(value);
+  if (!id) return null;
+  const row = messages.byId(id) || roomMessages.byId(id);
+  if (!row || !belongs(row)) throw new HttpError(400, 'Сообщение для ответа не найдено');
+  return row.id;
 }
 
 const isWebp = (buf) =>
@@ -747,7 +780,7 @@ export function createApi() {
     handle((req) => {
       const other = requireContact(req);
       const before = Number(req.query.before) || undefined;
-      return messages.between(req.user.id, other.id, before).map(toMessage);
+      return withMessageMeta(messages.between(req.user.id, other.id, before).map(toMessage), 'dm', other.id, req.user.id);
     })
   );
 
@@ -756,9 +789,18 @@ export function createApi() {
     handle(async (req) => {
       const other = requireContact(req);
       const { text, ...extra } = await messageFrom(req, dmConv(req.user.id, other.id));
-      const message = toMessage(messages.add(req.user.id, other.id, text, extra));
+      const me = req.user.id;
+      const replyTo = replyTarget(req.body.replyToId, (r) =>
+        (r.from_id === me && r.to_id === other.id) || (r.from_id === other.id && r.to_id === me)
+      );
+      const message = withMessageMeta(
+        [toMessage(messages.add(me, other.id, text, { ...extra, replyTo }))],
+        'dm',
+        other.id,
+        me
+      )[0];
       hub.send(other.id, { type: 'message', message });
-      hub.send(req.user.id, { type: 'message', message });
+      hub.send(me, { type: 'message', message });
       return message;
     })
   );
@@ -776,6 +818,90 @@ export function createApi() {
       messages.remove(row.id);
       removeAttachments(row);
       const event = { type: 'message:deleted', id: row.id, fromId: row.from_id, toId: row.to_id };
+      hub.send(peerId, event);
+      hub.send(me, event);
+      return { ok: true };
+    })
+  );
+
+  // Правка своего сообщения: приходит новый зашифрованный конверт, открытого текста сервер не видит
+  api.patch(
+    '/messages/:peerId/:id',
+    handle((req) => {
+      const peerId = Number(req.params.peerId);
+      const me = req.user.id;
+      const row = messages.byId(Number(req.params.id));
+      const inChat = row && ((row.from_id === me && row.to_id === peerId) || (row.from_id === peerId && row.to_id === me));
+      if (!inChat) throw new HttpError(404, 'Сообщение не найдено');
+      if (row.from_id !== me) throw new HttpError(403, 'Изменить можно только своё сообщение');
+      const enc = req.body.enc == null ? null : parseEnvelope(req.body.enc);
+      if (!enc) throw new HttpError(400, 'Неверный зашифрованный конверт');
+      if (enc.epoch > convKeys.epoch(dmConv(me, peerId))) throw new HttpError(400, 'Такой версии ключа у переписки нет');
+      const message = withMessageMeta([toMessage(messages.setEnc(row.id, enc))], 'dm', peerId, me)[0];
+      const event = { type: 'message:edited', message };
+      hub.send(peerId, event);
+      hub.send(me, event);
+      return message;
+    })
+  );
+
+  // Реакция: ставим и снимаем один и тот же смайлик
+  api.post(
+    '/messages/:peerId/:id/reactions',
+    handle((req) => {
+      const peerId = Number(req.params.peerId);
+      const me = req.user.id;
+      const row = messages.byId(Number(req.params.id));
+      const inChat = row && ((row.from_id === me && row.to_id === peerId) || (row.from_id === peerId && row.to_id === me));
+      if (!inChat) throw new HttpError(404, 'Сообщение не найдено');
+      reactions.toggle('dm', row.id, me, takeEmoji(req.body.emoji));
+      const list = reactions.of('dm', row.id, me);
+      const event = { type: 'message:reactions', id: row.id, peerId, reactions: list };
+      hub.send(peerId, event);
+      hub.send(me, event);
+      return list;
+    })
+  );
+
+  // Закреплённые сообщения переписки
+  api.get(
+    '/messages/:peerId/pins',
+    handle((req) => {
+      const peerId = Number(req.params.peerId);
+      const list = pins
+        .of('dm', peerId)
+        .map((id) => messages.byId(id))
+        .filter(Boolean)
+        .map(toMessage);
+      return withMessageMeta(list, 'dm', peerId, req.user.id);
+    })
+  );
+
+  api.put(
+    '/messages/:peerId/:id/pin',
+    handle((req) => {
+      const peerId = Number(req.params.peerId);
+      const me = req.user.id;
+      const row = messages.byId(Number(req.params.id));
+      const inChat = row && ((row.from_id === me && row.to_id === peerId) || (row.from_id === peerId && row.to_id === me));
+      if (!inChat) throw new HttpError(404, 'Сообщение не найдено');
+      pins.add('dm', peerId, row.id, me);
+      const event = { type: 'message:pinned', id: row.id, pinned: true, peerId };
+      hub.send(peerId, event);
+      hub.send(me, event);
+      return { ok: true };
+    })
+  );
+
+  api.delete(
+    '/messages/:peerId/:id/pin',
+    handle((req) => {
+      const peerId = Number(req.params.peerId);
+      const me = req.user.id;
+      const row = messages.byId(Number(req.params.id));
+      if (!row) throw new HttpError(404, 'Сообщение не найдено');
+      pins.remove('dm', row.id);
+      const event = { type: 'message:pinned', id: row.id, pinned: false, peerId };
       hub.send(peerId, event);
       hub.send(me, event);
       return { ok: true };
@@ -1177,7 +1303,7 @@ export function createApi() {
     handle((req) => {
       const room = requireRoom(req);
       const before = Number(req.query.before) || undefined;
-      return roomMessages.list(room.id, before).map(toRoomMessage);
+      return withMessageMeta(roomMessages.list(room.id, before).map(toRoomMessage), 'room', room.id, req.user.id);
     })
   );
 
@@ -1187,9 +1313,85 @@ export function createApi() {
       const room = requireRoom(req);
       requirePerm(req, room, PERMS.write, 'Вам нельзя писать в эту комнату');
       const { text, ...extra } = await messageFrom(req, roomConv(room.id));
-      const message = toRoomMessage(roomMessages.add(room.id, req.user.id, text, extra));
+      const replyTo = replyTarget(req.body.replyToId, (r) => r.room_id === room.id);
+      const message = withMessageMeta(
+        [toRoomMessage(roomMessages.add(room.id, req.user.id, text, { ...extra, replyTo }))],
+        'room',
+        room.id,
+        req.user.id
+      )[0];
       for (const m of rooms.members(room.id)) hub.send(m.id, { type: 'room:message', message });
       return message;
+    })
+  );
+
+  // Правка своего сообщения в комнате: новый конверт, сервер текста не видит
+  api.patch(
+    '/rooms/:id/messages/:messageId',
+    handle((req) => {
+      const room = requireRoom(req);
+      const row = roomMessages.byId(Number(req.params.messageId));
+      if (!row || row.room_id !== room.id) throw new HttpError(404, 'Сообщение не найдено');
+      if (row.from_id !== req.user.id) throw new HttpError(403, 'Изменить можно только своё сообщение');
+      const enc = req.body.enc == null ? null : parseEnvelope(req.body.enc);
+      if (!enc) throw new HttpError(400, 'Неверный зашифрованный конверт');
+      if (enc.epoch > convKeys.epoch(roomConv(room.id))) throw new HttpError(400, 'Такой версии ключа у комнаты нет');
+      const message = withMessageMeta([toRoomMessage(roomMessages.setEnc(row.id, enc))], 'room', room.id, req.user.id)[0];
+      for (const m of rooms.members(room.id)) hub.send(m.id, { type: 'room:message:edited', message });
+      return message;
+    })
+  );
+
+  api.post(
+    '/rooms/:id/messages/:messageId/reactions',
+    handle((req) => {
+      const room = requireRoom(req);
+      const row = roomMessages.byId(Number(req.params.messageId));
+      if (!row || row.room_id !== room.id) throw new HttpError(404, 'Сообщение не найдено');
+      reactions.toggle('room', row.id, req.user.id, takeEmoji(req.body.emoji));
+      const list = reactions.of('room', row.id, req.user.id);
+      const event = { type: 'room:message:reactions', id: row.id, roomId: room.id, reactions: list };
+      for (const m of rooms.members(room.id)) hub.send(m.id, event);
+      return list;
+    })
+  );
+
+  api.get(
+    '/rooms/:id/pins',
+    handle((req) => {
+      const room = requireRoom(req);
+      const list = pins
+        .of('room', room.id)
+        .map((id) => roomMessages.byId(id))
+        .filter(Boolean)
+        .map(toRoomMessage);
+      return withMessageMeta(list, 'room', room.id, req.user.id);
+    })
+  );
+
+  api.put(
+    '/rooms/:id/messages/:messageId/pin',
+    handle((req) => {
+      const room = requireRoom(req);
+      const row = roomMessages.byId(Number(req.params.messageId));
+      if (!row || row.room_id !== room.id) throw new HttpError(404, 'Сообщение не найдено');
+      pins.add('room', room.id, row.id, req.user.id);
+      const event = { type: 'room:message:pinned', id: row.id, pinned: true, roomId: room.id };
+      for (const m of rooms.members(room.id)) hub.send(m.id, event);
+      return { ok: true };
+    })
+  );
+
+  api.delete(
+    '/rooms/:id/messages/:messageId/pin',
+    handle((req) => {
+      const room = requireRoom(req);
+      const row = roomMessages.byId(Number(req.params.messageId));
+      if (!row || row.room_id !== room.id) throw new HttpError(404, 'Сообщение не найдено');
+      pins.remove('room', row.id);
+      const event = { type: 'room:message:pinned', id: row.id, pinned: false, roomId: room.id };
+      for (const m of rooms.members(room.id)) hub.send(m.id, event);
+      return { ok: true };
     })
   );
 
