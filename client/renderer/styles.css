@@ -1318,6 +1318,11 @@ kbd {
 .e2ee-card .error { margin: 6px 0 4px; }
 .e2ee-share-code { font: 600 16px ui-monospace, Consolas, monospace; letter-spacing: .1em; padding: 6px 10px; border-radius: var(--r-s); background: var(--bg-3); user-select: all; }
 .msg-locked { color: var(--muted); font-style: italic; }
+/* Настройки → свои звуки */
+.custom-sounds { display: grid; gap: 6px; margin-top: 10px; }
+.sound-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: var(--r-m); background: var(--bg-3); }
+.sound-name { flex: 1; min-width: 0; display: grid; }
+.sound-row .btn { height: 30px; padding: 0 12px; font-size: 13px; }
 /* Тема личного чата: свой фон переписки и свой акцентный цвет */
 #chat[data-chat-theme] { background: var(--chat-bg); }
 #chat[data-chat-theme] .messages { background: transparent; }
