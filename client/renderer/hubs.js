@@ -74,6 +74,7 @@ function forgetHub(id) {
 /** Открыть канал: его последнюю комнату, иначе первую текстовую, иначе любую; комнат нет — «Тут пока пусто» */
 function openHub(id) {
   if (!hubById(id)) return;
+  readNotifsOf({ hub: id });
   const rooms = roomsOfHub(id);
   const room = rooms.find((r) => r.id === lastRoomOf.get(id)) || rooms.find((r) => r.kind === 'text') || rooms[0];
   if (room) return selectRoom(room.id);
