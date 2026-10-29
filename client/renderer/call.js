@@ -154,7 +154,13 @@ async function noiseSuppressorNode(ctx) {
   rnnoiseWasm ??= ns.loadRnnoise({ url: 'vendor/noise/rnnoise.wasm', simdUrl: 'vendor/noise/rnnoise_simd.wasm' });
   rnnoiseWasm.catch(() => (rnnoiseWasm = null));
   await ctx.audioWorklet.addModule('vendor/noise/rnnoise/workletProcessor.js');
-  return new ns.RnnoiseWorkletNode(ctx, { wasmBinary: await rnnoiseWasm, maxChannels: 1 });
+  const node = new ns.RnnoiseWorkletNode(ctx, { wasmBinary: await rnnoiseWasm, maxChannels: 1 });
+  // Нейросеть чистит один канал: стерео с микрофона сводим в моно на входе, иначе правый канал выходит
+  // тишиной и собеседник слышит голос только в левом ухе
+  node.channelCount = 1;
+  node.channelCountMode = 'explicit';
+  node.channelInterpretation = 'speakers';
+  return node;
 }
 
 /** Дорожка микрофона через нейросеть: { track — очищенная, stop() — отпустить всё } */

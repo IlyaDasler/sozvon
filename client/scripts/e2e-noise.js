@@ -62,6 +62,42 @@ app.whenReady().then(async () => {
     if (!(speechDb > -6)) throw new Error(`Нейросеть глушит и голос: ${speechDb.toFixed(1)} дБ`);
     console.log('✔ нейросеть убирает шум (тише больше чем на 15 дБ), а голос оставляет');
 
+    // Микрофон часто отдаёт два канала: после нейросети голос слышен в обоих ушах, а не только в левом
+    const ears = await js(`(async () => {
+      const rate = 48000;
+      const clean = (await new AudioContext({ sampleRate: rate }).decodeAudioData(Uint8Array.from(atob('${speech}'), (c) => c.charCodeAt(0)).buffer)).getChannelData(0);
+      const ctx = new AudioContext({ sampleRate: rate });
+      const buf = ctx.createBuffer(2, clean.length, rate);
+      buf.copyToChannel(clean, 0);
+      buf.copyToChannel(clean, 1);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const stereo = ctx.createMediaStreamDestination();
+      stereo.channelCount = 2;
+      src.connect(stereo);
+      const chain = await denoiseTrack(stereo.stream.getAudioTracks()[0]);
+      // Как собеседник: дорожку играют в стерео
+      const out = new AudioContext({ sampleRate: rate });
+      const split = out.createChannelSplitter(2);
+      out.createMediaStreamSource(new MediaStream([chain.track])).connect(split);
+      const meters = [0, 1].map((ch) => { const a = out.createAnalyser(); split.connect(a, ch); return a; });
+      await new Promise((r) => setTimeout(r, 1000)); // нейросеть загрузилась
+      src.start();
+      const sum = [0, 0];
+      const data = new Float32Array(2048);
+      for (let i = 0; i < 40; i++) {
+        await new Promise((r) => setTimeout(r, 50));
+        meters.forEach((a, ch) => { a.getFloatTimeDomainData(data); sum[ch] += data.reduce((s, v) => s + v * v, 0); });
+      }
+      chain.stop();
+      out.close();
+      ctx.close();
+      return sum;
+    })()`);
+    console.log(`  громкость: левое ${ears[0].toFixed(2)}, правое ${ears[1].toFixed(2)}`);
+    if (!(ears[0] > 0.01) || !(ears[1] > ears[0] * 0.5)) throw new Error(`Голос только в одном ухе: левое ${ears[0].toFixed(3)}, правое ${ears[1].toFixed(3)}`);
+    console.log('✔ после нейросети голос слышен в обоих ушах');
+
     // Живой микрофон: с шумоподавлением дорожка идёт через нейросеть, звук не пропадает
     const live = await js(`(async () => {
       const local = new LocalMedia(() => {});
