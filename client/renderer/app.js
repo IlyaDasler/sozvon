@@ -485,6 +485,7 @@ function enterMain(user) {
   socket = new ServerSocket({
     onMessage: handleEvent,
     onStatus(ok) {
+      Api.online = ok;
       $('conn-dot').classList.toggle('ok', ok);
       $('conn-dot').title = ok ? 'Подключено к серверу' : 'Нет связи с сервером, переподключаемся…';
       if (ok) {
