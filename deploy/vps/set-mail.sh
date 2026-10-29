@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Почтовый ящик для писем с кодами (регистрация по почте, сброс пароля, привязка почты).
-# Спрашивает адрес и пароль приложения, записывает их в /etc/sozvon.env, перезапускает сервер
-# и отправляет на этот же ящик пробное письмо с кодом. Пароль вводится только здесь и не показывается.
+# Спрашивает адрес и пароль приложения и отправляет на этот же ящик пробное письмо с кодом. Ушло — записывает
+# в /etc/sozvon.env и перезапускает сервер; не ушло — почту на сервере выключает, чтобы люди видели «почта
+# не настроена», а не «письмо не отправлено». Пароль вводится только здесь и не показывается.
 #
 #   ssh -t root@сервер 'bash /opt/sozvon/deploy/vps/set-mail.sh'
 set -euo pipefail
@@ -30,24 +31,29 @@ echo
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 grep -v '^SMTP_' "$ENV_FILE" > "$tmp" || true
+without_mail=$(cat "$tmp")
 printf 'SMTP_HOST=%s\nSMTP_PORT=465\nSMTP_USER=%s\nSMTP_PASS=%s\nSMTP_FROM=%s\n' "$SMTP_HOST" "$SMTP_USER" "$SMTP_PASS" "$SMTP_USER" >> "$tmp"
-install -m 640 -o root -g sozvon "$tmp" "$ENV_FILE"
 unset SMTP_PASS
-echo 'Записал в настройки сервера.'
 
-systemctl restart sozvon
-echo 'Сервер перезапущен.'
-
-# Пробное письмо — тем же кодом, которым сервер шлёт коды людям
+# Пробное письмо — тем же кодом, которым сервер шлёт коды людям, и с новыми настройками, ещё до записи
 echo "Отправляю пробное письмо на $SMTP_USER…"
 cd "$APP_DIR/server"
-if sudo -u sozvon env $(grep -v '^#' "$ENV_FILE" | xargs) node --input-type=module -e "
+if sudo -u sozvon env $(grep -v '^#' "$tmp" | xargs) node --input-type=module -e "
   const { mailEnabled, sendCode } = await import('./src/mail.js');
   if (!mailEnabled) throw new Error('почта не включилась');
   await sendCode('register', process.env.SMTP_USER);
-" ; then
-  echo "Готово: на $SMTP_USER пришло письмо «Код для регистрации в Созвоне». Регистрация по почте работает."
+" 2>&1 | grep -E 'Письмо не отправлено|почта не включилась' ; [ "${PIPESTATUS[0]}" = 0 ]; then
+  install -m 640 -o root -g sozvon "$tmp" "$ENV_FILE"
+  systemctl restart sozvon
+  echo "Готово: на $SMTP_USER пришло письмо «Код для регистрации в Созвоне». Настройки записаны, сервер перезапущен — регистрация по почте работает."
 else
-  echo 'Письмо не ушло. Проверьте адрес и пароль приложения (и что в почте включён доступ почтовым программам) и запустите снова.'
+  printf '%s\n' "$without_mail" > "$tmp"
+  install -m 640 -o root -g sozvon "$tmp" "$ENV_FILE"
+  systemctl restart sozvon
+  echo
+  echo 'Письмо не ушло — почту на сервере пока выключил. Проверьте и запустите скрипт снова:'
+  echo '  1) адрес — ваш настоящий ящик;'
+  echo '  2) пароль — пароль приложения типа «Почта» (id.yandex.ru → Безопасность → Пароли приложений), не пароль от аккаунта;'
+  echo '  3) в Яндекс Почте: Все настройки → Почтовые программы → включён IMAP и «Пароли приложений и OAuth-токены».'
   exit 1
 fi
