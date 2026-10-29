@@ -184,7 +184,8 @@ function roomItem(room) {
       n.className = 'ellipsis';
       n.textContent = user.displayName;
       const role = roleOf(room, p.userId);
-      if (role) n.style.color = role.color;
+      // Цвет роли важнее, без роли — свой цвет ника
+      if (role || user.nameColor) n.style.color = role?.color || user.nameColor;
       item.append(n);
       if (p.screen) item.insertAdjacentHTML('beforeend', '<b class="live">В ЭФИРЕ</b>');
       if (p.video) item.insertAdjacentHTML('beforeend', ICONS.cam);

@@ -508,7 +508,7 @@ function renderMembers() {
     for (const m of g.people.sort(byName)) {
       const hubMember = hub.members.find((x) => x.id === m.id);
       const name = el('div', { className: 'member-nick ellipsis', textContent: m.displayName });
-      if (g.role) name.style.color = g.role.color;
+      if (g.role || m.nameColor) name.style.color = g.role?.color || m.nameColor;
       const sub = inVoice.has(m.id) ? 'В голосе'
         : m.id === hub.ownerId ? 'Создатель канала'
         : hubMember?.manager ? 'Управляет каналом'
