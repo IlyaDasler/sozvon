@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'">
+  <title>Созвон</title>
+  <!-- Окошко загрузки как у Discord: Совон, что сейчас происходит (проверка, скачивание, запуск) и полоска прогресса -->
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      background: radial-gradient(circle at 50% 35%, #2a2350 0%, #14151c 70%); color: #e8e9f2;
+      font: 14px/1.3 "Segoe UI", system-ui, sans-serif; user-select: none; -webkit-app-region: drag; overflow: hidden;
+    }
+    .logo { width: 96px; height: 96px; border-radius: 28px; animation: bob 1.6s ease-in-out infinite; filter: drop-shadow(0 10px 24px rgba(124, 92, 255, .45)); }
+    @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-10px) rotate(3deg); } }
+    .status { font-weight: 600; min-height: 19px; text-align: center; }
+    .bar { width: 180px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+    .bar i { display: block; height: 100%; width: 30%; border-radius: 3px; background: #7c5cff; animation: run 1.1s ease-in-out infinite; }
+    .bar.known i { animation: none; transition: width .3s; }
+    @keyframes run { from { transform: translateX(-100%); } to { transform: translateX(330%); } }
+    .version { position: fixed; bottom: 10px; font-size: 11px; color: #8a8ca3; }
+  </style>
+</head>
+<body>
+  <img class="logo" src="logo.svg" alt="">
+  <div class="status" id="status">Запускаем…</div>
+  <div class="bar" id="bar"><i></i></div>
+  <div class="version" id="version"></div>
+  <script src="splash.js"></script>
+</body>
+</html>

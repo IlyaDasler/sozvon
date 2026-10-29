@@ -8,6 +8,7 @@ const { offerRemoveOldCopy, repairShortcuts } = require('./install-repair');
 const { applyPermissions } = require('./permissions');
 const { fetchPreview } = require('./link-preview');
 const { restoreBounds, readState, trackWindow } = require('./window-state');
+const { runStartup, CHECK_TIMEOUT_MS } = require('./startup');
 
 // --profile=имя запускает отдельный экземпляр со своим входом (удобно, чтобы проверить звонок на одном ПК)
 const profileArg = process.argv.find((a) => a.startsWith('--profile='));
@@ -33,7 +34,8 @@ const TITLEBAR_H = 32; // как .titlebar в styles.css
 
 const WINDOW_MIN = { width: 820, height: 540 };
 
-function createWindow() {
+/** show: false — окно грузится за окошком загрузки и показывается, когда запуск закончен */
+function createWindow({ show = true } = {}) {
   // Окно открывается там и такого размера, каким его оставили (если тот экран ещё подключён)
   const stateFile = path.join(app.getPath('userData'), 'window.json');
   const saved = restoreBounds(readState(stateFile), screen.getAllDisplays().map((d) => d.workArea), WINDOW_MIN);
@@ -42,6 +44,7 @@ function createWindow() {
     minWidth: WINDOW_MIN.width,
     minHeight: WINDOW_MIN.height,
     title: 'Созвон',
+    show,
     backgroundColor: '#17181c',
     autoHideMenuBar: true,
     // Своя полоса окна в цветах темы: системную прячем, кнопки «свернуть, развернуть, закрыть» Windows
@@ -59,7 +62,7 @@ function createWindow() {
     },
   });
 
-  if (saved?.maximized) win.maximize();
+  if (saved?.maximized) show ? win.maximize() : win.once('show', () => win.maximize());
   trackWindow(win, stateFile);
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   ipcMain.on('window:titlebar', (_e, { color, symbolColor }) => {
@@ -127,9 +130,13 @@ app.whenReady().then(() => {
     callback({ video: choice.source, ...(choice.audio && { audio: 'loopback' }) });
   });
 
-  createWindow();
+  // Собранное приложение открывается через окошко загрузки (SOZVON_SPLASH=1 — посмотреть его при разработке)
+  const useSplash = app.isPackaged || process.env.SOZVON_SPLASH === '1';
+  if (useSplash) openSplash();
+  createWindow({ show: !useSplash });
   createTray();
-  setupUpdater();
+  setupUpdater({ checkNow: !useSplash });
+  if (useSplash) startWithSplash();
   if (app.isPackaged && process.platform === 'win32') {
     repairShortcuts();
     win.webContents.once('did-finish-load', () => setTimeout(() => offerRemoveOldCopy(win).catch(() => {}), 3000));
@@ -218,7 +225,7 @@ function releaseNotes(info) {
   return typeof notes === 'string' ? notes : '';
 }
 
-function setupUpdater() {
+function setupUpdater({ checkNow = true } = {}) {
   // Сами не качаем: сначала спрашиваем пользователя в окне обновления
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
@@ -232,9 +239,47 @@ function setupUpdater() {
   autoUpdater.on('update-downloaded', (info) => setUpdateStatus({ state: 'ready', version: info.version }));
   autoUpdater.on('error', (err) => setUpdateStatus({ state: 'error', message: err.message, checkedAt: Date.now() }));
 
-  checkForUpdates();
+  if (checkNow) checkForUpdates();
   // И дальше раз в несколько часов: Созвон неделями живёт в трее, и новую версию иначе не заметить
   setInterval(checkForUpdates, UPDATE_EVERY_MS);
+}
+
+// ---------- Окошко загрузки ----------
+// Как у Discord: при запуске видно, что приложение проверяет обновления, качает новую версию или запускается
+
+let splash = null;
+let splashStatus = null;
+
+function openSplash() {
+  splash = new BrowserWindow({
+    width: 300, height: 340, frame: false, resizable: false, maximizable: false, center: true, show: false,
+    title: 'Созвон', backgroundColor: '#14151c',
+  });
+  splash.loadFile(path.join(__dirname, 'renderer', 'splash.html'), { query: { v: app.getVersion() } });
+  splash.once('ready-to-show', () => splash?.show());
+  splash.webContents.on('did-finish-load', () => splashStatus && showSplashStatus(splashStatus));
+  splash.on('closed', () => (splash = null));
+}
+
+function showSplashStatus(status) {
+  splashStatus = status;
+  if (!splash || splash.webContents.isLoading()) return;
+  splash.webContents.executeJavaScript(`showStatus(${JSON.stringify(status)})`).catch(() => {});
+}
+
+async function startWithSplash() {
+  const result = await runStartup(autoUpdater, { onStatus: showSplashStatus, timeoutMs: app.isPackaged ? CHECK_TIMEOUT_MS : 1500 });
+  if (result === 'install') {
+    quitting = true;
+    app.removeAllListeners('window-all-closed');
+    win?.destroy();
+    setTimeout(() => autoUpdater.quitAndInstall(true, true), 600); // «Устанавливаем…» успевают увидеть
+    return;
+  }
+  // Приложение показываем, когда его страница готова, — без белой вспышки
+  if (win.webContents.isLoading()) await new Promise((r) => win.webContents.once('did-finish-load', r));
+  win.show();
+  splash?.close();
 }
 
 ipcMain.handle('update:status', () => ({ ...updateStatus, current: app.getVersion() }));
