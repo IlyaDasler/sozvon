@@ -634,6 +634,7 @@ async function selectContact(id) {
   state.selectedId = id;
   state.selectedRoomId = null;
   state.unread.delete(id);
+  if (id) readNotifsOf({ contact: id });
   renderContacts();
   renderRooms();
 
@@ -2276,6 +2277,8 @@ $('logout-btn').onclick = () => logout();
 window.desktop?.onHotkey((name) => (name === 'toggle-mute' ? toggleMute() : toggleDeafen()));
 
 window.addEventListener('focus', () => {
+  if (state.selectedId) readNotifsOf({ contact: state.selectedId });
+  if (state.selectedRoomId) readNotifsOf({ room: state.selectedRoomId });
   if (state.selectedId && state.unread.has(state.selectedId)) {
     state.unread.delete(state.selectedId);
     renderContacts();
