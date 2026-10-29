@@ -16,10 +16,22 @@ runTest(async () => {
   const game = new BrowserWindow({ fullscreen: true, show: true, backgroundColor: '#000', webPreferences: { backgroundThrottling: false } });
   await game.loadURL('data:text/html,' + encodeURIComponent(`<canvas id=c style="width:100vw;height:100vh;display:block"></canvas><script>
     const c = document.getElementById('c'); c.width = innerWidth; c.height = innerHeight; const g = c.getContext('2d'); let t = 0;
+    // E2E_HEAVY=1 — как в настоящей игре: по экрану едет детальная текстура (поворот камеры); кодировщику это тяжело
+    const heavy = ${process.env.E2E_HEAVY === '1'}, tex = document.createElement('canvas'); tex.width = 2048; tex.height = 1024;
+    // Местность — крупные плавные пятна (шум 256×128, растянутый со сглаживанием) и резкие детали поверх, как в игре
+    if (heavy) { const tg = tex.getContext('2d'), small = document.createElement('canvas'); small.width = 256; small.height = 128;
+      const sg = small.getContext('2d'), img = sg.createImageData(256, 128);
+      for (let i = 0; i < img.data.length; i += 4) { const v = Math.random() * 255; img.data[i] = v * 0.6; img.data[i + 1] = 80 + v * 0.5; img.data[i + 2] = 40 + v * 0.3; img.data[i + 3] = 255; }
+      sg.putImageData(img, 0, 0); tg.imageSmoothingEnabled = true; tg.drawImage(small, 0, 0, 2048, 1024);
+      for (let i = 0; i < 300; i++) { tg.fillStyle = 'hsl(' + (i * 37 % 360) + ',60%,' + (30 + i % 40) + '%)'; tg.fillRect(Math.random() * 2048, Math.random() * 1024, 4 + Math.random() * 60, 4 + Math.random() * 30); } }
     (function f() { t++; g.fillStyle = 'hsl(' + (t * 3 % 360) + ',70%,40%)'; g.fillRect(0, 0, c.width, c.height);
+      if (heavy) { const x = (t * 11) % 2048; g.drawImage(tex, -x * 1.7, 0, 2048 * 1.7, c.height); g.drawImage(tex, (2048 - x) * 1.7, 0, 2048 * 1.7, c.height); }
       g.fillStyle = '#fff'; for (let i = 0; i < 40; i++) g.fillRect((t * 9 + i * 97) % c.width, (i * 53 + t * 4) % c.height, 120, 120);
       g.font = '120px monospace'; g.fillText(t, 100, 200); requestAnimationFrame(f); })();</script>`));
 
+  // E2E_CPU_LOAD=N — как тяжёлая игра: N процессов с обычным приоритетом крутят процессор на 100%
+  const burners = Array.from({ length: Number(process.env.E2E_CPU_LOAD) || 0 }, () => require('child_process').spawn(process.execPath, ['-e', 'for(;;){}'], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, stdio: 'ignore' }));
+  app.on('quit', () => burners.forEach((p) => p.kill()));
   const a = await register('fa', 'Аня');
   const b = await register('fb', 'Боря');
   await befriend(a, b);
@@ -44,12 +56,12 @@ runTest(async () => {
     })()`);
     // Боря смотрит трансляцию (без этого Аня ему экран не шлёт)
     await js(winB, `activeSession().setWatching(${a.user.id}, true); true`);
-    await sleep(4000); // разгон: кодировщик и оценка канала
+    await sleep(Number(process.env.E2E_WARMUP) || 4000); // разгон: кодировщик и оценка канала
     const sample = () =>
       js(winA, `(async () => {
         const out = {};
         for (const p of activeSession().peers.values()) (await p.link.pc.getStats()).forEach((s) => {
-          if (s.type === 'outbound-rtp' && s.kind === 'video' && s.frameWidth >= 1000) Object.assign(out, { frames: s.framesEncoded, w: s.frameWidth, h: s.frameHeight, enc: s.encoderImplementation, limit: s.qualityLimitationReason, codec: s.codecId, sent: s.framesSent, sourceId: s.mediaSourceId });
+          if (s.type === 'outbound-rtp' && s.kind === 'video' && s.framesEncoded >= (out.frames || 0)) Object.assign(out, { frames: s.framesEncoded, w: s.frameWidth, h: s.frameHeight, enc: s.encoderImplementation, limit: s.qualityLimitationReason, codec: s.codecId, sent: s.framesSent, sourceId: s.mediaSourceId });
           if (s.type === 'media-source' && s.kind === 'video' && s.width >= 1000) out.captured = s.framesPerSecond;
         });
         const sender = [...activeSession().peers.values()][0].link.transceiver('screen').sender;
@@ -68,7 +80,8 @@ runTest(async () => {
       reader.cancel(); t.stop();
       return (n / 3).toFixed(1);
     })()`);
-    console.log(`  ${mode}: дорожка захвата даёт ${trackFps} к/с`);
+    const gameFps = await game.webContents.executeJavaScript('new Promise((r) => { let n = 0; const s = performance.now(); (function f() { n++; if (performance.now() - s < 2000) requestAnimationFrame(f); else r((n / 2).toFixed(1)); })(); })');
+    console.log(`  ${mode}: игра рисует ${gameFps} к/с, дорожка захвата даёт ${trackFps} к/с`);
     const cpuOf = () => app.getAppMetrics().find((m) => m.pid === winA.webContents.getOSProcessId())?.cpu.percentCPUUsage;
     cpuOf();
     const s1 = await sample();
@@ -77,7 +90,7 @@ runTest(async () => {
     const cpu = cpuOf();
     const fpsOut = (s2.frames - s1.frames) / 5;
     const received = await js(winB, `(async () => {
-      let r = 0; for (const p of activeSession().peers.values()) (await p.link.pc.getStats()).forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'video' && s.frameWidth >= 1000) r = s.framesPerSecond || r; }); return r; })()`);
+      let r = 0; for (const p of activeSession().peers.values()) (await p.link.pc.getStats()).forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'video' && s.framesDecoded > 0) r = s.framesPerSecond || r; }); return r; })()`);
     const codec = await js(winA, `(async () => { for (const p of activeSession().peers.values()) { const st = await p.link.pc.getStats(); return st.get(${JSON.stringify(s2.codec || '')})?.mimeType || '?'; } })()`);
     report.push({ mode, size: `${s2.w}x${s2.h}`, encodedFps: fpsOut.toFixed(1), receivedFps: received, codec, encoder: s2.enc, limit: s2.limit });
     console.log(`  ${mode}: захват ${s2.source}, ${s2.w}×${s2.h}, кодируется ${fpsOut.toFixed(1)} к/с, доходит ${received} к/с, ${codec} (${s2.enc}), ограничение: ${s2.limit}, процессор отправителя ${cpu?.toFixed(0)}%; в WebRTC с захвата ${s2.captured} к/с; ${s2.params}`);
