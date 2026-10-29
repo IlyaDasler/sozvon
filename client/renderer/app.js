@@ -917,7 +917,22 @@ async function refreshPinned(chat) {
   };
   bar.replaceChildren(label, text, unpin);
   bar.classList.remove('hidden');
-  bar.onclick = () => toast(`${author.displayName}: ${known.text || 'сообщение'}`);
+  bar.onclick = () => jumpToMessage(bar.nextElementSibling, first.id) || toast(`${author.displayName}: ${known.text || 'сообщение'}`);
+}
+
+/** Пролистать ленту к сообщению и подсветить его; false — его нет среди загруженных */
+function jumpToMessage(box, id) {
+  const row = box?.querySelector(`[data-msg-id="${id}"]`);
+  if (!row) return false;
+  // Человек сам ушёл от низа — лента больше не держится внизу, видна плашка «Перейти к последним»
+  box.stick = false;
+  syncJumpBar(box);
+  row.scrollIntoView({ block: 'center' });
+  row.classList.remove('msg-flash');
+  void row.offsetWidth;
+  row.classList.add('msg-flash');
+  setTimeout(() => row.classList.remove('msg-flash'), 2000);
+  return true;
 }
 
 // Корзина у сообщения: Shift — удалить сразу, без вопроса
@@ -954,8 +969,7 @@ function replyQuote(reply) {
   el.append(name, text);
   el.onclick = (e) => {
     e.stopPropagation();
-    const target = el.closest('.messages')?.querySelector(`[data-msg-id="${reply.id}"]`);
-    if (target) target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    jumpToMessage(el.closest('.messages'), reply.id);
   };
   return el;
 }
