@@ -134,6 +134,9 @@ body { display: flex; flex-direction: column; }
   background: var(--bg-deep); color: var(--muted); font-size: 12px; user-select: none; -webkit-app-region: drag;
 }
 .titlebar img { opacity: .9; }
+/* Сообщение, к которому перешли (закреп, цитата ответа), коротко подсвечено */
+.msg-flash { animation: msg-flash 2s ease-out; }
+@keyframes msg-flash { from { background: color-mix(in srgb, var(--accent) 28%, transparent); } to { background: transparent; } }
 /* «Назад» и «Вперёд» — как в браузере; на экране входа их не видно */
 .nav-btn { -webkit-app-region: no-drag; width: 26px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--text-2); cursor: pointer; padding: 0; }
 .nav-btn:hover:not(:disabled) { background: var(--bg-3); color: var(--text); }

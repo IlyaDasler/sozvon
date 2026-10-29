@@ -210,6 +210,21 @@ runTest(async () => {
   if (!(await js(winB, `${atBottom} && ${jumpHidden}`))) throw new Error('Лента выросла и пришло запоздалое событие прокрутки — чат уехал вверх');
   console.log('✔ открытый чат: новые сообщения сразу внизу, догрузка картинок ленту не сдвигает');
 
+  // Щелчок по закреплённому — лента листается к нему и подсвечивает
+  await js(winA, `(async () => { const m = state.history.get(${b.user.id}).find((x) => messageView(x).text === 'разгон 0'); await togglePin(m, { kind: 'dm', peerId: ${b.user.id} }); return true; })()`);
+  await waitFor(winA, `!document.getElementById('chat-pinned').classList.contains('hidden') && document.getElementById('chat-pinned').textContent.includes('разгон 0')`, 'полоса «Закреплено»');
+  await sleep(1500); // событие закрепа с сервера перерисовывает ленту — щёлкаем после
+  await js(winA, `document.getElementById('chat-pinned').click(); true`);
+  await waitFor(
+    winA,
+    `(() => { const m = state.history.get(${b.user.id}).find((x) => messageView(x).text === 'разгон 0'); const row = document.querySelector('#messages [data-msg-id="' + m.id + '"]');
+      const box = document.getElementById('messages').getBoundingClientRect(); const r = row.getBoundingClientRect();
+      return r.top >= box.top && r.bottom <= box.bottom && row.classList.contains('msg-flash'); })()`,
+    'лента у закреплённого'
+  );
+  await js(winA, `(async () => { const m = state.history.get(${b.user.id}).find((x) => messageView(x).text === 'разгон 0'); await togglePin(m, { kind: 'dm', peerId: ${b.user.id} }); document.querySelector('#messages + .jump-bar').click(); return true; })()`);
+  console.log('✔ щелчок по закреплённому листает к нему');
+
   // Листаем вверх: лента не прыгает вниз от новых сообщений, внизу — «Перейти к последним»
   for (let i = 0; i < 25; i++) await send(winA, `строка ${i}`);
   await waitFor(winB, `${lastMsg}?.textContent === 'строка 24'`, 'длинная переписка');
