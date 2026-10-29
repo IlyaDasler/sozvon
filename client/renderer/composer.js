@@ -356,20 +356,66 @@ function toggleEmojiPicker(composer) {
 
 document.addEventListener('click', () => emojiPopover?.classList.add('hidden'));
 
+// ---------- Ответ на сообщение: черновик и строка над полем ввода ----------
+
+let replyDraft = null;
+let replyChat = null;
+
+function renderReplyBars() {
+  for (const [id, kind] of [['chat-reply', 'dm'], ['room-reply', 'room']]) {
+    const bar = $(id);
+    if (!bar) continue;
+    if (!replyDraft || replyChat?.kind !== kind) {
+      bar.classList.add('hidden');
+      bar.replaceChildren();
+      continue;
+    }
+    const author = userById(replyDraft.fromId) || { displayName: '?' };
+    const name = document.createElement('b');
+    name.textContent = author.displayName;
+    const text = document.createElement('span');
+    text.textContent = replyDraft.text || 'вложение';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.title = 'Отменить ответ';
+    close.textContent = '×';
+    close.onclick = () => clearReply();
+    bar.replaceChildren(name, text, close);
+    bar.classList.remove('hidden');
+  }
+}
+
+function setReplyDraft(draft, chat) {
+  replyDraft = draft;
+  replyChat = chat;
+  renderReplyBars();
+  (chat.kind === 'dm' ? dmComposer : roomComposer)?.focus?.();
+}
+
+function clearReply() {
+  replyDraft = null;
+  replyChat = null;
+  renderReplyBars();
+}
+
 // ---------- Два поля ввода: чат с другом и комната ----------
 
 const dmComposer = new Composer($('message-form'), $('message-input'), async (payload) => {
   const peerId = state.selectedId;
   if (!peerId) return;
-  const { body, plain } = await encryptOutgoing(dmConvOf(peerId), payload);
+  const reply = replyDraft && replyChat?.kind === 'dm' ? replyDraft : null;
+  const { body, plain } = await encryptOutgoing(dmConvOf(peerId), { ...payload, reply });
   addMessage({ ...(await Api.post(`/messages/${peerId}`, body)), plain });
+  if (reply) clearReply();
 });
 dmComposer.acceptDrops($('chat'));
 
 const roomComposer = new Composer($('room-message-form'), $('room-message-input'), async (payload) => {
   const roomId = state.selectedRoomId;
   if (!roomId) return;
-  const { body, plain } = await encryptOutgoing(roomConvOf(roomId), payload);
+  const reply = replyDraft && replyChat?.kind === 'room' ? replyDraft : null;
+  const { body, plain } = await encryptOutgoing(roomConvOf(roomId), { ...payload, reply });
   addRoomMessage({ ...(await Api.post(`/rooms/${roomId}/messages`, body)), plain });
+  if (reply) clearReply();
 });
 roomComposer.acceptDrops($('room-view'));
