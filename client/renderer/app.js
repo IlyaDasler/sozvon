@@ -2117,10 +2117,12 @@ function notesToText(html) {
   return text.replace(/\n{3,}/g, '\n\n').trim() || fallback;
 }
 
-function openUpdateModal() {
+/** latest — версия уже последняя: показываем, что нового в ней, без кнопок обновления */
+function openUpdateModal(latest = false) {
   const s = updateStatus;
-  $('update-title').textContent = `Доступно обновление ${s.version}`;
-  $('update-current').textContent = `Сейчас у вас версия ${s.current}`;
+  $('update-modal').classList.toggle('latest', latest);
+  $('update-title').textContent = latest ? `У вас последняя версия ${s.current}` : `Доступно обновление ${s.version}`;
+  $('update-current').textContent = latest ? 'Обновлений нет — вот что появилось в этой версии' : `Сейчас у вас версия ${s.current}`;
   $('update-notes').textContent = notesToText(s.notes);
   $('update-error').textContent = '';
   $('update-modal').classList.remove('hidden');
@@ -2198,7 +2200,7 @@ function onUpdateStatus(s) {
   const { state: st, version } = updateStatus;
   // Окно «Что нового» само открывается только по кнопке; при запуске — плашка и точка (renderUpdate)
   if (st === 'available' && manualCheck) openUpdateModal();
-  if (manualCheck && st === 'latest') toast(`У вас последняя версия — ${updateStatus.current}`);
+  if (manualCheck && st === 'latest') openUpdateModal(true);
   if (manualCheck && st === 'error') toast('Не удалось проверить обновления. Проверьте интернет');
   if (manualCheck && st === 'unsupported') toast('Обновления работают только в установленной версии');
   if (['available', 'latest', 'error', 'unsupported'].includes(st)) manualCheck = false;
@@ -2217,6 +2219,7 @@ if (window.desktop?.update) {
 
   $('update-now').onclick = startUpdate;
   $('update-later').onclick = closeUpdateModal;
+  $('update-close').onclick = closeUpdateModal;
   $('update-skip').onclick = () => {
     store.set('skippedUpdate', updateStatus.version);
     closeUpdateModal();
