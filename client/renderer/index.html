@@ -802,7 +802,7 @@
   <!-- Выбор экрана для демонстрации -->
   <div id="screen-picker" class="modal hidden">
     <div class="modal-card screen-card">
-      <h3>Что показать?</h3>
+      <h3 id="screen-title">Что показать?</h3>
       <div class="tabs" id="screen-tabs">
         <button type="button" class="tab active" data-tab="screen">Весь экран <span class="muted" id="screen-count-screen"></span></button>
         <button type="button" class="tab" data-tab="window">Окно приложения <span class="muted" id="screen-count-window"></span></button>
@@ -824,6 +824,7 @@
       </div>
       <p class="error" id="screen-error"></p>
       <div class="row">
+        <button type="button" class="btn danger-outline hidden" id="screen-stop">Остановить показ</button>
         <div class="spacer"></div>
         <button type="button" class="btn" id="screen-cancel">Отмена</button>
         <button type="button" class="btn primary" id="screen-start" disabled>Начать показ</button>

@@ -123,16 +123,36 @@ runTest(async () => {
   );
   if ((await js(winB, `store.get('screenMode')`)) !== '720p90') throw new Error('Режим трансляции не запомнился');
   console.log('✔ демонстрация в режиме 720p, 90 кадров/с; режим запомнился');
+  // Чужую трансляцию смотрят по желанию: сначала — карточка «Смотреть», без видео и без разворота
+  const bScreen = `document.querySelector('.tile[data-key="u${b.user.id}:screen"]')`;
   for (const [win, u] of [[winA, a], [winC, c]]) {
-    await waitFor(win, tilePlaying(win, `u${b.user.id}:screen`), `экран Бори у ${u.user.displayName}`, 20000);
-    const focused = await js(win, `document.querySelector('.tile[data-key="u${b.user.id}:screen"]').classList.contains('focused')`);
-    if (!focused) throw new Error('Экран Бори не развернулся');
+    await waitFor(win, `Boolean(${bScreen}?.querySelector('.tile-watch'))`, `приглашение смотреть экран Бори у ${u.user.displayName}`, 20000);
+    if (await js(win, `${bScreen}.classList.contains('focused') || ${bScreen}.classList.contains('has-video')`)) throw new Error('Чужая трансляция открылась сама');
   }
   await waitFor(winC, `[...document.querySelectorAll('#room-list .live')].length === 1`, 'значок «в эфире» в списке');
-  console.log('✔ экран Бори виден остальным, развёрнут, в списке значок «В ЭФИРЕ»');
+  // Аня нажимает «Смотреть» — видит и разворачивает; Вика не смотрит — Боря ей экран не шлёт
+  await js(winA, `${bScreen}.querySelector('.tile-watch').click(); true`);
+  await waitFor(winA, tilePlaying(winA, `u${b.user.id}:screen`), 'экран Бори у Ани', 20000);
+  if (!(await js(winA, `${bScreen}.classList.contains('focused')`))) throw new Error('Экран Бори не развернулся у смотрящей');
+  const sentTo = (id) => `[...activeSession().peers.values()].find((p) => p.id === ${id}).link.transceiver('screen').sender.track`;
+  await waitFor(winB, `Boolean(${sentTo(a.user.id)}) && !${sentTo(c.user.id)}`, 'Боря шлёт экран только Ане');
+  // На плитке — сколько кадров доходит, разрешение и кодек
+  await waitFor(winA, `/\\d+ к\\/с/.test(${bScreen}.querySelector('.tile-stats')?.textContent || '')`, 'статистика трансляции у Ани', 15000);
+  await waitFor(winB, `/\\d+ к\\/с/.test(document.querySelector('.tile[data-key="me:screen"] .tile-stats')?.textContent || '')`, 'статистика своей трансляции у Бори', 15000);
+  console.log('✔ трансляцию смотрят по кнопке «Смотреть»: видна и развёрнута только у смотрящих, со статистикой');
+
+  // Боря меняет окно и качество, не прерывая показ: кнопка экрана открывает выбор в режиме «сменить»
+  await js(winB, `document.getElementById('call-screen').click(); true`);
+  await waitFor(winB, `!document.getElementById('screen-picker').classList.contains('hidden') && document.getElementById('screen-start').textContent === 'Сменить' && !document.getElementById('screen-stop').classList.contains('hidden')`, 'выбор в режиме «сменить»');
+  await waitFor(winB, `!document.getElementById('screen-start').disabled`, 'источник выбран');
+  const oldTrack = await js(winB, 'activeSession().local.tracks.screen.id');
+  await js(winB, `document.querySelector('input[name="screen-mode"][value="1080p60"]').click(); document.getElementById('screen-start').click(); true`);
+  await waitFor(winB, `activeSession().local.tracks.screen && activeSession().local.tracks.screen.id !== ${JSON.stringify(oldTrack)} && ${sentTo(a.user.id)}?.id === activeSession().local.tracks.screen.id && [...activeSession().peers.values()][0].link.transceiver('screen').sender.getParameters().encodings[0].maxFramerate === 60`, 'трансляция сменилась на 1080p60');
+  await waitFor(winA, tilePlaying(winA, `u${b.user.id}:screen`), 'Аня видит новую трансляцию', 20000);
+  console.log('✔ окно и качество меняются на ходу — показ не прерывается, зрители видят новое');
 
   // Кнопка «во весь экран» видна и не перекрыта, нажатие разворачивает трансляцию
-  const fullBtn = `document.querySelector('.tile[data-key="u${b.user.id}:screen"] .tile-btn')`;
+  const fullBtn = `document.querySelector('.tile[data-key="u${b.user.id}:screen"] .tile-full')`;
   if (!(await js(winA, reachable(fullBtn)))) throw new Error('Кнопка «во весь экран» перекрыта или вне экрана');
   // E2E_SKIP_FULLSCREEN=1 — пропустить (раньше «не работало» из-за списка разрешений приложения, а не Windows)
   if (process.env.E2E_SKIP_FULLSCREEN === '1') console.log('  (пропущено: трансляция во весь экран — E2E_SKIP_FULLSCREEN)');
@@ -155,6 +175,12 @@ runTest(async () => {
     console.log('✔ трансляция открывается на весь монитор и закрывается кнопкой');
   }
 
+  // «Перестать смотреть» — видео пропадает, Боря перестаёт слать Ане экран
+  await js(winA, `${bScreen}.querySelector('.tile-unwatch').click(); true`);
+  await waitFor(winA, `!${bScreen}.classList.contains('has-video') && Boolean(${bScreen}.querySelector('.tile-watch'))`, 'Аня перестала смотреть');
+  await waitFor(winB, `!${sentTo(a.user.id)}`, 'Боря больше не шлёт экран Ане');
+  console.log('✔ «Перестать смотреть» выключает трансляцию у себя и экономит канал показывающему');
+
   // Границу между разговором и чатом тянут мышью — разговор становится ниже, и это запоминается
   const panelH = () => js(winA, `Math.round(document.getElementById('call-panel').getBoundingClientRect().height)`);
   const grip = await js(winA, `(() => { const r = document.querySelector('#call-panel > .panel-resizer.bottom').getBoundingClientRect(); return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) }; })()`);
@@ -170,7 +196,9 @@ runTest(async () => {
   await js(winA, `document.querySelector('#call-panel > .panel-resizer.bottom').dispatchEvent(new MouseEvent('dblclick')); true`);
   console.log('✔ границу между разговором и чатом тянут мышью, доля запоминается');
 
-  // Маленькое окно: кнопки разговора видны и не перекрыты плитками
+  // Маленькое окно: кнопки разговора видны и не перекрыты плитками (Аня снова смотрит трансляцию Бори)
+  await js(winA, `${bScreen}.querySelector('.tile-watch').click(); true`);
+  await waitFor(winA, tilePlaying(winA, `u${b.user.id}:screen`), 'Аня снова смотрит', 20000);
   winA.setSize(820, 540);
   await sleep(600);
   for (const id of ['call-mute', 'call-deafen', 'call-ns', 'call-cam', 'call-screen', 'hangup-btn'])
