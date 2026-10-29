@@ -1,4 +1,12 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, sharedTexture } = require('electron');
+
+// Свой захват монитора (screen-native.js): кадр приходит общей текстурой видеокарты, отдаём его странице
+// как VideoFrame — там из кадров собирается дорожка трансляции
+sharedTexture?.setSharedTextureReceiver(async ({ importedSharedTexture }) => {
+  const frame = importedSharedTexture.getVideoFrame();
+  window.postMessage({ sozvonScreenFrame: frame }, '*', [frame]);
+  importedSharedTexture.release();
+});
 
 // Небольшой мост между страницей и Windows: горячие клавиши и привлечение внимания к окну
 contextBridge.exposeInMainWorld('desktop', {
@@ -18,6 +26,9 @@ contextBridge.exposeInMainWorld('desktop', {
   screen: {
     sources: () => ipcRenderer.invoke('screen:sources'),
     choose: (id, audio) => ipcRenderer.invoke('screen:choose', id, audio),
+    // Свой захват выбранного монитора: { width, height } или null — тогда снимаем через Chromium
+    nativeStart: (mode) => ipcRenderer.invoke('screen:native-start', mode),
+    nativeStop: (id) => ipcRenderer.invoke('screen:native-stop', id),
   },
   // Рация: включить на клавише (или выключить — null), назначить клавишу, имена клавиш, нажата/отпущена
   ptt: {
