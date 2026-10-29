@@ -244,4 +244,19 @@ runTest(async () => {
   if (overlaps.length) throw new Error(`В узкой шапке налезает: ${overlaps.join(', ')}`);
   await js(winB, `document.documentElement.style.removeProperty('--sidebar-w'); true`);
   console.log('✔ узкая левая панель: в шапке ничего не налезает');
+
+  // Упоминание: «@» и начало имени — подсказка; Enter вставляет @логин; у упомянутого — метка и подсветка
+  await js(
+    winA,
+    `(() => { const a = document.getElementById('message-input'); a.focus(); a.value = 'привет @' + ${JSON.stringify(b.user.username.slice(0, 5))}; a.selectionStart = a.selectionEnd = a.value.length; a.dispatchEvent(new Event('input')); return true; })()`
+  );
+  await waitFor(winA, `[...document.querySelectorAll('.mention-popup:not(.hidden) .mention-item')].some((i) => i.textContent.includes('Боря'))`, 'подсказка с Борей');
+  await js(winA, `document.getElementById('message-input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); true`);
+  const typed = await js(winA, `document.getElementById('message-input').value`);
+  if (typed !== `привет @${b.user.username} `) throw new Error(`Упоминание вставилось не так: «${typed}»`);
+  if (await js(winA, `[...document.querySelectorAll('#messages .msg-text')].some((t) => t.textContent.startsWith('привет @'))`)) throw new Error('Enter в подсказке отправил сообщение');
+  await js(winA, `document.getElementById('message-input').value += 'глянь'; document.getElementById('message-form').requestSubmit(); true`);
+  await waitFor(winB, `${lastMsg}?.querySelector('.mention.me')?.textContent === '@Боря' && ${lastMsg}.closest('.msg').classList.contains('mentions-me')`, 'метка упоминания и подсветка у Бори');
+  await waitFor(winA, `${lastMsg}?.querySelector('.mention')?.textContent === '@Боря' && !${lastMsg}.closest('.msg').classList.contains('mentions-me')`, 'метка у Ани без подсветки');
+  console.log('✔ упоминания: подсказка по «@», метка с именем, подсветка у упомянутого');
 });

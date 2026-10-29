@@ -6,6 +6,7 @@
 const SAFE_HREF = /^(https?:\/\/|mailto:)/i;
 const URL_START = /^(?:https?:\/\/|www\.)[^\s<>]+/i;
 const WORD_CHAR = /[\p{L}\p{N}_]/u;
+const MENTION = /^@([a-z0-9_.]{3,32})/i;
 
 // Точку, запятую и непарную скобку в конце адреса считаем знаками препинания предложения
 function trimUrl(url) {
@@ -56,6 +57,15 @@ function parseInline(s) {
       push({ type: 'code', text: m[1] });
       i += m[0].length;
       continue;
+    }
+    // Упоминание: @логин (латиница, цифры, _ и .), не посреди слова — иначе это почта; точка в конце — конец фразы
+    if (!WORD_CHAR.test(prev) && (m = MENTION.exec(rest))) {
+      const username = m[1].replace(/\.+$/, '');
+      if (username.length >= 3) {
+        push({ type: 'mention', username: username.toLowerCase() });
+        i += username.length + 1;
+        continue;
+      }
     }
     if ((m = /^\[([^\]\n]+)\]\(([^)\s]+)\)/.exec(rest)) && SAFE_HREF.test(m[2])) {
       push({ type: 'link', href: m[2], children: parseInline(m[1]) });
@@ -204,6 +214,19 @@ function renderInlines(doc, nodes, parent) {
       a.title = n.href;
       renderInlines(doc, n.children, a);
       parent.append(a);
+    } else if (n.type === 'mention') {
+      // Знакомый человек — метка с его именем (щелчок — карточка профиля), незнакомый логин — просто текст
+      const user = typeof userByUsername === 'function' ? userByUsername(n.username) : null;
+      if (!user) {
+        parent.append(doc.createTextNode(`@${n.username}`));
+        continue;
+      }
+      const el = doc.createElement('span');
+      el.className = `mention${typeof state !== 'undefined' && user.id === state.me?.id ? ' me' : ''}`;
+      el.textContent = `@${user.displayName}`;
+      el.title = `@${user.username}`;
+      el.dataset.profile = user.id;
+      parent.append(el);
     } else if (n.type === 'spoiler') {
       const el = doc.createElement('span');
       el.className = 'spoiler';
@@ -356,4 +379,20 @@ function renderMarkdown(text, doc = document) {
   return fragment;
 }
 
-if (typeof module !== 'undefined') module.exports = { parseMarkdown, findLinks, renderMarkdown };
+/** Кого упомянули в тексте (логины строчными, без повторов) — для подсветки и уведомлений */
+function findMentions(text) {
+  const out = new Set();
+  const walk = (nodes) => {
+    for (const n of nodes || []) {
+      if (n.type === 'mention') out.add(n.username);
+      walk(n.children);
+      walk(n.inlines);
+      walk(n.blocks);
+      if (Array.isArray(n.items)) n.items.forEach((item) => walk(Array.isArray(item) ? item : [item]));
+    }
+  };
+  walk(parseMarkdown(text || ''));
+  return [...out];
+}
+
+if (typeof module !== 'undefined') module.exports = { parseMarkdown, findLinks, findMentions, renderMarkdown };

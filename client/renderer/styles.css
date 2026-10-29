@@ -989,7 +989,7 @@ kbd {
 
 /* ---------- Поле ввода: файлы, превью ссылки, строка с «+», текстом, смайликами и отправкой ---------- */
 
-.composer { flex: none; display: flex; flex-direction: column; gap: 8px; padding: 0 16px var(--dock-gap); }
+.composer { flex: none; position: relative; display: flex; flex-direction: column; gap: 8px; padding: 0 16px var(--dock-gap); }
 .composer-bar {
   display: flex; align-items: flex-end; gap: 2px; padding: 0 6px; min-height: var(--dock-h);
   border-radius: var(--r-l); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line);
@@ -1318,6 +1318,18 @@ kbd {
 .e2ee-card .error { margin: 6px 0 4px; }
 .e2ee-share-code { font: 600 16px ui-monospace, Consolas, monospace; letter-spacing: .1em; padding: 6px 10px; border-radius: var(--r-s); background: var(--bg-3); user-select: all; }
 .msg-locked { color: var(--muted); font-style: italic; }
+/* Упоминания: метка с именем; сообщение, где упомянули меня, — подсвечено */
+.mention { padding: 0 3px; border-radius: 4px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: color-mix(in srgb, var(--accent) 60%, var(--text)); font-weight: 600; cursor: pointer; }
+.mention:hover { background: color-mix(in srgb, var(--accent) 36%, transparent); }
+.mention.me { background: color-mix(in srgb, var(--warn) 26%, transparent); color: var(--text); }
+.msg.mentions-me { background: color-mix(in srgb, var(--warn) 9%, transparent); box-shadow: inset 2px 0 0 var(--warn); }
+.mention-popup {
+  position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 5; max-height: 280px; overflow-y: auto;
+  padding: 6px; border-radius: var(--r-m); background: var(--bg-deep); box-shadow: var(--shadow);
+}
+.mention-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 8px; border: 0; border-radius: var(--r-s); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.mention-item .avatar { width: 24px; height: 24px; font-size: 11px; }
+.mention-item.active, .mention-item:hover { background: var(--bg-4); }
 .invite-card .friend-search { margin-bottom: 10px; }
 .invite-list { max-height: 360px; overflow-y: auto; margin-bottom: 14px; }
 .error-text { color: var(--danger); }
