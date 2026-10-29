@@ -69,13 +69,31 @@ class Tone {
     this.sinkId = '';
   }
 
-  /** Повторяющийся сигнал: 'ring' — входящий, 'ringback' — исходящий */
+  /** Повторяющийся сигнал: 'ring' — входящий, 'ringback' — исходящий. Свой звук (sounds.js) — вместо стандартного */
   loop(kind) {
     this.stop();
     this.ctx = newAudioContext(this.sinkId);
-    const beep = () => playPattern(this.ctx, PATTERNS[kind]);
-    beep();
-    this.timer = setInterval(beep, kind === 'ring' ? 2400 : 3600);
+    const length = this.play(this.ctx, kind, 0.12);
+    const every = length ? Math.max(length * 1000 + 600, 2000) : kind === 'ring' ? 2400 : 3600;
+    this.timer = setInterval(() => this.play(this.ctx, kind, 0.12), every);
+  }
+
+  /** Сыграть звук события: свой файл, если выбран, иначе стандартный. Возвращает длину своего (с) или 0 */
+  play(ctx, kind, volume) {
+    const custom = typeof customSounds !== 'undefined' && customSounds.get(kind);
+    if (!custom) {
+      playPattern(ctx, PATTERNS[kind], volume);
+      this.lastPlayed = `pattern:${kind}`;
+      return 0;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = custom.buffer;
+    const gain = ctx.createGain();
+    gain.gain.value = Math.min(1, volume * 6); // свои файлы обычно уже нормальной громкости
+    src.connect(gain).connect(ctx.destination);
+    src.start();
+    this.lastPlayed = `custom:${kind}`;
+    return custom.buffer.duration;
   }
 
   stop() {
@@ -88,8 +106,8 @@ class Tone {
   /** Короткий одиночный звук: 'end', 'mute', 'unmute', 'join', 'leave', 'test' */
   blip(kind, sinkId = this.sinkId, volume = 0.08) {
     const ctx = newAudioContext(sinkId);
-    playPattern(ctx, PATTERNS[kind], volume);
-    setTimeout(() => ctx.close(), 2000);
+    const length = this.play(ctx, kind, volume);
+    setTimeout(() => ctx.close(), Math.max(2000, length * 1000 + 500));
   }
 }
 
