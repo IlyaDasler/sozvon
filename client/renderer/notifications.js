@@ -175,9 +175,20 @@ function openNotifPanel() {
   renderNotifBadge();
 }
 
-/** Чат или комнату открыли — их уведомления прочитаны: target { contact } или { room } */
+/** Открыли место, куда ведёт уведомление, — оно прочитано: target { contact }, { room }, { hub } или { friends } */
 function readNotifsOf(target) {
-  const of = (n) => (target.contact && n.open?.contact === target.contact) || (target.room && n.open?.room === target.room);
+  const [key, value] = Object.entries(target)[0];
+  markNotifsRead((n) => value != null && n.open?.[key] === value);
+}
+
+/** Вернулись в окно: прочитано то, что сейчас открыто, и уведомления без места («вас убрали из канала») */
+function readSeenNotifs() {
+  if (state.selectedId) readNotifsOf({ contact: state.selectedId });
+  if (state.selectedRoomId) readNotifsOf({ room: state.selectedRoomId });
+  markNotifsRead((n) => !n.open || Object.values(n.open).every((v) => v == null));
+}
+
+function markNotifsRead(of) {
   const list = loadNotifs();
   if (!list.some((n) => !n.read && of(n))) return;
   saveNotifs(list.map((n) => (of(n) ? { ...n, read: true } : n)));

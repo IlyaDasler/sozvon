@@ -153,6 +153,7 @@ function renderFriends() {
 
 function showFriendsTab(tab) {
   friendsTab = tab;
+  readNotifsOf({ friends: tab });
   if (state.selectedId || state.selectedRoomId || state.view !== 'home') selectContact(null);
   renderFriends();
   if (tab === 'add') $('friend-add-input').focus();

@@ -215,7 +215,6 @@ function forgetRoom(id) {
   state.rooms.delete(id);
   state.roomHistory.delete(id);
   state.roomUnread.delete(id);
-  if (room) readNotifsOf({ room: id });
   if (state.room?.roomId === id) finishRoomVoice();
   if (manageRoomId === id) closeRoomManage();
   if (inviteRoomId === id) $('room-invite').classList.add('hidden');
@@ -255,6 +254,7 @@ function selectRoom(id) {
   state.selectedRoomId = room ? id : null;
   state.selectedId = null;
   state.roomUnread.delete(id);
+  if (room) readNotifsOf({ room: id });
   renderContacts();
   renderRooms();
 

@@ -2291,8 +2291,7 @@ $('logout-btn').onclick = () => logout();
 window.desktop?.onHotkey((name) => (name === 'toggle-mute' ? toggleMute() : toggleDeafen()));
 
 window.addEventListener('focus', () => {
-  if (state.selectedId) readNotifsOf({ contact: state.selectedId });
-  if (state.selectedRoomId) readNotifsOf({ room: state.selectedRoomId });
+  readSeenNotifs();
   if (state.selectedId && state.unread.has(state.selectedId)) {
     state.unread.delete(state.selectedId);
     renderContacts();
