@@ -672,8 +672,13 @@ function renderMessages() {
     state.history.has(peerId),
     'Здесь пока пусто. Напишите что-нибудь или позвоните!',
     // В личной переписке удалить можно только своё
-    { canDelete: (m) => m.fromId === state.me.id, remove: (m) => Api.del(`/messages/${peerId}/${m.id}`) }
+    {
+      chat: { kind: 'dm', peerId },
+      canDelete: (m) => m.fromId === state.me.id,
+      remove: (m) => Api.del(`/messages/${peerId}/${m.id}`),
+    }
   );
+  refreshPinned({ kind: 'dm', peerId });
 }
 
 /** Сообщение удалили (здесь или на другом устройстве) — убираем из истории и с экрана */
@@ -682,6 +687,150 @@ function dropMessage(history, key, id) {
   const i = list ? list.findIndex((m) => m.id === id) : -1;
   if (i >= 0) list.splice(i, 1);
   return i >= 0;
+}
+
+// ---------- Реакции, правка и закреп ----------
+
+const QUICK_REACTIONS = [
+  '👍', '❤️', '😂', '🎉', '😮', '😢', '🔥', '👀',
+  '😍', '🤔', '😅', '😡', '🥳', '😴', '🤝', '👏',
+  '💪', '🙏', '✅', '❌', '⭐', '💯', '🚀', '☕',
+  '🍻', '🎮', '🎧', '🐱', '🐶', '🌟', '💡', '🥲',
+  '😎', '🤯', '🥶', '🤗', '😇', '🙃', '😜', '🤪',
+  '🥰', '😱', '🤤', '🤑', '🧠', '🫡', '🍕', '🎂',
+];
+
+/** Адрес действия над сообщением: личный чат или комната */
+function chatPath(chat, m, tail = '') {
+  return chat.kind === 'dm'
+    ? `/messages/${chat.peerId}/${m.id}${tail}`
+    : `/rooms/${chat.roomId}/messages/${m.id}${tail}`;
+}
+
+function refreshChat(chat) {
+  if (chat.kind === 'dm' && state.selectedId === chat.peerId) renderMessages();
+  else if (chat.kind === 'room' && state.selectedRoomId === chat.roomId) renderRoomMessages();
+}
+
+async function toggleReaction(m, chat, emoji) {
+  try {
+    m.reactions = await Api.post(chatPath(chat, m, '/reactions'), { emoji });
+    refreshChat(chat);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+let reactionPop = null;
+
+function closeReactionPicker() {
+  if (reactionPop) {
+    reactionPop.remove();
+    reactionPop = null;
+  }
+}
+
+function openReactions(m, chat, anchor) {
+  closeReactionPicker();
+  const pop = document.createElement('div');
+  pop.className = 'reaction-pop';
+  for (const emoji of QUICK_REACTIONS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = emoji;
+    b.onclick = (e) => {
+      e.stopPropagation();
+      closeReactionPicker();
+      toggleReaction(m, chat, emoji);
+    };
+    pop.append(b);
+  }
+  document.body.append(pop);
+  const r = anchor.getBoundingClientRect();
+  pop.style.left = `${Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 8))}px`;
+  pop.style.top = `${Math.max(8, Math.min(r.bottom + 6, innerHeight - pop.offsetHeight - 8))}px`;
+  reactionPop = pop;
+}
+
+document.addEventListener('click', () => closeReactionPicker());
+
+/** Начать ответ: цитата попадёт внутрь шифрованного конверта */
+function startReply(m, chat) {
+  setReplyDraft({ id: m.id, fromId: m.fromId, text: m.plain?.text || '' }, chat);
+}
+
+/** Правка: новый конверт с новым текстом, сервер текста не видит */
+async function editMessage(m, chat) {
+  const next = await askText('Изменить сообщение', m.plain?.text || '');
+  if (next == null) return;
+  const text = next.trim();
+  if (!text || text === m.plain?.text) return;
+  try {
+    const conv = chat.kind === 'dm' ? dmConvOf(chat.peerId) : roomConvOf(chat.roomId);
+    const { body } = await encryptOutgoing(conv, { text });
+    const updated = await Api.patch(chatPath(chat, m), { enc: body.enc });
+    Object.assign(m, updated, { plain: { ...(m.plain || {}), text } });
+    refreshChat(chat);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+async function togglePin(m, chat) {
+  try {
+    if (m.pinned) await Api.del(chatPath(chat, m, '/pin'));
+    else await Api.put(chatPath(chat, m, '/pin'), {});
+    m.pinned = !m.pinned;
+    refreshChat(chat);
+    refreshPinned(chat);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+/** Текст сообщения из уже расшифрованной истории — для полосы закрепа */
+function loadedText(chat, id) {
+  const list = chat.kind === 'dm' ? state.history.get(chat.peerId) : state.roomHistory.get(chat.roomId);
+  const found = list?.find((x) => x.id === id);
+  return found ? { fromId: found.fromId, text: found.plain?.text || '' } : null;
+}
+
+async function refreshPinned(chat) {
+  const path = chat.kind === 'dm' ? `/messages/${chat.peerId}/pins` : `/rooms/${chat.roomId}/pins`;
+  let list = [];
+  try {
+    list = await Api.get(path);
+  } catch {
+    list = [];
+  }
+  const bar = $(chat.kind === 'dm' ? 'chat-pinned' : 'room-pinned');
+  if (!bar) return;
+  if (!list.length) {
+    bar.classList.add('hidden');
+    bar.replaceChildren();
+    bar.onclick = null;
+    return;
+  }
+  const first = list[0];
+  const known = loadedText(chat, first.id) || { fromId: first.fromId, text: '' };
+  const author = userById(known.fromId) || { displayName: '?' };
+  const label = document.createElement('b');
+  label.textContent = 'Закреплено';
+  const text = document.createElement('span');
+  text.className = 'pin-text';
+  text.textContent = `${author.displayName}: ${known.text || 'сообщение'}`;
+  const unpin = document.createElement('button');
+  unpin.type = 'button';
+  unpin.className = 'unpin';
+  unpin.title = 'Открепить';
+  unpin.textContent = '×';
+  unpin.onclick = (e) => {
+    e.stopPropagation();
+    togglePin(first, chat);
+  };
+  bar.replaceChildren(label, text, unpin);
+  bar.classList.remove('hidden');
+  bar.onclick = () => toast(`${author.displayName}: ${known.text || 'сообщение'}`);
 }
 
 // Корзина у сообщения: Shift — удалить сразу, без вопроса
@@ -809,16 +958,43 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
     const chips = reactionsView(m);
     if (chips) body.append(chips);
     row.append(body);
-    if (actions?.canDelete(m)) {
+    if (actions?.chat) {
       const tools = document.createElement('div');
       tools.className = 'msg-tools';
-      const del = document.createElement('button');
-      del.type = 'button';
-      del.className = 'msg-tool danger';
-      del.title = 'Удалить (с Shift — без вопроса)';
-      del.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
-      del.onclick = (e) => deleteMessage(m, actions.remove, e.shiftKey);
-      tools.append(del);
+      const tool = (title, svg, fn, extra = '') => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = `msg-tool${extra}`;
+        b.title = title;
+        b.innerHTML = svg;
+        b.onclick = fn;
+        tools.append(b);
+      };
+      tool('Ответить', '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 7 7v3"/></svg>', (e) => {
+        e.stopPropagation();
+        startReply(m, actions.chat);
+      });
+      tool('Реакция', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0"/><path d="M9 9h.01M15 9h.01"/></svg>', (e) => {
+        e.stopPropagation();
+        openReactions(m, actions.chat, e.currentTarget);
+      });
+      if (m.fromId === state.me.id)
+        tool('Изменить', '<svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>', (e) => {
+          e.stopPropagation();
+          editMessage(m, actions.chat);
+        });
+      tool(
+        m.pinned ? 'Открепить' : 'Закрепить',
+        '<svg viewBox="0 0 24 24"><path d="M9 4h6l-1 6 4 4H6l4-4z"/><path d="M12 14v6"/></svg>',
+        (e) => {
+          e.stopPropagation();
+          togglePin(m, actions.chat);
+        }
+      );
+      if (actions.canDelete(m))
+        tool('Удалить (с Shift — без вопроса)', '<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>', (e) => {
+          deleteMessage(m, actions.remove, e.shiftKey);
+        }, ' danger');
       row.append(tools);
     }
     box.append(row);
