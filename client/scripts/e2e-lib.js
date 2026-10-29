@@ -4,6 +4,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { applyPermissions } = require('../permissions');
 const { fetchPreview } = require('../link-preview');
+const { registerNativeScreen } = require('../screen-native');
+const { applyChromiumFlags } = require('../chromium-flags');
+
+applyChromiumFlags(app);
 
 const SERVER = process.argv.find((a) => /^https?:\/\//.test(a)) || 'http://127.0.0.1:3000'; // localhost клиент считает старым адресом и сбрасывает вход
 
@@ -72,6 +76,7 @@ ipcMain.handle('screen:sources', async () => {
       icon: s.appIcon && !s.appIcon.isEmpty() ? s.appIcon.toDataURL() : null,
     }));
 });
+registerNativeScreen(() => screenChoice);
 ipcMain.handle('screen:choose', (_e, id) => {
   screenChoice = screenSources.get(id) || null;
   return Boolean(screenChoice);
