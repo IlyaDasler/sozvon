@@ -107,6 +107,19 @@ runTest(async () => {
   for (const [win, who] of [[winA, 'у самой Ани'], [winB, 'у Васи']]) await waitFor(win, named, `новое имя ${who}`);
   console.log('✔ переименовалась — новое имя сразу в сообщениях и участниках, у себя и у других');
 
+  // Цвет ника: выбрала в настройках — у Васи её имя этим цветом в сообщениях комнаты и в участниках
+  await js(winA, `openSettings('profile'); document.querySelector('#name-picker [data-color="#f76b15"]').click(); document.querySelector('#settings-form .set-foot .btn.primary').click(); true`);
+  await waitFor(
+    winB,
+    `(() => {
+      const orange = 'rgb(247, 107, 21)';
+      const names = [...document.querySelectorAll('#room-messages .msg [data-profile="${a.user.id}"]:not(.avatar), #members-list .member-nick')].filter((el) => el.textContent.includes('Аня Новая'));
+      return names.length >= 2 && names.every((el) => getComputedStyle(el).color === orange);
+    })()`,
+    'цвет ника у Васи'
+  );
+  console.log('✔ цвет ника виден другим в сообщениях и участниках');
+
   // Свой фон: Аня ставит картинку в настройках комнаты — фон виден и у неё, и у Васи; убирается
   await js(winA, `openRoomManage(${memes}); true`);
   await waitFor(winA, `Boolean(document.getElementById('rm-bg-pick'))`, 'кнопка выбора фона');

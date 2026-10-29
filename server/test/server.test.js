@@ -348,6 +348,20 @@ test('профиль: «О себе», цвет баннера и дата ре�
   assert.ok(friend.memberSince > 0);
 });
 
+test('профиль: цвет ника — свой, виден друзьям; пустой — как цвет аватара', async () => {
+  const a = await reg('nick_a');
+  const b = await reg('nick_b');
+  await befriend(a, b);
+  assert.equal(a.user.nameColor, null);
+  const me = await api('PATCH', '/me', { nameColor: '#E67E22' }, a.token);
+  assert.equal(me.status, 200);
+  assert.equal(me.body.nameColor, '#e67e22');
+  assert.equal((await api('PATCH', '/me', { nameColor: 'orange' }, a.token)).status, 400);
+  const friend = (await api('GET', '/contacts', null, b.token)).body.find((c) => c.id === a.user.id);
+  assert.equal(friend.nameColor, '#e67e22');
+  assert.equal((await api('PATCH', '/me', { nameColor: null }, a.token)).body.nameColor, null);
+});
+
 test('друзья: заявки, принятие, отказ, отмена и блокировка', async () => {
   const a = await reg('req_a');
   const b = await reg('req_b');
