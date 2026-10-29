@@ -39,7 +39,7 @@ function uploadFile(file, onProgress) {
       if (xhr.status >= 200 && xhr.status < 300) resolve(data);
       else reject(new Error(data.error || `Не удалось загрузить файл (${xhr.status})`));
     };
-    xhr.onerror = () => reject(new Error('Сервер недоступен'));
+    xhr.onerror = () => reject(new Error(Api.netError()));
     xhr.onabort = () => reject(new Error('Загрузка отменена'));
     xhr.send(file);
   });

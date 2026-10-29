@@ -79,6 +79,25 @@ runTest(async () => {
   await waitFor(winA, `state.selectedId === null && document.getElementById('nav-forward').disabled`, '«Вперёд» — снова «Друзья»');
   console.log('✔ кнопки «Назад» и «Вперёд» переходят между чатами');
 
+  // Один запрос оборвался в дороге, а связь с сервером живая: чтение повторяется само, а ошибка не пугает
+  // «сервер недоступен» при зелёной точке
+  const net = await js(
+    winA,
+    `(async () => {
+      const real = window.fetch;
+      let fails = 1;
+      window.fetch = (...args) => (fails-- > 0 ? Promise.reject(new TypeError('Failed to fetch')) : real(...args));
+      const me = await Api.get('/me').then((u) => u.id, (e) => 'ошибка: ' + e.message);
+      fails = 1;
+      const post = await Api.post('/me/status', { status: 'online' }).then(() => 'прошёл', (e) => e.message);
+      window.fetch = real;
+      return { me, post, dot: document.getElementById('conn-dot').classList.contains('ok') };
+    })()`
+  );
+  if (net.me !== a.user.id) throw new Error(`Чтение не повторилось после обрыва: ${net.me}`);
+  if (!net.dot || /недоступен/.test(net.post) || !/не дош/.test(net.post)) throw new Error(`Ошибка при живой связи: «${net.post}»`);
+  console.log('✔ оборвавшийся запрос: чтение повторяется само, при живой связи нет «сервер недоступен»');
+
   // Пропущенный звонок: Боря звонит и сбрасывает. В «не беспокоить» звонок не звенит и не всплывает
   await pick('dnd');
   await js(winA, 'selectContact(null)');

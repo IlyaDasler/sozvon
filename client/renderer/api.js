@@ -3,8 +3,9 @@
 const Api = {
   base: '',
   token: '',
+  online: false, // живо ли соединение с сервером (WebSocket) — его показывает точка в шапке
 
-  async request(method, path, body) {
+  async request(method, path, body, retry = method === 'GET') {
     let res;
     try {
       res = await fetch(`${this.base}/api${path}`, {
@@ -15,8 +16,14 @@ const Api = {
         },
         body: body && JSON.stringify(body),
       });
-    } catch {
-      throw new Error('Сервер недоступен. Проверьте адрес и интернет.');
+    } catch (err) {
+      // Запрос оборвался в дороге (смена сети, VPN). Чтение безопасно повторить; запись — нет, её повторит человек
+      console.warn('Запрос не дошёл до сервера:', method, path, err.message);
+      if (retry) {
+        await new Promise((r) => setTimeout(r, 500));
+        return this.request(method, path, body, false);
+      }
+      throw new Error(this.netError());
     }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -28,6 +35,11 @@ const Api = {
     return data;
   },
 
+  // Связь с сервером живая (точка зелёная) — не дошёл только этот запрос; иначе — сервер правда недоступен
+  netError() {
+    return this.online ? 'Запрос не дошёл до сервера — попробуйте ещё раз' : 'Сервер недоступен. Проверьте адрес и интернет.';
+  },
+
   // Отправка файла как есть (например, картинки аватарки)
   async upload(method, path, blob) {
     let res;
@@ -37,8 +49,9 @@ const Api = {
         headers: { 'Content-Type': blob.type, Authorization: `Bearer ${this.token}` },
         body: blob,
       });
-    } catch {
-      throw new Error('Сервер недоступен. Проверьте интернет.');
+    } catch (err) {
+      console.warn('Файл не дошёл до сервера:', method, path, err.message);
+      throw new Error(this.netError());
     }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Ошибка сервера (${res.status})`);
