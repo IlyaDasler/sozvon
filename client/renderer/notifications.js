@@ -175,6 +175,15 @@ function openNotifPanel() {
   renderNotifBadge();
 }
 
+/** Чат или комнату открыли — их уведомления прочитаны: target { contact } или { room } */
+function readNotifsOf(target) {
+  const of = (n) => (target.contact && n.open?.contact === target.contact) || (target.room && n.open?.room === target.room);
+  const list = loadNotifs();
+  if (!list.some((n) => !n.read && of(n))) return;
+  saveNotifs(list.map((n) => (of(n) ? { ...n, read: true } : n)));
+  renderNotifBadge();
+}
+
 function closeNotifPanel() {
   $('notif-panel').classList.add('hidden');
 }

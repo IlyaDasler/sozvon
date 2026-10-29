@@ -62,6 +62,14 @@ runTest(async () => {
   await waitFor(winA, `state.selectedId === ${b.user.id} && document.getElementById('notif-panel').classList.contains('hidden')`, 'переход в чат по уведомлению');
   console.log('✔ сообщение попадает в колокольчик, щелчок открывает чат');
 
+  // Прочитал в самом чате — колокольчик тоже не считает его непрочитанным
+  await js(winA, 'selectContact(null)');
+  await js(winB, `Api.post('/messages/${a.user.id}', { text: 'Ещё одно' }).then(() => true)`);
+  await waitFor(winA, `document.getElementById('notif-badge').textContent === '1' && !document.getElementById('notif-badge').classList.contains('hidden')`, 'новое уведомление');
+  await js(winA, `selectContact(${b.user.id}).then(() => true)`);
+  await waitFor(winA, `document.getElementById('notif-badge').classList.contains('hidden')`, 'открыл чат — уведомление прочитано');
+  console.log('✔ открыл чат — его уведомления в колокольчике прочитаны');
+
   // Пропущенный звонок: Боря звонит и сбрасывает. В «не беспокоить» звонок не звенит и не всплывает
   await pick('dnd');
   await js(winA, 'selectContact(null)');
