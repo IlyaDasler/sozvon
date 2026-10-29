@@ -421,6 +421,32 @@ function handleRoomEvent(msg) {
     case 'room:message:deleted':
       if (dropMessage(state.roomHistory, msg.roomId, msg.id) && msg.roomId === state.selectedRoomId) renderRoomMessages();
       return;
+    case 'room:message:edited': {
+      const list = state.roomHistory.get(msg.message.roomId) || [];
+      const i = list.findIndex((x) => x.id === msg.message.id);
+      if (i >= 0) {
+        list[i] = { ...list[i], ...msg.message, plain: list[i].plain };
+        decryptMessages([list[i]], roomConvOf(msg.message.roomId)).then(() => {
+          if (msg.message.roomId === state.selectedRoomId) renderRoomMessages();
+        });
+      }
+      return;
+    }
+    case 'room:message:reactions': {
+      const found = (state.roomHistory.get(msg.roomId) || []).find((x) => x.id === msg.id);
+      if (found) found.reactions = msg.reactions;
+      if (msg.roomId === state.selectedRoomId) renderRoomMessages();
+      return;
+    }
+    case 'room:message:pinned': {
+      const found = (state.roomHistory.get(msg.roomId) || []).find((x) => x.id === msg.id);
+      if (found) found.pinned = msg.pinned;
+      if (msg.roomId === state.selectedRoomId) {
+        renderRoomMessages();
+        refreshPinned({ kind: 'room', roomId: msg.roomId });
+      }
+      return;
+    }
     case 'room:voice':
       return onRoomVoice(msg);
     case 'room:joined':
