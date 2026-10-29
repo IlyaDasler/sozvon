@@ -174,12 +174,21 @@ async function encryptForUpload(file) {
 }
 
 /** Тело запроса для отправки: конверт вместо текста; plain — то, что увидит отправитель сразу */
-async function encryptOutgoing(conv, { text, files = [], preview = null }) {
+async function encryptOutgoing(conv, { text, files = [], preview = null, reply = null }) {
   if (!e2eeReady()) throw new Error('Сначала настройте шифрование на этом устройстве');
   const { epoch, key } = await sendKey(conv);
-  const plain = { text, files: files.map(({ id, key, iv, name, mime, size, kind }) => ({ id, key, iv, name, mime, size, kind })), preview };
+  const plain = {
+    text,
+    files: files.map(({ id, key, iv, name, mime, size, kind }) => ({ id, key, iv, name, mime, size, kind })),
+    preview,
+    // Ответ целиком внутри конверта: сервер видит только id, текст цитаты остаётся зашифрованным
+    reply: reply ? { id: reply.id, fromId: reply.fromId, text: reply.text || '' } : null,
+  };
   const enc = await E2EE.encryptMessage(key, plain, { conv, epoch, from: state.me.id });
-  return { body: { text: LOCKED_TEXT, enc, attachmentIds: files.map((f) => f.id) }, plain };
+  return {
+    body: { text: LOCKED_TEXT, enc, attachmentIds: files.map((f) => f.id), replyToId: reply?.id ?? null },
+    plain,
+  };
 }
 
 /** Файл ушёл на сервер зашифрованным; attachment — { id, url } от сервера и { key, iv, name, mime, size, kind } для сообщения */
