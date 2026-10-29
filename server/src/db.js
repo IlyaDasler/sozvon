@@ -201,6 +201,8 @@ db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE em
 if (!columnsOf('rooms').includes('default_perms'))
   db.exec(`ALTER TABLE rooms ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
 if (!columnsOf('room_members').includes('role_id')) db.exec('ALTER TABLE room_members ADD COLUMN role_id INTEGER');
+// Тема личного чата «у обоих» — одна на пару, хранится в обеих строках дружбы
+if (!columnsOf('contacts').includes('chat_theme')) db.exec('ALTER TABLE contacts ADD COLUMN chat_theme TEXT');
 // Свой фон комнаты: имя картинки в папке аватарок (как иконка канала)
 if (!columnsOf('rooms').includes('background')) db.exec('ALTER TABLE rooms ADD COLUMN background TEXT');
 // Кик на время: до этого момента (мс) участник может только читать чат
@@ -299,10 +301,11 @@ const q = {
   updateAvatar: db.prepare('UPDATE users SET avatar = ? WHERE id = ?'),
 
   listContacts: db.prepare(`
-    SELECT u.* FROM contacts c JOIN users u ON u.id = c.contact_id
+    SELECT u.*, c.chat_theme FROM contacts c JOIN users u ON u.id = c.contact_id
     WHERE c.user_id = ? ORDER BY u.display_name COLLATE NOCASE
   `),
   hasContact: db.prepare('SELECT 1 FROM contacts WHERE user_id = ? AND contact_id = ?'),
+  setChatTheme: db.prepare('UPDATE contacts SET chat_theme = ? WHERE (user_id = ? AND contact_id = ?) OR (user_id = ? AND contact_id = ?)'),
   addContact: db.prepare('INSERT OR IGNORE INTO contacts (user_id, contact_id, created_at) VALUES (?, ?, ?)'),
   removeContact: db.prepare('DELETE FROM contacts WHERE user_id = ? AND contact_id = ?'),
   incomingRequests: db.prepare(`
@@ -470,6 +473,7 @@ export const users = {
 export const contacts = {
   list: (userId) => q.listContacts.all(userId),
   has: (userId, contactId) => Boolean(q.hasContact.get(userId, contactId)),
+  setTheme: (a, b, theme) => q.setChatTheme.run(theme, a, b, b, a),
   add(a, b) {
     const now = Date.now();
     q.addContact.run(a, b, now);

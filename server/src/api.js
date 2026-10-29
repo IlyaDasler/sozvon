@@ -682,7 +682,22 @@ export function createApi() {
     })
   );
 
-  api.get('/contacts', handle((req) => contacts.list(req.user.id).map(withOnline)));
+  api.get('/contacts', handle((req) => contacts.list(req.user.id).map((row) => ({ ...withOnline(row), chatTheme: row.chat_theme || null }))));
+
+  // Тема личного чата «у обоих»: ставит любой из двоих друзей, оба видят сразу. null — по умолчанию
+  api.put(
+    '/contacts/:id/theme',
+    handle((req) => {
+      const other = Number(req.params.id);
+      if (!contacts.has(req.user.id, other)) throw new HttpError(404, 'Этого человека нет в друзьях');
+      const theme = req.body.theme ?? null;
+      if (theme !== null && !/^[a-z-]{1,24}$/.test(theme)) throw new HttpError(400, 'Неизвестная тема');
+      contacts.setTheme(req.user.id, other, theme);
+      hub.send(other, { type: 'chat:theme', userId: req.user.id, theme, by: req.user.id });
+      hub.send(req.user.id, { type: 'chat:theme', userId: other, theme, by: req.user.id });
+      return { ok: true, theme };
+    })
+  );
 
   const toRequest = (row) => ({ ...toPublicUser(row), requestedAt: row.requested_at });
 
