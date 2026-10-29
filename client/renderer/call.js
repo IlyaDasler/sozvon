@@ -128,6 +128,40 @@ class LevelMeter {
   }
 }
 
+// Шумоподавление нейросетью RNNoise (vendor/noise, MIT/BSD): звук микрофона чистится на этом компьютере —
+// клавиатура, вентилятор, улица. Встроенное шумоподавление браузера при этом выключено, чтобы не портить голос дважды
+let rnnoiseWasm = null;
+async function noiseSuppressorNode(ctx) {
+  const ns = await import('./vendor/noise/index.js');
+  rnnoiseWasm ??= ns.loadRnnoise({ url: 'vendor/noise/rnnoise.wasm', simdUrl: 'vendor/noise/rnnoise_simd.wasm' });
+  rnnoiseWasm.catch(() => (rnnoiseWasm = null));
+  await ctx.audioWorklet.addModule('vendor/noise/rnnoise/workletProcessor.js');
+  return new ns.RnnoiseWorkletNode(ctx, { wasmBinary: await rnnoiseWasm, maxChannels: 1 });
+}
+
+/** Дорожка микрофона через нейросеть: { track — очищенная, stop() — отпустить всё } */
+async function denoiseTrack(raw) {
+  const ctx = new AudioContext({ sampleRate: 48000 });
+  try {
+    const node = await noiseSuppressorNode(ctx);
+    const dest = ctx.createMediaStreamDestination();
+    ctx.createMediaStreamSource(new MediaStream([raw])).connect(node).connect(dest);
+    const track = dest.stream.getAudioTracks()[0];
+    return {
+      track,
+      stop() {
+        track.stop();
+        raw.stop();
+        node.destroy?.();
+        ctx.close().catch(() => {});
+      },
+    };
+  } catch (err) {
+    ctx.close().catch(() => {});
+    throw err;
+  }
+}
+
 function micConstraints(settings) {
   return {
     audio: {
@@ -205,8 +239,22 @@ class LocalMedia {
     // Пока старый микрофон открыт, Chrome отдаёт новый с той же обработкой звука —
     // и шумоподавление не переключилось бы. Поэтому старый закрываем заранее
     this.tracks.mic?.stop();
-    const stream = await navigator.mediaDevices.getUserMedia(micConstraints(settings));
-    const track = stream.getAudioTracks()[0];
+    this.micChain?.stop();
+    this.micChain = null;
+    const neural = settings.noiseSuppression;
+    const stream = await navigator.mediaDevices.getUserMedia(micConstraints({ ...settings, noiseSuppression: false }));
+    let track = stream.getAudioTracks()[0];
+    if (neural) {
+      try {
+        this.micChain = await denoiseTrack(track);
+        track = this.micChain.track;
+      } catch (err) {
+        // Нейросеть не загрузилась — хотя бы встроенное шумоподавление браузера
+        console.warn('Шумоподавление нейросетью недоступно:', err.message);
+        await track.applyConstraints({ ...micConstraints(settings).audio, deviceId: undefined }).catch(() => {});
+      }
+    }
+    if (this.closed) return this.micChain?.stop() ?? track.stop();
     track.enabled = !this.muted;
     this.replace('mic', track);
   }
@@ -265,6 +313,8 @@ class LocalMedia {
 
   close() {
     this.closed = true;
+    this.micChain?.stop();
+    this.micChain = null;
     for (const slot of SLOTS) {
       if (this.tracks[slot]) this.tracks[slot].onended = null;
       this.tracks[slot]?.stop();
