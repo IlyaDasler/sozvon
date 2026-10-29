@@ -261,14 +261,15 @@ const SLOTS = ['mic', 'cam', 'screen', 'screenAudio'];
 const SLOT_KIND = { mic: 'audio', cam: 'video', screen: 'video', screenAudio: 'audio' };
 
 // Голос в Opus — 64 кбит/с вместо 32 по умолчанию, с защитой от потерь пакетов.
-// Видео сразу стартует с 2,5 Мбит/с, а не разгоняется с малого — первые секунды трансляции не «мыльные»
+// Видео сразу стартует с 8 Мбит/с: трансляции 1440p60 нужно ~14, и с 2,5 оценка канала разгонялась 15–20 с —
+// всё это время кадры и разрешение падали (замер e2e-screen-fps, E2E_HEAVY). Камере не мешает: у неё потолок 2,5
 const tuneSdp = (sdp) =>
   sdp
     .replace(/a=fmtp:(\d+) (.*useinbandfec=1.*)/g, (line, pt, params) =>
       params.includes('maxaveragebitrate') ? line : `a=fmtp:${pt} ${params};maxaveragebitrate=64000`
     )
     .replace(/a=fmtp:(\d+) ((?:.*;)?(?:profile-id|level-asymmetry-allowed|x-google)[^\r\n]*)/g, (line, pt, params) =>
-      params.includes('x-google-start-bitrate') ? line : `a=fmtp:${pt} ${params};x-google-start-bitrate=2500;x-google-min-bitrate=800`
+      params.includes('x-google-start-bitrate') ? line : `a=fmtp:${pt} ${params};x-google-start-bitrate=8000;x-google-min-bitrate=1500`
     );
 
 // Свои микрофон, камера и экран — общие для всех соединений звонка

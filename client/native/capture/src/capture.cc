@@ -362,6 +362,19 @@ class Capture : public Napi::ObjectWrap<Capture> {
   bool free_[SLOTS] = {};
 };
 
+// Приоритет процесса Созвона на время трансляции: тяжёлая игра занимает процессор, и кодировщик (окно
+// приложения) с передачей кадров (процесс видеокарты) не успевают — 1440p падал до 17 к/с. «Выше обычного»
+// ставится без прав администратора. setPriority(pid, 'above' | 'normal') → true, если получилось
+Napi::Value SetPriority(const Napi::CallbackInfo& info) {
+  const DWORD pid = info[0].As<Napi::Number>().Uint32Value();
+  const std::string level = info[1].As<Napi::String>().Utf8Value();
+  HANDLE process = OpenProcess(PROCESS_SET_INFORMATION, FALSE, pid);
+  if (!process) return Napi::Boolean::New(info.Env(), false);
+  const BOOL ok = SetPriorityClass(process, level == "above" ? ABOVE_NORMAL_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS);
+  CloseHandle(process);
+  return Napi::Boolean::New(info.Env(), ok != FALSE);
+}
+
 Napi::FunctionReference* captureCtor = nullptr;
 
 Napi::Value Start(const Napi::CallbackInfo& info) {
@@ -372,6 +385,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   captureCtor = new Napi::FunctionReference(Napi::Persistent(Capture::Init(env)));
   exports.Set("outputs", Napi::Function::New(env, Outputs));
   exports.Set("start", Napi::Function::New(env, Start));
+  exports.Set("setPriority", Napi::Function::New(env, SetPriority));
   return exports;
 }
 
