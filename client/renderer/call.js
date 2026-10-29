@@ -222,6 +222,28 @@ const OLD_SCREEN_MODES = { motion: '720p90', detail: '1080p60' };
 const screenMode = (id) => SCREEN_MODES[OLD_SCREEN_MODES[id] || id] ? OLD_SCREEN_MODES[id] || id : DEFAULT_SCREEN_MODE;
 
 // Кодек для экрана: VP9 даёт картинку чище при той же скорости, H.264 — запасной (часто аппаратный)
+/** Дорожка из кадров своего захвата (их присылает preload); остановили дорожку — останавливаем и захват */
+function nativeScreenTrack(id) {
+  const track = new MediaStreamTrackGenerator({ kind: 'video' });
+  const writer = track.writable.getWriter();
+  const onFrame = (e) => {
+    const frame = e.source === window && e.data?.sozvonScreenFrame;
+    if (!frame) return;
+    // Кодировщик не успевает — кадр не копим, берём следующий
+    if (writer.desiredSize <= 0) return frame.close();
+    writer.write(frame).catch(() => frame.close());
+  };
+  window.addEventListener('message', onFrame);
+  const stopTrack = track.stop.bind(track);
+  track.stop = () => {
+    window.removeEventListener('message', onFrame);
+    window.desktop.screen.nativeStop(id);
+    writer.close().catch(() => {});
+    stopTrack();
+  };
+  return track;
+}
+
 const SCREEN_CODECS = ['video/VP9', 'video/H264', 'video/VP8'];
 function preferScreenCodecs(transceiver) {
   const caps = RTCRtpReceiver.getCapabilities?.('video');
@@ -301,14 +323,27 @@ class LocalMedia {
     const m = SCREEN_MODES[id];
     const limits = { width: { max: m.width }, height: { max: m.height }, frameRate: { ideal: m.frameRate, max: m.frameRate } };
     // Звук компьютера — без звука самого Созвона: иначе друзья слышат в трансляции собственные голоса
-    const stream = await navigator.mediaDevices.getDisplayMedia({ video: limits, audio: audio && { restrictOwnAudio: true, suppressLocalAudioPlayback: false } });
-    const video = stream.getVideoTracks()[0];
+    const sound = audio && { restrictOwnAudio: true, suppressLocalAudioPlayback: false };
+    // Целый монитор — своим захватом: ровные 60 к/с там, где Chromium даёт ~50. Окно приложения или не вышло — Chromium
+    const native = await window.desktop?.screen.nativeStart?.({ width: m.width, height: m.height, fps: m.frameRate }).catch(() => null);
+    let video, audioTrack;
+    if (native) {
+      video = nativeScreenTrack(native.id);
+      // Звук компьютера всё равно берёт Chromium; его картинку сразу отпускаем
+      const stream = audio ? await navigator.mediaDevices.getDisplayMedia({ video: true, audio: sound }) : null;
+      stream?.getVideoTracks().forEach((t) => t.stop());
+      audioTrack = stream?.getAudioTracks()[0] || null;
+    } else {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: limits, audio: sound });
+      video = stream.getVideoTracks()[0];
+      audioTrack = stream.getAudioTracks()[0] || null;
+    }
     video.contentHint = text ? 'detail' : 'motion';
     // «Остановить показ» из системы или закрытое окно — заканчиваем демонстрацию
     video.onended = () => this.stopScreen();
     this.screenMode = id;
     this.screenText = text;
-    this.replace('screenAudio', stream.getAudioTracks()[0] || null);
+    this.replace('screenAudio', audioTrack);
     this.replace('screen', video);
   }
 

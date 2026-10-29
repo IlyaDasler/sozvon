@@ -2,12 +2,12 @@
 // Аня показывает экран Боре в каждом режиме, меряем, сколько кадров в секунду реально кодируется и доходит,
 // каким кодировщиком и что ограничивает качество. Запуск (сервер должен работать): npx electron scripts/e2e-screen-fps.js
 // Нужен настоящий захват экрана: process.env.E2E_REAL_DEVICES ставится до загрузки e2e-lib.
-// E2E_FPS_MIN — сколько кадров/с считать нормой для режимов 60 (по умолчанию 40; на ПК разработки с анимацией рядом захват даёт ~48)
+// E2E_FPS_MIN — сколько кадров/с считать нормой для режимов 60 (по умолчанию 55: свой захват монитора даёт ровные 60)
 const { app, BrowserWindow, powerSaveBlocker } = require('electron');
 process.env.E2E_REAL_DEVICES = '1';
 const { befriend, register, js, waitFor, sleep, openClient, runTest } = require('./e2e-lib');
 
-const MIN = Number(process.env.E2E_FPS_MIN) || 40;
+const MIN = Number(process.env.E2E_FPS_MIN) || 55;
 
 runTest(async () => {
   // Погасший экран не обновляется — захватывать нечего, замер врёт. Пока идёт тест, экран не гаснет
@@ -56,7 +56,7 @@ runTest(async () => {
         const p = sender.getParameters();
         out.params = JSON.stringify({ deg: p.degradationPreference, enc: p.encodings.map((e) => ({ fps: e.maxFramerate, br: e.maxBitrate, scale: e.scaleResolutionDownBy })) });
         const track = activeSession().local.tracks.screen;
-        out.source = track?.getSettings().frameRate;
+        out.source = (track instanceof MediaStreamTrackGenerator ? 'свой ' : 'Chromium ') + (track?.getSettings().frameRate ?? '');
         return out;
       })()`);
     // Сколько кадров даёт сама дорожка захвата прямо сейчас (копия, без отрисовки)
