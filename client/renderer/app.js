@@ -1249,7 +1249,12 @@ function handleEvent(msg) {
     case 'chat:theme':
       return onChatTheme(msg);
     case 'user:updated':
-      onUserKey(msg.user);
+      if (msg.user.id === state.me.id) {
+        // Свой профиль (с этого или другого устройства): и себя, и свои копии в участниках комнат и каналов
+        Object.assign(state.me, msg.user);
+        renderMe();
+        renderVoice();
+      } else onUserKey(msg.user);
       return updateUser(msg.user.id, msg.user);
     case 'keys:updated':
       return refreshConv(msg.conv);

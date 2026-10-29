@@ -95,6 +95,18 @@ runTest(async () => {
   await waitFor(winA, `${badge}.classList.contains('hidden')`, 'вернулся в окно — прочитано');
   console.log('✔ колокольчик гаснет: комната открыта, уведомление без места — при возврате в окно');
 
+  // Аня переименовалась в настройках — новое имя сразу везде: у неё и у Васи, в сообщениях комнаты и в участниках
+  await api('POST', `/rooms/${memes}/messages`, { text: 'Пишу до переименования' }, a.token);
+  await js(winB, `selectRoom(${memes}); true`);
+  await js(winA, `(async () => { state.me = await Api.patch('/me', { displayName: 'Аня Новая' }); renderMe(); renderMessages(); renderVoice(); return true; })()`);
+  const named = `(() => {
+    const authors = [...document.querySelectorAll('#room-messages .msg [data-profile="${a.user.id}"]:not(.avatar)')].map((el) => el.textContent);
+    const member = [...document.querySelectorAll('#members-list [data-profile="${a.user.id}"]')].map((el) => el.textContent).join(' ');
+    return authors.length > 0 && authors.every((t) => t.includes('Аня Новая')) && member.includes('Аня Новая');
+  })()`;
+  for (const [win, who] of [[winA, 'у самой Ани'], [winB, 'у Васи']]) await waitFor(win, named, `новое имя ${who}`);
+  console.log('✔ переименовалась — новое имя сразу в сообщениях и участниках, у себя и у других');
+
   // Свой фон: Аня ставит картинку в настройках комнаты — фон виден и у неё, и у Васи; убирается
   await js(winA, `openRoomManage(${memes}); true`);
   await waitFor(winA, `Boolean(document.getElementById('rm-bg-pick'))`, 'кнопка выбора фона');

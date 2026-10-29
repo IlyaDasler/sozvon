@@ -232,6 +232,13 @@ function notifyRelated(userId, message) {
   for (const id of relatedUserIds(userId)) hub.send(id, message);
 }
 
+/** Профиль изменился — всем, кто его видит, и самому человеку: его другие устройства и его же копии в комнатах */
+function notifyProfile(row) {
+  const message = { type: 'user:updated', user: toPublicUser(row) };
+  notifyRelated(row.id, message);
+  hub.send(row.id, message);
+}
+
 const ROOM_KINDS = ['voice', 'text'];
 const MAX_OWNED_HUBS = 10;
 const MAX_HUB_ROOMS = 30;
@@ -575,7 +582,7 @@ export function createApi() {
       removeAvatarFile(req.user.avatar);
       users.updateAvatar(req.user.id, id);
       const row = users.byId(req.user.id);
-      notifyRelated(row.id, { type: 'user:updated', user: toPublicUser(row) });
+      notifyProfile(row);
       return toSelf(row);
     })
   );
@@ -586,7 +593,7 @@ export function createApi() {
       removeAvatarFile(req.user.avatar);
       users.updateAvatar(req.user.id, null);
       const row = users.byId(req.user.id);
-      notifyRelated(row.id, { type: 'user:updated', user: toPublicUser(row) });
+      notifyProfile(row);
       return toSelf(row);
     })
   );
@@ -680,7 +687,7 @@ export function createApi() {
 
       users.updateProfile(user.id, { displayName, avatarColor, bio, bannerColor: bannerColor || null });
       const row = users.byId(user.id);
-      notifyRelated(user.id, { type: 'user:updated', user: toPublicUser(row) });
+      notifyProfile(row);
       return toSelf(row);
     })
   );
@@ -938,7 +945,7 @@ export function createApi() {
         setPublicKey(req.user.id, req.body.publicKey);
         if (req.user.public_key) convKeys.dropUser(req.user.id);
         const row = users.byId(req.user.id);
-        notifyRelated(row.id, { type: 'user:updated', user: toPublicUser(row) });
+        notifyProfile(row);
       }
       return toSelf(users.byId(req.user.id));
     })
