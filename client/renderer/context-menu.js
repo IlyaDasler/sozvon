@@ -27,6 +27,7 @@ function toggleMuteFor(userId) {
   store.set(`volume:${userId}`, muted ? 100 : 0);
   activeSession()?.setVolume(userId, muted ? 1 : 0);
   renderStage();
+  renderRooms(); // знак «заглушён для вас» в списке голоса
 }
 
 function userMenu(userId, anchor) {
