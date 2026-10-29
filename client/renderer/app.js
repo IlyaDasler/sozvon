@@ -698,6 +698,48 @@ async function deleteMessage(m, remove, skipConfirm) {
 // а не всю ленту при каждой перерисовке и не чужую переписку при переключении
 const shownMessages = new WeakMap();
 
+/** Данные цитаты ответа: снимок из конверта, иначе — сообщение из загруженной ленты */
+function replyOf(m, list) {
+  const snap = m.plain?.reply;
+  const id = snap?.id || m.replyTo;
+  if (!id) return null;
+  const source = snap || list.find((x) => x.id === id);
+  if (!source) return null;
+  return { id, fromId: source.fromId, text: source.text || '' };
+}
+
+function replyQuote(reply) {
+  const el = document.createElement('div');
+  el.className = 'msg-reply';
+  const name = document.createElement('b');
+  name.textContent = (userById(reply.fromId) || { displayName: '?' }).displayName;
+  const text = document.createElement('span');
+  text.textContent = reply.text || 'вложение';
+  el.append(name, text);
+  el.onclick = (e) => {
+    e.stopPropagation();
+    const target = el.closest('.messages')?.querySelector(`[data-msg-id="${reply.id}"]`);
+    if (target) target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  };
+  return el;
+}
+
+function reactionsView(m) {
+  if (!m.reactions?.length) return null;
+  const row = document.createElement('div');
+  row.className = 'msg-reactions';
+  for (const r of m.reactions) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `reaction-chip${r.mine ? ' mine' : ''}`;
+    chip.textContent = `${r.emoji} ${r.count}`;
+    chip.title = r.mine ? 'Убрать реакцию' : 'Поставить реакцию';
+    chip.dataset.emoji = r.emoji;
+    row.append(chip);
+  }
+  return row;
+}
+
 // Лента сообщений: и для чата с другом, и для комнаты
 /** actions: { canDelete(m), remove(m) } — можно ли удалить сообщение и как */
 function renderMessageList(box, list, loaded, emptyText, actions) {
@@ -734,6 +776,7 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
 
     const row = document.createElement('div');
     row.className = `msg${continued ? ' cont' : ''}${isNew(m) ? ' msg-new' : ''}`;
+    row.dataset.msgId = m.id;
     // Для меню по правой кнопке: само сообщение и что с ним можно сделать в этой ленте
     row.message = m;
     row.actions = actions;
@@ -754,7 +797,17 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
       head.append(name, time);
       body.append(head);
     }
+    const reply = replyOf(m, list);
+    if (reply) body.append(replyQuote(reply));
     body.append(messageContent(m));
+    if (m.editedAt) {
+      const edited = document.createElement('span');
+      edited.className = 'msg-edited';
+      edited.textContent = '(изменено)';
+      body.append(edited);
+    }
+    const chips = reactionsView(m);
+    if (chips) body.append(chips);
     row.append(body);
     if (actions?.canDelete(m)) {
       const tools = document.createElement('div');
