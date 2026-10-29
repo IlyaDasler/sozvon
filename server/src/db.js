@@ -211,6 +211,31 @@ db.exec('CREATE INDEX IF NOT EXISTS rooms_hub ON rooms (hub_id)');
 // Сквозное шифрование (2.3): публичный ключ человека и конверт сообщения вместо текста
 if (!columnsOf('users').includes('public_key')) db.exec('ALTER TABLE users ADD COLUMN public_key TEXT');
 for (const table of ['messages', 'room_messages']) if (!columnsOf(table).includes('enc')) db.exec(`ALTER TABLE ${table} ADD COLUMN enc TEXT`);
+// Ответ, правка, реакции и закреп (2.4). Ответ хранится только id — текст не дублируем, он зашифрован
+for (const table of ['messages', 'room_messages']) {
+  if (!columnsOf(table).includes('reply_to')) db.exec(`ALTER TABLE ${table} ADD COLUMN reply_to INTEGER`);
+  if (!columnsOf(table).includes('edited_at')) db.exec(`ALTER TABLE ${table} ADD COLUMN edited_at INTEGER`);
+}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS message_reactions (
+    kind TEXT NOT NULL,
+    message_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    emoji TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (kind, message_id, user_id, emoji)
+  );
+  CREATE INDEX IF NOT EXISTS message_reactions_message ON message_reactions (kind, message_id);
+  CREATE TABLE IF NOT EXISTS message_pins (
+    kind TEXT NOT NULL,
+    chat_id INTEGER NOT NULL,
+    message_id INTEGER NOT NULL,
+    by_id INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (kind, message_id)
+  );
+  CREATE INDEX IF NOT EXISTS message_pins_chat ON message_pins (kind, chat_id, created_at);
+`);
 
 /** Выполняет fn целиком или никак */
 function transaction(fn) {
@@ -255,6 +280,8 @@ export const toMessage = (row) => ({
   attachments: parseJson(row.attachments, []),
   preview: parseJson(row.preview, null),
   enc: parseJson(row.enc, null),
+  replyTo: row.reply_to || null,
+  editedAt: row.edited_at || null,
   createdAt: row.created_at,
 });
 
@@ -304,7 +331,7 @@ const q = {
   ),
   removeIdentity: db.prepare('DELETE FROM identities WHERE user_id = ? AND provider = ?'),
 
-  insertMessage: db.prepare('INSERT INTO messages (from_id, to_id, text, attachments, preview, enc, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'),
+  insertMessage: db.prepare('INSERT INTO messages (from_id, to_id, text, attachments, preview, enc, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
   setPublicKey: db.prepare('UPDATE users SET public_key = ? WHERE id = ?'),
   convEpoch: db.prepare('SELECT MAX(epoch) AS epoch FROM conv_keys WHERE conv = ?'),
   convMine: db.prepare('SELECT epoch, sealed FROM conv_keys WHERE conv = ? AND user_id = ? ORDER BY epoch'),
@@ -410,7 +437,7 @@ const q = {
   removeHubBan: db.prepare('DELETE FROM hub_bans WHERE hub_id = ? AND user_id = ?'),
 
   insertRoomMessage: db.prepare(
-    'INSERT INTO room_messages (room_id, from_id, text, attachments, preview, enc, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO room_messages (room_id, from_id, text, attachments, preview, enc, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ),
 
   insertUpload: db.prepare('INSERT INTO uploads (id, owner_id, name, mime, size, kind, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'),
@@ -497,9 +524,14 @@ export const toSelf = (row) => ({
 });
 
 export const messages = {
-  add(fromId, toId, text, { attachments = [], preview = null, enc = null } = {}) {
-    const res = q.insertMessage.run(fromId, toId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), enc && JSON.stringify(enc), Date.now());
+  add(fromId, toId, text, { attachments = [], preview = null, enc = null, replyTo = null } = {}) {
+    const res = q.insertMessage.run(fromId, toId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), enc && JSON.stringify(enc), replyTo, Date.now());
     return q.messageById.get(Number(res.lastInsertRowid));
+  },
+  /** Правка: новый зашифрованный конверт вместо текста */
+  setEnc(id, enc) {
+    db.prepare('UPDATE messages SET enc = ?, text = ?, edited_at = ? WHERE id = ?').run(enc && JSON.stringify(enc), '', Date.now(), id);
+    return q.messageById.get(id);
   },
   between(a, b, beforeId = Number.MAX_SAFE_INTEGER, limit = 50) {
     return q.messagesBetween.all(a, b, b, a, beforeId, limit).reverse();
@@ -693,13 +725,20 @@ export const toRoomMessage = (row) => ({
   attachments: parseJson(row.attachments, []),
   preview: parseJson(row.preview, null),
   enc: parseJson(row.enc, null),
+  replyTo: row.reply_to || null,
+  editedAt: row.edited_at || null,
   createdAt: row.created_at,
 });
 
 export const roomMessages = {
-  add(roomId, fromId, text, { attachments = [], preview = null, enc = null } = {}) {
-    const res = q.insertRoomMessage.run(roomId, fromId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), enc && JSON.stringify(enc), Date.now());
+  add(roomId, fromId, text, { attachments = [], preview = null, enc = null, replyTo = null } = {}) {
+    const res = q.insertRoomMessage.run(roomId, fromId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), enc && JSON.stringify(enc), replyTo, Date.now());
     return q.roomMessageById.get(Number(res.lastInsertRowid));
+  },
+  /** Правка: новый зашифрованный конверт вместо текста */
+  setEnc(id, enc) {
+    db.prepare('UPDATE room_messages SET enc = ?, text = ?, edited_at = ? WHERE id = ?').run(enc && JSON.stringify(enc), '', Date.now(), id);
+    return q.roomMessageById.get(id);
   },
   list(roomId, beforeId = Number.MAX_SAFE_INTEGER, limit = 50) {
     return q.roomMessages.all(roomId, beforeId, limit).reverse();
@@ -758,4 +797,52 @@ export const keyTransfers = {
     q.transferDrop.run(row?.user_id === userId ? id : '', Date.now() - TRANSFER_TTL);
     return row && row.user_id === userId && row.created_at > Date.now() - TRANSFER_TTL ? row.blob : null;
   },
+};
+
+// ---------- Реакции и закреп (2.4): только id сообщений и смайлики, без текста ----------
+
+const rAdd = db.prepare('INSERT OR IGNORE INTO message_reactions (kind, message_id, user_id, emoji, created_at) VALUES (?, ?, ?, ?, ?)');
+const rRemove = db.prepare('DELETE FROM message_reactions WHERE kind = ? AND message_id = ? AND user_id = ? AND emoji = ?');
+const rOfMessage = db.prepare('SELECT emoji, user_id FROM message_reactions WHERE kind = ? AND message_id = ? ORDER BY created_at');
+const rClear = db.prepare('DELETE FROM message_reactions WHERE kind = ? AND message_id = ?');
+
+export const reactions = {
+  /** { messageId: [{ emoji, count, mine }] } для набора сообщений */
+  ofMessages(kind, ids, me) {
+    const out = {};
+    for (const id of ids) {
+      const groups = new Map();
+      for (const row of rOfMessage.all(kind, id)) {
+        const g = groups.get(row.emoji) || { emoji: row.emoji, count: 0, mine: false };
+        g.count += 1;
+        if (row.user_id === me) g.mine = true;
+        groups.set(row.emoji, g);
+      }
+      if (groups.size) out[id] = [...groups.values()];
+    }
+    return out;
+  },
+  /** Ставит или снимает смайлик: true — теперь стоит */
+  toggle(kind, messageId, userId, emoji) {
+    const has = rOfMessage.all(kind, messageId).some((r) => r.user_id === userId && r.emoji === emoji);
+    if (has) rRemove.run(kind, messageId, userId, emoji);
+    else rAdd.run(kind, messageId, userId, emoji, Date.now());
+    return !has;
+  },
+  of: (kind, messageId, me) => reactions.ofMessages(kind, [messageId], me)[messageId] || [],
+  clear: (kind, messageId) => rClear.run(kind, messageId),
+};
+
+const pAdd = db.prepare('INSERT OR IGNORE INTO message_pins (kind, chat_id, message_id, by_id, created_at) VALUES (?, ?, ?, ?, ?)');
+const pRemove = db.prepare('DELETE FROM message_pins WHERE kind = ? AND message_id = ?');
+const pOfChat = db.prepare('SELECT * FROM message_pins WHERE kind = ? AND chat_id = ? ORDER BY created_at DESC');
+const pHas = db.prepare('SELECT 1 FROM message_pins WHERE kind = ? AND message_id = ?');
+const pClear = db.prepare('DELETE FROM message_pins WHERE kind = ? AND message_id = ?');
+
+export const pins = {
+  add: (kind, chatId, messageId, byId) => pAdd.run(kind, chatId, messageId, byId, Date.now()),
+  remove: (kind, messageId) => pRemove.run(kind, messageId),
+  has: (kind, messageId) => Boolean(pHas.get(kind, messageId)),
+  of: (kind, chatId) => pOfChat.all(kind, chatId).map((row) => row.message_id),
+  clear: (kind, messageId) => pClear.run(kind, messageId),
 };
