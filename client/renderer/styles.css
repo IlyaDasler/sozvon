@@ -1318,6 +1318,21 @@ kbd {
 .e2ee-card .error { margin: 6px 0 4px; }
 .e2ee-share-code { font: 600 16px ui-monospace, Consolas, monospace; letter-spacing: .1em; padding: 6px 10px; border-radius: var(--r-s); background: var(--bg-3); user-select: all; }
 .msg-locked { color: var(--muted); font-style: italic; }
+/* Мои гифки: кнопка у поля ввода, панель, «В мои гифки» на гифке в сообщении */
+.composer-btn.gif b { font-size: 11px; font-weight: 800; letter-spacing: .04em; padding: 1px 4px; border: 1.5px solid currentColor; border-radius: 4px; }
+.gif-popover { position: fixed; z-index: 60; width: 360px; max-height: 420px; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: var(--r-l); background: var(--bg-deep); box-shadow: var(--shadow); }
+.gif-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.gif-grid { overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.gif-item, .gif-add { aspect-ratio: 1; border: 0; border-radius: var(--r-m); background: var(--bg-3); cursor: pointer; overflow: hidden; padding: 0; color: var(--text-2); font: inherit; font-size: 13px; }
+.gif-add { border: 1.5px dashed var(--line-strong); background: none; }
+.gif-add:hover { color: var(--text); border-color: var(--accent); }
+.gif-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gif-item:hover { box-shadow: 0 0 0 2px var(--accent); }
+.gif-cell { position: relative; }
+.gif-cell img { display: block; }
+.gif-save { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 6px; background: rgba(0, 0, 0, .6); color: #fff; cursor: pointer; opacity: 0; transition: opacity var(--fast); }
+.gif-cell:hover .gif-save { opacity: 1; }
+.gif-save svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; }
 /* Настройки → свои звуки */
 .custom-sounds { display: grid; gap: 6px; margin-top: 10px; }
 .sound-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: var(--r-m); background: var(--bg-3); }
