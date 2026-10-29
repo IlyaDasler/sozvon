@@ -475,3 +475,24 @@ test('комнаты: кик на время — только чтение, по
   assert.equal(room.members.find((m) => m.id === guest.user.id).timeoutUntil, null);
   cg.ws.close();
 });
+
+test('тема личного чата «у обоих»: ставит любой из двоих, видят оба, чужим нельзя', async () => {
+  const a = await reg('theme_a');
+  const b = await reg('theme_b');
+  const stranger = await reg('theme_c');
+  await befriend(a, b);
+  const cb = connect(b.token);
+  await cb.open;
+  assert.equal((await api('PUT', `/contacts/${b.user.id}/theme`, { theme: 'Не тема!' }, a.token)).status, 400);
+  assert.equal((await api('PUT', `/contacts/${a.user.id}/theme`, { theme: 'sunset' }, stranger.token)).status, 404);
+  assert.equal((await api('PUT', `/contacts/${b.user.id}/theme`, { theme: 'sunset' }, a.token)).status, 200);
+  const event = await cb.next('chat:theme');
+  assert.deepEqual([event.userId, event.theme, event.by], [a.user.id, 'sunset', a.user.id]);
+  const seenByB = (await api('GET', '/contacts', null, b.token)).body.find((c) => c.id === a.user.id);
+  const seenByA = (await api('GET', '/contacts', null, a.token)).body.find((c) => c.id === b.user.id);
+  assert.equal(seenByB.chatTheme, 'sunset');
+  assert.equal(seenByA.chatTheme, 'sunset');
+  await api('PUT', `/contacts/${a.user.id}/theme`, { theme: null }, b.token);
+  assert.equal((await api('GET', '/contacts', null, a.token)).body.find((c) => c.id === b.user.id).chatTheme, null);
+  cb.ws.close();
+});
