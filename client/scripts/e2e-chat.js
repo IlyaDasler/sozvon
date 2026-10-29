@@ -151,7 +151,7 @@ runTest(async () => {
   await js(winB, `closeProfileCard(); selectContact(${a.user.id})`);
   await send(winA, 'это сообщение я удалю');
   await waitFor(winB, `${lastMsg}?.textContent === 'это сообщение я удалю'`, 'сообщение дошло');
-  if (await js(winB, `Boolean([...document.querySelectorAll('#messages .msg')].at(-1).querySelector('.msg-tool'))`))
+  if (await js(winB, `Boolean([...document.querySelectorAll('#messages .msg')].at(-1).querySelector('.msg-tool.danger'))`))
     throw new Error('У чужого сообщения есть корзина');
   // Без Shift — вопрос окном приложения (не системным): Esc отменяет, «Удалить» удаляет
   const trash = `[...document.querySelectorAll('#messages .msg')].at(-1).querySelector('.msg-tool.danger')`;
@@ -167,6 +167,35 @@ runTest(async () => {
   await waitFor(winB, `${lastMsg}?.textContent !== 'это сообщение я удалю' && !state.history.get(${a.user.id}).some((m) => messageView(m).text === 'это сообщение я удалю')`, 'сообщение пропало у Бори');
   await waitFor(winA, `!state.history.get(${b.user.id}).some((m) => messageView(m).text === 'это сообщение я удалю')`, 'сообщение пропало у Ани');
   console.log('✔ своё сообщение удаляется, у собеседника пропадает сразу');
+
+  // Открытый чат внизу: новое сообщение сразу видно, даже если выше догружаются картинки, — лента сама не уезжает
+  // и плашка «старые сообщения» не появляется ни у получателя, ни у отправителя
+  const atBottom = `(() => { const m = document.getElementById('messages'); return m.scrollHeight - m.scrollTop - m.clientHeight < 5; })()`;
+  const jumpHidden = `document.querySelector('#messages + .jump-bar').classList.contains('hidden')`;
+  for (let i = 0; i < 15; i++) await send(winA, `разгон ${i}`);
+  await waitFor(winB, `${lastMsg}?.textContent === 'разгон 14'`, 'длинная переписка у Бори');
+  await js(
+    winA,
+    `(async () => {
+      const c = document.createElement('canvas'); c.width = 400; c.height = 900;
+      c.getContext('2d').fillRect(0, 0, 400, 900);
+      const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+      dmComposer.addFiles([new File([blob], 'высокая.png', { type: 'image/png' })]);
+      return true;
+    })()`
+  );
+  await waitFor(winA, `dmComposer.files.length === 1 && dmComposer.files.every((f) => f.attachment)`, 'загрузка высокой картинки');
+  await send(winA, 'высокая картинка');
+  await waitFor(winB, `[...document.querySelectorAll('#messages .msg-images img')].at(-1)?.complete && [...document.querySelectorAll('#messages .msg-images img')].at(-1).naturalHeight === 900`, 'картинка догрузилась');
+  await sleep(400);
+  for (const [win, who] of [[winB, 'получателя'], [winA, 'отправителя']])
+    if (!(await js(win, `${atBottom} && ${jumpHidden}`))) throw new Error(`Картинка догрузилась — лента у ${who} уехала вверх`);
+  await send(winA, 'после картинки');
+  await waitFor(winB, `${lastMsg}?.textContent === 'после картинки'`, 'новое сообщение');
+  await sleep(400);
+  for (const [win, who] of [[winB, 'получателя'], [winA, 'отправителя']])
+    if (!(await js(win, `${atBottom} && ${jumpHidden}`))) throw new Error(`Новое сообщение не видно внизу у ${who} (лента уехала или появилась плашка)`);
+  console.log('✔ открытый чат: новые сообщения сразу внизу, догрузка картинок ленту не сдвигает');
 
   // Листаем вверх: лента не прыгает вниз от новых сообщений, внизу — «Перейти к последним»
   for (let i = 0; i < 25; i++) await send(winA, `строка ${i}`);
