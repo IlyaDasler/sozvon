@@ -134,6 +134,8 @@ body { display: flex; flex-direction: column; }
   background: var(--bg-deep); color: var(--muted); font-size: 12px; user-select: none; -webkit-app-region: drag;
 }
 .titlebar img { opacity: .9; }
+/* Браузер: окно уже есть, полоса с кнопками «назад/вперёд» только мешает */
+.is-web .titlebar { display: none; }
 /* Сообщение, к которому перешли (закреп, цитата ответа), коротко подсвечено */
 .msg-flash { animation: msg-flash 2s ease-out; }
 @keyframes msg-flash { from { background: color-mix(in srgb, var(--accent) 28%, transparent); } to { background: transparent; } }
