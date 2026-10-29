@@ -134,6 +134,12 @@ body { display: flex; flex-direction: column; }
   background: var(--bg-deep); color: var(--muted); font-size: 12px; user-select: none; -webkit-app-region: drag;
 }
 .titlebar img { opacity: .9; }
+/* «Назад» и «Вперёд» — как в браузере; на экране входа их не видно */
+.nav-btn { -webkit-app-region: no-drag; width: 26px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--text-2); cursor: pointer; padding: 0; }
+.nav-btn:hover:not(:disabled) { background: var(--bg-3); color: var(--text); }
+.nav-btn:disabled { opacity: .35; cursor: default; }
+.nav-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+body:has(#auth:not(.hidden)) .nav-btn { visibility: hidden; }
 .screen { flex: 1; min-height: 0; }
 
 /* Вход: слева — рассказ о приложении, справа — форма.
