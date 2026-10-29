@@ -754,6 +754,73 @@ function openReactions(m, chat, anchor) {
 
 document.addEventListener('click', () => closeReactionPicker());
 
+/** Пересылка: расшифрованный текст шифруем заново ключом целевой переписки — сервер не участвует */
+async function forwardMessage(m) {
+  const text = m.plain?.text || '';
+  if (!text) {
+    toast('Пока пересылаются только текстовые сообщения');
+    return;
+  }
+  const target = await pickForwardTarget();
+  if (!target) return;
+  try {
+    const conv = target.kind === 'dm' ? dmConvOf(target.id) : roomConvOf(target.id);
+    const { body, plain } = await encryptOutgoing(conv, { text });
+    if (target.kind === 'dm') addMessage({ ...(await Api.post(`/messages/${target.id}`, body)), plain });
+    else addRoomMessage({ ...(await Api.post(`/rooms/${target.id}/messages`, body)), plain });
+    toast(`Переслано: ${target.name}`);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+function pickForwardTarget() {
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'modal';
+    wrap.innerHTML = `
+      <div class="modal-card forward-card">
+        <h3>Переслать сообщение</h3>
+        <input class="forward-search" type="search" placeholder="Кому переслать" />
+        <div class="forward-list"></div>
+        <div class="row"><span class="spacer"></span><button type="button" class="btn" data-cancel>Отмена</button></div>
+      </div>`;
+    const list = wrap.querySelector('.forward-list');
+    const items = [
+      ...[...state.contacts.values()].map((u) => ({ kind: 'dm', id: u.id, name: u.displayName, sub: 'личный чат' })),
+      ...[...state.rooms.values()].map((r) => ({ kind: 'room', id: r.id, name: r.name, sub: 'комната' })),
+    ];
+    const finish = (value) => {
+      wrap.remove();
+      resolve(value);
+    };
+    const draw = (filter = '') => {
+      list.replaceChildren();
+      const found = items.filter((i) => i.name.toLowerCase().includes(filter.trim().toLowerCase()));
+      for (const item of found) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'forward-item';
+        const name = document.createElement('span');
+        name.textContent = item.name;
+        const sub = document.createElement('span');
+        sub.className = 'forward-sub';
+        sub.textContent = item.sub;
+        b.append(name, sub);
+        b.onclick = () => finish(item);
+        list.append(b);
+      }
+      if (!found.length) list.append(Object.assign(document.createElement('p'), { className: 'muted', textContent: 'Никого не нашли' }));
+    };
+    wrap.querySelector('[data-cancel]').onclick = () => finish(null);
+    wrap.onclick = (e) => e.target === wrap && finish(null);
+    wrap.querySelector('.forward-search').oninput = (e) => draw(e.target.value);
+    draw();
+    document.body.append(wrap);
+    wrap.querySelector('.forward-search').focus();
+  });
+}
+
 /** Начать ответ: цитата попадёт внутрь шифрованного конверта */
 function startReply(m, chat) {
   setReplyDraft({ id: m.id, fromId: m.fromId, text: m.plain?.text || '' }, chat);
@@ -974,6 +1041,10 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
         e.stopPropagation();
         startReply(m, actions.chat);
       });
+      tool('Переслать', '<svg viewBox="0 0 24 24"><path d="M15 14 20 9l-5-5"/><path d="M20 9h-9a7 7 0 0 0-7 7v3"/></svg>', (e) => {
+        e.stopPropagation();
+        forwardMessage(m);
+      });
       tool('Реакция', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0"/><path d="M9 9h.01M15 9h.01"/></svg>', (e) => {
         e.stopPropagation();
         openReactions(m, actions.chat, e.currentTarget);
@@ -1121,6 +1192,33 @@ function handleEvent(msg) {
     case 'message:deleted': {
       const peerId = msg.fromId === state.me.id ? msg.toId : msg.fromId;
       if (dropMessage(state.history, peerId, msg.id) && peerId === state.selectedId) renderMessages();
+      return;
+    }
+    case 'message:edited': {
+      const peerId = msg.message.fromId === state.me.id ? msg.message.toId : msg.message.fromId;
+      const list = state.history.get(peerId) || [];
+      const i = list.findIndex((x) => x.id === msg.message.id);
+      if (i >= 0) {
+        list[i] = { ...list[i], ...msg.message, plain: list[i].plain };
+        decryptMessages([list[i]], dmConvOf(peerId)).then(() => {
+          if (peerId === state.selectedId) renderMessages();
+        });
+      }
+      return;
+    }
+    case 'message:reactions': {
+      const found = (state.history.get(msg.peerId) || []).find((x) => x.id === msg.id);
+      if (found) found.reactions = msg.reactions;
+      if (msg.peerId === state.selectedId) renderMessages();
+      return;
+    }
+    case 'message:pinned': {
+      const found = (state.history.get(msg.peerId) || []).find((x) => x.id === msg.id);
+      if (found) found.pinned = msg.pinned;
+      if (msg.peerId === state.selectedId) {
+        renderMessages();
+        refreshPinned({ kind: 'dm', peerId: msg.peerId });
+      }
       return;
     }
     case 'call:incoming':
