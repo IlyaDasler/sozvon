@@ -475,6 +475,49 @@ export function createApi() {
 
   api.get('/oauth/providers', (_req, res) => res.json(enabledProviders()));
 
+  // Вход через сервис в браузере: сервер сам принимает ответ и возвращает в приложение с токеном.
+  // В приложении Electron код принимает localhost:47615, а в браузере принять его некому — ведём через сервер.
+  const webFlows = new Map(); // state -> { provider, verifier, expires }
+  const WEB_FLOW_TTL = 10 * 60_000;
+  const publicBase = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+
+  api.get('/oauth/:provider/web', (req, res) => {
+    try {
+      const provider = req.params.provider;
+      const state = crypto.randomBytes(16).toString('base64url');
+      const verifier = crypto.randomBytes(48).toString('base64url');
+      const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+      const redirectUri = `${publicBase(req)}/api/oauth/${provider}/callback`;
+      const url = buildAuthUrl(provider, state, challenge, redirectUri);
+      for (const [key, flow] of webFlows) if (flow.expires < Date.now()) webFlows.delete(key);
+      webFlows.set(state, { provider, verifier, expires: Date.now() + WEB_FLOW_TTL });
+      res.redirect(url);
+    } catch (err) {
+      const message = err.message || 'Вход через сервис недоступен';
+      res.redirect(`/?oauth_error=${encodeURIComponent(message)}`);
+    }
+  });
+
+  api.get('/oauth/:provider/callback', async (req, res) => {
+    const back = (params) => res.redirect(`/${params ? `?${new URLSearchParams(params)}` : ''}`);
+    const state = String(req.query.state || '');
+    const flow = webFlows.get(state);
+    if (flow) webFlows.delete(state);
+    if (req.query.error || !flow || flow.expires < Date.now())
+      return back({ oauth_error: 'Вход отменён или устарел. Попробуйте ещё раз' });
+    try {
+      const profile = await fetchProfile(flow.provider, { code: String(req.query.code || ''), codeVerifier: flow.verifier });
+      const existing = identities.find(flow.provider, profile.providerId);
+      if (existing) return back({ oauth: signToken(existing.user_id) });
+      // Без кода приглашения профиль не создаём — вернём пропуск, клиент попросит код
+      if (config.inviteCode) return back({ oauth_need_invite: signTicket({ provider: flow.provider, ...profile }) });
+      const created = createOAuthUser(flow.provider, profile);
+      return back({ oauth: created.token });
+    } catch (err) {
+      return back({ oauth_error: err.message || 'Не удалось войти через сервис' });
+    }
+  });
+
   api.get(
     '/oauth/:provider/url',
     handle((req) => {
