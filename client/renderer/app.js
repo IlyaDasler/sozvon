@@ -961,9 +961,11 @@ function reactionsView(m) {
 function renderMessageList(box, list, loaded, emptyText, actions) {
   const before = shownMessages.get(box);
   // Ту же переписку листают вверх — после перерисовки остаёмся на месте, а не прыгаем вниз.
-  // Своё новое сообщение — всегда вниз, к нему
+  // Внизу ли человек, решает только его прокрутка (box.stick), а не высота ленты: картинки и превью
+  // догружаются позже и делают ленту выше. Своё новое сообщение — всегда вниз, к нему
+  jumpBar(box);
   const sentNow = before?.list === list && list.some((m) => !before.ids.has(m.id) && m.fromId === state.me.id);
-  const keepScroll = before?.list === list && !nearBottom(box) && !sentNow;
+  const keepScroll = before?.list === list && !box.stick && !sentNow;
   const scrollTop = box.scrollTop;
   box.replaceChildren();
   const isNew = (m) => before?.list === list && !before.ids.has(m.id);
@@ -1075,11 +1077,16 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
   if (keepScroll) {
     box.scrollTop = scrollTop;
     if (list.some(isNew)) bar.classList.add('fresh');
-  } else box.scrollTop = box.scrollHeight;
+  } else stickToBottom(box);
   syncJumpBar(box);
 }
 
-const nearBottom = (box) => box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+const nearBottom = (box) => box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+
+function stickToBottom(box) {
+  box.stick = true;
+  box.scrollTop = box.scrollHeight;
+}
 
 // «Перейти к последним»: полоса над полем ввода, пока ленту листают вверх; ниже есть новые — она яркая
 function jumpBar(box) {
@@ -1089,18 +1096,29 @@ function jumpBar(box) {
   bar.className = 'jump-bar hidden';
   bar.innerHTML = '<span></span><b>Перейти к последним <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg></b>';
   bar.onclick = () => {
-    box.scrollTop = box.scrollHeight;
+    stickToBottom(box);
     syncJumpBar(box);
   };
   box.after(bar);
-  box.addEventListener('scroll', () => syncJumpBar(box));
+  box.stick = true;
+  // Прокрутку делает человек (колесо, полоса, клавиши) — запоминаем, внизу он или нет. Лента, пустевшая на
+  // миг при перерисовке, тоже даёт событие прокрутки, но к нему мы уже вернули её на место
+  box.addEventListener('scroll', () => {
+    box.stick = nearBottom(box);
+    syncJumpBar(box);
+  });
+  // Догрузилась картинка, видео или превью — если человек был внизу, держим его внизу
+  const keepDown = () => box.stick && (box.scrollTop = box.scrollHeight);
+  box.addEventListener('load', keepDown, true);
+  box.addEventListener('loadedmetadata', keepDown, true);
+  new ResizeObserver(keepDown).observe(box);
   box.jumpBar = bar;
   return bar;
 }
 
 function syncJumpBar(box) {
   const bar = jumpBar(box);
-  const atBottom = nearBottom(box);
+  const atBottom = box.stick;
   if (atBottom) bar.classList.remove('fresh');
   bar.classList.toggle('hidden', atBottom);
   bar.firstChild.textContent = bar.classList.contains('fresh') ? 'Ниже новые сообщения' : 'Вы смотрите старые сообщения';
