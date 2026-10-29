@@ -38,4 +38,11 @@ runTest(async () => {
   await js(win, `document.getElementById('update-later').click(); const t = new Date(); t.setHours(17, 35, 0, 0); onUpdateStatus({ state: 'latest', checkedAt: t.getTime() }); true`);
   await waitFor(win, `document.getElementById('update-status').textContent === 'У вас последняя версия · проверено в 17:35'`, 'время проверки');
   console.log('✔ видно, когда последний раз проверяли обновления');
+
+  // Проверка по кнопке, версия последняя — окно «Что нового» в этой версии, без кнопок обновления
+  await js(win, `document.getElementById('sidebar-update-check').click(); onUpdateStatus({ state: 'latest', current: '2.4.0', notes: 'Темы чата и свои звуки' }); true`);
+  await waitFor(win, `${visible('update-modal')} && document.getElementById('update-title').textContent === 'У вас последняя версия 2.4.0' && document.getElementById('update-notes').textContent.includes('Темы чата') && getComputedStyle(document.getElementById('update-now')).display === 'none'`, 'окно «последняя версия» с описанием');
+  await js(win, `document.getElementById('update-close').click(); true`);
+  await waitFor(win, `!${visible('update-modal')}`, 'окно закрылось');
+  console.log('✔ при проверке видно, что нового в последней версии');
 });
