@@ -350,8 +350,8 @@ async function loadProviders(base) {
   let providers = [];
   let inviteRequired = true;
   let emailCodes = false;
-  // Вход через сервисы работает только в приложении: браузерной версии некуда принять ответ
-  if (window.desktop?.oauth && base) {
+  // В приложении ответ принимает Electron, в браузере — сервер (переадресация), поэтому список нужен везде
+  if (base && (window.desktop?.oauth || isWeb)) {
     try {
       const res = await fetch(`${base}/api/oauth/providers`, { signal: AbortSignal.timeout(5000) });
       if (res.ok) providers = await res.json();
@@ -414,6 +414,11 @@ async function runOAuth(provider, mode, extra = {}) {
 async function oauthLogin(provider) {
   const base = isWeb ? location.origin : normalizeServer($('server-url').value);
   if (!base) return ($('auth-error').textContent = 'Укажите адрес сервера');
+  // В браузере код принимает сервер и возвращает нас сюда с токеном
+  if (isWeb) {
+    location.href = `${base}/api/oauth/${provider}/web`;
+    return;
+  }
   const buttons = $('auth-form').querySelectorAll('button');
   buttons.forEach((b) => (b.disabled = true));
   $('auth-error').textContent = '';
@@ -2339,6 +2344,34 @@ window.addEventListener('beforeunload', () => {
 
 // ---------- Запуск ----------
 
+// Возврат из сервиса входа в браузере: сервер уже обменял код и положил токен в адрес страницы
+async function completeWebOAuth() {
+  if (!isWeb) return false;
+  const params = new URLSearchParams(location.search);
+  const token = params.get('oauth');
+  const ticket = params.get('oauth_need_invite');
+  const error = params.get('oauth_error');
+  if (!token && !ticket && !error) return false;
+  history.replaceState(null, '', location.pathname);
+  if (error) {
+    $('auth-error').textContent = error;
+    return false;
+  }
+  if (ticket) {
+    showPendingSignup(ticket, 'yandex');
+    return false;
+  }
+  Api.base = location.origin;
+  Api.token = token;
+  try {
+    finishLogin(location.origin, { token, user: await Api.get('/me') });
+    return true;
+  } catch (err) {
+    $('auth-error').textContent = err.message || 'Не удалось войти через сервис';
+    return false;
+  }
+}
+
 async function boot() {
   setAuthMode(false);
   applySpeaker();
@@ -2346,6 +2379,9 @@ async function boot() {
   $('server-url').value = DEFAULT_SERVER;
   $('server-url').onchange = () => loadProviders(normalizeServer($('server-url').value));
   loadProviders(isWeb ? location.origin : normalizeServer($('server-url').value));
+
+  // Вернулись из Яндекса — входим сразу, экран авторизации не показываем
+  if (await completeWebOAuth()) return;
 
   let session = store.get('session', null);
   // «Запомнить меня» снят на странице входа: сессия живёт только в этой вкладке
