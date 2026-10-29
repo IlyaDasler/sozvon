@@ -9,6 +9,7 @@
   "scripts": {
     "start": "electron .",
     "icon": "electron scripts/make-icon.js",
+    "native": "cd native/capture && npm ci --ignore-scripts && npx node-gyp rebuild",
     "dist": "electron-builder --win --x64 --publish never && node scripts/check-package.js",
     "test": "node --test test/*.test.js"
   },
@@ -20,7 +21,12 @@
     "files": [
       "*.js",
       "renderer/**/*",
-      "assets/**/*"
+      "assets/**/*",
+      "native/capture/index.js",
+      "native/capture/build/Release/sozvon_capture.node"
+    ],
+    "asarUnpack": [
+      "native/capture/build/Release/*.node"
     ],
     "publish": {
       "provider": "github",

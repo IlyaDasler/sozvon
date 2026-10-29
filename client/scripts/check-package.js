@@ -13,7 +13,11 @@ const required = new Set(['main.js', 'package.json']);
 for (const file of ['main.js', 'preload.js', ...fs.readdirSync(root).filter((f) => f.endsWith('.js'))]) {
   required.add(file);
   const source = fs.readFileSync(path.join(root, file), 'utf8');
-  for (const [, dep] of source.matchAll(/require\(['"](\.\/[^'"]+)['"]\)/g)) required.add(path.posix.normalize(dep.endsWith('.js') ? dep : `${dep}.js`));
+  for (const [, dep] of source.matchAll(/require\(['"](\.\/[^'"]+)['"]\)/g)) {
+    // require('./native/capture') — папка: берём её index.js
+    const dir = fs.existsSync(path.join(root, dep)) && fs.statSync(path.join(root, dep)).isDirectory();
+    required.add(path.posix.normalize(dir ? `${dep}/index.js` : dep.endsWith('.js') ? dep : `${dep}.js`));
+  }
   // Файлы рядом с приложением: path.join(__dirname, 'assets', 'tray.png') и т. п. — значок трея, страница, preload
   for (const [, args] of source.matchAll(/path\.join\(__dirname, ((?:'[^']+'(?:, )?)+)\)/g))
     required.add(args.split(', ').map((a) => a.slice(1, -1)).join('/'));
@@ -35,6 +39,12 @@ if (!fs.existsSync(path.join(root, 'dist', 'win-unpacked', 'resources', 'app-upd
 const unpacked = path.join(root, 'dist', 'win-unpacked', 'resources', 'app.asar.unpacked');
 if (dependencies['uiohook-napi'] && !fs.existsSync(path.join(unpacked, 'node_modules', 'uiohook-napi', 'prebuilds', 'win32-x64', 'uiohook-napi.node'))) {
   console.error('✖ В сборке нет распакованного uiohook-napi.node — рация работать не будет');
+  process.exit(1);
+}
+
+// Свой захват экрана — нативный модуль, тоже только распакованным; без него трансляция идёт через Chromium (~50 к/с)
+if (!fs.existsSync(path.join(unpacked, 'native', 'capture', 'build', 'Release', 'sozvon_capture.node'))) {
+  console.error('✖ В сборке нет распакованного sozvon_capture.node — трансляция не будет держать 60 к/с');
   process.exit(1);
 }
 
