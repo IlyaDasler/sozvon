@@ -7,8 +7,12 @@ const { fetchPreview } = require('../link-preview');
 
 const SERVER = process.argv.find((a) => /^https?:\/\//.test(a)) || 'http://127.0.0.1:3000'; // localhost клиент считает старым адресом и сбрасывает вход
 
-app.commandLine.appendSwitch('use-fake-device-for-media-stream');
+// Виртуальные микрофон и камера. Захват экрана они тоже подменяют (картинка 16:9, 20 кадров/с) — для замеров
+// настоящей трансляции E2E_REAL_DEVICES=1 включает настоящие устройства
+if (process.env.E2E_REAL_DEVICES !== '1') app.commandLine.appendSwitch('use-fake-device-for-media-stream');
 app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
+// E2E_SWITCHES="имя=значение …" — проверить переключатели Chromium
+for (const s of (process.env.E2E_SWITCHES || '').split(' ').filter(Boolean)) app.commandLine.appendSwitch(...s.split('='));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

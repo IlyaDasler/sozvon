@@ -26,7 +26,11 @@ function sessionOptions(sendSignal) {
     },
     onSpeaking: (who, on) => setSpeaking(who, on && (who === 'me' || voiceAllowed(who).speak)),
     onPeerState,
-    onStats: renderVoiceStatus,
+    // Раз в 2 секунды: качество связи и статистика трансляций на плитках
+    onStats() {
+      renderVoiceStatus();
+      renderStage();
+    },
     volumeOf: (id) => store.get(`volume:${id}`, 100) / 100,
     allowed: voiceAllowed,
   };
@@ -71,7 +75,7 @@ function voiceTiles() {
       speaking: speaking.get('me'),
     },
   ];
-  if (local.tracks.screen) tiles.push({ key: 'me:screen', user: state.me, isMe: true, screen: true, video: local.tracks.screen });
+  if (local.tracks.screen) tiles.push({ key: 'me:screen', user: state.me, isMe: true, screen: true, video: local.tracks.screen, stats: session.screenStats });
 
   for (const p of session.peers.values()) {
     const user = userById(p.id) || { id: p.id, displayName: '…', avatarColor: '#555' };
@@ -87,8 +91,11 @@ function voiceTiles() {
       quality: p.quality,
       connecting: p.state !== 'connected',
     });
-    if (p.media.screen && p.tracks.screen && allowed.video)
-      tiles.push({ key: `u${p.id}:screen`, id: p.id, user, screen: true, video: p.tracks.screen, quality: p.quality });
+    // Чужую трансляцию смотрят по желанию: пока не смотрим — карточка с кнопкой «Смотреть»
+    if (p.media.screen && allowed.video) {
+      const watching = session.watching.has(p.id);
+      tiles.push({ key: `u${p.id}:screen`, id: p.id, user, screen: true, watching, video: watching ? p.tracks.screen || null : null, stats: watching ? p.screenStats : null, quality: p.quality });
+    }
   }
 
   // Звонок ещё не принят — показываем собеседника заранее
@@ -106,6 +113,7 @@ function createTile(t) {
     <video autoplay playsinline muted></video>
     <div class="tile-avatar"></div>
     <div class="tile-label"><span class="tile-name ellipsis"></span><span class="tile-icons"></span></div>
+    <div class="tile-stats"></div>
     <div class="tile-tools"></div>`;
   const tools = el.querySelector('.tile-tools');
 
@@ -129,8 +137,31 @@ function createTile(t) {
     tools.append(label);
   }
 
+  // Чужая трансляция: «Смотреть» посередине и «Перестать смотреть» среди кнопок плитки
+  if (t.screen && !t.isMe) {
+    const watch = document.createElement('button');
+    watch.type = 'button';
+    watch.className = 'tile-watch';
+    watch.innerHTML = `${ICONS.eye}<span>Смотреть трансляцию</span>`;
+    watch.onclick = (e) => {
+      e.stopPropagation();
+      activeSession()?.setWatching(t.id, true);
+    };
+    el.append(watch);
+    const unwatch = document.createElement('button');
+    unwatch.className = 'tile-btn tile-unwatch';
+    unwatch.title = 'Перестать смотреть';
+    unwatch.innerHTML = ICONS.eyeOff;
+    unwatch.onclick = (e) => {
+      e.stopPropagation();
+      if (fullView === t.key) closeFullView();
+      activeSession()?.setWatching(t.id, false);
+    };
+    tools.append(unwatch);
+  }
+
   const full = document.createElement('button');
-  full.className = 'tile-btn';
+  full.className = 'tile-btn tile-full';
   full.title = 'Во весь экран (двойной щелчок)';
   full.innerHTML = ICONS.expand;
   full.onclick = (e) => {
@@ -159,6 +190,7 @@ function updateTile(el, t, focused) {
   el.classList.toggle('speaking', Boolean(t.speaking) && !t.screen);
   el.classList.toggle('connecting', Boolean(t.connecting));
   el.classList.toggle('has-video', Boolean(t.video));
+  el.classList.toggle('not-watching', Boolean(t.screen && !t.isMe && !t.watching));
   video.classList.toggle('mirror', Boolean(t.isMe && !t.screen));
 
   if (t.video) {
@@ -181,14 +213,15 @@ function updateTile(el, t, focused) {
   else if (t.muted) icons.insertAdjacentHTML('beforeend', ICONS.micOff);
   if (!t.isMe && !t.screen && !t.connecting) icons.append(qualityBars(t.quality));
   el.title = t.connecting ? 'Соединение…' : t.quality ? qualityText(t.quality) : '';
+  el.querySelector('.tile-stats').textContent = t.screen ? videoStatsText(t.stats) : '';
 }
 
 function renderStage() {
   const stage = $('stage');
   const tiles = voiceTiles();
   if (focusedTile && !tiles.some((t) => t.key === focusedTile)) focusedTile = null;
-  // Чужой экран сам разворачивается на всю панель
-  const focus = focusedTile || tiles.find((t) => t.screen && !t.isMe)?.key || null;
+  // Чужой экран, который смотрим, сам разворачивается на всю панель
+  const focus = focusedTile || tiles.find((t) => t.screen && !t.isMe && t.watching)?.key || null;
   stage.classList.toggle('has-focus', Boolean(focus));
   stage.classList.toggle('has-video', tiles.some((t) => t.video));
 
@@ -306,7 +339,7 @@ function renderVoice() {
   for (const id of ['call-screen', 'voice-screen']) {
     $(id).innerHTML = screen ? ICONS.screenStop : ICONS.screen;
     $(id).classList.toggle('on', screen);
-    $(id).title = screen ? 'Остановить демонстрацию' : 'Показать экран';
+    $(id).title = screen ? 'Сменить окно или качество, остановить показ' : 'Показать экран';
   }
   $('hangup-btn').title = state.room ? 'Выйти из голосового канала' : 'Завершить звонок';
   renderNoiseButton();
@@ -415,14 +448,16 @@ async function toggleCamera() {
 function toggleScreen() {
   const session = activeSession();
   if (!session) return;
-  if (session.local.tracks.screen) return session.stopScreen();
   if (noVideoRight()) return;
-  openScreenPicker();
+  openScreenPicker({ change: Boolean(session.local.tracks.screen) });
 }
 
 let pickedSource = null;
 
-async function openScreenPicker() {
+let sharingSource = null; // что показываем сейчас — в окне смены уже выбрано
+
+/** change — показ уже идёт: можно сменить окно и качество или остановить */
+async function openScreenPicker({ change = false } = {}) {
   // В браузере экран выбирают в системном окне браузера
   if (!window.desktop?.screen) {
     try {
@@ -433,7 +468,10 @@ async function openScreenPicker() {
     return;
   }
 
-  pickedSource = null;
+  pickedSource = change ? sharingSource : null;
+  $('screen-title').textContent = change ? 'Сменить трансляцию' : 'Что показать?';
+  $('screen-start').textContent = change ? 'Сменить' : 'Начать показ';
+  $('screen-stop').classList.toggle('hidden', !change);
   $('screen-start').disabled = true;
   $('screen-error').textContent = '';
   $('screen-audio').checked = store.get('screenAudio', false);
@@ -548,6 +586,7 @@ async function startScreenShare() {
   try {
     await window.desktop.screen.choose(pickedSource, audio);
     await session.startScreen({ mode, text, audio });
+    sharingSource = pickedSource;
     closeScreenPicker();
   } catch (err) {
     $('screen-error').textContent = mediaErrorText(err, 'экран');
@@ -582,6 +621,10 @@ $('call-screen').onclick = toggleScreen;
 $('voice-screen').onclick = toggleScreen;
 $('screen-cancel').onclick = closeScreenPicker;
 $('screen-start').onclick = startScreenShare;
+$('screen-stop').onclick = () => {
+  activeSession()?.stopScreen();
+  closeScreenPicker();
+};
 $('hangup-btn').onclick = () => (state.call ? hangup() : leaveRoomVoice());
 $('voice-leave').onclick = () => (state.call ? hangup() : leaveRoomVoice());
 $('voice-where').onclick = (e) => {
