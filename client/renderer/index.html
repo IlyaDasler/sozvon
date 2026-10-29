@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src http: https: ws: wss: blob:; media-src 'self' blob: mediastream:; img-src 'self' data: blob: http: https:">
+        content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http: https: ws: wss: blob:; media-src 'self' blob: mediastream:; img-src 'self' data: blob: http: https:">
   <title>Созвон</title>
   <link rel="stylesheet" href="themes.css">
   <link rel="stylesheet" href="styles.css">
@@ -458,7 +458,7 @@
                 <span>Динамики / наушники</span>
                 <select id="set-speaker"></select>
               </label>
-              <label class="check"><input type="checkbox" id="set-ns"> Шумоподавление — убирает фоновый шум, клавиатуру и вентилятор</label>
+              <label class="check"><input type="checkbox" id="set-ns"> Шумоподавление нейросетью — убирает клавиатуру, вентилятор, улицу и другие звуки вокруг, голос остаётся (работает на вашем компьютере, без интернета)</label>
             </div>
             <div class="set-block hidden" id="ptt-block">
               <h4>Режим микрофона</h4>
