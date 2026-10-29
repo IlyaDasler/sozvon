@@ -47,13 +47,13 @@ export const enabledProviders = () =>
     .filter(([, p]) => p.clientId && (!p.needsSecret || p.clientSecret))
     .map(([id, p]) => ({ id, name: p.name }));
 
-export function buildAuthUrl(id, state, codeChallenge) {
+export function buildAuthUrl(id, state, codeChallenge, redirectUri) {
   const p = provider(id);
   const url = new URL(endpoint(id, p.authUrl));
   url.search = new URLSearchParams({
     response_type: 'code',
     client_id: p.clientId,
-    redirect_uri: p.redirectUri,
+    redirect_uri: redirectUri || p.redirectUri,
     ...(p.scope && { scope: p.scope }),
     state,
     code_challenge: codeChallenge,
