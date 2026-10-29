@@ -115,7 +115,7 @@ test('почта Яндекса: регистрация на ya.ru, вход п�
   assert.match(code, /^\d{6}$/, 'код уходит на основной адрес ящика');
   const reg = await api('POST', '/register', { email: 'petr.sidorov@ya.ru', password: 'secret1', displayName: 'Петя', code });
   assert.equal(reg.status, 200);
-  assert.equal(reg.body.user.email, 'petr-sidorov@yandex.ru');
+  assert.equal(reg.body.user.email, 'petr.sidorov@ya.ru', 'в профиле — адрес, как его ввели, а не служебный вид');
   for (const login of ['petr.sidorov@yandex.com', 'Petr-Sidorov@yandex.ru', 'petr.sidorov@narod.ru'])
     assert.equal((await api('POST', '/login', { username: login, password: 'secret1' })).status, 200, login);
   assert.equal((await api('POST', '/register/code', { email: 'petr-sidorov@yandex.by' })).status, 409);
