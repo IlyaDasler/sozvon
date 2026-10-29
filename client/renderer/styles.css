@@ -791,6 +791,15 @@ video.mirror { transform: scaleX(-1); }
 .edit-card textarea { width: 100%; min-height: 110px; margin: 10px 0 14px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg-deep); color: var(--text); font: inherit; font-size: 13.5px; line-height: 1.45; resize: vertical; outline: none; }
 .edit-card textarea:focus { border-color: var(--accent); }
 .edit-card .row { align-items: center; }
+
+/* Пересылка */
+.forward-card { width: min(420px, calc(100% - 32px)); }
+.forward-search { width: 100%; height: 34px; margin: 10px 0 8px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg-deep); color: var(--text); font: inherit; font-size: 13px; outline: none; }
+.forward-search:focus { border-color: var(--accent); }
+.forward-list { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto; margin-bottom: 12px; }
+.forward-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 0; border-radius: 8px; background: var(--bg-3); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+.forward-item:hover { background: var(--bg-4); }
+.forward-sub { color: var(--muted); font-size: 11.5px; }
 .msg-text table { border-collapse: collapse; margin: 6px 0; font-size: 13px; display: block; max-width: 100%; overflow-x: auto; }
 .msg-text th, .msg-text td { border: 1px solid var(--line); padding: 4px 9px; text-align: left; }
 .msg-text th { background: var(--bg-3); font-weight: 600; }
