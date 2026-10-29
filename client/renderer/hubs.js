@@ -659,7 +659,7 @@ function hubOverviewPane(hub) {
         el('div', { className: 'row' },
           smallButton('Загрузить картинку', 'primary', () => $('hub-icon-input').click()),
           hub.iconUrl && smallButton('Убрать', '', () => hubAction(Api.del(`/hubs/${hub.id}/icon`), 'Картинка убрана'))),
-        el('p', { className: 'muted small', textContent: 'Квадратная картинка; без неё — буквы названия на цветном фоне.' }))),
+        el('p', { className: 'muted small', textContent: 'Загрузите картинку, чтобы канал отличался не только названием.' }))),
     el('label', { className: 'field' }, el('span', { textContent: 'Название' }), name),
     el('div', { className: 'field' }, el('span', { textContent: 'Цвет' }), colors),
     el('div', { className: 'row' }, el('div', { className: 'spacer' }), el('button', { className: 'btn primary', textContent: 'Сохранить' })));
