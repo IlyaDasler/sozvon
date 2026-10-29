@@ -92,7 +92,14 @@ class SfuSession extends MediaSession {
         name: slot,
         ...(slot === 'mic' && { dtx: true, red: true }),
         ...(slot === 'cam' && { simulcast: true }),
-        ...(slot === 'screen' && { simulcast: false, videoCodec: 'vp9', videoEncoding: { maxBitrate: m.bitrate, maxFramerate: m.frameRate } }),
+        // Для экрана LiveKit берёт screenShareEncoding, а не videoEncoding; без него — 15 к/с и 2,5 Мбит/с при любом режиме
+        // Нехватка канала: игра теряет чёткость, а не кадры (LiveKit для экрана держит разрешение); «текст» — наоборот
+        ...(slot === 'screen' && {
+          simulcast: false,
+          videoCodec: 'vp9',
+          screenShareEncoding: { maxBitrate: m.bitrate, maxFramerate: m.frameRate },
+          degradationPreference: this.local.screenText ? 'maintain-resolution' : 'maintain-framerate',
+        }),
       };
       try {
         const pub = await lp.publishTrack(track, options);

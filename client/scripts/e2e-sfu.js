@@ -60,6 +60,16 @@ runTest(async () => {
   await screenshot(wins[0], 'sfu-room');
   console.log('✔ камера одного видна всем');
 
+  // Аня показывает экран 1080p60 — через медиасервер уходит 60 к/с с битрейтом режима, а не 15 к/с и 2,5 Мбит/с
+  // по умолчанию LiveKit для экрана (videoEncoding для экрана он не читает)
+  await js(wins[0], `activeSession().startScreen({ mode: '1080p60' }).then(() => true)`);
+  await js(wins[1], `activeSession().setWatching(${anya}, true); true`);
+  await waitFor(wins[1], tilePlaying(wins[1], `u${anya}:screen`), 'трансляция Ани у Бори', 20000);
+  // и при нехватке канала (пока оценка разгоняется) теряет чёткость, а не кадры — как в звонке вдвоём
+  const enc = await js(wins[0], `(() => { const p = activeSession().published.screen.sender.getParameters(); return JSON.stringify({ deg: p.degradationPreference, enc: p.encodings.map((x) => ({ fps: x.maxFramerate, br: x.maxBitrate })) }); })()`);
+  if (!/"fps":60,"br":9000000/.test(enc) || !enc.includes('maintain-framerate')) throw new Error(`Экран через медиасервер урезан: ${enc}`);
+  console.log('✔ экран через медиасервер — 60 к/с и битрейт режима', enc);
+
   // Дину выгнали из комнаты — медиасервер её отключает, остальные видят троих
   await api('DELETE', `/rooms/${room.id}/members/${people[4].user.id}`, null, owner.token);
   await waitFor(wins[4], '!state.room', 'Дина вне голоса');
