@@ -176,6 +176,8 @@ function roomItem(room) {
       if (!user) continue;
       const item = document.createElement('li');
       item.dataset.voiceUser = p.userId;
+      item.dataset.profile = p.userId;
+      item.title = user.displayName;
       if (speaking.get(p.userId === state.me.id ? 'me' : p.userId)) item.classList.add('speaking');
       item.append(makeAvatar(user, undefined, 'tiny'));
       const n = document.createElement('span');
