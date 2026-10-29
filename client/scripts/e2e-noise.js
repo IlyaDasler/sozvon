@@ -117,6 +117,33 @@ app.whenReady().then(async () => {
     if (!live.viaNet || live.live !== 'live') throw new Error('Микрофон идёт мимо нейросети или дорожка не живая');
     console.log(`  микрофон через нейросеть: дорожка ${live.live}, пик ${live.peak.toFixed(3)}`);
     console.log('✔ живой микрофон проходит через нейросеть');
+
+    // Выключили и снова включили шумоподавление в разговоре — собеседник по-прежнему слышит
+    const again = await js(`(async () => {
+      const local = new LocalMedia(() => {});
+      const peakOf = async () => {
+        const ctx = new AudioContext();
+        const an = ctx.createAnalyser();
+        ctx.createMediaStreamSource(new MediaStream([local.tracks.mic])).connect(an);
+        const buf = new Float32Array(an.fftSize);
+        let peak = 0;
+        for (let i = 0; i < 40; i++) { await new Promise((r) => setTimeout(r, 50)); an.getFloatTimeDomainData(buf); for (const v of buf) peak = Math.max(peak, Math.abs(v)); }
+        ctx.close();
+        return peak;
+      };
+      await local.openMic({ micId: '', noiseSuppression: true });
+      const first = await peakOf();
+      await local.openMic({ micId: '', noiseSuppression: false });
+      const off = await peakOf();
+      await local.openMic({ micId: '', noiseSuppression: true });
+      const second = await peakOf();
+      const state = local.tracks.mic.readyState;
+      local.close();
+      return { first, off, second, state };
+    })()`);
+    console.log(`  пик: включено ${again.first.toFixed(3)}, выключено ${again.off.toFixed(3)}, снова включено ${again.second.toFixed(3)} (${again.state})`);
+    if (!(again.off > 0.01) || again.state !== 'live' || !(again.second > again.first * 0.5)) throw new Error('После выключения и включения шумоподавления микрофон молчит');
+    console.log('✔ шумоподавление выключили и включили — голос идёт');
     console.log('\nВсе проверки пройдены');
     app.exit(0);
   } catch (err) {
