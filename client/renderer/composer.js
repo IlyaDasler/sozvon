@@ -48,10 +48,13 @@ function uploadFile(file, onProgress) {
 
 class Composer {
   /** send({ text, files, preview }) шифрует и отправляет сообщение */
-  constructor(form, area, send) {
+  /** mentionCandidates() — кого можно упомянуть через «@» (собеседник или участники комнаты) */
+  constructor(form, area, send, { mentionCandidates = () => [] } = {}) {
     this.form = form;
     this.area = area;
     this.send = send;
+    this.mentionCandidates = mentionCandidates;
+    this.mentions = null; // открытая подсказка: { list, index, start }
     this.files = []; // { file, url, progress, attachment, error, upload }
     this.preview = null; // { url, data }
     this.removedPreviews = new Set();
@@ -64,6 +67,7 @@ class Composer {
     form.replaceChildren();
     this.filesBox = Object.assign(document.createElement('div'), { className: 'composer-files hidden' });
     this.previewBox = Object.assign(document.createElement('div'), { className: 'composer-preview hidden' });
+    this.mentionBox = Object.assign(document.createElement('div'), { className: 'mention-popup hidden' });
     const bar = Object.assign(document.createElement('div'), { className: 'composer-bar' });
     const button = (cls, title, icon, type = 'button') => {
       const b = document.createElement('button');
@@ -78,7 +82,7 @@ class Composer {
     this.sendBtn = button('send', 'Отправить (Enter)', COMPOSER_ICONS.send, 'submit');
     this.picker = Object.assign(document.createElement('input'), { type: 'file', multiple: true, hidden: true });
     bar.append(this.attachBtn, area, this.emojiBtn, this.sendBtn);
-    form.append(this.filesBox, this.previewBox, bar, this.picker);
+    form.append(this.mentionBox, this.filesBox, this.previewBox, bar, this.picker);
 
     this.attachBtn.onclick = () => this.picker.click();
     this.picker.onchange = () => {
@@ -92,8 +96,12 @@ class Composer {
     area.addEventListener('input', () => {
       autoGrow(area);
       this.schedulePreview();
+      this.updateMentions();
     });
+    area.addEventListener('click', () => this.updateMentions());
+    area.addEventListener('blur', () => setTimeout(() => this.closeMentions(), 150));
     area.addEventListener('keydown', (e) => {
+      if (this.mentions && this.mentionKey(e)) return;
       if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
       e.preventDefault();
       form.requestSubmit();
@@ -109,6 +117,73 @@ class Composer {
       e.preventDefault();
       this.submit();
     };
+  }
+
+  // ---------- Упоминания ----------
+
+  /** Перед курсором «@» и начало имени — подсказка, кого упомянуть */
+  updateMentions() {
+    const caret = this.area.selectionStart ?? this.area.value.length;
+    const m = /(?:^|\s)@([\p{L}\p{N}_.]{0,32})$/u.exec(this.area.value.slice(0, caret));
+    if (!m) return this.closeMentions();
+    const q = m[1].toLowerCase();
+    const list = this.mentionCandidates()
+      .filter((u) => u && (u.username.toLowerCase().startsWith(q) || u.displayName.toLowerCase().startsWith(q)))
+      .slice(0, 8);
+    if (!list.length) return this.closeMentions();
+    this.mentions = { list, index: 0, start: caret - m[1].length - 1 };
+    this.renderMentions();
+  }
+
+  renderMentions() {
+    const box = this.mentionBox;
+    box.replaceChildren();
+    this.mentions.list.forEach((u, i) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = `mention-item${i === this.mentions.index ? ' active' : ''}`;
+      const name = document.createElement('b');
+      name.textContent = u.displayName;
+      const login = document.createElement('span');
+      login.className = 'muted';
+      login.textContent = `@${u.username}`;
+      item.append(makeAvatar(u), name, login);
+      item.onmousedown = (e) => e.preventDefault(); // поле не теряет фокус
+      item.onclick = () => this.pickMention(u);
+      box.append(item);
+    });
+    box.classList.remove('hidden');
+  }
+
+  /** Стрелки выбирают, Enter или Tab вставляют, Esc закрывает; true — клавиша наша */
+  mentionKey(e) {
+    const m = this.mentions;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      m.index = (m.index + (e.key === 'ArrowDown' ? 1 : m.list.length - 1)) % m.list.length;
+      this.renderMentions();
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      this.pickMention(m.list[m.index]);
+    } else if (e.key === 'Escape') {
+      this.closeMentions();
+    } else return false;
+    e.preventDefault();
+    e.stopPropagation();
+    return true;
+  }
+
+  pickMention(u) {
+    const { start } = this.mentions;
+    const caret = this.area.selectionStart ?? this.area.value.length;
+    const insert = `@${u.username} `;
+    this.area.value = this.area.value.slice(0, start) + insert + this.area.value.slice(caret);
+    this.area.selectionStart = this.area.selectionEnd = start + insert.length;
+    this.closeMentions();
+    this.area.focus();
+  }
+
+  closeMentions() {
+    this.mentions = null;
+    this.mentionBox?.classList.add('hidden');
   }
 
   /** Перетаскивание файлов в область чата */
@@ -407,7 +482,7 @@ const dmComposer = new Composer($('message-form'), $('message-input'), async (pa
   const { body, plain } = await encryptOutgoing(dmConvOf(peerId), { ...payload, reply });
   addMessage({ ...(await Api.post(`/messages/${peerId}`, body)), plain });
   if (reply) clearReply();
-});
+}, { mentionCandidates: () => [state.contacts.get(state.selectedId)] });
 dmComposer.acceptDrops($('chat'));
 
 const roomComposer = new Composer($('room-message-form'), $('room-message-input'), async (payload) => {
@@ -417,5 +492,5 @@ const roomComposer = new Composer($('room-message-form'), $('room-message-input'
   const { body, plain } = await encryptOutgoing(roomConvOf(roomId), { ...payload, reply });
   addRoomMessage({ ...(await Api.post(`/rooms/${roomId}/messages`, body)), plain });
   if (reply) clearReply();
-});
+}, { mentionCandidates: () => (roomById(state.selectedRoomId)?.members || []).filter((m) => m.id !== state.me.id) });
 roomComposer.acceptDrops($('room-view'));

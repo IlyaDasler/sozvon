@@ -66,3 +66,12 @@ test('findLinks находит адреса для предпросмотра, �
   assert.deepEqual(findLinks('`https://в-коде.ru` не считается'), []);
   assert.deepEqual(findLinks('ничего'), []);
 });
+
+test('упоминание @логин — отдельный узел; почта и середина слова — не упоминания', () => {
+  const { findMentions } = require('../renderer/markdown');
+  assert.deepEqual(parseMarkdown('@vasya привет'), [para({ type: 'mention', username: 'vasya' }, text(' привет'))]);
+  assert.deepEqual(parseMarkdown('Пиши, @Vasya_1.'), [para(text('Пиши, '), { type: 'mention', username: 'vasya_1' }, text('.'))]);
+  assert.deepEqual(parseMarkdown('почта a@b.ru'), [para(text('почта a@b.ru'))]);
+  assert.deepEqual(parseMarkdown('`@код`'), [para({ type: 'code', text: '@код' })]);
+  assert.deepEqual(findMentions('@a_b1 и @Vasya, но не e@mail.ru и не `@code`'), ['a_b1', 'vasya']);
+});

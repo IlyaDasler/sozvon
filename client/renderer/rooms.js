@@ -375,7 +375,10 @@ function showNewRoomMessage(m) {
     if (!viewing) state.roomUnread.set(m.roomId, (state.roomUnread.get(m.roomId) || 0) + 1);
     renderRooms();
     const room = roomById(m.roomId);
-    notify(room?.name || 'Комната', `${userById(m.fromId)?.displayName || '?'}: ${messageSummary(m)}`, { kind: 'room', open: { room: m.roomId } });
+    const who = userById(m.fromId)?.displayName || '?';
+    // Упомянули — так и говорим в заголовке
+    const title = mentionsMe(m) ? `${who} упоминает вас в «${room?.name || 'комнате'}»` : room?.name || 'Комната';
+    notify(title, `${who}: ${messageSummary(m)}`, { kind: 'room', open: { room: m.roomId } });
   }
 }
 
