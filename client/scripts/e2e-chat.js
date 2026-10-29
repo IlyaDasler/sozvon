@@ -195,6 +195,19 @@ runTest(async () => {
   await sleep(400);
   for (const [win, who] of [[winB, 'получателя'], [winA, 'отправителя']])
     if (!(await js(win, `${atBottom} && ${jumpHidden}`))) throw new Error(`Новое сообщение не видно внизу у ${who} (лента уехала или появилась плашка)`);
+  // Гонка с записи пользователя: лента выросла (картинка узнала размер раньше «load»), а браузер следом
+  // присылает запоздалое событие прокрутки от перерисовки — человек ничего не листал, он по-прежнему внизу
+  await js(
+    winB,
+    `(async () => {
+      const m = document.getElementById('messages');
+      m.lastElementChild.append(Object.assign(document.createElement('div'), { style: 'height: 600px' }));
+      m.dispatchEvent(new Event('scroll'));
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return true;
+    })()`
+  );
+  if (!(await js(winB, `${atBottom} && ${jumpHidden}`))) throw new Error('Лента выросла и пришло запоздалое событие прокрутки — чат уехал вверх');
   console.log('✔ открытый чат: новые сообщения сразу внизу, догрузка картинок ленту не сдвигает');
 
   // Листаем вверх: лента не прыгает вниз от новых сообщений, внизу — «Перейти к последним»
