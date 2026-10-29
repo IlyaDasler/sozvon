@@ -673,6 +673,8 @@ export function createApi() {
       if (bio.length > MAX_BIO) throw new HttpError(400, `«О себе» — не длиннее ${MAX_BIO} символов`);
       const bannerColor = req.body.bannerColor === undefined ? user.banner_color : req.body.bannerColor && str(req.body.bannerColor).toLowerCase();
       if (bannerColor && !COLOR_RE.test(bannerColor)) throw new HttpError(400, 'Неверный цвет баннера');
+      const nameColor = req.body.nameColor === undefined ? user.name_color : req.body.nameColor && str(req.body.nameColor).toLowerCase();
+      if (nameColor && !COLOR_RE.test(nameColor)) throw new HttpError(400, 'Неверный цвет ника');
 
       if (req.body.newPassword) {
         // Если пароля ещё нет (профиль создан через Яндекс), задаём его без проверки текущего
@@ -685,7 +687,7 @@ export function createApi() {
         users.updatePassword(user.id, hashPassword(req.body.newPassword));
       }
 
-      users.updateProfile(user.id, { displayName, avatarColor, bio, bannerColor: bannerColor || null });
+      users.updateProfile(user.id, { displayName, avatarColor, bio, bannerColor: bannerColor || null, nameColor: nameColor || null });
       const row = users.byId(user.id);
       notifyProfile(row);
       return toSelf(row);
