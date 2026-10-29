@@ -349,10 +349,12 @@ function renderRoomMessages() {
     'Сообщений пока нет. Напишите первым!',
     // Своё — всегда, чужое — тот, кто настраивает комнату и старше автора (как решает сервер)
     {
+      chat: { kind: 'room', roomId: id },
       canDelete: (m) => m.fromId === state.me.id || (can(room, PERMS.manage) && outranks(room, m.fromId)),
       remove: (m) => Api.del(`/rooms/${id}/messages/${m.id}`),
     }
   );
+  refreshPinned({ kind: 'room', roomId: id });
 }
 
 function addRoomMessage(m) {
