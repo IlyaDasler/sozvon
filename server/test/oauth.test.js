@@ -116,3 +116,48 @@ test('вход и регистрация через Яндекс; Google и VK �
   assert.equal(login.status, 200);
   assert.deepEqual(login.body.user.identities, []);
 });
+
+// В браузере ответ сервиса принимает сервер: редирект на Яндекс, возврат на /api/oauth/…/callback,
+// затем переадресация в приложение с токеном (или с пропуском, если нужен код приглашения)
+test('вход через Яндекс в браузере: сервер принимает ответ и возвращает токен', async () => {
+  const start = await fetch(`${base}/api/oauth/yandex/web`, { redirect: 'manual' });
+  assert.equal(start.status, 302);
+  const authUrl = new URL(start.headers.get('location'));
+  assert.equal(authUrl.searchParams.get('redirect_uri'), `${base}/api/oauth/yandex/callback`);
+  assert.equal(authUrl.searchParams.get('code_challenge_method'), 'S256');
+
+  // «Страница Яндекса» сразу возвращает код на наш callback
+  const fromProvider = await fetch(authUrl, { redirect: 'manual' });
+  assert.equal(fromProvider.status, 302);
+  const callback = new URL(fromProvider.headers.get('location'));
+  assert.equal(callback.pathname, '/api/oauth/yandex/callback');
+
+  // Профиль новый, а сервер просит код приглашения — приходит пропуск, а не токен
+  const pending = await fetch(callback, { redirect: 'manual' });
+  assert.equal(pending.status, 302);
+  const pendingBack = new URL(pending.headers.get('location'), base);
+  const ticket = pendingBack.searchParams.get('oauth_need_invite');
+  assert.ok(ticket, 'должен прийти пропуск для кода приглашения');
+  assert.equal(pendingBack.searchParams.get('oauth'), null);
+
+  const created = await api('POST', '/signup/complete', { ticket, inviteCode: 'friends' });
+  assert.equal(created.status, 200);
+
+  // Теперь профиль есть: повторный браузерный вход сразу даёт токен
+  const again = await fetch(`${base}/api/oauth/yandex/web`, { redirect: 'manual' });
+  const againAuth = new URL(again.headers.get('location'));
+  const againProvider = await fetch(againAuth, { redirect: 'manual' });
+  const againCallback = new URL(againProvider.headers.get('location'));
+  const done = await fetch(againCallback, { redirect: 'manual' });
+  assert.equal(done.status, 302);
+  const back = new URL(done.headers.get('location'), base);
+  const token = back.searchParams.get('oauth');
+  assert.ok(token, 'должен прийти токен');
+  assert.equal((await api('GET', '/me', null, token)).status, 200);
+
+  // Неизвестный state — понятная ошибка, а не падение
+  const bad = await fetch(`${base}/api/oauth/yandex/callback?state=nope&code=x`, { redirect: 'manual' });
+  assert.equal(bad.status, 302);
+  const badBack = new URL(bad.headers.get('location'), base);
+  assert.ok(badBack.searchParams.get('oauth_error'));
+});
