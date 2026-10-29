@@ -1105,7 +1105,13 @@ const nearBottom = (box) => box.scrollHeight - box.scrollTop - box.clientHeight 
 
 function stickToBottom(box) {
   box.stick = true;
+  scrollDown(box);
+}
+
+/** Прокрутить вниз самим — и запомнить, куда поставили: это событие прокрутки не от человека */
+function scrollDown(box) {
   box.scrollTop = box.scrollHeight;
+  box.autoTop = box.scrollTop;
 }
 
 // «Перейти к последним»: полоса над полем ввода, пока ленту листают вверх; ниже есть новые — она яркая
@@ -1121,17 +1127,21 @@ function jumpBar(box) {
   };
   box.after(bar);
   box.stick = true;
-  // Прокрутку делает человек (колесо, полоса, клавиши) — запоминаем, внизу он или нет. Лента, пустевшая на
-  // миг при перерисовке, тоже даёт событие прокрутки, но к нему мы уже вернули её на место
+  // Прокрутку делает человек (колесо, полоса, клавиши) — запоминаем, внизу он или нет. Браузер присылает
+  // событие и на нашу собственную прокрутку, причём с опозданием: к нему лента могла вырасти (картинка узнала
+  // размер раньше «load»). Лента стоит там, куда её поставили мы, — человек не листал, решение не меняем
   box.addEventListener('scroll', () => {
+    if (box.scrollTop === box.autoTop) return;
     box.stick = nearBottom(box);
     syncJumpBar(box);
   });
   // Догрузилась картинка, видео или превью — если человек был внизу, держим его внизу
-  const keepDown = () => box.stick && (box.scrollTop = box.scrollHeight);
+  const keepDown = () => box.stick && scrollDown(box);
   box.addEventListener('load', keepDown, true);
   box.addEventListener('loadedmetadata', keepDown, true);
   new ResizeObserver(keepDown).observe(box);
+  // Превью ссылок, расшифрованные вложения и реакции дописываются в ленту позже, без «load»
+  new MutationObserver(keepDown).observe(box, { childList: true, subtree: true });
   box.jumpBar = bar;
   return bar;
 }
