@@ -535,6 +535,25 @@ video.mirror { transform: scaleX(-1); }
   border: 0; border-radius: 6px; background: rgba(0, 0, 0, .6); color: #fff; cursor: pointer;
 }
 .tile-volume svg, .tile-btn svg { width: 15px; height: 15px; }
+/* Чужая трансляция, которую пока не смотрим: карточка с кнопкой «Смотреть» (как в Discord) */
+.tile-watch { display: none; }
+.tile.not-watching .tile-watch {
+  display: inline-flex; align-items: center; gap: 8px; position: relative; z-index: 1;
+  padding: 9px 16px; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; font-size: 13px;
+  box-shadow: 0 6px 18px var(--glow); transition: transform var(--fast) var(--ease), background var(--fast);
+}
+.tile.not-watching .tile-watch:hover { background: var(--accent-hover); transform: translateY(-1px); }
+.tile-watch svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; }
+.tile.not-watching .tile-avatar { display: none; }
+.tile.not-watching .tile-unwatch { display: none; }
+/* Сколько кадров доходит, размер, кодек — на плитке трансляции */
+.tile-stats:empty { display: none; }
+.tile-stats {
+  position: absolute; left: 8px; top: 8px; max-width: calc(100% - 120px);
+  padding: 2px 7px; border-radius: 6px; background: rgba(0, 0, 0, .55); color: #e8e8f0;
+  font: 11px/1.5 ui-monospace, Consolas, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .tile-volume input { width: 70px; accent-color: var(--accent); }
 /* Развёрнутая плитка (чужой экран или по клику) занимает всё свободное место, остальные — рядами снизу */
 .stage.has-focus {

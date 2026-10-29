@@ -35,7 +35,7 @@ class SfuSession extends MediaSession {
     room
       .on(LK.RoomEvent.ParticipantConnected, (p) => this.addRemote(p))
       .on(LK.RoomEvent.ParticipantDisconnected, (p) => this.removePeer(Number(p.identity)))
-      .on(LK.RoomEvent.TrackSubscribed, (track, pub, p) => this.setRemoteTrack(p, pub.source, track.mediaStreamTrack))
+      .on(LK.RoomEvent.TrackSubscribed, (track, pub, p) => this.setRemoteTrack(p, pub.source, track.mediaStreamTrack, track))
       .on(LK.RoomEvent.TrackUnsubscribed, (_track, pub, p) => this.setRemoteTrack(p, pub.source, null))
       .on(LK.RoomEvent.ConnectionQualityChanged, (q, p) => {
         if (p === room.localParticipant) this.quality = { sfu: true, level: LK_QUALITY[q] || 0 };
@@ -44,7 +44,9 @@ class SfuSession extends MediaSession {
         if (!this.closed) this.onDisconnected?.();
       });
     if (key) await room.setE2EEEnabled(true);
-    await room.connect(grant.url, grant.token, { autoSubscribe: true });
+    // Подписываемся сами: голос и камеры — сразу, трансляции — только те, что смотрим
+    room.on(LK.RoomEvent.TrackPublished, (pub, p) => this.applySubscription(p, pub));
+    await room.connect(grant.url, grant.token, { autoSubscribe: false });
     for (const p of room.remoteParticipants.values()) this.addRemote(p);
     for (const slot of SLOTS) if (this.local.tracks[slot]) this.publish(slot);
     if (this.local.tracks.mic) this.onLocal('mic');
@@ -95,6 +97,7 @@ class SfuSession extends MediaSession {
       try {
         const pub = await lp.publishTrack(track, options);
         this.published[slot] = pub.track;
+        this.prevVideo = {};
       } catch (err) {
         console.warn('LiveKit: не удалось отправить', slot, err.message);
       }
@@ -104,7 +107,23 @@ class SfuSession extends MediaSession {
 
   // ---------- Собеседники ----------
 
+  /** Трансляцию (экран и его звук) получаем, только пока смотрим; остальное — всегда */
+  applySubscription(p, pub) {
+    const screen = pub.source === 'screen_share' || pub.source === 'screen_share_audio';
+    const want = !screen || this.watching.has(Number(p.identity));
+    if (pub.isSubscribed !== want) pub.setSubscribed(want);
+  }
+
+  setWatching(id, on) {
+    if (on) this.watching.add(id);
+    else this.watching.delete(id);
+    const p = this.room?.remoteParticipants.get(String(id));
+    if (p) for (const pub of p.trackPublications.values()) this.applySubscription(p, pub);
+    this.onChange();
+  }
+
   addRemote(p) {
+    for (const pub of p.trackPublications.values()) this.applySubscription(p, pub);
     const id = Number(p.identity);
     if (!id || this.peers.has(id)) return;
     this.peers.set(id, {
@@ -121,12 +140,14 @@ class SfuSession extends MediaSession {
     this.onChange();
   }
 
-  setRemoteTrack(p, source, track) {
+  setRemoteTrack(p, source, track, lkTrack = null) {
     const slot = LK_SLOT[source];
     if (!slot) return;
     this.addRemote(p);
     const peer = this.peers.get(Number(p.identity));
     if (!peer) return;
+    peer.lk ??= {};
+    peer.lk[slot] = track ? lkTrack : null;
     if (track) return this.onRemoteTrack(peer, slot, track);
     delete peer.tracks[slot];
     const el = peer.audio[slot];
@@ -179,7 +200,16 @@ class SfuSession extends MediaSession {
 
   async collectStats() {
     // Качество связи с медиасервером — одно на всех
-    for (const peer of this.peers.values()) peer.quality = this.quality;
+    this.prevVideo ??= {};
+    const stats = async (track, key, dir) => {
+      const report = await track?.getRTCStatsReport?.().catch(() => null);
+      return report ? readVideoStats(report, dir, (this.prevVideo[key] ??= {})) : null;
+    };
+    for (const peer of this.peers.values()) {
+      peer.quality = this.quality;
+      peer.screenStats = this.watching.has(peer.id) ? await stats(peer.lk?.screen, `in${peer.id}`, 'in') : null;
+    }
+    this.screenStats = this.local.tracks.screen ? await stats(this.published.screen, 'out', 'out') : null;
     if (!this.closed) this.onStats?.();
   }
 
