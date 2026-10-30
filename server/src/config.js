@@ -39,6 +39,12 @@ export const config = {
   },
   // Сколько попыток входа и регистрации в минуту разрешено с одного адреса
   authRateLimit: Number(process.env.AUTH_RATE_LIMIT) || 10,
+  // Чтобы один человек не положил сервер: файлов на диске у каждого, сообщений за 10 секунд, загрузок в минуту,
+  // событий соединения за 10 секунд (звонок шлёт их пачками — с запасом)
+  storageQuotaBytes: (Number(process.env.STORAGE_QUOTA_MB) || 1024) * 1024 * 1024,
+  messageRateLimit: Number(process.env.MESSAGE_RATE_LIMIT) || 20,
+  uploadRateLimit: Number(process.env.UPLOAD_RATE_LIMIT) || 30,
+  socketRateLimit: Number(process.env.SOCKET_RATE_LIMIT) || 600,
   stunUrls: list(
     process.env.STUN_URLS ?? (turnEmbedded && publicIp ? `stun:${publicIp}:${turnPort}` : 'stun:stun.l.google.com:19302')
   ),

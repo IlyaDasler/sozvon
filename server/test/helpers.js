@@ -23,7 +23,7 @@ export async function startServer({ dataDir = fs.mkdtempSync(path.join(os.tmpdir
   const port = await freePort();
   const base = `http://localhost:${port}`;
   const proc = spawn(process.execPath, ['src/index.js'], {
-    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, INVITE_CODE: 'friends', AUTH_RATE_LIMIT: '100', ...env },
+    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, INVITE_CODE: 'friends', AUTH_RATE_LIMIT: '100', MESSAGE_RATE_LIMIT: '1000', UPLOAD_RATE_LIMIT: '1000', ...env },
     stdio: 'pipe',
   });
 
