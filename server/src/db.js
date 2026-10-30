@@ -186,6 +186,8 @@ const columnsOf = (table) => db.prepare(`PRAGMA table_info(${table})`).all().map
 if (!columnsOf('users').includes('avatar')) db.exec('ALTER TABLE users ADD COLUMN avatar TEXT');
 // Почта для входа (в нижнем регистре); у старых профилей её нет
 if (!columnsOf('users').includes('email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT');
+// Токены версий до сессий (см. sessions.js) больше не действуют
+if (!columnsOf('users').includes('legacy_revoked')) db.exec('ALTER TABLE users ADD COLUMN legacy_revoked INTEGER NOT NULL DEFAULT 0');
 // email — единый вид адреса (по нему вход и «ящик занят»), email_shown — как человек его ввёл, его и показываем
 if (!columnsOf('users').includes('email_shown')) db.exec('ALTER TABLE users ADD COLUMN email_shown TEXT');
 // Выбранный статус: online, idle, dnd, invisible (см. presence.js)
@@ -303,6 +305,7 @@ const q = {
   ),
   updateProfile: db.prepare('UPDATE users SET display_name = ?, avatar_color = ?, bio = ?, banner_color = ?, name_color = ? WHERE id = ?'),
   updatePassword: db.prepare('UPDATE users SET password_hash = ? WHERE id = ?'),
+  revokeLegacy: db.prepare('UPDATE users SET legacy_revoked = 1 WHERE id = ?'),
   updateAvatar: db.prepare('UPDATE users SET avatar = ? WHERE id = ?'),
 
   listContacts: db.prepare(`
@@ -472,6 +475,7 @@ export const users = {
   updateProfile: (id, { displayName, avatarColor, bio, bannerColor, nameColor }) =>
     q.updateProfile.run(displayName, avatarColor, bio, bannerColor, nameColor, id),
   updatePassword: (id, passwordHash) => q.updatePassword.run(passwordHash, id),
+  revokeLegacyTokens: (id) => q.revokeLegacy.run(id),
   updateAvatar: (id, avatar) => q.updateAvatar.run(avatar, id),
 };
 
@@ -888,6 +892,39 @@ const rRoomUnread = db.prepare(`
   WHERE rm.user_id = ? AND m.id > COALESCE(r.last_id, b.room)
   GROUP BY m.room_id
 `);
+
+// Сессии: каждый вход в профиль (см. sessions.js)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    device TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    last_seen INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id);
+`);
+
+const sAdd = db.prepare('INSERT INTO sessions (id, user_id, device, created_at, last_seen) VALUES (?, ?, ?, ?, ?)');
+const sById = db.prepare('SELECT * FROM sessions WHERE id = ?');
+const sOf = db.prepare('SELECT * FROM sessions WHERE user_id = ? ORDER BY last_seen DESC');
+const sTouch = db.prepare('UPDATE sessions SET last_seen = ? WHERE id = ?');
+const sRemove = db.prepare('DELETE FROM sessions WHERE id = ?');
+const sRemoveAllBut = db.prepare("DELETE FROM sessions WHERE user_id = ? AND id <> COALESCE(?, '')");
+const sDropOld = db.prepare('DELETE FROM sessions WHERE created_at < ?');
+
+export const sessions = {
+  add(id, userId, device) {
+    const now = Date.now();
+    sAdd.run(id, userId, device, now, now);
+  },
+  byId: (id) => sById.get(id),
+  of: (userId) => sOf.all(userId),
+  touch: (id) => sTouch.run(Date.now(), id),
+  remove: (id) => sRemove.run(id),
+  removeAllBut: (userId, keepId) => sRemoveAllBut.run(userId, keepId),
+  dropOlderThan: (time) => sDropOld.run(time),
+};
 
 export const readState = {
   /** Прочитано всё, что уже есть в личной переписке */

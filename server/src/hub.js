@@ -34,6 +34,11 @@ export const hub = {
     for (const ws of set) if (ws !== exceptWs) sendRaw(ws, data);
   },
 
+  /** Закрыть соединения человека, которые подошли под условие: приложение увидит обрыв и проверит вход */
+  dropSockets(userId, shouldDrop) {
+    for (const ws of sockets.get(userId) || []) if (shouldDrop(ws)) ws.close(4401, 'session closed');
+  },
+
   sendTo(ws, message) {
     if (ws) sendRaw(ws, JSON.stringify(message));
   },

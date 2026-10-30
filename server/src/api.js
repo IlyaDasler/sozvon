@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import express from 'express';
 import { config } from './config.js';
-import { hashPassword, signTicket, signToken, verifyPassword, verifyTicket, verifyToken } from './auth.js';
+import { hashPassword, signTicket, verifyPassword, verifyTicket } from './auth.js';
+import { closeOtherSessions, closeSession, issueTicket, openSession, sessionOf } from './sessions.js';
 import {
   convKeys,
   keyTransfers,
@@ -15,12 +16,13 @@ import {
   identities,
   messages,
   pins,
-  readState,
   reactions,
+  readState,
   relatedUserIds,
   roles,
   roomMessages,
   rooms,
+  sessions,
   toMessage,
   toPublicUser,
   toRoomMessage,
@@ -105,7 +107,10 @@ const withOnline = (row) => {
   return { ...toPublicUser(row), online: status !== 'offline', status };
 };
 
-function createOAuthUser(provider, profile) {
+/** Вход состоялся: новая сессия этого устройства */
+const enter = (req, user, extra) => ({ token: openSession(user.id, req.get('user-agent')), user: toSelf(user), ...extra });
+
+function createOAuthUser(req, provider, profile) {
   // Логин профиля — из почты, а если почту не дали (Яндекс без права на email) — из логина сервиса
   const username = makeUsername(profile.email || profile.login || '', provider);
   const user = users.create({
@@ -115,7 +120,7 @@ function createOAuthUser(provider, profile) {
     avatarColor: COLORS[crypto.randomInt(COLORS.length)],
   });
   identities.add(provider, profile.providerId, user.id, profile.email || '');
-  return { token: signToken(user.id), user: toSelf(user), created: true };
+  return enter(req, user, { created: true });
 }
 
 const PKCE_RE = /^[A-Za-z0-9_-]{16,128}$/;
@@ -328,13 +333,13 @@ export function createApi() {
     }
   };
 
-  const userFromRequest = (req) =>
-    users.byId(verifyToken((req.get('authorization') || '').replace(/^Bearer\s+/i, '')) ?? -1);
+  const sessionFromRequest = (req) => sessionOf((req.get('authorization') || '').replace(/^Bearer\s+/i, ''));
 
   function requireAuth(req, _res, next) {
-    const user = userFromRequest(req);
-    if (!user) return next(new HttpError(401, 'Нужно войти заново'));
-    req.user = user;
+    const session = sessionFromRequest(req);
+    if (!session) return next(new HttpError(401, 'Нужно войти заново'));
+    req.user = session.user;
+    req.sid = session.sid;
     next();
   }
 
@@ -384,7 +389,7 @@ export function createApi() {
 
   api.post(
     '/password/reset',
-    handle((req) => {
+    handle(async (req) => {
       rateLimit(req);
       const email = normEmail(req.body.email);
       validateEmail(email);
@@ -392,12 +397,13 @@ export function createApi() {
       const user = users.byEmail(email);
       if (!user) throw new HttpError(400, 'Неверный код из письма');
       requireCode('reset', email, req.body.code);
-      users.updatePassword(user.id, hashPassword(req.body.password));
-      return { token: signToken(user.id), user: toSelf(users.byId(user.id)) };
+      users.updatePassword(user.id, await hashPassword(req.body.password));
+      closeOtherSessions(user.id); // забыл пароль — возможно, не сам: отключаем всех
+      return enter(req, users.byId(user.id));
     })
   );
 
-  function registerByEmail(req) {
+  async function registerByEmail(req) {
     const email = normEmail(req.body.email);
     validateEmail(email);
     validatePassword(req.body.password);
@@ -408,18 +414,18 @@ export function createApi() {
     requireCode('register', email, req.body.code);
     const user = users.create({
       username: makeUsername(email, 'user'),
-      passwordHash: hashPassword(req.body.password),
+      passwordHash: await hashPassword(req.body.password),
       displayName,
       avatarColor: COLORS[crypto.randomInt(COLORS.length)],
       email,
       emailShown: shownEmail(req.body.email),
     });
-    return { token: signToken(user.id), user: toSelf(user), created: true };
+    return enter(req, user, { created: true });
   }
 
   api.post(
     '/register',
-    handle((req) => {
+    handle(async (req) => {
       rateLimit(req);
       checkInvite(req.body.inviteCode);
       if (req.body.email !== undefined) return registerByEmail(req);
@@ -433,24 +439,24 @@ export function createApi() {
 
       const user = users.create({
         username,
-        passwordHash: hashPassword(req.body.password),
+        passwordHash: await hashPassword(req.body.password),
         displayName,
         avatarColor: COLORS[crypto.randomInt(COLORS.length)],
       });
-      return { token: signToken(user.id), user: toSelf(user) };
+      return enter(req, user);
     })
   );
 
   api.post(
     '/login',
-    handle((req) => {
+    handle(async (req) => {
       rateLimit(req);
       // Войти можно и по почте, и по логину
       const login = str(req.body.username).toLowerCase();
       const user = login.includes('@') ? users.byEmail(normEmail(login)) : users.byUsername(login);
-      if (!user || typeof req.body.password !== 'string' || !verifyPassword(req.body.password, user.password_hash))
-        throw new HttpError(401, 'Неверная почта, логин или пароль');
-      return { token: signToken(user.id), user: toSelf(user) };
+      const password = typeof req.body.password === 'string' ? req.body.password : '';
+      if (!(await verifyPassword(password, user?.password_hash)) || !user) throw new HttpError(401, 'Неверная почта, логин или пароль');
+      return enter(req, user);
     })
   );
 
@@ -496,7 +502,7 @@ export function createApi() {
       if (typeof code !== 'string' || !code || !PKCE_RE.test(str(codeVerifier)))
         throw new HttpError(400, 'Неверные параметры входа');
 
-      const linkingUser = mode === 'link' ? userFromRequest(req) : null;
+      const linkingUser = mode === 'link' ? sessionFromRequest(req)?.user : null;
       if (mode === 'link' && !linkingUser) throw new HttpError(401, 'Нужно войти заново');
 
       const profile = await fetchProfile(provider, { code, codeVerifier });
@@ -514,7 +520,7 @@ export function createApi() {
 
       if (existing) {
         const user = users.byId(existing.user_id);
-        return { token: signToken(user.id), user: toSelf(user) };
+        return enter(req, user);
       }
 
       // Профиля ещё нет. Без кода приглашения выдаём пропуск: код можно ввести, не входя в сервис заново
@@ -523,7 +529,7 @@ export function createApi() {
         err.extra = { needInvite: true, ticket: signTicket({ provider, ...profile }) };
         throw err;
       }
-      return createOAuthUser(provider, profile);
+      return createOAuthUser(req, provider, profile);
     })
   );
 
@@ -538,9 +544,9 @@ export function createApi() {
       const existing = identities.find(ticket.provider, ticket.providerId);
       if (existing) {
         const user = users.byId(existing.user_id);
-        return { token: signToken(user.id), user: toSelf(user) };
+        return enter(req, user);
       }
-      return createOAuthUser(ticket.provider, ticket);
+      return createOAuthUser(req, ticket.provider, ticket);
     })
   );
 
@@ -572,6 +578,36 @@ export function createApi() {
   );
 
   api.get('/me', handle((req) => toSelf(req.user)));
+
+  // ---------- Устройства ----------
+
+  api.get(
+    '/sessions',
+    handle((req) =>
+      sessions.of(req.user.id).map((s) => ({ id: s.id, device: s.device, createdAt: s.created_at, lastSeen: s.last_seen, current: s.id === req.sid }))
+    )
+  );
+
+  api.delete(
+    '/sessions/:id',
+    handle((req) => {
+      if (sessions.byId(req.params.id)?.user_id !== req.user.id) throw new HttpError(404, 'Устройство не найдено');
+      closeSession(req.user.id, req.params.id);
+      return { ok: true };
+    })
+  );
+
+  // Выйти на всех остальных устройствах. Токен старой версии тоже отключается — такому приложению выдаём новый
+  api.post(
+    '/sessions/revoke-others',
+    handle((req) => {
+      closeOtherSessions(req.user.id, req.sid);
+      return req.sid ? { ok: true } : { ok: true, token: openSession(req.user.id, req.get('user-agent')) };
+    })
+  );
+
+  // Билет на соединение WebSocket: токен не попадает в адрес
+  api.post('/ws-ticket', handle((req) => ({ ticket: issueTicket({ user: req.user, sid: req.sid }) })));
 
   api.put(
     '/me/avatar',
@@ -664,7 +700,7 @@ export function createApi() {
 
   api.patch(
     '/me',
-    handle((req) => {
+    handle(async (req) => {
       const { user } = req;
       const displayName = req.body.displayName === undefined ? user.display_name : str(req.body.displayName);
       const avatarColor = req.body.avatarColor === undefined ? user.avatar_color : str(req.body.avatarColor);
@@ -677,21 +713,25 @@ export function createApi() {
       const nameColor = req.body.nameColor === undefined ? user.name_color : req.body.nameColor && str(req.body.nameColor).toLowerCase();
       if (nameColor && !COLOR_RE.test(nameColor)) throw new HttpError(400, 'Неверный цвет ника');
 
+      let newToken;
       if (req.body.newPassword) {
         // Если пароля ещё нет (профиль создан через Яндекс), задаём его без проверки текущего
         if (
           user.password_hash &&
-          (typeof req.body.currentPassword !== 'string' || !verifyPassword(req.body.currentPassword, user.password_hash))
+          (typeof req.body.currentPassword !== 'string' || !(await verifyPassword(req.body.currentPassword, user.password_hash)))
         )
           throw new HttpError(400, 'Текущий пароль указан неверно');
         validatePassword(req.body.newPassword);
-        users.updatePassword(user.id, hashPassword(req.body.newPassword));
+        users.updatePassword(user.id, await hashPassword(req.body.newPassword));
+        // Пароль могли менять после кражи: отключаем остальные устройства, это остаётся в сети
+        closeOtherSessions(user.id, req.sid);
+        if (!req.sid) newToken = openSession(user.id, req.get('user-agent'));
       }
 
       users.updateProfile(user.id, { displayName, avatarColor, bio, bannerColor: bannerColor || null, nameColor: nameColor || null });
       const row = users.byId(user.id);
       notifyProfile(row);
-      return toSelf(row);
+      return { ...toSelf(row), ...(newToken && { token: newToken }) };
     })
   );
 
