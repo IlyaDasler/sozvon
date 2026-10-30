@@ -912,6 +912,12 @@ kbd {
   box-shadow: inset 0 0 0 2px rgba(0,0,0,.2);
 }
 .color.selected { box-shadow: 0 0 0 2px var(--bg-2), 0 0 0 4px var(--text); }
+/* Превью шапки карточки профиля: цвет баннера видно сразу при выборе */
+.banner-preview {
+  height: 44px; margin-top: 10px; border-radius: 8px; background: var(--banner);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: background var(--fast) var(--ease);
+}
 
 .toast {
   position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 20;
