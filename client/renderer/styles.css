@@ -752,7 +752,9 @@ video.mirror { transform: scaleX(-1); }
 
 /* ---------- Сообщения ---------- */
 
-.messages { flex: 1; min-height: 110px; overflow-y: auto; padding: 8px 16px 12px; display: flex; flex-direction: column; }
+/* overflow-anchor: none — иначе браузер сам «подтягивает» прокрутку после перерисовки ленты,
+   и чат открывается не внизу, а где-то выше */
+.messages { flex: 1; min-height: 110px; overflow-y: auto; overflow-anchor: none; padding: 8px 16px 12px; display: flex; flex-direction: column; }
 .messages .day { display: flex; align-items: center; gap: 12px; margin: 14px 0 10px; font-size: 11.5px; color: var(--muted); }
 .messages .day::before, .messages .day::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .msg { position: relative; display: flex; gap: 16px; padding: 2px 16px; margin: 0 -16px; border-radius: var(--r-s); transition: background var(--fast); }
