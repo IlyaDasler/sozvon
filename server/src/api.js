@@ -883,9 +883,9 @@ export function createApi() {
       if (!inChat) throw new HttpError(404, 'Сообщение не найдено');
       reactions.toggle('dm', row.id, me, takeEmoji(req.body.emoji));
       const list = reactions.of('dm', row.id, me);
-      const event = { type: 'message:reactions', id: row.id, peerId, reactions: list };
-      hub.send(peerId, event);
-      hub.send(me, event);
+      const event = { type: 'message:reactions', id: row.id };
+      hub.send(peerId, { ...event, peerId: me, reactions: reactions.of('dm', row.id, peerId) });
+      hub.send(me, { ...event, peerId, reactions: list });
       return list;
     })
   );
@@ -895,12 +895,13 @@ export function createApi() {
     '/messages/:peerId/pins',
     handle((req) => {
       const peerId = Number(req.params.peerId);
-      const list = pins
-        .of('dm', peerId)
+      const me = req.user.id;
+      // Закреп записан на собеседника того, кто закрепил, — в этой переписке это может быть любой из двоих
+      const list = [...pins.of('dm', peerId), ...pins.of('dm', me)]
         .map((id) => messages.byId(id))
-        .filter(Boolean)
+        .filter((row) => row && ((row.from_id === me && row.to_id === peerId) || (row.from_id === peerId && row.to_id === me)))
         .map(toMessage);
-      return withMessageMeta(list, 'dm', peerId, req.user.id);
+      return withMessageMeta(list, 'dm', peerId, me);
     })
   );
 
@@ -913,9 +914,9 @@ export function createApi() {
       const inChat = row && ((row.from_id === me && row.to_id === peerId) || (row.from_id === peerId && row.to_id === me));
       if (!inChat) throw new HttpError(404, 'Сообщение не найдено');
       pins.add('dm', peerId, row.id, me);
-      const event = { type: 'message:pinned', id: row.id, pinned: true, peerId };
-      hub.send(peerId, event);
-      hub.send(me, event);
+      const event = { type: 'message:pinned', id: row.id, pinned: true };
+      hub.send(peerId, { ...event, peerId: me });
+      hub.send(me, { ...event, peerId });
       return { ok: true };
     })
   );
@@ -928,9 +929,9 @@ export function createApi() {
       const row = messages.byId(Number(req.params.id));
       if (!row) throw new HttpError(404, 'Сообщение не найдено');
       pins.remove('dm', row.id);
-      const event = { type: 'message:pinned', id: row.id, pinned: false, peerId };
-      hub.send(peerId, event);
-      hub.send(me, event);
+      const event = { type: 'message:pinned', id: row.id, pinned: false };
+      hub.send(peerId, { ...event, peerId: me });
+      hub.send(me, { ...event, peerId });
       return { ok: true };
     })
   );
