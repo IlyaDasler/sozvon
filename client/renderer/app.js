@@ -1686,12 +1686,39 @@ function renderColorPicker() {
     pickedBanner = color;
     renderColorPicker();
   });
-  // Превью шапки: без своего цвета баннер берётся из цвета аватара
-  $('banner-preview')?.style.setProperty('--banner', pickedBanner || pickedColor);
+  // Навели на цвет баннера — показываем, как будет выглядеть карточка профиля
+  for (const swatch of $('banner-picker').querySelectorAll('.color')) {
+    swatch.addEventListener('mouseenter', () => showBannerPeek(swatch));
+    swatch.addEventListener('mouseleave', hideBannerPeek);
+  }
   colorChoices($('name-picker'), [null, ...COLORS], pickedName, (color) => {
     pickedName = color;
     renderColorPicker();
   });
+}
+
+function hideBannerPeek() {
+  $('banner-peek').classList.add('hidden');
+}
+
+/** Мини-карточка профиля с цветом баннера из наведённого кружка */
+function showBannerPeek(swatch) {
+  const peek = $('banner-peek');
+  const bannerColor = swatch.dataset.color || pickedColor; // «как у аватара» — цвет аватара
+  peek.querySelector('.pc-banner').style.setProperty('--banner', bannerColor);
+  const name = $('set-display').value.trim() || state.me.displayName;
+  const avatar = $('banner-peek-avatar');
+  avatar.textContent = name.trim().charAt(0).toUpperCase();
+  avatar.style.background = pickedColor;
+  $('banner-peek-name').textContent = name;
+  peek.classList.remove('hidden');
+  // Ставим карточку над кружком, а если места нет — под ним
+  const r = swatch.getBoundingClientRect();
+  const box = peek.getBoundingClientRect();
+  const left = Math.max(8, Math.min(r.left - 8, innerWidth - box.width - 8));
+  const top = r.top - box.height - 8 < 8 ? r.bottom + 8 : r.top - box.height - 8;
+  peek.style.left = `${left}px`;
+  peek.style.top = `${top}px`;
 }
 
 function renderIdentities() {
