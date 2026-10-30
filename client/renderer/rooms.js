@@ -271,20 +271,7 @@ function selectRoom(id) {
   renderRoomView();
   renderRoomMessages();
   roomComposer.focus();
-  if (!state.roomHistory.has(room.id)) loadRoomHistory(room.id);
-}
-
-async function loadRoomHistory(id) {
-  try {
-    const loaded = await Api.get(`/rooms/${id}/messages`);
-    await decryptMessages(loaded, roomConvOf(id));
-    const known = state.roomHistory.get(id) || [];
-    const merged = new Map([...loaded, ...known].map((m) => [m.id, m]));
-    state.roomHistory.set(id, [...merged.values()].sort((a, b) => a.id - b.id));
-    if (state.selectedRoomId === id) renderRoomMessages();
-  } catch (err) {
-    toast(err.message);
-  }
+  if (!state.roomHistory.has(room.id)) loadHistory(roomHistory(room.id));
 }
 
 function renderRoomView() {
@@ -356,6 +343,7 @@ function renderRoomMessages() {
       chat: { kind: 'room', roomId: id },
       canDelete: (m) => m.fromId === state.me.id || (can(room, PERMS.manage) && outranks(room, m.fromId)),
       remove: (m) => Api.del(`/rooms/${id}/messages/${m.id}`),
+      older: () => loadOlder(roomHistory(id)),
     }
   );
   refreshPinned({ kind: 'room', roomId: id });
