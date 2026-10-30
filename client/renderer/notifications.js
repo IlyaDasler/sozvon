@@ -223,7 +223,7 @@ document.addEventListener('click', (e) => {
  * kind: message, room, missed, friend, room-invite, room-removed, hub-invite, hub-removed;
  * open: { contact }, { room } или { hub } — куда перейти по щелчку
  */
-function notify(title, body, { kind = 'message', open = null } = {}) {
+function notify(title, body, { kind = 'message', open = null, hub = null } = {}) {
   const list = loadNotifs();
   list.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, kind, title, body, open, at: Date.now(), read: false });
   saveNotifs(list);
@@ -232,7 +232,9 @@ function notify(title, body, { kind = 'message', open = null } = {}) {
 
   const s = notifySettings();
   if (doNotDisturb()) return; // не беспокоить: только в центре уведомлений
-  if (s.sound) tone.blip('notify');
+  // В канале можно выключить уведомления — тогда звука нет, но событие остаётся в центре
+  const muted = hub != null && Boolean(store.get(`hub:mute:${hub}`, false));
+  if (s.sound && !muted) tone.blip('notify');
   if (document.hasFocus()) return;
   window.desktop?.attention();
   if (!s.desktop || !('Notification' in window)) return;
