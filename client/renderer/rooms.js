@@ -253,8 +253,10 @@ function selectRoom(id) {
   }
   state.selectedRoomId = room ? id : null;
   state.selectedId = null;
-  state.roomUnread.delete(id);
-  if (room) readNotifsOf({ room: id });
+  if (room) {
+    openUnread(`room:${id}`);
+    readNotifsOf({ room: id });
+  } else state.newLine = null;
   dmComposer.openDraft(null);
   roomComposer.openDraft(room ? `room:${id}` : null);
   $('room-messages').stick = true; // открыли комнату — на последнем сообщении
@@ -363,8 +365,10 @@ function showNewRoomMessage(m) {
   const viewing = m.roomId === state.selectedRoomId;
   if (viewing) renderRoomMessages();
   if (m.fromId === state.me.id) return;
-  if (!viewing || !document.hasFocus()) {
+  if (viewing && document.hasFocus()) markRead(`room:${m.roomId}`);
+  else {
     if (!viewing) state.roomUnread.set(m.roomId, (state.roomUnread.get(m.roomId) || 0) + 1);
+    noteUnread(`room:${m.roomId}`, m.id);
     renderRooms();
     const room = roomById(m.roomId);
     const who = userById(m.fromId)?.displayName || '?';
