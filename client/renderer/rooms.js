@@ -255,6 +255,8 @@ function selectRoom(id) {
   state.selectedId = null;
   state.roomUnread.delete(id);
   if (room) readNotifsOf({ room: id });
+  dmComposer.openDraft(null);
+  roomComposer.openDraft(room ? `room:${id}` : null);
   $('room-messages').stick = true; // открыли комнату — на последнем сообщении
   renderContacts();
   renderRooms();
