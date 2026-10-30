@@ -1132,7 +1132,16 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
   if (keepScroll) {
     box.scrollTop = scrollTop;
     if (list.some(isNew)) bar.classList.add('fresh');
-  } else stickToBottom(box);
+  } else {
+    stickToBottom(box);
+    // Шрифты и картинки могут «дорастить» ленту уже после отрисовки — тогда ещё раз вниз,
+    // но только если человек не начал листать сам
+    const settle = () => {
+      if (box.stick) scrollDown(box);
+    };
+    requestAnimationFrame(settle);
+    setTimeout(settle, 120);
+  }
   syncJumpBar(box);
 }
 
