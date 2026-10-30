@@ -111,6 +111,10 @@
           <span id="password-label">Пароль</span>
           <input id="auth-password" type="password" autocomplete="current-password" required>
         </label>
+        <label class="field hidden" id="totp-field">
+          <span>Код из приложения-аутентификатора</span>
+          <input id="auth-totp" autocomplete="one-time-code" spellcheck="false" placeholder="6 цифр или резервный код">
+        </label>
         <div class="field hidden" id="code-field">
           <span>Код из письма</span>
           <div class="row code-row">
@@ -543,6 +547,44 @@
               <div id="device-list" class="identity-list"></div>
               <button type="button" class="btn danger-outline hidden" id="devices-revoke">Выйти на всех других устройствах</button>
             </div>
+            <div class="set-block" id="two-factor-section">
+              <h4>Двухфакторный вход</h4>
+              <span class="hint-text" id="tf-state"></span>
+              <div class="row code-row">
+                <button type="button" class="btn" id="tf-start">Включить</button>
+                <button type="button" class="btn danger-outline hidden" id="tf-stop">Отключить</button>
+              </div>
+              <div class="tf-step hidden" id="tf-password-step">
+                <div class="row code-row" id="tf-password-row">
+                  <input id="tf-password" type="password" autocomplete="current-password" placeholder="Текущий пароль">
+                </div>
+                <button type="button" class="btn primary" id="tf-next">Продолжить</button>
+              </div>
+              <div class="tf-step hidden" id="tf-scan-step">
+                <span class="hint-text">Отсканируйте QR-код в приложении или введите ключ вручную, затем впишите код из приложения.</span>
+                <div class="tf-qr" id="tf-qr"></div>
+                <code class="e2ee-share-code" id="tf-secret"></code>
+                <div class="row code-row">
+                  <input id="tf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Код из приложения">
+                  <button type="button" class="btn primary" id="tf-confirm">Подтвердить</button>
+                </div>
+              </div>
+              <div class="tf-step hidden" id="tf-codes-step">
+                <span class="hint-text">Сохраните резервные коды: они помогут войти без телефона. Каждый срабатывает один раз, и больше мы их не покажем.</span>
+                <pre class="tf-recovery" id="tf-recovery"></pre>
+                <div class="row code-row">
+                  <button type="button" class="btn" id="tf-copy">Скопировать</button>
+                  <button type="button" class="btn primary" id="tf-done">Я сохранил коды</button>
+                </div>
+              </div>
+              <div class="tf-step hidden" id="tf-off-step">
+                <div class="row code-row">
+                  <input id="tf-off-code" autocomplete="one-time-code" placeholder="Код или резервный код">
+                  <button type="button" class="btn danger-outline" id="tf-off">Отключить</button>
+                </div>
+              </div>
+              <span class="hint-text error-text" id="tf-error"></span>
+            </div>
             <div class="set-block" id="e2ee-section">
               <h4>Сквозное шифрование</h4>
               <span class="hint-text">Личные сообщения и переписка в комнатах шифруются на устройстве: сервер хранит только шифр. Ключ лежит только на ваших устройствах.</span>
@@ -943,6 +985,8 @@
   <script src="chat-theme.js"></script>
   <script src="history.js"></script>
   <script src="devices.js"></script>
+  <script src="vendor/qrcode.js"></script>
+  <script src="two-factor.js"></script>
   <script src="chat-content.js"></script>
   <script src="e2ee-crypto.js"></script>
   <script src="e2ee.js"></script>

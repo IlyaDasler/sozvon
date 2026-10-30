@@ -91,8 +91,8 @@ async function api(method, url, body, token) {
 }
 
 test('предпросмотр ссылки и превью в сообщении', async () => {
-  const a = (await api('POST', '/register', { username: 'prev_a', password: 'secret1' })).body;
-  const b = (await api('POST', '/register', { username: 'prev_b', password: 'secret1' })).body;
+  const a = (await api('POST', '/register', { username: 'prev_a', password: 'secret11' })).body;
+  const b = (await api('POST', '/register', { username: 'prev_b', password: 'secret11' })).body;
   await api('POST', '/contacts', { username: 'prev_b' }, a.token);
   await api('POST', `/friend-requests/${a.user.id}/accept`, null, b.token);
 

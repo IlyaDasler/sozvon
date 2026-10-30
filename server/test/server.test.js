@@ -13,19 +13,19 @@ after(() => server.stop());
 
 test('регистрация, вход, друзья, сообщения и звонок', async () => {
   const invite = { inviteCode: 'friends' };
-  assert.equal((await api('POST', '/register', { username: 'ilya', password: 'secret1' })).status, 403);
+  assert.equal((await api('POST', '/register', { username: 'ilya', password: 'secret11' })).status, 403);
 
-  const a = await api('POST', '/register', { username: 'Ilya', password: 'secret1', displayName: 'Илья', ...invite });
+  const a = await api('POST', '/register', { username: 'Ilya', password: 'secret11', displayName: 'Илья', ...invite });
   assert.equal(a.status, 200);
   assert.equal(a.body.user.username, 'ilya');
 
-  assert.equal((await api('POST', '/register', { username: 'ilya', password: 'secret1', ...invite })).status, 409);
-  assert.equal((await api('POST', '/register', { username: 'x', password: 'secret1', ...invite })).status, 400);
+  assert.equal((await api('POST', '/register', { username: 'ilya', password: 'secret11', ...invite })).status, 409);
+  assert.equal((await api('POST', '/register', { username: 'x', password: 'secret11', ...invite })).status, 400);
   assert.equal((await api('POST', '/login', { username: 'ilya', password: 'wrong!' })).status, 401);
   assert.equal((await api('GET', '/me', null, 'garbage')).status, 401);
 
-  const b = await api('POST', '/register', { username: 'misha', password: 'secret2', ...invite });
-  const login = await api('POST', '/login', { username: 'ILYA', password: 'secret1' });
+  const b = await api('POST', '/register', { username: 'misha', password: 'secret22', ...invite });
+  const login = await api('POST', '/login', { username: 'ILYA', password: 'secret11' });
   assert.equal(login.status, 200);
   const ta = login.body.token;
   const tb = b.body.token;
@@ -69,8 +69,8 @@ test('регистрация, вход, друзья, сообщения и зв
 });
 
 test('аватарка профиля', async () => {
-  const { body: reg } = await api('POST', '/register', { username: 'avatar_owner', password: 'secret1', inviteCode: 'friends' });
-  const { body: friend } = await api('POST', '/register', { username: 'avatar_friend', password: 'secret1', inviteCode: 'friends' });
+  const { body: reg } = await api('POST', '/register', { username: 'avatar_owner', password: 'secret11', inviteCode: 'friends' });
+  const { body: friend } = await api('POST', '/register', { username: 'avatar_friend', password: 'secret11', inviteCode: 'friends' });
   await befriend(reg, friend);
   assert.equal(reg.user.avatarUrl, null);
 
@@ -275,9 +275,9 @@ test('комнаты: роли, права, кик и бан', async () => {
 test('без почтового ящика на сервере регистрация по почте не проходит', async () => {
   assert.equal((await api('GET', '/health')).body.emailCodes, false);
   assert.equal((await api('POST', '/register/code', { email: 'petr@mail.ru', inviteCode: 'friends' })).status, 503);
-  assert.equal((await api('POST', '/register', { email: 'petr@mail.ru', password: 'secret1', inviteCode: 'friends' })).status, 503);
+  assert.equal((await api('POST', '/register', { email: 'petr@mail.ru', password: 'secret11', inviteCode: 'friends' })).status, 503);
   // Старые версии приложения по-прежнему регистрируются по логину
-  assert.equal((await api('POST', '/register', { username: 'petr_old', password: 'secret1', inviteCode: 'friends' })).status, 200);
+  assert.equal((await api('POST', '/register', { username: 'petr_old', password: 'secret11', inviteCode: 'friends' })).status, 200);
 });
 
 test('статусы: активен, неактивен, не беспокоить, невидимый', async () => {

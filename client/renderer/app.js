@@ -218,6 +218,8 @@ function setAuthMode(mode) {
   state.registerMode = mode === 'register';
   state.pendingSignup = null;
   $('auth-code').value = '';
+  $('auth-totp').value = '';
+  $('totp-field').classList.add('hidden');
   $('code-hint').textContent = '';
   $('auth-error').textContent = '';
   $('auth-password').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
@@ -473,17 +475,24 @@ $('auth-form').onsubmit = async (e) => {
       return;
     }
     if (mode === 'reset') {
-      finishLogin(base, await Api.post('/password/reset', { email, code, password }));
+      const result = await Api.post('/password/reset', { email, code, password });
       toast('Пароль изменён');
+      // С двухфакторным входом письма мало: дальше обычный вход с кодом
+      if (result.needLogin) setAuthMode('login');
+      else finishLogin(base, result);
       return;
     }
     if (mode === 'register') {
       finishLogin(base, await Api.post('/register', { email, password, displayName: $('auth-display').value.trim(), inviteCode, code }));
       return;
     }
-    finishLogin(base, await Api.post('/login', { username, password }));
+    finishLogin(base, await Api.post('/login', { username, password, totpCode: $('auth-totp').value.trim() }));
   } catch (err) {
     $('auth-error').textContent = err.message;
+    if (err.data?.needTotp) {
+      $('totp-field').classList.remove('hidden');
+      $('auth-totp').focus();
+    }
   } finally {
     button.disabled = false;
   }
@@ -1969,7 +1978,10 @@ function showSettingsTab(tab) {
   for (const b of document.querySelectorAll('#set-nav [data-tab]')) b.classList.toggle('active', b.dataset.tab === current);
   for (const p of document.querySelectorAll('#settings .set-pane')) p.classList.toggle('hidden', p.dataset.pane !== current);
   $('settings').querySelector('.set-body').scrollTop = 0;
-  if (current === 'account') renderDevices();
+  if (current === 'account') {
+    renderDevices();
+    renderTwoFactor();
+  }
 }
 
 for (const b of document.querySelectorAll('#set-nav [data-tab]')) b.onclick = () => showSettingsTab(b.dataset.tab);

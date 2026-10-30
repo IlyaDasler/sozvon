@@ -188,6 +188,9 @@ if (!columnsOf('users').includes('avatar')) db.exec('ALTER TABLE users ADD COLUM
 if (!columnsOf('users').includes('email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT');
 // Токены версий до сессий (см. sessions.js) больше не действуют
 if (!columnsOf('users').includes('legacy_revoked')) db.exec('ALTER TABLE users ADD COLUMN legacy_revoked INTEGER NOT NULL DEFAULT 0');
+// Двухфакторный вход: секрет, ещё не подтверждённый секрет, последний принятый шаг, хэши резервных кодов
+for (const [column, type] of [['totp_secret', 'TEXT'], ['totp_pending', 'TEXT'], ['totp_last_step', 'INTEGER NOT NULL DEFAULT 0'], ['totp_recovery', 'TEXT']])
+  if (!columnsOf('users').includes(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} ${type}`);
 // email — единый вид адреса (по нему вход и «ящик занят»), email_shown — как человек его ввёл, его и показываем
 if (!columnsOf('users').includes('email_shown')) db.exec('ALTER TABLE users ADD COLUMN email_shown TEXT');
 // Выбранный статус: online, idle, dnd, invisible (см. presence.js)
@@ -306,6 +309,11 @@ const q = {
   updateProfile: db.prepare('UPDATE users SET display_name = ?, avatar_color = ?, bio = ?, banner_color = ?, name_color = ? WHERE id = ?'),
   updatePassword: db.prepare('UPDATE users SET password_hash = ? WHERE id = ?'),
   revokeLegacy: db.prepare('UPDATE users SET legacy_revoked = 1 WHERE id = ?'),
+  setTotpPending: db.prepare('UPDATE users SET totp_pending = ? WHERE id = ?'),
+  enableTotp: db.prepare('UPDATE users SET totp_secret = totp_pending, totp_pending = NULL, totp_last_step = ?, totp_recovery = ? WHERE id = ?'),
+  disableTotp: db.prepare('UPDATE users SET totp_secret = NULL, totp_pending = NULL, totp_last_step = 0, totp_recovery = NULL WHERE id = ?'),
+  setTotpStep: db.prepare('UPDATE users SET totp_last_step = ? WHERE id = ?'),
+  setTotpRecovery: db.prepare('UPDATE users SET totp_recovery = ? WHERE id = ?'),
   updateAvatar: db.prepare('UPDATE users SET avatar = ? WHERE id = ?'),
 
   listContacts: db.prepare(`
@@ -476,6 +484,11 @@ export const users = {
     q.updateProfile.run(displayName, avatarColor, bio, bannerColor, nameColor, id),
   updatePassword: (id, passwordHash) => q.updatePassword.run(passwordHash, id),
   revokeLegacyTokens: (id) => q.revokeLegacy.run(id),
+  setTotpPending: (id, secret) => q.setTotpPending.run(secret, id),
+  enableTotp: (id, step, recoveryHashes) => q.enableTotp.run(step, JSON.stringify(recoveryHashes), id),
+  disableTotp: (id) => q.disableTotp.run(id),
+  setTotpStep: (id, step) => q.setTotpStep.run(step, id),
+  setTotpRecovery: (id, recoveryHashes) => q.setTotpRecovery.run(JSON.stringify(recoveryHashes), id),
   updateAvatar: (id, avatar) => q.updateAvatar.run(avatar, id),
 };
 
@@ -534,6 +547,7 @@ export const toSelf = (row) => ({
   email: row.email_shown || row.email || null,
   status: row.status || 'online',
   hasPassword: Boolean(row.password_hash),
+  twoFactor: Boolean(row.totp_secret),
   identities: identities.of(row.id).map((i) => ({ provider: i.provider, email: i.email })),
 });
 
