@@ -380,7 +380,7 @@ function showNewRoomMessage(m) {
     const who = userById(m.fromId)?.displayName || '?';
     // Упомянули — так и говорим в заголовке
     const title = mentionsMe(m) ? `${who} упоминает вас в «${room?.name || 'комнате'}»` : room?.name || 'Комната';
-    notify(title, `${who}: ${messageSummary(m)}`, { kind: 'room', open: { room: m.roomId } });
+    notify(title, `${who}: ${messageSummary(m)}`, { kind: 'room', open: { room: m.roomId }, hub: room?.hubId });
   }
 }
 

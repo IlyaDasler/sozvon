@@ -134,6 +134,12 @@ body { display: flex; flex-direction: column; }
   background: var(--bg-deep); color: var(--muted); font-size: 12px; user-select: none; -webkit-app-region: drag;
 }
 .titlebar img { opacity: .9; }
+/* Пункт меню с иконкой и значок «уведомления выключены» в шапке канала */
+.popup-icon { display: inline-flex; flex: none; width: 16px; height: 16px; color: var(--muted); }
+.popup-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.popup-item .popup-icon + span { min-width: 0; }
+.hub-muted { display: inline-flex; flex: none; color: var(--muted); }
+.hub-muted svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; }
 /* Сообщение, к которому перешли (закреп, цитата ответа), коротко подсвечено */
 .msg-flash { animation: msg-flash 2s ease-out; }
 @keyframes msg-flash { from { background: color-mix(in srgb, var(--accent) 28%, transparent); } to { background: transparent; } }
@@ -1572,6 +1578,7 @@ body.resizing * { transition: none !important; }
   transform-origin: top left; animation: pop-down var(--mid) var(--ease-out);
 }
 .popup-item {
+  display: flex; align-items: center; gap: 8px;
   padding: 8px 10px; border: 0; border-radius: var(--r-s); background: none;
   color: var(--text-2); font: inherit; font-weight: 500; text-align: left; cursor: pointer;
   transition: background var(--fast), color var(--fast);
