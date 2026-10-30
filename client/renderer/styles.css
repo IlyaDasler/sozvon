@@ -1522,7 +1522,18 @@ kbd {
   position: fixed; z-index: 30; transform: translateY(-50%); pointer-events: none;
   max-width: 240px; padding: 6px 10px; border-radius: 6px;
   background: var(--bg-deep); color: var(--text); box-shadow: var(--shadow);
+  border: 1px solid var(--line-strong);
   font-weight: 600; font-size: 13px;
+}
+
+/* Общая подсказка вместо системной рамки: как у каналов, с тонкой рамкой */
+.app-tip {
+  position: fixed; z-index: 70; pointer-events: none;
+  max-width: 280px; padding: 6px 10px; border-radius: 6px;
+  background: var(--bg-deep); color: var(--text); box-shadow: var(--shadow);
+  border: 1px solid var(--line-strong);
+  font-weight: 600; font-size: 13px; line-height: 1.35;
+  animation: fade var(--fast) var(--ease);
 }
 
 /* ---------- Канал: шапка, комнаты, пусто ---------- */
