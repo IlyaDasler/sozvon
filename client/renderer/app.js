@@ -1686,6 +1686,8 @@ function renderColorPicker() {
     pickedBanner = color;
     renderColorPicker();
   });
+  // Превью шапки: без своего цвета баннер берётся из цвета аватара
+  $('banner-preview')?.style.setProperty('--banner', pickedBanner || pickedColor);
   colorChoices($('name-picker'), [null, ...COLORS], pickedName, (color) => {
     pickedName = color;
     renderColorPicker();
