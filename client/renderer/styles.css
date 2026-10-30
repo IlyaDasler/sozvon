@@ -556,6 +556,11 @@ video.mirror { transform: scaleX(-1); }
 .tile-watch svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
 .tile.not-watching .tile-avatar { display: none; }
 .tile.not-watching .tile-unwatch { display: none; }
+/* Линия «Новые сообщения» в ленте: отсюда начинается непрочитанное */
+.new-line {
+  display: flex; align-items: center; gap: 10px; margin: 10px 0 6px; font-size: 12px; font-weight: 600; color: var(--danger);
+}
+.new-line::after { content: ''; flex: 1; height: 1px; background: var(--danger); opacity: .5; }
 /* Сколько кадров доходит, размер, кодек — на плитке трансляции */
 .tile-stats:empty { display: none; }
 .tile-stats {

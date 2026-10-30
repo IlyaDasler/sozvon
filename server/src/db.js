@@ -849,6 +849,53 @@ const pOfChat = db.prepare('SELECT * FROM message_pins WHERE kind = ? AND chat_i
 const pHas = db.prepare('SELECT 1 FROM message_pins WHERE kind = ? AND message_id = ?');
 const pClear = db.prepare('DELETE FROM message_pins WHERE kind = ? AND message_id = ?');
 
+// Что человек прочитал: conv — 'dm:<собеседник>' или 'room:<комната>', last_id — последнее прочитанное сообщение
+db.exec(`
+  CREATE TABLE IF NOT EXISTS read_state (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    conv TEXT NOT NULL,
+    last_id INTEGER NOT NULL,
+    PRIMARY KEY (user_id, conv)
+  );
+  CREATE INDEX IF NOT EXISTS messages_to ON messages (to_id, id);
+  -- Что считать прочитанным там, где человек ещё ничего не отмечал: всё, что было до появления счётчиков
+  CREATE TABLE IF NOT EXISTS read_baseline (dm INTEGER NOT NULL, room INTEGER NOT NULL);
+  INSERT INTO read_baseline
+    SELECT (SELECT COALESCE(MAX(id), 0) FROM messages), (SELECT COALESCE(MAX(id), 0) FROM room_messages)
+    WHERE NOT EXISTS (SELECT 1 FROM read_baseline);
+`);
+
+const rMark = db.prepare(`
+  INSERT INTO read_state (user_id, conv, last_id) VALUES (?, ?, ?)
+  ON CONFLICT (user_id, conv) DO UPDATE SET last_id = MAX(last_id, excluded.last_id)
+`);
+const rDmNewest = db.prepare('SELECT COALESCE(MAX(id), 0) AS id FROM messages WHERE from_id = ? AND to_id = ?');
+const rRoomNewest = db.prepare('SELECT COALESCE(MAX(id), 0) AS id FROM room_messages WHERE room_id = ?');
+const rDmUnread = db.prepare(`
+  SELECT m.from_id AS peerId, COUNT(*) AS count, COALESCE(r.last_id, b.dm) AS lastRead
+  FROM messages m
+  CROSS JOIN read_baseline b
+  LEFT JOIN read_state r ON r.user_id = m.to_id AND r.conv = 'dm:' || m.from_id
+  WHERE m.to_id = ? AND m.id > COALESCE(r.last_id, b.dm)
+  GROUP BY m.from_id
+`);
+const rRoomUnread = db.prepare(`
+  SELECT m.room_id AS roomId, COUNT(*) AS count, COALESCE(r.last_id, b.room) AS lastRead
+  FROM room_members rm
+  CROSS JOIN read_baseline b
+  JOIN room_messages m ON m.room_id = rm.room_id AND m.from_id <> rm.user_id
+  LEFT JOIN read_state r ON r.user_id = rm.user_id AND r.conv = 'room:' || rm.room_id
+  WHERE rm.user_id = ? AND m.id > COALESCE(r.last_id, b.room)
+  GROUP BY m.room_id
+`);
+
+export const readState = {
+  /** Прочитано всё, что уже есть в личной переписке */
+  readDm: (userId, peerId) => rMark.run(userId, `dm:${peerId}`, rDmNewest.get(peerId, userId).id),
+  readRoom: (userId, roomId) => rMark.run(userId, `room:${roomId}`, rRoomNewest.get(roomId).id),
+  unread: (userId) => ({ dm: rDmUnread.all(userId), rooms: rRoomUnread.all(userId) }),
+};
+
 export const pins = {
   add: (kind, chatId, messageId, byId) => pAdd.run(kind, chatId, messageId, byId, Date.now()),
   remove: (kind, messageId) => pRemove.run(kind, messageId),

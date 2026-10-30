@@ -90,7 +90,7 @@ function contactMenu(userId, anchor) {
     unread && {
       label: 'Отметить прочитанным',
       onclick: () => {
-        state.unread.delete(userId);
+        markRead(`dm:${userId}`);
         renderContacts();
         renderRail();
       },
@@ -113,7 +113,7 @@ function roomMenu(roomId) {
     state.roomUnread.get(room.id) && {
       label: 'Отметить прочитанным',
       onclick: () => {
-        state.roomUnread.delete(room.id);
+        markRead(`room:${room.id}`);
         renderRooms();
         renderRail();
       },

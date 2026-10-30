@@ -34,10 +34,11 @@ runTest(async () => {
   await js(winB, `selectContact(${a.user.id}).then(() => true)`);
   await waitFor(winB, `state.history.get(${a.user.id})?.length === 50`, 'первая страница');
   await js(winB, scrollTo('messages', 0));
+  const was = await js(winB, top('messages', 'Сообщение 81'));
   await waitFor(winB, `state.history.get(${a.user.id}).length === 100`, 'вторая страница');
   await sleep(300);
   const shifted = await js(winB, top('messages', 'Сообщение 81'));
-  if (shifted === null || shifted < -5 || shifted > 80) throw new Error(`После подгрузки лента уехала: «Сообщение 81» на ${shifted} px`);
+  if (shifted === null || Math.abs(shifted - was) > 40) throw new Error(`После подгрузки лента уехала: «Сообщение 81» было на ${was} px, стало ${shifted} px`);
   await js(winB, scrollTo('messages', 0));
   await waitFor(winB, `state.history.get(${a.user.id}).length === 130 && Boolean(${node('messages', 'Сообщение 1')})`, 'вся история');
   console.log('✔ вся история доступна прокруткой вверх, лента не уезжает');
