@@ -35,7 +35,7 @@ if [ -d "$APP_DIR/.git" ]; then
 else
   git clone -q "$REPO" "$APP_DIR"
 fi
-(cd "$APP_DIR/server" && npm ci --omit=dev --no-audit --no-fund --loglevel=error)
+(cd "$APP_DIR/server" && npm ci --omit=dev --omit=optional --no-audit --no-fund --loglevel=error)
 
 id sozvon >/dev/null 2>&1 || useradd --system --home "$DATA_DIR" --shell /usr/sbin/nologin sozvon
 mkdir -p "$DATA_DIR" && chown sozvon:sozvon "$DATA_DIR" && chmod 700 "$DATA_DIR"
@@ -215,8 +215,8 @@ log 'Настраиваю брандмауэр'
 ufw allow OpenSSH >/dev/null
 ufw allow 80/tcp >/dev/null
 ufw allow 443/tcp >/dev/null
-# 3000 оставлен для приложений до версии 1.4.0, которые ходят напрямую по http
-ufw allow 3000/tcp >/dev/null
+# Приложения старше 2.0 отключены: сервер снаружи только через HTTPS (Caddy)
+ufw delete allow 3000/tcp >/dev/null 2>&1 || true
 ufw allow 3478 >/dev/null
 ufw allow 49160:49200/udp >/dev/null
 # LiveKit: звук и видео больших комнат
