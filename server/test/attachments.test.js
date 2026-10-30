@@ -52,7 +52,7 @@ after(async () => {
   fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 5 });
 });
 
-const reg = async (username) => (await api('POST', '/register', { username, password: 'secret1', displayName: username })).body;
+const reg = async (username) => (await api('POST', '/register', { username, password: 'secret11', displayName: username })).body;
 
 test('картинка, видео и файл: загрузка, отправка, раздача', async () => {
   const a = await reg('files_a');

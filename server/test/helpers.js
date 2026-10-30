@@ -69,7 +69,7 @@ export async function startServer({ dataDir = fs.mkdtempSync(path.join(os.tmpdir
   }
 
   const reg = async (username) =>
-    (await api('POST', '/register', { username, password: 'secret1', displayName: username, inviteCode: 'friends' })).body;
+    (await api('POST', '/register', { username, password: 'secret11', displayName: username, inviteCode: 'friends' })).body;
 
   async function stop({ keepData = false } = {}) {
     const exited = new Promise((r) => proc.once('exit', r));

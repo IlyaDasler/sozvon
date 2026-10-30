@@ -100,7 +100,7 @@ test('вход и регистрация через Яндекс; Google и VK �
   const token = again.body.token;
 
   // Этот Яндекс нельзя привязать к другому профилю
-  const other = await api('POST', '/register', { username: 'other_user', password: 'secret1', inviteCode: 'friends' });
+  const other = await api('POST', '/register', { username: 'other_user', password: 'secret11', inviteCode: 'friends' });
   assert.equal((await oauth('yandex', { mode: 'link' }, other.body.token)).status, 409);
 
   // Неверный код от сервиса — ошибка, а не падение сервера
@@ -108,11 +108,11 @@ test('вход и регистрация через Яндекс; Google и VK �
 
   // Без пароля нельзя отвязать последний способ входа
   assert.equal((await api('DELETE', '/me/identities/yandex', null, token)).status, 400);
-  const withPassword = await api('PATCH', '/me', { newPassword: 'secret1' }, token);
+  const withPassword = await api('PATCH', '/me', { newPassword: 'secret11' }, token);
   assert.equal(withPassword.body.hasPassword, true);
   assert.equal((await api('DELETE', '/me/identities/yandex', null, token)).status, 200);
 
-  const login = await api('POST', '/login', { username: 'ivan.petrov', password: 'secret1' });
+  const login = await api('POST', '/login', { username: 'ivan.petrov', password: 'secret11' });
   assert.equal(login.status, 200);
   assert.deepEqual(login.body.user.identities, []);
 });
