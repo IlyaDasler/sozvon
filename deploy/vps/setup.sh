@@ -196,6 +196,42 @@ EOF
 systemctl daemon-reload
 systemctl enable -q sozvon && systemctl restart sozvon
 
+log 'Настраиваю ежедневную резервную копию'
+BACKUP_DIR=/var/backups/sozvon
+mkdir -p "$BACKUP_DIR" && chown sozvon:sozvon "$BACKUP_DIR" && chmod 700 "$BACKUP_DIR"
+cat > /etc/systemd/system/sozvon-backup.service <<EOF
+[Unit]
+Description=Sozvon daily backup
+
+[Service]
+Type=oneshot
+User=sozvon
+Group=sozvon
+EnvironmentFile=$ENV_FILE
+Environment=BACKUP_DIR=$BACKUP_DIR
+WorkingDirectory=$APP_DIR/server
+ExecStart=/usr/bin/node src/backup.js
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=$DATA_DIR $BACKUP_DIR
+EOF
+cat > /etc/systemd/system/sozvon-backup.timer <<EOF
+[Unit]
+Description=Sozvon daily backup
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+systemctl daemon-reload
+systemctl enable -q --now sozvon-backup.timer
+
 log "Настраиваю HTTPS для $DOMAIN (Caddy сам получит и будет продлевать сертификат Let's Encrypt)"
 cat > /etc/caddy/Caddyfile <<EOF
 $DOMAIN {

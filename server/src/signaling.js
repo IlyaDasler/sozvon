@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { unsupportedClient } from './client-version.js';
+import { config } from './config.js';
 import { contacts, rooms, toPublicUser, users } from './db.js';
 import { hub } from './hub.js';
 import { PERMS, has } from './perms.js';
@@ -225,7 +226,11 @@ function onConnection(ws, user) {
 
   if (hub.add(user.id, ws)) broadcastPresence(user.id);
 
+  // Поток событий от одного соединения — признак сломанного или злого клиента: обрываем
+  let burst = { count: 0, reset: Date.now() + 10_000 };
   ws.on('message', (raw) => {
+    if (Date.now() > burst.reset) burst = { count: 0, reset: Date.now() + 10_000 };
+    if (++burst.count > config.socketRateLimit) return ws.close(4408, 'too many events');
     let msg;
     try {
       msg = JSON.parse(raw);

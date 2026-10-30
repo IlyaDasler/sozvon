@@ -308,6 +308,7 @@ const q = {
   ),
   updateProfile: db.prepare('UPDATE users SET display_name = ?, avatar_color = ?, bio = ?, banner_color = ?, name_color = ? WHERE id = ?'),
   updatePassword: db.prepare('UPDATE users SET password_hash = ? WHERE id = ?'),
+  uploadsSize: db.prepare('SELECT COALESCE(SUM(size), 0) AS total FROM uploads WHERE owner_id = ?'),
   revokeLegacy: db.prepare('UPDATE users SET legacy_revoked = 1 WHERE id = ?'),
   setTotpPending: db.prepare('UPDATE users SET totp_pending = ? WHERE id = ?'),
   enableTotp: db.prepare('UPDATE users SET totp_secret = totp_pending, totp_pending = NULL, totp_last_step = ?, totp_recovery = ? WHERE id = ?'),
@@ -778,6 +779,8 @@ export const roomMessages = {
 export const uploads = {
   add: ({ id, ownerId, name, mime, size, kind }) => q.insertUpload.run(id, ownerId, name, mime, size, kind, Date.now()),
   byId: (id) => q.uploadById.get(id),
+  /** Сколько байт файлов человека лежит на диске */
+  usedBy: (ownerId) => q.uploadsSize.get(ownerId).total,
 
   /** Прикрепляет загрузки к сообщению: все должны быть своими и ещё не прикреплёнными. Иначе — null и ничего не меняется */
   claim(ids, ownerId) {

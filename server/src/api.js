@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import express from 'express';
 import { config } from './config.js';
 import { hashPassword, signTicket, verifyPassword, verifyTicket } from './auth.js';
@@ -177,6 +179,15 @@ setInterval(() => {
   }
 }, 10 * 60_000).unref();
 
+/** Не чаще max раз за windowMs: для людей, которые уже вошли */
+function userLimit(req, action, max, windowMs, message) {
+  const now = Date.now();
+  const key = `${action}:${req.user.id}`;
+  const entry = attempts.get(key);
+  if (!entry || entry.reset < now) attempts.set(key, { count: 1, reset: now + windowMs });
+  else if (++entry.count > max) throw new HttpError(429, message);
+}
+
 /** Вложения удалённого сообщения больше не нужны: файл с диска и запись о загрузке */
 function removeAttachments(row) {
   for (const a of parseAttachments(row.attachments)) {
@@ -201,6 +212,7 @@ const linkInText = (text, url) => text.includes(url) || text.includes(url.replac
 /** Сообщение из запроса: текст, вложения и превью ссылки (previewUrl; не прислали — человек его убрал).
  *  Без текста можно, если есть вложения */
 async function messageFrom(req, conv) {
+  userLimit(req, 'message', config.messageRateLimit, 10_000, 'Вы пишете слишком быстро, подождите несколько секунд');
   const text = str(req.body.text);
   const enc = req.body.enc == null ? null : parseEnvelope(req.body.enc);
   if (req.body.enc != null && !enc) throw new HttpError(400, 'Неверный зашифрованный конверт');
@@ -620,13 +632,38 @@ export function createApi() {
   // Загрузка вложения: тело запроса — сам файл, имя — в адресе (?name=), тип — в Content-Type
   api.post(
     '/uploads',
-    express.raw({ type: () => true, limit: MAX_FILE_BYTES }),
-    handle((req) => {
-      if (!Buffer.isBuffer(req.body) || !req.body.length) throw new HttpError(400, 'Пустой файл');
+    handle(async (req, res) => {
+      userLimit(req, 'upload', config.uploadRateLimit, 60_000, 'Слишком много файлов подряд, подождите минуту');
+      const tooBig = new HttpError(413, `Файл больше ${MAX_FILE_BYTES / 1024 / 1024} МБ`);
+      const declared = Number(req.get('content-length')) || 0;
+      const left = config.storageQuotaBytes - uploads.usedBy(req.user.id);
+      res.set('Connection', 'close'); // отказали на середине — остаток не читаем
+      if (declared > MAX_FILE_BYTES) throw tooBig;
+      if (declared > left) throw new HttpError(413, 'Закончилось место для ваших файлов. Удалите старые сообщения с вложениями');
+
+      // Файл идёт сразу на диск: целиком в памяти несколько загрузок съели бы память сервера
       const id = crypto.randomBytes(16).toString('hex');
+      const file = path.join(FILES_DIR, id);
+      let size = 0;
+      const meter = new Transform({
+        transform(chunk, _encoding, done) {
+          size += chunk.length;
+          done(size > Math.min(MAX_FILE_BYTES, left) ? tooBig : null, chunk);
+        },
+      });
+      try {
+        await pipeline(req, meter, fs.createWriteStream(file));
+      } catch (err) {
+        fs.rm(file, { force: true }, () => {});
+        throw err.status ? err : new HttpError(400, 'Файл не загрузился');
+      }
+      if (!size) {
+        fs.rm(file, { force: true }, () => {});
+        throw new HttpError(400, 'Пустой файл');
+      }
+      res.removeHeader('Connection');
       const mime = cleanMime(req.get('content-type'));
-      const row = { id, ownerId: req.user.id, name: cleanName(req.query.name), mime, size: req.body.length, kind: kindOf(mime) };
-      fs.writeFileSync(path.join(FILES_DIR, id), req.body);
+      const row = { id, ownerId: req.user.id, name: cleanName(req.query.name), mime, size, kind: kindOf(mime) };
       uploads.add(row);
       return toAttachment(row);
     })
