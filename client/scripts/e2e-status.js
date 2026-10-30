@@ -115,4 +115,14 @@ runTest(async () => {
   await js(winA, `document.getElementById('set-notify-sound').click(); closeSettings(); true`);
   console.log('✔ настройки уведомлений сохраняются');
   await pick('online');
+
+  // Подсказка показывает свежую подпись: у кнопки она могла поменяться (например, у звонка)
+  const hover = `(() => { const b = document.getElementById('settings-btn'); b.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })); b.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); return true; })()`;
+  await js(winA, `document.getElementById('settings-btn').title = 'Первая'; true`);
+  await js(winA, hover);
+  await waitFor(winA, `document.querySelector('.app-tip:not(.hidden)')?.textContent === 'Первая'`, 'подсказка');
+  await js(winA, `document.getElementById('settings-btn').title = 'Вторая'; true`);
+  await js(winA, hover);
+  await waitFor(winA, `document.querySelector('.app-tip:not(.hidden)')?.textContent === 'Вторая'`, 'обновлённая подсказка');
+  console.log('✔ подсказка показывает свежую подпись');
 });
