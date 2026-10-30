@@ -440,8 +440,6 @@
               <div class="field">
                 <span>Цвет баннера <em class="muted small">— фон шапки в карточке профиля</em></span>
                 <div id="banner-picker" class="colors"></div>
-                <!-- Превью шапки: сразу видно, как будет выглядеть карточка профиля -->
-                <div class="banner-preview" id="banner-preview" title="Так будет выглядеть шапка карточки профиля"></div>
               </div>
               <div class="field">
                 <span>Цвет ника <em class="muted small">— имя в чате, голосе и списке участников</em></span>
@@ -901,6 +899,13 @@
 
   <!-- Картинка из чата крупно -->
   <div class="profile-card hidden" id="profile-card"></div>
+
+  <!-- Превью карточки профиля при наведении на цвет баннера -->
+  <div class="banner-peek hidden" id="banner-peek">
+    <div class="pc-banner"></div>
+    <div class="avatar banner-peek-avatar" id="banner-peek-avatar"></div>
+    <div class="banner-peek-name" id="banner-peek-name"></div>
+  </div>
 
   <div id="image-viewer" class="image-viewer hidden">
     <img id="image-viewer-img" alt="">
