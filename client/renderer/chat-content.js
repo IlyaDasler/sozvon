@@ -68,6 +68,7 @@ function messageContent(m) {
       const img = document.createElement('img');
       setFileSrc(img, 'src', a);
       img.alt = a.name;
+      img.attachment = a;
       img.loading = 'lazy';
       img.title = `${a.name} — нажмите, чтобы открыть`;
       img.onclick = () => openImageViewer(a);
@@ -180,11 +181,48 @@ function linkCard(p) {
   return card;
 }
 
+// ---------- Картинка: скопировать и скачать ----------
+
+/** Сама картинка: зашифрованную отдаёт расшифровка, ссылка на сервер дала бы только шифр */
+async function imageBlob(a) {
+  const res = await fetch(a.key ? await decryptedFileUrl(a) : fileUrl(a));
+  if (!res.ok) throw new Error('Файл не найден');
+  return res.blob();
+}
+
+/** В буфер — PNG: другой формат программы не вставят. Гифка копируется первым кадром */
+async function copyImage(a) {
+  try {
+    const bitmap = await createImageBitmap(await imageBlob(a));
+    const canvas = Object.assign(document.createElement('canvas'), { width: bitmap.width, height: bitmap.height });
+    canvas.getContext('2d').drawImage(bitmap, 0, 0);
+    if (window.desktop?.copyImage) await window.desktop.copyImage(canvas.toDataURL('image/png'));
+    else {
+      const png = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+    }
+    toast('Картинка скопирована', 1500);
+  } catch {
+    toast('Не удалось скопировать картинку');
+  }
+}
+
+async function downloadImage(a) {
+  try {
+    const url = URL.createObjectURL(await imageBlob(a));
+    Object.assign(document.createElement('a'), { href: url, download: a.name }).click();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch {
+    toast('Не удалось скачать картинку');
+  }
+}
+
 // ---------- Просмотр картинки ----------
 
 function openImageViewer(a) {
   const viewer = $('image-viewer');
   setFileSrc($('image-viewer-img'), 'src', a);
+  $('image-viewer-img').attachment = a;
   $('image-viewer-name').textContent = a.name;
   setFileSrc($('image-viewer-open'), 'href', a);
   $('image-viewer-open').download = a.name;

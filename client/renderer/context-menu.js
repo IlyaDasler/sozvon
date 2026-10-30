@@ -133,6 +133,12 @@ function roomMenu(roomId) {
 
 // ---------- Сообщение ----------
 
+/** Картинка — в ленте и в просмотрщике */
+const imageItems = (image) => [
+  { label: 'Скопировать картинку', onclick: () => copyImage(image.attachment) },
+  { label: 'Скачать', onclick: () => downloadImage(image.attachment) },
+];
+
 function messageMenu(row, target) {
   const m = row.message;
   const link = target.closest('a[href]');
@@ -142,7 +148,7 @@ function messageMenu(row, target) {
     link && { label: 'Открыть ссылку', onclick: () => link.click() },
     link && { label: 'Скопировать ссылку', onclick: () => copyText(link.href, 'Ссылка скопирована') },
     image && { label: 'Открыть картинку', onclick: () => image.click() },
-    image && { label: 'Скопировать ссылку на картинку', onclick: () => copyText(image.src, 'Ссылка скопирована') },
+    ...(image ? imageItems(image) : []),
     (link || image) && 'sep',
     messageView(m).text && { label: 'Скопировать текст', onclick: () => copyText(messageView(m).text, 'Текст скопирован') },
     author && { label: `Профиль: ${author.displayName}`, onclick: () => openProfileCard(m.fromId, row.querySelector('.avatar')) },
@@ -177,6 +183,7 @@ const USER_TARGET = '[data-profile], [data-voice-user], [data-user]';
 function contextItems(target) {
   const field = target.closest('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), textarea');
   if (field) return editMenu(field);
+  if (target.id === 'image-viewer-img') return imageItems(target);
   // Выделили текст — сначала «Копировать», дальше то, что есть у места
   const selection = getSelection()?.toString() ? editMenu(null) : [];
   const userEl = target.closest(USER_TARGET);
