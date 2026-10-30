@@ -59,6 +59,8 @@ class Composer {
     this.preview = null; // { url, data }
     this.removedPreviews = new Set();
     this.previewTimer = null;
+    this.draftKey = null; // чей черновик сейчас в поле: 'dm:7', 'room:3'
+    this.drafts = new Map(); // черновики остальных чатов: ключ -> { text, files, preview, removedPreviews, reply }
     this.build();
   }
 
@@ -100,6 +102,7 @@ class Composer {
     };
     area.addEventListener('input', () => {
       autoGrow(area);
+      this.saveDraftText();
       this.schedulePreview();
       this.updateMentions();
     });
@@ -122,6 +125,40 @@ class Composer {
       e.preventDefault();
       this.submit();
     };
+  }
+
+  // ---------- Черновики ----------
+
+  /** В поле — черновик чата key (null — никакого чата): текст, файлы и ответ не переезжают в чужой чат */
+  openDraft(key) {
+    if (key === this.draftKey) return;
+    if (editDraft && composerOf(editDraft.chat) === this) cancelEdit();
+    if (this.draftKey) this.drafts.set(this.draftKey, this.takeDraft());
+    this.draftKey = key;
+    const draft = this.drafts.get(key) || { text: draftTexts()[key] || '' };
+    this.drafts.delete(key);
+    this.files = draft.files || [];
+    this.preview = draft.preview || null;
+    this.removedPreviews = draft.removedPreviews || new Set();
+    clearTimeout(this.previewTimer);
+    this.area.value = draft.text;
+    autoGrow(this.area);
+    if (draft.reply) [replyDraft, replyChat] = draft.reply;
+    this.renderFiles();
+    this.renderPreview();
+    renderReplyBars();
+  }
+
+  takeDraft() {
+    const reply = replyChat && composerOf(replyChat) === this ? [replyDraft, replyChat] : null;
+    if (reply) replyDraft = replyChat = null;
+    return { text: this.area.value, files: this.files, preview: this.preview, removedPreviews: this.removedPreviews, reply };
+  }
+
+  /** Текст черновика — и на диск: он переживает перезапуск. Правка сообщения черновиком не считается */
+  saveDraftText() {
+    if (!this.draftKey || (editDraft && composerOf(editDraft.chat) === this)) return;
+    setDraftText(this.draftKey, this.area.value);
   }
 
   // ---------- Упоминания ----------
@@ -339,9 +376,15 @@ class Composer {
     const payload = { text, files: ready.map((f) => f.attachment), preview: null };
     if (this.preview?.data && text.includes(this.preview.url.replace(/^https:\/\/(?=www\.)/, ''))) payload.preview = this.preview.data;
     this.sendBtn.disabled = true;
+    const key = this.draftKey;
     try {
       await this.send(payload);
-      this.reset();
+      // Пока отправлялось, человек мог уйти в другой чат — чистим только черновик отправленного
+      if (key === this.draftKey) this.reset();
+      else {
+        this.drafts.delete(key);
+        setDraftText(key, '');
+      }
     } catch (err) {
       toast(err.message);
     } finally {
@@ -358,8 +401,28 @@ class Composer {
     clearTimeout(this.previewTimer);
     this.area.value = '';
     autoGrow(this.area);
+    this.saveDraftText();
     this.renderFiles();
     this.renderPreview();
+  }
+}
+
+// Текст черновиков на диске — свой у каждого аккаунта
+const draftsStoreKey = () => `drafts:${state.me.id}`;
+const draftTexts = () => store.get(draftsStoreKey(), {});
+
+function setDraftText(key, text) {
+  const texts = draftTexts();
+  if (text) texts[key] = text;
+  else delete texts[key];
+  store.set(draftsStoreKey(), texts);
+}
+
+/** Выход из аккаунта: черновики в памяти и в полях — следующему они не достаются */
+function closeDrafts() {
+  for (const composer of [dmComposer, roomComposer]) {
+    composer.openDraft(null);
+    composer.drafts.clear();
   }
 }
 
@@ -513,7 +576,7 @@ function setComposerText(composer, text) {
 function startEdit(m, chat) {
   if (editDraft) cancelEdit();
   clearReply();
-  editDraft = { m, chat };
+  editDraft = { m, chat, kept: composerOf(chat).area.value };
   renderReplyBars();
   setComposerText(composerOf(chat), m.plain?.text || '');
 }
@@ -521,9 +584,10 @@ function startEdit(m, chat) {
 function cancelEdit() {
   if (!editDraft) return;
   const composer = composerOf(editDraft.chat);
+  const { kept } = editDraft;
   editDraft = null;
   renderReplyBars();
-  setComposerText(composer, '');
+  setComposerText(composer, kept); // что было набрано до правки
 }
 
 /** Отправка из поля, пока идёт правка: сохраняем правку вместо нового сообщения */

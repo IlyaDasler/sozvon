@@ -532,6 +532,7 @@ async function refreshContacts() {
 }
 
 function logout(message) {
+  closeDrafts();
   hangup();
   leaveRoomVoice();
   if (state.incoming) declineIncoming();
@@ -650,6 +651,8 @@ async function selectContact(id) {
   state.selectedRoomId = null;
   state.unread.delete(id);
   if (id) readNotifsOf({ contact: id });
+  roomComposer.openDraft(null);
+  dmComposer.openDraft(id ? `dm:${id}` : null);
   // Открыли чат — на последнем сообщении, даже если в прошлый раз листали вверх
   $('messages').stick = true;
   renderContacts();
