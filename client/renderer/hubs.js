@@ -270,7 +270,7 @@ function inviteItem(invite) {
 }
 
 function markHubRead(hubId) {
-  for (const room of roomsOfHub(hubId)) state.roomUnread.delete(room.id);
+  for (const room of roomsOfHub(hubId)) if (state.roomUnread.has(room.id)) markRead(`room:${room.id}`);
   renderRooms();
 }
 

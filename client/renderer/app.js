@@ -52,6 +52,8 @@ const state = {
   selectedId: null,
   history: new Map(), // id друга -> сообщения
   historyEnd: new Set(), // переписки, у которых старых сообщений больше нет
+  readMarks: new Map(), // непрочитанные переписки -> последнее прочитанное сообщение
+  newLine: null, // { conv, lastRead } — где в открытом чате линия «Новые сообщения»
   unread: new Map(),
   call: null, // звонок один на один: { session: MediaSession, peerId, peer, callId, phase, connectedAt }
   incoming: null, // { callId, from }
@@ -505,6 +507,7 @@ function enterMain(user) {
       $('conn-dot').title = ok ? 'Подключено к серверу' : 'Нет связи с сервером, переподключаемся…';
       if (ok) {
         catchUpHistory();
+        refreshUnread();
         refreshContacts();
         refreshHubs();
         refreshRooms();
@@ -548,6 +551,8 @@ function logout(message) {
     contacts: new Map(),
     history: new Map(),
     historyEnd: new Set(),
+    readMarks: new Map(),
+    newLine: null,
     unread: new Map(),
     hubs: new Map(),
     hubsLoaded: false,
@@ -652,8 +657,10 @@ async function selectContact(id) {
   state.view = 'home';
   state.selectedId = id;
   state.selectedRoomId = null;
-  state.unread.delete(id);
-  if (id) readNotifsOf({ contact: id });
+  if (id) {
+    openUnread(`dm:${id}`);
+    readNotifsOf({ contact: id });
+  } else state.newLine = null;
   roomComposer.openDraft(null);
   dmComposer.openDraft(id ? `dm:${id}` : null);
   // Открыли чат — на последнем сообщении, даже если в прошлый раз листали вверх
@@ -1141,11 +1148,17 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
   const nodes = [];
   const rows = new Map();
   let prev = null;
+  // Линия «Новые сообщения» — перед первым непрочитанным, пока чат открыт
+  let line = state.newLine?.conv === conv ? list.find((m) => m.id > state.newLine.lastRead && m.fromId !== state.me.id) : null;
   for (const m of list) {
     const day = formatDay(m.createdAt);
     if (!prev || formatDay(prev.createdAt) !== day) {
       if (!feed.days.has(day)) feed.days.set(day, Object.assign(document.createElement('div'), { className: 'day', textContent: day }));
       nodes.push(feed.days.get(day));
+    }
+    if (m === line) {
+      feed.line ??= Object.assign(document.createElement('div'), { className: 'new-line', textContent: 'Новые сообщения' });
+      nodes.push(feed.line);
     }
     const shown = messageRow(m, prev, list, actions, feed.rows.get(m.id), isNew(m));
     rows.set(m.id, shown);
@@ -1253,8 +1266,10 @@ function showNewMessage(m, peerId) {
 
   const visible = peerId === state.selectedId && document.hasFocus();
   if (peerId === state.selectedId) renderMessages();
-  if (!visible) {
+  if (visible) markRead(`dm:${peerId}`);
+  else {
     if (peerId !== state.selectedId) state.unread.set(peerId, (state.unread.get(peerId) || 0) + 1);
+    noteUnread(`dm:${peerId}`, m.id);
     renderContacts();
     notify(state.contacts.get(peerId)?.displayName || 'Новое сообщение', messageSummary(m), { kind: 'message', open: { contact: peerId } });
   }
@@ -1319,6 +1334,11 @@ function handleEvent(msg) {
         renderVoice();
       } else onUserKey(msg.user);
       return updateUser(msg.user.id, msg.user);
+    case 'read':
+      forgetUnread(msg.conv);
+      renderContacts();
+      renderRooms();
+      return renderRail();
     case 'keys:updated':
       return refreshConv(msg.conv);
     case 'message':
@@ -2370,10 +2390,8 @@ window.desktop?.onHotkey((name) => (name === 'toggle-mute' ? toggleMute() : togg
 
 window.addEventListener('focus', () => {
   readSeenNotifs();
-  if (state.selectedId && state.unread.has(state.selectedId)) {
-    state.unread.delete(state.selectedId);
-    renderContacts();
-  }
+  if (state.me) readOpenChat();
+  renderContacts();
 });
 
 window.addEventListener('beforeunload', () => {

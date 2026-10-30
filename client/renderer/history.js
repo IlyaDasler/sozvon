@@ -88,3 +88,48 @@ function catchUpHistory() {
     if (map.has(open)) loadHistory(of(open));
   }
 }
+
+// ---------- Что прочитано ----------
+// Хранит сервер: счётчики переживают перезапуск и совпадают на всех устройствах человека.
+
+/** Счётчики с сервера: при входе и после обрыва */
+async function refreshUnread() {
+  const { dm, rooms } = await Api.get('/unread').catch(() => ({ dm: [], rooms: [] }));
+  state.unread = new Map(dm.map((c) => [c.peerId, c.count]));
+  state.roomUnread = new Map(rooms.map((c) => [c.roomId, c.count]));
+  state.readMarks = new Map([...dm.map((c) => [`dm:${c.peerId}`, c.lastRead]), ...rooms.map((c) => [`room:${c.roomId}`, c.lastRead])]);
+  // Открытый чат человек и так видит
+  if (document.hasFocus()) readOpenChat();
+  renderContacts();
+  renderRooms();
+  renderRail();
+}
+
+/** Пришло непрочитанное: линия «Новые сообщения» встанет перед первым таким сообщением */
+function noteUnread(conv, id) {
+  if (!state.readMarks.has(conv)) state.readMarks.set(conv, id - 1);
+}
+
+function forgetUnread(conv) {
+  const [, kind, id] = /^(dm|room):(\d+)$/.exec(conv);
+  (kind === 'dm' ? state.unread : state.roomUnread).delete(Number(id));
+  state.readMarks.delete(conv);
+}
+
+/** Человек прочитал переписку до конца */
+function markRead(conv) {
+  forgetUnread(conv);
+  Api.post('/read', { conv }).catch(() => {}); // не дошло — отметка вернётся, ничего не потеряно
+}
+
+/** Открыть чат: снять отметку и запомнить, где поставить линию «Новые сообщения» */
+function openUnread(conv) {
+  const lastRead = state.readMarks.get(conv);
+  state.newLine = lastRead === undefined ? null : { conv, lastRead };
+  if (lastRead !== undefined) markRead(conv);
+}
+
+function readOpenChat() {
+  const conv = state.selectedId ? `dm:${state.selectedId}` : state.selectedRoomId ? `room:${state.selectedRoomId}` : null;
+  if (state.readMarks.has(conv)) markRead(conv); // без отметки — читать нечего
+}
