@@ -31,17 +31,26 @@ const ICONS = {
   eyeOff: '<svg viewBox="0 0 24 24"><path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6M3 3l18 18M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
 };
 
+// Токен и закрытый ключ на диске — только зашифрованными (vault.js)
+const isSecret = (key) => key === 'session' || key.startsWith('e2ee:identity:');
+
 const store = {
   get(key, fallback) {
     try {
-      return JSON.parse(localStorage.getItem(key)) ?? fallback;
+      const value = JSON.parse(localStorage.getItem(key));
+      if (!isSecret(key) || !window.desktop?.vault) return value ?? fallback;
+      if (value?.vault) return JSON.parse(window.desktop.vault.open(value.vault)) ?? fallback;
+      if (value !== null) store.set(key, value); // запись прежних версий, ещё открытая
+      return value ?? fallback;
     } catch {
       return fallback;
     }
   },
   set(key, value) {
     try {
-      localStorage.setItem(key, JSON.stringify(value));
+      // Нет хранилища системы (веб-версия) — остаётся как есть
+      const sealed = value !== null && isSecret(key) ? window.desktop?.vault?.seal(JSON.stringify(value)) : null;
+      localStorage.setItem(key, JSON.stringify(sealed ? { vault: sealed } : value));
     } catch {}
   },
 };
