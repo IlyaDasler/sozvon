@@ -232,9 +232,10 @@ function notify(title, body, { kind = 'message', open = null, hub = null } = {})
 
   const s = notifySettings();
   if (doNotDisturb()) return; // не беспокоить: только в центре уведомлений
-  // В канале можно выключить уведомления — тогда звука нет, но событие остаётся в центре
+  // В канале уведомления можно выключить: ни звука, ни мигания иконки, ни окна — только запись в центре
   const muted = hub != null && Boolean(store.get(`hub:mute:${hub}`, false));
-  if (s.sound && !muted) tone.blip('notify');
+  if (muted) return;
+  if (s.sound) tone.blip('notify');
   if (document.hasFocus()) return;
   window.desktop?.attention();
   if (!s.desktop || !('Notification' in window)) return;
