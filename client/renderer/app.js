@@ -51,6 +51,7 @@ const state = {
   contacts: new Map(),
   selectedId: null,
   history: new Map(), // id друга -> сообщения
+  historyEnd: new Set(), // переписки, у которых старых сообщений больше нет
   unread: new Map(),
   call: null, // звонок один на один: { session: MediaSession, peerId, peer, callId, phase, connectedAt }
   incoming: null, // { callId, from }
@@ -503,6 +504,7 @@ function enterMain(user) {
       $('conn-dot').classList.toggle('ok', ok);
       $('conn-dot').title = ok ? 'Подключено к серверу' : 'Нет связи с сервером, переподключаемся…';
       if (ok) {
+        catchUpHistory();
         refreshContacts();
         refreshHubs();
         refreshRooms();
@@ -545,6 +547,7 @@ function logout(message) {
     selectedId: null,
     contacts: new Map(),
     history: new Map(),
+    historyEnd: new Set(),
     unread: new Map(),
     hubs: new Map(),
     hubsLoaded: false,
@@ -671,19 +674,7 @@ async function selectContact(id) {
   renderMessages();
   dmComposer.focus();
 
-  if (!state.history.has(id)) {
-    try {
-      const loaded = await Api.get(`/messages/${id}`);
-      await decryptMessages(loaded, dmConvOf(id));
-      // Пока грузили историю, могли прийти новые сообщения — объединяем без дублей
-      const known = state.history.get(id) || [];
-      const merged = new Map([...loaded, ...known].map((m) => [m.id, m]));
-      state.history.set(id, [...merged.values()].sort((a, b) => a.id - b.id));
-      if (state.selectedId === id) renderMessages();
-    } catch (err) {
-      toast(err.message);
-    }
-  }
+  if (!state.history.has(id)) await loadHistory(dmHistory(id));
 }
 
 function renderChatHeader() {
@@ -716,6 +707,7 @@ function renderMessages() {
       chat: { kind: 'dm', peerId },
       canDelete: (m) => m.fromId === state.me.id,
       remove: (m) => Api.del(`/messages/${peerId}/${m.id}`),
+      older: () => loadOlder(dmHistory(peerId)),
     }
   );
   refreshPinned({ kind: 'dm', peerId });
@@ -943,10 +935,22 @@ async function refreshPinned(chat) {
   bar.onclick = () => jumpToMessage(bar.nextElementSibling, first.id) || toast(`${author.displayName}: ${known.text || 'сообщение'}`);
 }
 
-/** Пролистать ленту к сообщению и подсветить его; false — его нет среди загруженных */
+/** Сообщения нет среди загруженных — листаем историю назад, пока не дойдём до него */
+async function seekMessage(box, id) {
+  const first = () => Number(box.querySelector('[data-msg-id]')?.dataset.msgId);
+  while (first() > id && (await box.older()));
+  if (box.querySelector(`[data-msg-id="${id}"]`)) jumpToMessage(box, id);
+  else toast('Сообщение удалено');
+}
+
+/** Пролистать ленту к сообщению и подсветить его; false — перейти некуда */
 function jumpToMessage(box, id) {
   const row = box?.querySelector(`[data-msg-id="${id}"]`);
-  if (!row) return false;
+  if (!row) {
+    if (!box?.older) return false;
+    seekMessage(box, id);
+    return true;
+  }
   // Человек сам ушёл от низа — лента больше не держится внизу, видна плашка «Перейти к последним»
   box.stick = false;
   syncJumpBar(box);
@@ -970,7 +974,6 @@ async function deleteMessage(m, remove, skipConfirm) {
 
 // Что уже было на экране в каждой ленте: анимируем только новые сообщения той же переписки,
 // а не всю ленту при каждой перерисовке и не чужую переписку при переключении
-const shownMessages = new WeakMap();
 
 /** Данные цитаты ответа: снимок из конверта, иначе — сообщение из загруженной ленты */
 function replyOf(m, list) {
@@ -1013,131 +1016,168 @@ function reactionsView(m) {
   return row;
 }
 
-// Лента сообщений: и для чата с другом, и для комнаты
-/** actions: { canDelete(m), remove(m) } — можно ли удалить сообщение и как */
+// Лента сообщений: и для чата с другом, и для комнаты. Строка живёт, пока не поменялась: перестроить всю ленту значит
+// сбросить выделение, остановить видео, а пока картинки заново узнают размер — сдвинуть текст под глазами читателя
+
+/** Строка сообщения; shown — та же строка, уже показанная в ленте (вернётся она же, если ничего не поменялось) */
+function messageRow(m, prev, list, actions, shown, fresh) {
+  const newDay = !prev || formatDay(prev.createdAt) !== formatDay(m.createdAt);
+  const author = userById(m.fromId) || { displayName: '?', avatarColor: '#555' };
+  const continued = !newDay && prev.fromId === m.fromId && m.createdAt - prev.createdAt < 5 * 60_000;
+
+  const reply = replyOf(m, list);
+  const look = JSON.stringify([continued, m.createdAt, m.editedAt, m.reactions, m.pinned, reply, mentionsMe(m), actions.canDelete(m), author.displayName, author.nameColor, author.avatarColor, author.avatarUrl]);
+  const text = JSON.stringify([m.text, m.plain, m.attachments, m.preview]);
+  if (shown?.look === look && shown.text === text) {
+    shown.row.message = m;
+    return shown;
+  }
+
+  const row = document.createElement('div');
+  row.className = `msg${continued ? ' cont' : ''}${fresh ? ' msg-new' : ''}`;
+  row.dataset.msgId = m.id;
+  if (mentionsMe(m)) row.classList.add('mentions-me');
+  // Для меню по правой кнопке: само сообщение и что с ним можно сделать в этой ленте
+  row.message = m;
+  row.actions = actions;
+  const avatar = makeAvatar(author);
+  if (author.id) avatar.dataset.profile = author.id;
+  row.append(avatar);
+  const body = document.createElement('div');
+  body.className = 'msg-body';
+  if (!continued) {
+    const head = document.createElement('div');
+    head.className = 'msg-head';
+    const name = document.createElement('b');
+    name.textContent = author.displayName;
+    name.style.color = author.nameColor || author.avatarColor;
+    if (author.id) name.dataset.profile = author.id;
+    const time = document.createElement('time');
+    time.textContent = formatTime(m.createdAt);
+    head.append(name, time);
+    body.append(head);
+  }
+  if (reply) body.append(replyQuote(reply));
+  // Реакция или закреп меняют только строку: содержимое (картинки, идущее видео) остаётся тем же
+  const content = shown?.text === text ? shown.content : messageContent(m);
+  body.append(content);
+  if (m.editedAt) {
+    const edited = document.createElement('span');
+    edited.className = 'msg-edited';
+    edited.textContent = '(изменено)';
+    body.append(edited);
+  }
+  const chips = reactionsView(m);
+  if (chips) body.append(chips);
+  row.append(body);
+  if (actions?.chat) {
+    const tools = document.createElement('div');
+    tools.className = 'msg-tools';
+    const tool = (title, svg, fn, extra = '') => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `msg-tool${extra}`;
+      b.title = title;
+      b.innerHTML = svg;
+      b.onclick = fn;
+      tools.append(b);
+    };
+    tool('Ответить', '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 7 7v3"/></svg>', (e) => {
+      e.stopPropagation();
+      startReply(m, actions.chat);
+    });
+    tool('Переслать', '<svg viewBox="0 0 24 24"><path d="M15 14 20 9l-5-5"/><path d="M20 9h-9a7 7 0 0 0-7 7v3"/></svg>', (e) => {
+      e.stopPropagation();
+      forwardMessage(m);
+    });
+    tool('Реакция', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0"/><path d="M9 9h.01M15 9h.01"/></svg>', (e) => {
+      e.stopPropagation();
+      openReactions(m, actions.chat, e.currentTarget);
+    });
+    if (m.fromId === state.me.id)
+      tool('Изменить', '<svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>', (e) => {
+        e.stopPropagation();
+        editMessage(m, actions.chat);
+      });
+    tool(
+      m.pinned ? 'Открепить' : 'Закрепить',
+      '<svg viewBox="0 0 24 24"><path d="M9 4h6l-1 6 4 4H6l4-4z"/><path d="M12 14v6"/></svg>',
+      (e) => {
+        e.stopPropagation();
+        togglePin(m, actions.chat);
+      }
+    );
+    if (actions.canDelete(m))
+      tool('Удалить (с Shift — без вопроса)', '<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>', (e) => {
+        deleteMessage(m, actions.remove, e.shiftKey);
+      }, ' danger');
+    row.append(tools);
+  }
+  return { row, look, text, content };
+}
+
+/** actions: { chat, canDelete(m), remove(m), older() } — чья лента, можно ли удалить сообщение, как, и как догрузить старое */
 function renderMessageList(box, list, loaded, emptyText, actions) {
-  const before = shownMessages.get(box);
-  // Ту же переписку листают вверх — после перерисовки остаёмся на месте, а не прыгаем вниз.
-  // Внизу ли человек, решает только его прокрутка (box.stick), а не высота ленты: картинки и превью
-  // догружаются позже и делают ленту выше. Своё новое сообщение — всегда вниз, к нему
   jumpBar(box);
-  const sentNow = before?.list === list && list.some((m) => !before.ids.has(m.id) && m.fromId === state.me.id);
-  const keepScroll = before?.list === list && !box.stick && !sentNow;
-  const scrollTop = box.scrollTop;
-  box.replaceChildren();
-  const isNew = (m) => before?.list === list && !before.ids.has(m.id);
-  shownMessages.set(box, { list, ids: new Set(list.map((m) => m.id)) });
+  const conv = `${actions.chat.kind}:${actions.chat.peerId ?? actions.chat.roomId}`;
+  const same = box.feed?.conv === conv;
+  if (!same) box.feed = { conv, rows: new Map(), days: new Map(), last: 0 };
+  const feed = box.feed;
+  box.older = actions.older;
+  const isNew = (m) => same && m.id > feed.last;
+  // Ту же переписку листают вверх — стоим на месте. Внизу ли человек, решает только его прокрутка (box.stick), а не
+  // высота ленты: картинки и превью догружаются позже. Своё новое сообщение — всегда вниз, к нему
+  const sentNow = list.some((m) => isNew(m) && m.fromId === state.me.id);
+  const keepScroll = same && !box.stick && !sentNow;
 
   if (!list.length) {
     // Пустая переписка — Совон; пока грузим — просто «Загрузка…»
-    if (loaded) box.append(mascot('Здесь пока тихо', emptyText));
-    else box.append(Object.assign(document.createElement('div'), { className: 'hint', textContent: 'Загрузка…' }));
+    box.replaceChildren(loaded ? mascot('Здесь пока тихо', emptyText) : Object.assign(document.createElement('div'), { className: 'hint', textContent: 'Загрузка…' }));
+    box.feed = null;
     jumpBar(box).classList.add('hidden');
     return;
   }
 
+  const nodes = [];
+  const rows = new Map();
   let prev = null;
   for (const m of list) {
     const day = formatDay(m.createdAt);
-    const newDay = !prev || formatDay(prev.createdAt) !== day;
-    if (newDay) {
-      const sep = document.createElement('div');
-      sep.className = 'day';
-      sep.textContent = day;
-      box.append(sep);
+    if (!prev || formatDay(prev.createdAt) !== day) {
+      if (!feed.days.has(day)) feed.days.set(day, Object.assign(document.createElement('div'), { className: 'day', textContent: day }));
+      nodes.push(feed.days.get(day));
     }
-    const author = userById(m.fromId) || { displayName: '?', avatarColor: '#555' };
-    const continued = !newDay && prev.fromId === m.fromId && m.createdAt - prev.createdAt < 5 * 60_000;
-
-    const row = document.createElement('div');
-    row.className = `msg${continued ? ' cont' : ''}${isNew(m) ? ' msg-new' : ''}`;
-    row.dataset.msgId = m.id;
-    if (mentionsMe(m)) row.classList.add('mentions-me');
-    // Для меню по правой кнопке: само сообщение и что с ним можно сделать в этой ленте
-    row.message = m;
-    row.actions = actions;
-    const avatar = makeAvatar(author);
-    if (author.id) avatar.dataset.profile = author.id;
-    row.append(avatar);
-    const body = document.createElement('div');
-    body.className = 'msg-body';
-    if (!continued) {
-      const head = document.createElement('div');
-      head.className = 'msg-head';
-      const name = document.createElement('b');
-      name.textContent = author.displayName;
-      name.style.color = author.nameColor || author.avatarColor;
-      if (author.id) name.dataset.profile = author.id;
-      const time = document.createElement('time');
-      time.textContent = formatTime(m.createdAt);
-      head.append(name, time);
-      body.append(head);
-    }
-    const reply = replyOf(m, list);
-    if (reply) body.append(replyQuote(reply));
-    body.append(messageContent(m));
-    if (m.editedAt) {
-      const edited = document.createElement('span');
-      edited.className = 'msg-edited';
-      edited.textContent = '(изменено)';
-      body.append(edited);
-    }
-    const chips = reactionsView(m);
-    if (chips) body.append(chips);
-    row.append(body);
-    if (actions?.chat) {
-      const tools = document.createElement('div');
-      tools.className = 'msg-tools';
-      const tool = (title, svg, fn, extra = '') => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = `msg-tool${extra}`;
-        b.title = title;
-        b.innerHTML = svg;
-        b.onclick = fn;
-        tools.append(b);
-      };
-      tool('Ответить', '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 7 7v3"/></svg>', (e) => {
-        e.stopPropagation();
-        startReply(m, actions.chat);
-      });
-      tool('Переслать', '<svg viewBox="0 0 24 24"><path d="M15 14 20 9l-5-5"/><path d="M20 9h-9a7 7 0 0 0-7 7v3"/></svg>', (e) => {
-        e.stopPropagation();
-        forwardMessage(m);
-      });
-      tool('Реакция', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0"/><path d="M9 9h.01M15 9h.01"/></svg>', (e) => {
-        e.stopPropagation();
-        openReactions(m, actions.chat, e.currentTarget);
-      });
-      if (m.fromId === state.me.id)
-        tool('Изменить', '<svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>', (e) => {
-          e.stopPropagation();
-          editMessage(m, actions.chat);
-        });
-      tool(
-        m.pinned ? 'Открепить' : 'Закрепить',
-        '<svg viewBox="0 0 24 24"><path d="M9 4h6l-1 6 4 4H6l4-4z"/><path d="M12 14v6"/></svg>',
-        (e) => {
-          e.stopPropagation();
-          togglePin(m, actions.chat);
-        }
-      );
-      if (actions.canDelete(m))
-        tool('Удалить (с Shift — без вопроса)', '<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>', (e) => {
-          deleteMessage(m, actions.remove, e.shiftKey);
-        }, ' danger');
-      row.append(tools);
-    }
-    box.append(row);
+    const shown = messageRow(m, prev, list, actions, feed.rows.get(m.id), isNew(m));
+    rows.set(m.id, shown);
+    nodes.push(shown.row);
     prev = m;
   }
   const bar = jumpBar(box);
-  if (keepScroll) {
-    box.scrollTop = scrollTop;
-    if (list.some(isNew)) bar.classList.add('fresh');
-  } else stickToBottom(box);
+  if (keepScroll && list.some(isNew)) bar.classList.add('fresh');
+  feed.rows = rows;
+  feed.last = list.at(-1).id;
+
+  // Сверка: на месте остаётся всё, что не поменялось. Браузер сам держит экран при вставке выше него, кроме самого верха
+  const atTop = keepScroll && box.scrollTop === 0;
+  const height = box.scrollHeight;
+  let at = box.firstChild;
+  for (const node of nodes) {
+    if (node === at) at = at.nextSibling;
+    else box.insertBefore(node, at);
+  }
+  while (at) {
+    const next = at.nextSibling;
+    at.remove();
+    at = next;
+  }
+  if (atTop) box.scrollTop = box.scrollHeight - height;
+  if (!keepScroll) stickToBottom(box);
   syncJumpBar(box);
+  if (box.scrollTop < OLDER_ZONE_PX) box.older?.(); // экран не заполнен — листать нечего, догружаем сами
 }
+
+// Столько пикселей до верха ленты — пора догружать старые сообщения
+const OLDER_ZONE_PX = 400;
 
 const nearBottom = (box) => box.scrollHeight - box.scrollTop - box.clientHeight < 40;
 
@@ -1172,6 +1212,7 @@ function jumpBar(box) {
     if (box.scrollTop === box.autoTop) return;
     box.stick = nearBottom(box);
     syncJumpBar(box);
+    if (box.scrollTop < OLDER_ZONE_PX) box.older?.();
   });
   // Догрузилась картинка, видео или превью — если человек был внизу, держим его внизу
   const keepDown = () => box.stick && scrollDown(box);
