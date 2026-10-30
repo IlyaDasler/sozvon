@@ -134,6 +134,14 @@ body { display: flex; flex-direction: column; }
   background: var(--bg-deep); color: var(--muted); font-size: 12px; user-select: none; -webkit-app-region: drag;
 }
 .titlebar img { opacity: .9; }
+/* Браузер: окно уже есть, полоса с кнопками «назад/вперёд» только мешает */
+.is-web .titlebar { display: none; }
+/* Пункт меню с иконкой и значок «уведомления выключены» в шапке канала */
+.popup-icon { display: inline-flex; flex: none; width: 16px; height: 16px; color: var(--muted); }
+.popup-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.popup-item .popup-icon + span { min-width: 0; }
+.hub-muted { display: inline-flex; flex: none; color: var(--muted); }
+.hub-muted svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; }
 /* Сообщение, к которому перешли (закреп, цитата ответа), коротко подсвечено */
 .msg-flash { animation: msg-flash 2s ease-out; }
 @keyframes msg-flash { from { background: color-mix(in srgb, var(--accent) 28%, transparent); } to { background: transparent; } }
@@ -631,9 +639,10 @@ video.mirror { transform: scaleX(-1); }
 .room-icon { display: inline-grid; place-items: center; color: var(--muted); flex: none; }
 .room-icon.big { width: 36px; height: 36px; border-radius: 10px; background: var(--bg-3); color: var(--text); }
 .room-row.active .room-icon { color: var(--text); }
-.voice-users { list-style: none; margin: 3px 0 5px; padding: 5px 0 0; border-top: 1px solid var(--line); }
+/* Участники голосовой комнаты в списке: без линии, чуть ниже и правее названия */
+.voice-users { list-style: none; margin: 4px 0 6px; padding: 10px 0 0 8px; }
 .voice-users li {
-  display: flex; align-items: center; gap: 8px; padding: 3px 8px; border-radius: 6px;
+  display: flex; align-items: center; gap: 8px; padding: 3px 8px 3px 10px; border-radius: 6px;
   font-size: 13px; color: var(--muted); cursor: pointer;
 }
 .voice-users li:hover { background: var(--bg-4); }
@@ -760,7 +769,9 @@ video.mirror { transform: scaleX(-1); }
 
 /* ---------- Сообщения ---------- */
 
-.messages { flex: 1; min-height: 110px; overflow-y: auto; padding: 8px 16px 12px; display: flex; flex-direction: column; }
+/* overflow-anchor: none — иначе браузер сам «подтягивает» прокрутку после перерисовки ленты,
+   и чат открывается не внизу, а где-то выше */
+.messages { flex: 1; min-height: 110px; overflow-y: auto; overflow-anchor: none; padding: 8px 16px 12px; display: flex; flex-direction: column; }
 .messages .day { display: flex; align-items: center; gap: 12px; margin: 14px 0 10px; font-size: 11.5px; color: var(--muted); }
 .messages .day::before, .messages .day::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .msg { position: relative; display: flex; gap: 16px; padding: 2px 16px; margin: 0 -16px; border-radius: var(--r-s); transition: background var(--fast); }
@@ -911,6 +922,22 @@ kbd {
   box-shadow: inset 0 0 0 2px rgba(0,0,0,.2);
 }
 .color.selected { box-shadow: 0 0 0 2px var(--bg-2), 0 0 0 4px var(--text); }
+/* Превью карточки профиля при наведении на цвет баннера */
+.banner-peek {
+  position: fixed; z-index: 80; width: 240px; pointer-events: none; overflow: hidden;
+  border-radius: 10px; background: var(--bg-deep);
+  box-shadow: var(--shadow), 0 0 0 1px var(--line-strong);
+  animation: fade var(--fast) var(--ease);
+}
+.banner-peek .pc-banner { height: 76px; border-radius: 0; background: var(--banner); }
+.banner-peek-avatar {
+  position: absolute; top: 44px; left: 14px; width: 60px; height: 60px;
+  font-size: 24px; box-shadow: 0 0 0 5px var(--bg-deep);
+}
+.banner-peek-name {
+  padding: 34px 14px 14px; font-weight: 700; font-size: 16px; line-height: 1.25;
+  overflow-wrap: anywhere;
+}
 
 .toast {
   position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 20;
@@ -1522,7 +1549,18 @@ kbd {
   position: fixed; z-index: 30; transform: translateY(-50%); pointer-events: none;
   max-width: 240px; padding: 6px 10px; border-radius: 6px;
   background: var(--bg-deep); color: var(--text); box-shadow: var(--shadow);
+  border: 1px solid var(--line-strong);
   font-weight: 600; font-size: 13px;
+}
+
+/* Общая подсказка вместо системной рамки: как у каналов, с тонкой рамкой */
+.app-tip {
+  position: fixed; z-index: 70; pointer-events: none;
+  max-width: 280px; padding: 6px 10px; border-radius: 6px;
+  background: var(--bg-deep); color: var(--text); box-shadow: var(--shadow);
+  border: 1px solid var(--line-strong);
+  font-weight: 600; font-size: 13px; line-height: 1.35;
+  animation: fade var(--fast) var(--ease);
 }
 
 /* ---------- Канал: шапка, комнаты, пусто ---------- */
@@ -1582,6 +1620,7 @@ body.resizing * { transition: none !important; }
   transform-origin: top left; animation: pop-down var(--mid) var(--ease-out);
 }
 .popup-item {
+  display: flex; align-items: center; gap: 8px;
   padding: 8px 10px; border: 0; border-radius: var(--r-s); background: none;
   color: var(--text-2); font: inherit; font-weight: 500; text-align: left; cursor: pointer;
   transition: background var(--fast), color var(--fast);

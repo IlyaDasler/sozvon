@@ -116,3 +116,56 @@ test('вход и регистрация через Яндекс; Google и VK �
   assert.equal(login.status, 200);
   assert.deepEqual(login.body.user.identities, []);
 });
+
+// В браузере ответ сервиса принимает сервер: редирект на Яндекс, возврат на /api/oauth/…/callback, затем на страницу
+// с одноразовым кодом. Токен в адрес не попадает, вернуться может только браузер, начавший вход
+test('вход через Яндекс в браузере: одноразовый код вместо токена в адресе', async () => {
+  // Шаги до возврата со стороны сервиса; cookie — как у браузера, начавшего вход
+  async function viaProvider() {
+    const start = await fetch(`${base}/api/oauth/yandex/web`, { redirect: 'manual' });
+    assert.equal(start.status, 302);
+    const cookie = start.headers.get('set-cookie').split(';')[0];
+    assert.match(start.headers.get('set-cookie'), /HttpOnly/);
+    const authUrl = new URL(start.headers.get('location'));
+    assert.equal(authUrl.searchParams.get('redirect_uri'), `${base}/api/oauth/yandex/callback`);
+    assert.equal(authUrl.searchParams.get('code_challenge_method'), 'S256');
+    const fromProvider = await fetch(authUrl, { redirect: 'manual' });
+    const callback = new URL(fromProvider.headers.get('location'));
+    assert.equal(callback.pathname, '/api/oauth/yandex/callback');
+    return { callback, cookie };
+  }
+  const finish = async ({ callback, cookie }) => {
+    const res = await fetch(callback, { redirect: 'manual', headers: { cookie } });
+    assert.equal(res.status, 302);
+    return new URL(res.headers.get('location'), base).searchParams;
+  };
+
+  // Профиль новый, а сервер просит код приглашения — вместо входа приходит пропуск
+  const first = await finish(await viaProvider());
+  assert.equal(first.get('oauth'), null);
+  const pending = await api('POST', '/oauth/web/exchange', { code: first.get('oauth_code') });
+  assert.equal(pending.status, 200);
+  assert.ok(pending.body.ticket, 'должен прийти пропуск для кода приглашения');
+  assert.equal(pending.body.token, undefined);
+  assert.equal((await api('POST', '/signup/complete', { ticket: pending.body.ticket, inviteCode: 'friends' })).status, 200);
+
+  // Профиль есть: код меняется на обычную сессию, второй раз не срабатывает
+  const again = await finish(await viaProvider());
+  assert.equal(again.get('oauth'), null);
+  const code = again.get('oauth_code');
+  const done = await api('POST', '/oauth/web/exchange', { code });
+  assert.equal(done.status, 200);
+  assert.equal((await api('GET', '/me', null, done.body.token)).status, 200);
+  assert.equal((await api('GET', '/sessions', null, done.body.token)).body.filter((s) => s.current).length, 1);
+  assert.equal((await api('POST', '/oauth/web/exchange', { code })).status, 400);
+
+  // Чужой браузер по ссылке с чужим state в профиль не попадёт
+  const stolen = await viaProvider();
+  const foreign = await finish({ ...stolen, cookie: 'sozvon_oauth=other' });
+  assert.ok(foreign.get('oauth_error'));
+  assert.equal(foreign.get('oauth_code'), null);
+
+  // Неизвестный state — понятная ошибка, а не падение
+  const bad = await finish({ callback: new URL(`${base}/api/oauth/yandex/callback?state=nope&code=x`), cookie: '' });
+  assert.ok(bad.get('oauth_error'));
+});
