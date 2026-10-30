@@ -629,9 +629,10 @@ video.mirror { transform: scaleX(-1); }
 .room-icon { display: inline-grid; place-items: center; color: var(--muted); flex: none; }
 .room-icon.big { width: 36px; height: 36px; border-radius: 10px; background: var(--bg-3); color: var(--text); }
 .room-row.active .room-icon { color: var(--text); }
-.voice-users { list-style: none; margin: 3px 0 5px; padding: 5px 0 0; border-top: 1px solid var(--line); }
+/* Участники голосовой комнаты в списке: без линии, чуть ниже и правее названия */
+.voice-users { list-style: none; margin: 4px 0 6px; padding: 10px 0 0 8px; }
 .voice-users li {
-  display: flex; align-items: center; gap: 8px; padding: 3px 8px; border-radius: 6px;
+  display: flex; align-items: center; gap: 8px; padding: 3px 8px 3px 10px; border-radius: 6px;
   font-size: 13px; color: var(--muted); cursor: pointer;
 }
 .voice-users li:hover { background: var(--bg-4); }
