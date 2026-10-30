@@ -1138,14 +1138,22 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
     box.scrollTop = scrollTop;
     if (list.some(isNew)) bar.classList.add('fresh');
   } else {
+    // Открыли чат: доводим ленту вниз несколько раз, пока вёрстка «доезжает» (шрифты, картинки,
+    // большой экран). Если человек начал листать сам — не трогаем
+    box.openAt = Date.now();
+    box.userScrolled = false;
     stickToBottom(box);
-    // Шрифты и картинки могут «дорастить» ленту уже после отрисовки — тогда ещё раз вниз,
-    // но только если человек не начал листать сам
     const settle = () => {
-      if (box.stick) scrollDown(box);
+      if (box.userScrolled) return;
+      if (box.stick || Date.now() - box.openAt < 1200) {
+        box.stick = true;
+        scrollDown(box);
+      }
     };
     requestAnimationFrame(settle);
     setTimeout(settle, 120);
+    setTimeout(settle, 420);
+    setTimeout(settle, 900);
   }
   syncJumpBar(box);
 }
@@ -1181,9 +1189,15 @@ function jumpBar(box) {
   // размер раньше «load»). Лента стоит там, куда её поставили мы, — человек не листал, решение не меняем
   box.addEventListener('scroll', () => {
     if (box.scrollTop === box.autoTop) return;
+    // Прокрутка не наша — значит человек листает сам, дожатие вниз прекращаем
+    box.userScrolled = true;
     box.stick = nearBottom(box);
     syncJumpBar(box);
   });
+  // Колесо, тач и клавиши — тоже «человек листает»
+  for (const name of ['wheel', 'touchstart', 'touchmove', 'keydown']) {
+    box.addEventListener(name, () => (box.userScrolled = true), { passive: true });
+  }
   // Догрузилась картинка, видео или превью — если человек был внизу, держим его внизу
   const keepDown = () => box.stick && scrollDown(box);
   box.addEventListener('load', keepDown, true);
