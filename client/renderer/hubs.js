@@ -99,6 +99,7 @@ function renderHubChrome() {
   $('head-home').classList.toggle('hidden', Boolean(hub));
   $('hub-menu-btn').classList.toggle('hidden', !hub);
   if (hub) $('hub-menu-name').textContent = hub.name;
+  $('hub-muted').classList.toggle('hidden', !hub || !hubMuted(hub.id));
   const empty = Boolean(hub) && !state.selectedRoomId;
   $('hub-empty').classList.toggle('hidden', !empty);
   if (empty) renderHubEmpty(hub);
@@ -385,7 +386,7 @@ $('folder-cancel').onclick = () => $('folder-edit').classList.add('hidden');
 
 // ---------- Всплывающее меню ----------
 
-/** items: { label, onclick, danger } или 'sep'; пустые (false) пропускаются */
+/** items: { label, icon, onclick, danger } или 'sep'; пустые (false) пропускаются */
 function showMenu(x, y, items) {
   const menu = $('popup-menu');
   menu.replaceChildren();
@@ -394,17 +395,24 @@ function showMenu(x, y, items) {
       if (menu.lastChild && !menu.lastChild.classList.contains('popup-sep')) menu.append(el('div', { className: 'popup-sep' }));
       continue;
     }
-    menu.append(
-      el('button', {
-        type: 'button',
-        className: `popup-item${item.danger ? ' danger' : ''}`,
-        textContent: item.label,
-        onclick: () => {
-          hideMenu();
-          item.onclick();
-        },
-      })
-    );
+    const button = el('button', {
+      type: 'button',
+      className: `popup-item${item.danger ? ' danger' : ''}`,
+      onclick: () => {
+        hideMenu();
+        item.onclick();
+      },
+    });
+    if (item.icon) {
+      const icon = document.createElement('span');
+      icon.className = 'popup-icon';
+      icon.innerHTML = item.icon;
+      button.append(icon);
+    }
+    const label = document.createElement('span');
+    label.textContent = item.label;
+    button.append(label);
+    menu.append(button);
   }
   menu.classList.remove('hidden');
   const { width, height } = menu.getBoundingClientRect();
@@ -424,11 +432,29 @@ document.addEventListener(
 
 // ---------- Меню канала ----------
 
+// Значки для пункта меню и отметки в шапке
+const BELL_ON = '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
+const BELL_OFF =
+  '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-9.3-5.2M6 9v-1a6 6 0 0 0-.9 3c0 7-3 9-3 9h14"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M3 3l18 18"/></svg>';
+
+const hubMuteKey = (id) => `hub:mute:${id}`;
+const hubMuted = (id) => Boolean(store.get(hubMuteKey(id), false));
+
+/** Выключить или включить звук уведомлений канала (выбор хранится на этом устройстве) */
+function toggleHubMute(hub) {
+  const off = !hubMuted(hub.id);
+  store.set(hubMuteKey(hub.id), off);
+  toast(off ? `Звук уведомлений «${hub.name}» выключен` : `Звук уведомлений «${hub.name}» включён`);
+  renderHubChrome();
+}
+
 function hubMenuItems(hub) {
   const manager = canManageHub(hub);
+  const muted = hubMuted(hub.id);
   return [
     manager && { label: 'Пригласить друзей', onclick: () => openHubInvite(hub.id) },
     manager && { label: 'Создать комнату', onclick: () => openRoomCreate('voice', hub.id) },
+    { label: muted ? 'Включить уведомления' : 'Выключить уведомления', icon: muted ? BELL_OFF : BELL_ON, onclick: () => toggleHubMute(hub) },
     { label: manager ? 'Настройки канала' : 'Участники канала', onclick: () => openHubSettings(hub.id, manager ? 'overview' : 'members') },
     'sep',
     hub.ownerId === state.me.id

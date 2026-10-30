@@ -364,8 +364,8 @@ async function loadProviders(base) {
   let providers = [];
   let inviteRequired = true;
   let emailCodes = false;
-  // Вход через сервисы работает только в приложении: браузерной версии некуда принять ответ
-  if (window.desktop?.oauth && base) {
+  // В приложении ответ принимает Electron, в браузере — сервер (переадресация), поэтому список нужен везде
+  if (base && (window.desktop?.oauth || isWeb)) {
     try {
       const res = await fetch(`${base}/api/oauth/providers`, { signal: AbortSignal.timeout(5000) });
       if (res.ok) providers = await res.json();
@@ -428,6 +428,11 @@ async function runOAuth(provider, mode, extra = {}) {
 async function oauthLogin(provider) {
   const base = isWeb ? location.origin : normalizeServer($('server-url').value);
   if (!base) return ($('auth-error').textContent = 'Укажите адрес сервера');
+  // В браузере код принимает сервер и возвращает нас сюда с токеном
+  if (isWeb) {
+    location.href = `${base}/api/oauth/${provider}/web`;
+    return;
+  }
   const buttons = $('auth-form').querySelectorAll('button');
   buttons.forEach((b) => (b.disabled = true));
   $('auth-error').textContent = '';
@@ -978,6 +983,7 @@ function jumpToMessage(box, id) {
   }
   // Человек сам ушёл от низа — лента больше не держится внизу, видна плашка «Перейти к последним»
   box.stick = false;
+  box.userScrolled = true;
   syncJumpBar(box);
   row.scrollIntoView({ block: 'center' });
   row.classList.remove('msg-flash');
@@ -1188,7 +1194,8 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
   feed.rows = rows;
   feed.last = list.at(-1).id;
 
-  // Сверка: на месте остаётся всё, что не поменялось. Браузер сам держит экран при вставке выше него, кроме самого верха
+  // Сверка: на месте остаётся всё, что не поменялось. Читающему браузер сам держит экран при вставке выше него, кроме самого верха
+  box.style.overflowAnchor = keepScroll ? 'auto' : '';
   const atTop = keepScroll && box.scrollTop === 0;
   const height = box.scrollHeight;
   let at = box.firstChild;
@@ -1202,7 +1209,7 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
     at = next;
   }
   if (atTop) box.scrollTop = box.scrollHeight - height;
-  if (!keepScroll) stickToBottom(box);
+  if (!keepScroll) settleAtBottom(box);
   syncJumpBar(box);
   if (box.scrollTop < OLDER_ZONE_PX) box.older?.(); // экран не заполнен — листать нечего, догружаем сами
 }
@@ -1211,6 +1218,24 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
 const OLDER_ZONE_PX = 400;
 
 const nearBottom = (box) => box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+
+/** Открыли чат: доводим ленту вниз несколько раз, пока вёрстка «доезжает» (шрифты, картинки, большой экран). Человек начал листать — не трогаем */
+function settleAtBottom(box) {
+  box.openAt = Date.now();
+  box.userScrolled = false;
+  stickToBottom(box);
+  const settle = () => {
+    if (box.userScrolled) return;
+    if (box.stick || Date.now() - box.openAt < 1200) {
+      box.stick = true;
+      scrollDown(box);
+    }
+  };
+  requestAnimationFrame(settle);
+  setTimeout(settle, 120);
+  setTimeout(settle, 420);
+  setTimeout(settle, 900);
+}
 
 function stickToBottom(box) {
   box.stick = true;
@@ -1241,10 +1266,17 @@ function jumpBar(box) {
   // размер раньше «load»). Лента стоит там, куда её поставили мы, — человек не листал, решение не меняем
   box.addEventListener('scroll', () => {
     if (box.scrollTop === box.autoTop) return;
+    // Прокрутка не наша — значит человек листает сам, дожатие вниз прекращаем
+    box.userScrolled = true;
     box.stick = nearBottom(box);
+    box.style.overflowAnchor = box.stick ? '' : 'auto'; // читает историю — картинки выше экрана не должны двигать текст
     syncJumpBar(box);
     if (box.scrollTop < OLDER_ZONE_PX) box.older?.();
   });
+  // Колесо, тач и клавиши — тоже «человек листает»
+  for (const name of ['wheel', 'touchstart', 'touchmove', 'keydown']) {
+    box.addEventListener(name, () => (box.userScrolled = true), { passive: true });
+  }
   // Догрузилась картинка, видео или превью — если человек был внизу, держим его внизу
   const keepDown = () => box.stick && scrollDown(box);
   box.addEventListener('load', keepDown, true);
@@ -1740,10 +1772,39 @@ function renderColorPicker() {
     pickedBanner = color;
     renderColorPicker();
   });
+  // Навели на цвет баннера — показываем, как будет выглядеть карточка профиля
+  for (const swatch of $('banner-picker').querySelectorAll('.color')) {
+    swatch.addEventListener('mouseenter', () => showBannerPeek(swatch));
+    swatch.addEventListener('mouseleave', hideBannerPeek);
+  }
   colorChoices($('name-picker'), [null, ...COLORS], pickedName, (color) => {
     pickedName = color;
     renderColorPicker();
   });
+}
+
+function hideBannerPeek() {
+  $('banner-peek').classList.add('hidden');
+}
+
+/** Мини-карточка профиля с цветом баннера из наведённого кружка */
+function showBannerPeek(swatch) {
+  const peek = $('banner-peek');
+  const bannerColor = swatch.dataset.color || pickedColor; // «как у аватара» — цвет аватара
+  peek.querySelector('.pc-banner').style.setProperty('--banner', bannerColor);
+  const name = $('set-display').value.trim() || state.me.displayName;
+  const avatar = $('banner-peek-avatar');
+  avatar.textContent = name.trim().charAt(0).toUpperCase();
+  avatar.style.background = pickedColor;
+  $('banner-peek-name').textContent = name;
+  peek.classList.remove('hidden');
+  // Ставим карточку над кружком, а если места нет — под ним
+  const r = swatch.getBoundingClientRect();
+  const box = peek.getBoundingClientRect();
+  const left = Math.max(8, Math.min(r.left - 8, innerWidth - box.width - 8));
+  const top = r.top - box.height - 8 < 8 ? r.bottom + 8 : r.top - box.height - 8;
+  peek.style.left = `${left}px`;
+  peek.style.top = `${top}px`;
 }
 
 function renderIdentities() {
@@ -2425,6 +2486,33 @@ window.addEventListener('beforeunload', () => {
 
 // ---------- Запуск ----------
 
+// Возврат из сервиса входа в браузере: в адресе одноразовый код, токен в адрес не попадает
+async function completeWebOAuth() {
+  if (!isWeb) return false;
+  const params = new URLSearchParams(location.search);
+  const code = params.get('oauth_code');
+  const error = params.get('oauth_error');
+  if (!code && !error) return false;
+  history.replaceState(null, '', location.pathname);
+  if (error) {
+    $('auth-error').textContent = error;
+    return false;
+  }
+  Api.base = location.origin;
+  try {
+    const result = await Api.post('/oauth/web/exchange', { code });
+    if (result.ticket) {
+      showPendingSignup(result.ticket, 'yandex');
+      return false;
+    }
+    finishLogin(location.origin, result);
+    return true;
+  } catch (err) {
+    $('auth-error').textContent = err.message || 'Не удалось войти через сервис';
+    return false;
+  }
+}
+
 async function boot() {
   setAuthMode(false);
   applySpeaker();
@@ -2432,6 +2520,9 @@ async function boot() {
   $('server-url').value = DEFAULT_SERVER;
   $('server-url').onchange = () => loadProviders(normalizeServer($('server-url').value));
   loadProviders(isWeb ? location.origin : normalizeServer($('server-url').value));
+
+  // Вернулись из Яндекса — входим сразу, экран авторизации не показываем
+  if (await completeWebOAuth()) return;
 
   let session = store.get('session', null);
   // «Запомнить меня» снят на странице входа: сессия живёт только в этой вкладке

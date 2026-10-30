@@ -147,7 +147,7 @@ const withOnline = (row) => {
 /** Вход состоялся: новая сессия этого устройства */
 const enter = (req, user, extra) => ({ token: openSession(user.id, req.get('user-agent')), user: toSelf(user), ...extra });
 
-function createOAuthUser(req, provider, profile) {
+function newOAuthUser(provider, profile) {
   // Логин профиля — из почты, а если почту не дали (Яндекс без права на email) — из логина сервиса
   const username = makeUsername(profile.email || profile.login || '', provider);
   const user = users.create({
@@ -157,8 +157,10 @@ function createOAuthUser(req, provider, profile) {
     avatarColor: COLORS[crypto.randomInt(COLORS.length)],
   });
   identities.add(provider, profile.providerId, user.id, profile.email || '');
-  return enter(req, user, { created: true });
+  return user;
 }
+
+const createOAuthUser = (req, provider, profile) => enter(req, newOAuthUser(provider, profile), { created: true });
 
 const PKCE_RE = /^[A-Za-z0-9_-]{16,128}$/;
 
@@ -186,6 +188,23 @@ function userLimit(req, action, max, windowMs, message) {
   const entry = attempts.get(key);
   if (!entry || entry.reset < now) attempts.set(key, { count: 1, reset: now + windowMs });
   else if (++entry.count > max) throw new HttpError(429, message);
+}
+
+/** Отказ в загрузке: сначала дочитываем тело (с потолком), иначе приложение увидит обрыв связи вместо причины */
+function refuseUpload(req, error) {
+  return new Promise((_resolve, reject) => {
+    let read = 0;
+    const finish = () => reject(error);
+    req.on('data', (chunk) => {
+      read += chunk.length;
+      if (read > 2 * MAX_FILE_BYTES) {
+        req.destroy();
+        finish();
+      }
+    });
+    req.on('end', finish);
+    req.on('close', finish);
+  });
 }
 
 /** Вложения удалённого сообщения больше не нужны: файл с диска и запись о загрузке */
@@ -549,6 +568,79 @@ export function createApi() {
 
   api.get('/oauth/providers', (_req, res) => res.json(enabledProviders()));
 
+  // Вход через сервис в браузере: сервер сам принимает ответ сервиса и возвращает на страницу с одноразовым кодом.
+  // В приложении код принимает localhost:47615, а в браузере принять его некому — ведём через сервер.
+  // Токен в адрес не кладём: адреса оседают в истории браузера и журналах.
+  const WEB_FLOW_TTL = 10 * 60_000;
+  const WEB_CODE_TTL = 60_000;
+  const STATE_COOKIE = 'sozvon_oauth';
+  const webFlows = new Map(); // state -> { provider, verifier, expires }
+  const webCodes = new Map(); // код на странице -> { userId } или { ticket }, и expires
+  const publicBase = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+  const forgetExpired = (map) => {
+    for (const [key, entry] of map) if (entry.expires < Date.now()) map.delete(key);
+  };
+
+  api.get('/oauth/:provider/web', (req, res) => {
+    try {
+      rateLimit(req, 'oauth');
+      const provider = req.params.provider;
+      const state = crypto.randomBytes(16).toString('base64url');
+      const verifier = crypto.randomBytes(48).toString('base64url');
+      const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+      const url = buildAuthUrl(provider, state, challenge, `${publicBase(req)}/api/oauth/${provider}/callback`);
+      forgetExpired(webFlows);
+      webFlows.set(state, { provider, verifier, expires: Date.now() + WEB_FLOW_TTL });
+      // Вернуться может только тот браузер, что начал вход: иначе по чужой ссылке человек окажется в чужом профиле
+      const secure = req.protocol === 'https' ? '; Secure' : '';
+      res.set('Set-Cookie', `${STATE_COOKIE}=${state}; Path=/api/oauth; Max-Age=600; HttpOnly; SameSite=Lax${secure}`);
+      res.redirect(url);
+    } catch (err) {
+      res.redirect(`/?oauth_error=${encodeURIComponent(err.message || 'Вход через сервис недоступен')}`);
+    }
+  });
+
+  api.get('/oauth/:provider/callback', async (req, res) => {
+    const back = (params) => res.redirect(`/?${new URLSearchParams(params)}`);
+    const pass = (entry) => {
+      const code = crypto.randomBytes(24).toString('base64url');
+      forgetExpired(webCodes);
+      webCodes.set(code, { ...entry, expires: Date.now() + WEB_CODE_TTL });
+      back({ oauth_code: code });
+    };
+    const state = String(req.query.state || '');
+    const flow = webFlows.get(state);
+    webFlows.delete(state);
+    const sameBrowser = (req.get('cookie') || '').split(/;\s*/).includes(`${STATE_COOKIE}=${state}`);
+    res.set('Set-Cookie', `${STATE_COOKIE}=; Path=/api/oauth; Max-Age=0; HttpOnly; SameSite=Lax`);
+    if (req.query.error || !flow || flow.expires < Date.now() || !sameBrowser)
+      return back({ oauth_error: 'Вход отменён или устарел. Попробуйте ещё раз' });
+    try {
+      const profile = await fetchProfile(flow.provider, { code: String(req.query.code || ''), codeVerifier: flow.verifier });
+      const existing = identities.find(flow.provider, profile.providerId);
+      if (existing) return pass({ userId: existing.user_id });
+      // Без кода приглашения профиль не создаём — вернём пропуск, приложение попросит код
+      if (config.inviteCode) return pass({ ticket: signTicket({ provider: flow.provider, ...profile }) });
+      return pass({ userId: newOAuthUser(flow.provider, profile).id });
+    } catch (err) {
+      return back({ oauth_error: err.message || 'Не удалось войти через сервис' });
+    }
+  });
+
+  // Страница меняет код из адреса на обычный вход: сессия видна в «Устройствах»
+  api.post(
+    '/oauth/web/exchange',
+    handle((req) => {
+      rateLimit(req, 'oauth');
+      const code = str(req.body.code);
+      const entry = webCodes.get(code);
+      webCodes.delete(code);
+      if (!entry || entry.expires < Date.now()) throw new HttpError(400, 'Вход устарел. Попробуйте ещё раз');
+      if (entry.ticket) return { ticket: entry.ticket };
+      return enter(req, users.byId(entry.userId));
+    })
+  );
+
   api.get(
     '/oauth/:provider/url',
     handle((req) => {
@@ -638,8 +730,8 @@ export function createApi() {
       const declared = Number(req.get('content-length')) || 0;
       const left = config.storageQuotaBytes - uploads.usedBy(req.user.id);
       res.set('Connection', 'close'); // отказали на середине — остаток не читаем
-      if (declared > MAX_FILE_BYTES) throw tooBig;
-      if (declared > left) throw new HttpError(413, 'Закончилось место для ваших файлов. Удалите старые сообщения с вложениями');
+      if (declared > MAX_FILE_BYTES) return refuseUpload(req, tooBig);
+      if (declared > left) return refuseUpload(req, new HttpError(413, 'Закончилось место для ваших файлов. Удалите старые сообщения с вложениями'));
 
       // Файл идёт сразу на диск: целиком в памяти несколько загрузок съели бы память сервера
       const id = crypto.randomBytes(16).toString('hex');
