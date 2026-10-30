@@ -15,6 +15,7 @@ import {
   identities,
   messages,
   pins,
+  readState,
   reactions,
   relatedUserIds,
   roles,
@@ -887,6 +888,24 @@ export function createApi() {
       hub.send(peerId, { ...event, peerId: me, reactions: reactions.of('dm', row.id, peerId) });
       hub.send(me, { ...event, peerId, reactions: list });
       return list;
+    })
+  );
+
+  // ---------- Что прочитано ----------
+
+  api.get('/unread', handle((req) => readState.unread(req.user.id)));
+
+  // Прочитал переписку до конца. Остальные устройства человека снимают отметку
+  api.post(
+    '/read',
+    handle((req) => {
+      const [, kind, id] = /^(dm|room):(\d+)$/.exec(str(req.body.conv)) || [];
+      if (!kind) throw new HttpError(400, 'Неверная переписка');
+      if (kind === 'room' && !rooms.isMember(Number(id), req.user.id)) throw new HttpError(404, 'Комната не найдена');
+      if (kind === 'dm') readState.readDm(req.user.id, Number(id));
+      else readState.readRoom(req.user.id, Number(id));
+      hub.send(req.user.id, { type: 'read', conv: req.body.conv });
+      return { ok: true };
     })
   );
 
