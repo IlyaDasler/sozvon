@@ -76,9 +76,17 @@ class ServerSocket {
     this.closed = false;
   }
 
-  connect() {
+  async connect() {
     this.closed = false;
-    const url = `${Api.base.replace(/^http/, 'ws')}/ws?token=${encodeURIComponent(Api.token)}`;
+    // Билет вместо токена: адрес соединения может осесть в журналах, а билет живёт полминуты и один раз
+    let ticket;
+    try {
+      ({ ticket } = await Api.post('/ws-ticket'));
+    } catch (err) {
+      return err.status === 401 ? this.onUnauthorized() : this.retryLater();
+    }
+    if (this.closed) return;
+    const url = `${Api.base.replace(/^http/, 'ws')}/ws?ticket=${encodeURIComponent(ticket)}`;
     const ws = (this.ws = new WebSocket(url));
 
     ws.onopen = () => {
@@ -102,9 +110,13 @@ class ServerSocket {
       } catch (err) {
         if (err.status === 401) return this.onUnauthorized();
       }
-      const delay = Math.min(1000 * 2 ** this.retry++, 15000);
-      setTimeout(() => !this.closed && this.connect(), delay);
+      this.retryLater();
     };
+  }
+
+  retryLater() {
+    const delay = Math.min(1000 * 2 ** this.retry++, 15000);
+    setTimeout(() => !this.closed && this.connect(), delay);
   }
 
   send(message) {

@@ -1969,6 +1969,7 @@ function showSettingsTab(tab) {
   for (const b of document.querySelectorAll('#set-nav [data-tab]')) b.classList.toggle('active', b.dataset.tab === current);
   for (const p of document.querySelectorAll('#settings .set-pane')) p.classList.toggle('hidden', p.dataset.pane !== current);
   $('settings').querySelector('.set-body').scrollTop = 0;
+  if (current === 'account') renderDevices();
 }
 
 for (const b of document.querySelectorAll('#set-nav [data-tab]')) b.onclick = () => showSettingsTab(b.dataset.tab);
@@ -2180,7 +2181,9 @@ $('settings-form').onsubmit = async (e) => {
 
   try {
     if (Object.keys(body).length) {
-      state.me = await Api.patch('/me', body);
+      const { token, ...me } = await Api.patch('/me', body);
+      rememberToken(token);
+      state.me = me;
       renderMe();
       renderMessages();
       renderVoice();

@@ -1,11 +1,11 @@
 import crypto from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { unsupportedClient } from './client-version.js';
-import { verifyToken } from './auth.js';
 import { contacts, rooms, toPublicUser, users } from './db.js';
 import { hub } from './hub.js';
 import { PERMS, has } from './perms.js';
 import { broadcastPresence, setAutoIdle, userGone } from './presence.js';
+import { redeemTicket, sessionOf } from './sessions.js';
 import { MAX_VOICE_PARTICIPANTS, voice } from './voice.js';
 import { joinGrant, mediaFor } from './livekit.js';
 
@@ -257,12 +257,17 @@ export function attachSignaling(server) {
       socket.write('HTTP/1.1 426 Upgrade Required\r\n\r\n');
       return socket.destroy();
     }
-    const user = users.byId(verifyToken(url.searchParams.get('token')) ?? -1);
-    if (!user) {
+    // Билет; токен в адресе — приложения версий до 2.7
+    const ticket = url.searchParams.get('ticket');
+    const session = ticket ? redeemTicket(ticket) : sessionOf(url.searchParams.get('token'));
+    if (!session) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       return socket.destroy();
     }
-    wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws, user));
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      ws.sid = session.sid;
+      onConnection(ws, session.user);
+    });
   });
 
   // Пинг раз в 30 секунд, чтобы вовремя замечать оборванные соединения

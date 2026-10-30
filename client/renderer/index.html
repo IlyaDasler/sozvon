@@ -538,6 +538,11 @@
                 <span class="hint-text" id="link-hint"></span>
               </div>
             </div>
+            <div class="set-block" id="devices-section">
+              <h4>Устройства</h4>
+              <div id="device-list" class="identity-list"></div>
+              <button type="button" class="btn danger-outline hidden" id="devices-revoke">Выйти на всех других устройствах</button>
+            </div>
             <div class="set-block" id="e2ee-section">
               <h4>Сквозное шифрование</h4>
               <span class="hint-text">Личные сообщения и переписка в комнатах шифруются на устройстве: сервер хранит только шифр. Ключ лежит только на ваших устройствах.</span>
@@ -937,6 +942,7 @@
   <script src="gifs.js"></script>
   <script src="chat-theme.js"></script>
   <script src="history.js"></script>
+  <script src="devices.js"></script>
   <script src="chat-content.js"></script>
   <script src="e2ee-crypto.js"></script>
   <script src="e2ee.js"></script>

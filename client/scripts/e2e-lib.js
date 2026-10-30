@@ -42,7 +42,7 @@ async function register(name, displayName) {
   // E2E_INVITE — код приглашения, если сервер его требует
   return api('POST', '/register', {
     username: `e2e_${name}_${suffix}`,
-    password: 'test123',
+    password: 'test-pass-1',
     displayName,
     inviteCode: process.env.E2E_INVITE,
   });
