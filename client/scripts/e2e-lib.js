@@ -5,6 +5,7 @@ const path = require('node:path');
 const { applyPermissions } = require('../permissions');
 const { fetchPreview } = require('../link-preview');
 const { registerNativeScreen } = require('../screen-native');
+const { registerVault } = require('../vault');
 const { applyChromiumFlags } = require('../chromium-flags');
 
 applyChromiumFlags(app);
@@ -77,6 +78,7 @@ ipcMain.handle('screen:sources', async () => {
     }));
 });
 registerNativeScreen(() => screenChoice);
+registerVault();
 ipcMain.handle('screen:choose', (_e, id) => {
   screenChoice = screenSources.get(id) || null;
   return Boolean(screenChoice);
