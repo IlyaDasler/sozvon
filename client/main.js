@@ -10,6 +10,7 @@ const { fetchPreview } = require('./link-preview');
 const { restoreBounds, readState, trackWindow } = require('./window-state');
 const { runStartup, CHECK_TIMEOUT_MS } = require('./startup');
 const { registerNativeScreen } = require('./screen-native');
+const { registerVault } = require('./vault');
 const { applyChromiumFlags } = require('./chromium-flags');
 const { UPDATE_EVERY_MS, checkDue } = require('./update-schedule');
 
@@ -370,6 +371,8 @@ ipcMain.on('focus', showWindow);
 ipcMain.handle('clipboard:write', (_event, text) => clipboard.writeText(String(text)));
 // Превью ссылки для зашифрованного сообщения — страницу грузит приложение отправителя, а не сервер
 ipcMain.handle('preview:fetch', (_event, url) => fetchPreview(String(url)));
+registerVault();
+
 const EDIT_COMMANDS = new Set(['cut', 'copy', 'paste', 'selectAll']);
 ipcMain.on('edit', (event, command) => {
   if (EDIT_COMMANDS.has(command)) event.sender[command]();
