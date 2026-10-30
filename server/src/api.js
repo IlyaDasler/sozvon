@@ -40,6 +40,7 @@ import { STATUSES, broadcastPresence, presenceOf } from './presence.js';
 import { PERMS, cleanPerms, has } from './perms.js';
 import { buildAuthUrl, enabledProviders, fetchProfile } from './oauth.js';
 import { registerTurnUser } from './turn.js';
+import { matchCode, newRecoveryCodes, newSecret, otpauthUri, spendRecoveryCode } from './totp.js';
 import { voice } from './voice.js';
 
 const USERNAME_RE = /^[a-z0-9_.]{3,24}$/;
@@ -58,8 +59,8 @@ class HttpError extends Error {
 const str = (v) => (typeof v === 'string' ? v.trim() : '');
 
 function validatePassword(password) {
-  if (typeof password !== 'string' || password.length < 6 || password.length > 128)
-    throw new HttpError(400, 'Пароль должен быть от 6 до 128 символов');
+  if (typeof password !== 'string' || password.length < 8 || password.length > 128)
+    throw new HttpError(400, 'Пароль должен быть от 8 до 128 символов');
 }
 
 // Один ящик — один адрес (у Яндекса много доменов, см. email-address.js)
@@ -85,21 +86,55 @@ function validateDisplayName(name) {
   if (name.length < 1 || name.length > 32) throw new HttpError(400, 'Имя должно быть от 1 до 32 символов');
 }
 
-// Простая защита от перебора паролей: не больше 10 попыток входа в минуту с одного адреса
+// Защита от перебора: не больше 10 попыток в минуту с одного адреса, отдельно на каждое действие —
+// иначе друзья за одним адресом провайдера мешают друг другу войти и зарегистрироваться
 const attempts = new Map();
-function rateLimit(req) {
+function rateLimit(req, action) {
   const now = Date.now();
-  const entry = attempts.get(req.ip);
+  const key = `${action}:${req.ip}`;
+  const entry = attempts.get(key);
   if (!entry || entry.reset < now) {
-    attempts.set(req.ip, { count: 1, reset: now + 60_000 });
+    attempts.set(key, { count: 1, reset: now + 60_000 });
     return;
   }
   if (++entry.count > config.authRateLimit) throw new HttpError(429, 'Слишком много попыток, подождите минуту');
 }
+
+// Перебор одного аккаунта с разных адресов: после 10 ошибок вход в него закрыт на 15 минут
+const MAX_LOGIN_FAILS = 10;
+const LOCK_MS = 15 * 60_000;
+const loginFails = new Map(); // id профиля -> { count, reset }
+
+function requireNotLocked(user) {
+  const entry = user && loginFails.get(user.id);
+  if (entry && entry.reset > Date.now() && entry.count >= MAX_LOGIN_FAILS)
+    throw new HttpError(429, 'Слишком много неудачных попыток. Попробуйте через 15 минут или восстановите пароль');
+}
+
+function noteLoginFail(user) {
+  if (!user) return;
+  const now = Date.now();
+  const entry = loginFails.get(user.id);
+  if (!entry || entry.reset < now) loginFails.set(user.id, { count: 1, reset: now + LOCK_MS });
+  else entry.count++;
+}
+
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, entry] of attempts) if (entry.reset < now) attempts.delete(ip);
+  for (const map of [attempts, loginFails]) for (const [key, entry] of map) if (entry.reset < now) map.delete(key);
 }, 60_000).unref();
+
+/** Второй фактор: код из приложения или резервный (тратится). Код действует один раз */
+function passSecondFactor(user, code) {
+  const step = /^\d{6}$/.test(code) ? matchCode(user.totp_secret, code, user.totp_last_step) : null;
+  if (step !== null) {
+    users.setTotpStep(user.id, step);
+    return true;
+  }
+  const left = spendRecoveryCode(JSON.parse(user.totp_recovery || '[]'), code);
+  if (left) users.setTotpRecovery(user.id, left);
+  return Boolean(left);
+}
 
 // Как человека видят другие: статус (online, idle, dnd, offline) и online — для версий до 1.7.3
 const withOnline = (row) => {
@@ -363,7 +398,7 @@ export function createApi() {
   api.post(
     '/register/code',
     handle(async (req) => {
-      rateLimit(req);
+      rateLimit(req, 'code');
       requireMail();
       checkInvite(req.body.inviteCode);
       const email = normEmail(req.body.email);
@@ -378,7 +413,7 @@ export function createApi() {
   api.post(
     '/password/code',
     handle(async (req) => {
-      rateLimit(req);
+      rateLimit(req, 'code');
       requireMail();
       const email = normEmail(req.body.email);
       validateEmail(email);
@@ -390,7 +425,7 @@ export function createApi() {
   api.post(
     '/password/reset',
     handle(async (req) => {
-      rateLimit(req);
+      rateLimit(req, 'reset');
       const email = normEmail(req.body.email);
       validateEmail(email);
       validatePassword(req.body.password);
@@ -399,6 +434,9 @@ export function createApi() {
       requireCode('reset', email, req.body.code);
       users.updatePassword(user.id, await hashPassword(req.body.password));
       closeOtherSessions(user.id); // забыл пароль — возможно, не сам: отключаем всех
+      loginFails.delete(user.id);
+      // Письмо не заменяет второй фактор: дальше обычный вход с кодом
+      if (user.totp_secret) return { ok: true, needLogin: true };
       return enter(req, users.byId(user.id));
     })
   );
@@ -426,7 +464,7 @@ export function createApi() {
   api.post(
     '/register',
     handle(async (req) => {
-      rateLimit(req);
+      rateLimit(req, 'register');
       checkInvite(req.body.inviteCode);
       if (req.body.email !== undefined) return registerByEmail(req);
       const username = str(req.body.username).toLowerCase();
@@ -450,12 +488,29 @@ export function createApi() {
   api.post(
     '/login',
     handle(async (req) => {
-      rateLimit(req);
+      rateLimit(req, 'login');
       // Войти можно и по почте, и по логину
       const login = str(req.body.username).toLowerCase();
       const user = login.includes('@') ? users.byEmail(normEmail(login)) : users.byUsername(login);
+      requireNotLocked(user);
       const password = typeof req.body.password === 'string' ? req.body.password : '';
-      if (!(await verifyPassword(password, user?.password_hash)) || !user) throw new HttpError(401, 'Неверная почта, логин или пароль');
+      if (!(await verifyPassword(password, user?.password_hash)) || !user) {
+        noteLoginFail(user);
+        throw new HttpError(401, 'Неверная почта, логин или пароль');
+      }
+      if (user.totp_secret) {
+        const code = str(req.body.totpCode);
+        if (!code) {
+          const err = new HttpError(403, 'Введите код из приложения-аутентификатора');
+          err.extra = { needTotp: true };
+          throw err;
+        }
+        if (!passSecondFactor(user, code)) {
+          noteLoginFail(user);
+          throw new HttpError(401, 'Неверный код');
+        }
+      }
+      loginFails.delete(user.id);
       return enter(req, user);
     })
   );
@@ -496,7 +551,7 @@ export function createApi() {
   api.post(
     '/oauth/:provider',
     handle(async (req) => {
-      rateLimit(req);
+      rateLimit(req, 'oauth');
       const provider = req.params.provider;
       const { code, codeVerifier, mode } = req.body;
       if (typeof code !== 'string' || !code || !PKCE_RE.test(str(codeVerifier)))
@@ -537,7 +592,7 @@ export function createApi() {
   api.post(
     '/signup/complete',
     handle((req) => {
-      rateLimit(req);
+      rateLimit(req, 'oauth');
       checkInvite(req.body.inviteCode);
       const ticket = verifyTicket(req.body.ticket);
       if (!ticket) throw new HttpError(400, 'Время на регистрацию истекло. Войдите через сервис ещё раз');
@@ -606,6 +661,48 @@ export function createApi() {
     })
   );
 
+  // ---------- Двухфакторный вход ----------
+
+  async function requirePassword(req) {
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    if (req.user.password_hash && !(await verifyPassword(password, req.user.password_hash))) throw new HttpError(400, 'Пароль указан неверно');
+  }
+
+  // Секрет для приложения-аутентификатора. Заработает, когда человек подтвердит его кодом
+  api.post(
+    '/me/2fa/setup',
+    handle(async (req) => {
+      if (req.user.totp_secret) throw new HttpError(409, 'Двухфакторный вход уже включён');
+      await requirePassword(req);
+      const secret = newSecret();
+      users.setTotpPending(req.user.id, secret);
+      return { secret, uri: otpauthUri(secret, req.user.username) };
+    })
+  );
+
+  api.post(
+    '/me/2fa/enable',
+    handle((req) => {
+      const secret = req.user.totp_pending;
+      const step = secret ? matchCode(secret, str(req.body.code), 0) : null;
+      if (step === null) throw new HttpError(400, 'Неверный код. Проверьте время на телефоне и попробуйте ещё раз');
+      const { codes, hashes } = newRecoveryCodes();
+      users.enableTotp(req.user.id, step, hashes);
+      closeOtherSessions(req.user.id, req.sid); // с этого момента вход только с кодом
+      return { recoveryCodes: codes, user: toSelf(users.byId(req.user.id)) };
+    })
+  );
+
+  api.post(
+    '/me/2fa/disable',
+    handle((req) => {
+      if (!req.user.totp_secret) return toSelf(req.user);
+      if (!passSecondFactor(req.user, str(req.body.code))) throw new HttpError(400, 'Неверный код');
+      users.disableTotp(req.user.id);
+      return toSelf(users.byId(req.user.id));
+    })
+  );
+
   // Билет на соединение WebSocket: токен не попадает в адрес
   api.post('/ws-ticket', handle((req) => ({ ticket: issueTicket({ user: req.user, sid: req.sid }) })));
 
@@ -651,7 +748,7 @@ export function createApi() {
   api.post(
     '/me/email/code',
     handle(async (req) => {
-      rateLimit(req);
+      rateLimit(req, 'code');
       requireMail();
       const email = normEmail(req.body.email);
       validateEmail(email);
@@ -665,7 +762,7 @@ export function createApi() {
   api.put(
     '/me/email',
     handle((req) => {
-      rateLimit(req);
+      rateLimit(req, 'code');
       const email = normEmail(req.body.email);
       validateEmail(email);
       const owner = users.byEmail(email);

@@ -50,7 +50,7 @@ test('регистрация по почте с кодом, вход по поч
 
   // Без кода и с плохим адресом не регистрирует
   assert.equal((await api('POST', '/register/code', { email: 'не почта' })).status, 400);
-  assert.equal((await api('POST', '/register', { email: 'anna@mail.ru', password: 'secret1', displayName: 'Аня' })).status, 400);
+  assert.equal((await api('POST', '/register', { email: 'anna@mail.ru', password: 'secret11', displayName: 'Аня' })).status, 400);
 
   assert.equal((await api('POST', '/register/code', { email: ' Anna@Mail.ru ' })).status, 200);
   const code = lastCode('anna@mail.ru', 'register');
@@ -59,20 +59,20 @@ test('регистрация по почте с кодом, вход по поч
   assert.equal((await api('POST', '/register/code', { email: 'anna@mail.ru' })).status, 429);
 
   const wrong = code === '000000' ? '111111' : '000000';
-  assert.equal((await api('POST', '/register', { email: 'anna@mail.ru', password: 'secret1', code: wrong })).status, 400);
-  const reg = await api('POST', '/register', { email: 'ANNA@mail.ru', password: 'secret1', displayName: 'Аня', code });
+  assert.equal((await api('POST', '/register', { email: 'anna@mail.ru', password: 'secret11', code: wrong })).status, 400);
+  const reg = await api('POST', '/register', { email: 'ANNA@mail.ru', password: 'secret11', displayName: 'Аня', code });
   assert.equal(reg.status, 200);
   assert.equal(reg.body.created, true);
   assert.equal(reg.body.user.email, 'anna@mail.ru');
   assert.equal(reg.body.user.username, 'anna');
   assert.equal(reg.body.user.displayName, 'Аня');
   // Код одноразовый, почта занята
-  assert.equal((await api('POST', '/register', { email: 'anna@mail.ru', password: 'secret1', code })).status, 409);
+  assert.equal((await api('POST', '/register', { email: 'anna@mail.ru', password: 'secret11', code })).status, 409);
   assert.equal((await api('POST', '/register/code', { email: 'anna@mail.ru' })).status, 409);
 
   // Вход по почте (в любом регистре) и по логину
-  assert.equal((await api('POST', '/login', { username: 'Anna@Mail.RU', password: 'secret1' })).status, 200);
-  assert.equal((await api('POST', '/login', { username: 'anna', password: 'secret1' })).status, 200);
+  assert.equal((await api('POST', '/login', { username: 'Anna@Mail.RU', password: 'secret11' })).status, 200);
+  assert.equal((await api('POST', '/login', { username: 'anna', password: 'secret11' })).status, 200);
   assert.equal((await api('POST', '/login', { username: 'anna@mail.ru', password: 'wrong12' })).status, 401);
 
   // Сброс пароля: на чужую почту письмо не уходит, но и ошибки нет — чтобы нельзя было проверять, кто зарегистрирован
@@ -85,11 +85,11 @@ test('регистрация по почте с кодом, вход по поч
   const done = await api('POST', '/password/reset', { email: 'anna@mail.ru', code: reset, password: 'newpass1' });
   assert.equal(done.status, 200);
   assert.ok(done.body.token);
-  assert.equal((await api('POST', '/login', { username: 'anna@mail.ru', password: 'secret1' })).status, 401);
+  assert.equal((await api('POST', '/login', { username: 'anna@mail.ru', password: 'secret11' })).status, 401);
   assert.equal((await api('POST', '/login', { username: 'anna@mail.ru', password: 'newpass1' })).status, 200);
 
   // Старые версии приложения регистрируются по логину, как раньше
-  const legacy = await api('POST', '/register', { username: 'old_client', password: 'secret1', displayName: 'Старый' });
+  const legacy = await api('POST', '/register', { username: 'old_client', password: 'secret11', displayName: 'Старый' });
   assert.equal(legacy.status, 200);
   assert.equal(legacy.body.user.email, null);
 
@@ -102,21 +102,21 @@ test('регистрация по почте с кодом, вход по поч
   const linked = await api('PUT', '/me/email', { email: 'old@mail.ru', code: linkCode }, tok);
   assert.equal(linked.status, 200);
   assert.equal(linked.body.email, 'old@mail.ru');
-  assert.equal((await api('POST', '/login', { username: 'old@mail.ru', password: 'secret1' })).status, 200);
+  assert.equal((await api('POST', '/login', { username: 'old@mail.ru', password: 'secret11' })).status, 200);
   // Отвязали — по почте больше не войти, по логину можно
   assert.equal((await api('DELETE', '/me/email', null, tok)).body.email, null);
-  assert.equal((await api('POST', '/login', { username: 'old@mail.ru', password: 'secret1' })).status, 401);
-  assert.equal((await api('POST', '/login', { username: 'old_client', password: 'secret1' })).status, 200);
+  assert.equal((await api('POST', '/login', { username: 'old@mail.ru', password: 'secret11' })).status, 401);
+  assert.equal((await api('POST', '/login', { username: 'old_client', password: 'secret11' })).status, 200);
 });
 
 test('почта Яндекса: регистрация на ya.ru, вход по любому адресу того же ящика, второй профиль не завести', async () => {
   assert.equal((await api('POST', '/register/code', { email: 'Petr.Sidorov@ya.ru' })).status, 200);
   const code = lastCode('petr-sidorov@yandex.ru', 'register');
   assert.match(code, /^\d{6}$/, 'код уходит на основной адрес ящика');
-  const reg = await api('POST', '/register', { email: 'petr.sidorov@ya.ru', password: 'secret1', displayName: 'Петя', code });
+  const reg = await api('POST', '/register', { email: 'petr.sidorov@ya.ru', password: 'secret11', displayName: 'Петя', code });
   assert.equal(reg.status, 200);
   assert.equal(reg.body.user.email, 'petr.sidorov@ya.ru', 'в профиле — адрес, как его ввели, а не служебный вид');
   for (const login of ['petr.sidorov@yandex.com', 'Petr-Sidorov@yandex.ru', 'petr.sidorov@narod.ru'])
-    assert.equal((await api('POST', '/login', { username: login, password: 'secret1' })).status, 200, login);
+    assert.equal((await api('POST', '/login', { username: login, password: 'secret11' })).status, 200, login);
   assert.equal((await api('POST', '/register/code', { email: 'petr-sidorov@yandex.by' })).status, 409);
 });
