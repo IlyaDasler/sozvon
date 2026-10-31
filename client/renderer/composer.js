@@ -512,7 +512,7 @@ function buildEmojiPopover() {
     const group = name === 'Недавние' ? store.get('recentEmoji', []) : EMOJI_GROUPS.find(([n]) => n === name)[1].split(' ');
     grid.replaceChildren();
     for (const t of tabs.children) t.classList.toggle('active', t.dataset.group === name);
-    if (!group.length) grid.append(Object.assign(document.createElement('p'), { className: 'muted small', textContent: 'Здесь появятся смайлики, которые вы отправляете чаще всего' }));
+    if (!group.length) grid.append(Object.assign(document.createElement('p'), { className: 'muted small emoji-empty', textContent: 'Отправьте смайлик — и он появится здесь' }));
     for (const emoji of group) {
       const b = document.createElement('button');
       b.type = 'button';
