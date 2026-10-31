@@ -339,12 +339,22 @@ class Composer {
     if (url === this.preview?.url) return;
     this.preview = url ? { url, data: undefined } : null;
     this.renderPreview();
-    if (!url) return;
-    // Превью делает само приложение: сервер не должен знать, какими ссылками делятся в зашифрованной переписке
-    const data = await (window.desktop?.preview?.(url) ?? Promise.resolve(null)).catch(() => null);
-    if (this.preview?.url !== url) return; // пока грузили, ссылка поменялась
-    this.preview.data = data;
-    this.renderPreview();
+    if (!url) {
+      this.previewPending = null;
+      return;
+    }
+    // Превью делает само приложение: сервер не должен знать, какими ссылками делятся в зашифрованной переписке.
+    // В браузере своего моста нет — превью приносит сервер (он и так обслуживает эту страницу)
+    const fetchPreview = window.desktop?.preview
+      ? (u) => window.desktop.preview(u)
+      : (u) => Api.get(`/link-preview?url=${encodeURIComponent(u)}`);
+    this.previewPending = (async () => {
+      const data = await fetchPreview(url).catch(() => null);
+      if (this.preview?.url !== url) return; // пока грузили, ссылка поменялась
+      this.preview.data = data;
+      this.renderPreview();
+    })();
+    await this.previewPending;
   }
 
   renderPreview() {
@@ -376,6 +386,11 @@ class Composer {
     const ready = this.files.filter((f) => f.attachment);
     const editing = Boolean(editDraft && composerOf(editDraft.chat) === this);
     if (!text && !ready.length && !editing) return;
+    // В тексте есть ссылка, а превью ещё грузится — подождём немного, чтобы сообщение ушло с карточкой
+    const linkNow = !editing ? findLinks(text)[0] : null;
+    if (linkNow && !this.preview?.data && this.preview?.url === linkNow && this.previewPending) {
+      await Promise.race([this.previewPending, new Promise((r) => setTimeout(r, 2500))]);
+    }
     const payload = { text, files: ready.map((f) => f.attachment), preview: null };
     if (this.preview?.data && text.includes(this.preview.url.replace(/^https:\/\/(?=www\.)/, ''))) payload.preview = this.preview.data;
     this.sendBtn.disabled = true;

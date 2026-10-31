@@ -1166,6 +1166,20 @@ kbd {
 .link-card-title { color: var(--link); font-weight: 600; }
 .link-card-desc { color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .link-card-image { width: 80px; height: 80px; flex: none; object-fit: cover; border-radius: 4px; }
+/* Ролик YouTube: обложка с кнопкой, по щелчку — плеер прямо в ленте */
+.yt-card { flex-direction: column; align-items: stretch; padding: 0; overflow: hidden; max-width: 560px; }
+.yt-thumb {
+  position: relative; width: 100%; aspect-ratio: 16 / 9; border: 0; padding: 0; cursor: pointer;
+  background: var(--bg-3) center / cover no-repeat; display: grid; place-items: center;
+}
+.yt-play {
+  display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%;
+  background: rgba(0, 0, 0, .55); color: #fff; transition: transform var(--fast) var(--ease), background var(--fast);
+}
+.yt-play svg { width: 26px; height: 26px; fill: currentColor; }
+.yt-thumb:hover .yt-play { background: #f00; transform: scale(1.08); }
+.yt-card .link-card-text { padding: 10px 12px 12px; }
+.yt-frame { width: 100%; aspect-ratio: 16 / 9; border: 0; display: block; background: #000; }
 
 .image-viewer { position: fixed; inset: 0; z-index: 35; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; background: rgba(0, 0, 0, .85); cursor: zoom-out; }
 .image-viewer img { max-width: 100%; max-height: calc(100% - 40px); object-fit: contain; border-radius: 4px; }
@@ -1733,3 +1747,5 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+.yt-open { display: inline-block; padding: 8px 12px 10px; color: var(--muted); }

@@ -141,8 +141,90 @@ function messageContent(m) {
       box.append(fileCard(a));
     }
   }
-  if (m.preview) box.append(linkCard(m.preview));
+  if (m.preview) {
+    const yt = youtubeId(m.preview.url);
+    box.append(yt ? youtubeCard(yt, m.preview) : linkCard(m.preview));
+  } else {
+    // Превью нет (ссылку прислали без карточки) — но ролик YouTube всё равно покажем плеером
+    const link = findLinks(m.text || '')[0];
+    const yt = youtubeId(link);
+    if (yt) box.append(youtubeCard(yt, { url: link }));
+  }
   return box;
+}
+
+/** id ролика YouTube из ссылки (watch, youtu.be, shorts, embed, live) */
+function youtubeId(url) {
+  if (!url) return null;
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase().replace(/^www\.|^m\./, '');
+  if (host === 'youtu.be') return u.pathname.slice(1).split('/')[0] || null;
+  if (host !== 'youtube.com' && host !== 'music.youtube.com') return null;
+  if (u.pathname === '/watch') return u.searchParams.get('v');
+  const m = /^\/(?:shorts|embed|live|v)\/([\w-]{6,})/.exec(u.pathname);
+  return m ? m[1] : null;
+}
+
+/** Карточка ролика: обложка с кнопкой, по щелчку — встроенный плеер, никуда не уходя из чата */
+function youtubeCard(id, p) {
+  const card = document.createElement('div');
+  card.className = 'link-card yt-card';
+  const thumb = document.createElement('button');
+  thumb.type = 'button';
+  thumb.className = 'yt-thumb';
+  thumb.style.backgroundImage = `url("https://i.ytimg.com/vi/${id}/hqdefault.jpg")`;
+  thumb.title = 'Смотреть в чате';
+  thumb.innerHTML = '<span class="yt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>';
+  const text = document.createElement('div');
+  text.className = 'link-card-text';
+  const site = document.createElement('div');
+  site.className = 'link-card-site small';
+  site.textContent = 'YouTube';
+  const title = document.createElement('a');
+  title.className = 'link-card-title';
+  title.href = p.url || `https://www.youtube.com/watch?v=${id}`;
+  title.target = '_blank';
+  title.rel = 'noopener noreferrer';
+  title.textContent = p.title || 'Смотреть ролик';
+  // YouTube не отдаёт превью серверу — название ролика берём у oEmbed, если его ещё нет
+  if (!p.title) {
+    fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(title.href)}&format=json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.title && title.textContent === 'Смотреть ролик') title.textContent = d.title;
+      })
+      .catch(() => {});
+  }
+  text.append(site, title);
+  if (p.description) {
+    const d = document.createElement('div');
+    d.className = 'link-card-desc small';
+    d.textContent = p.description;
+    text.append(d);
+  }
+  card.append(thumb, text);
+  thumb.onclick = () => {
+    const frame = document.createElement('iframe');
+    frame.className = 'yt-frame';
+    frame.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
+    frame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
+    frame.allowFullscreen = true;
+    frame.title = p.title || 'Видео YouTube';
+    // Если встроенный плеер не поднимется (сеть, ограничения) — ссылка на ролик останется под ним
+    const open = document.createElement('a');
+    open.className = 'yt-open small';
+    open.href = p.url || `https://www.youtube.com/watch?v=${id}`;
+    open.target = '_blank';
+    open.rel = 'noopener noreferrer';
+    open.textContent = 'Открыть на YouTube';
+    card.replaceChildren(frame, open);
+  };
+  return card;
 }
 
 function fileCard(a) {
