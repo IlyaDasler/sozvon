@@ -129,6 +129,16 @@ function createTray() {
 app.whenReady().then(() => {
   if (!primary) return;
   applyPermissions(session.defaultSession);
+  // Встроенный плеер YouTube: у страницы из file:// нет Referer, и плеер отвечает «Ошибка настройки 153».
+  // Подставляем адрес сайта приложения — для плеера это обычное встраивание
+  const SITE_REFERER = 'https://sozvon.sslip.io/';
+  session.defaultSession.webRequest.onBeforeSendHeaders(
+    { urls: ['*://*.youtube.com/*', '*://*.youtube-nocookie.com/*'] },
+    (details, callback) => {
+      if (!details.requestHeaders.Referer) details.requestHeaders.Referer = SITE_REFERER;
+      callback({ requestHeaders: details.requestHeaders });
+    }
+  );
   // Демонстрация экрана: что показывать, человек выбирает в окне приложения, а сюда приходит готовый выбор
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
     const choice = screenChoice;
