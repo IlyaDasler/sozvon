@@ -176,6 +176,22 @@ runTest(async () => {
     await js(winB, `[...document.querySelectorAll('.forward-list > *')].find((x) => x.textContent.includes('Вика')).click(); true`);
     await js(winC, `selectContact(${b.user.id}).then(() => true)`);
     await waitFor(winC, `Boolean(${row('messages', 'перешли это')})`, 'пересланное у Вики');
+    // Видно, что сообщение переслано и кто его автор: у получателя и у пославшего
+    const label = (win) => js(win, `${row('messages', 'перешли это')}.querySelector('.msg-forward')?.textContent || ''`);
+    expect((await label(winC)).includes('Переслано') && (await label(winC)).includes('Аня'), `метка у Вики: «${await label(winC)}»`);
+    expect(await js(winC, `Boolean(${row('messages', 'перешли это')}.querySelector('.msg-forward .avatar'))`), 'нет аватарки автора');
+    await js(winB, `selectContact(${c.user.id}).then(() => true)`);
+    await waitFor(winB, `(${row('messages', 'перешли это')})?.querySelector('.msg-forward')?.textContent.includes('Аня')`, 'метка у Бори');
+    // Пересылка пересланного: автор остаётся первым
+    await js(winC, `(() => { ${row('messages', 'перешли это')}.querySelector('.msg-tool[title="Переслать"]').click(); return true; })()`);
+    await waitFor(winC, `Boolean(document.querySelector('.forward-list > *'))`, 'окно пересылки', 3000);
+    await js(winC, `[...document.querySelectorAll('.forward-list > *')].find((x) => x.textContent.includes('Боря')).click(); true`);
+    await waitFor(winB, `[...document.querySelectorAll('#messages .msg-forward')].length === 2`, 'повторная пересылка у Бори');
+    expect(await js(winB, `[...document.querySelectorAll('#messages .msg-forward')].every((x) => x.textContent.includes('Аня'))`), 'автор сменился при повторной пересылке');
+    // Правка пересланного не убирает метку
+    await js(winB, `saveEdit(state.history.get(${c.user.id}).at(-1).fromId === state.me.id ? state.history.get(${c.user.id}).findLast((m) => m.fromId === state.me.id) : state.history.get(${c.user.id}).findLast((m) => m.fromId === state.me.id), { kind: 'dm', peerId: ${c.user.id} }, 'перешли это, правка').then(() => true)`);
+    await waitFor(winB, `(${row('messages', 'перешли это, правка')})?.querySelector('.msg-forward')?.textContent.includes('Аня')`, 'метка после правки');
+    await js(winB, `selectContact(${a.user.id}).then(() => true)`);
   });
 
   await story('пересылка картинки', async () => {

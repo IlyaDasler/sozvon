@@ -659,6 +659,7 @@ video.mirror { transform: scaleX(-1); }
 .voice-users li.speaking .avatar { box-shadow: 0 0 0 2px var(--ok); }
 .voice-users li.speaking { color: var(--text); }
 .avatar.tiny { width: 22px; height: 22px; font-size: 11px; }
+.avatar.micro { flex: none; width: 16px; height: 16px; font-size: 9px; }
 .avatar.small { width: 28px; height: 28px; font-size: 13px; }
 
 .room-lobby {
@@ -785,8 +786,10 @@ video.mirror { transform: scaleX(-1); }
 .msg { position: relative; display: flex; gap: 16px; padding: 2px 16px; margin: 0 -16px; border-radius: var(--r-s); transition: background var(--fast); }
 .msg:not(.cont) { margin-top: 14px; }
 .msg:hover { background: color-mix(in srgb, var(--bg-deep) 35%, transparent); }
+.msg.has-reply { flex-wrap: wrap; row-gap: 0; }
+.msg.has-reply > .msg-body { flex-basis: 0; }
 .msg.cont { padding-top: 0; }
-.msg.cont .avatar { visibility: hidden; height: 0; }
+.msg.cont > .avatar { visibility: hidden; height: 0; }
 .msg-body { min-width: 0; flex: 1; }
 /* Кнопки у сообщения — появляются при наведении в правом верхнем углу */
 .msg-tools {
@@ -820,11 +823,21 @@ video.mirror { transform: scaleX(-1); }
 .msg-text .spoiler.open { color: inherit; background: var(--bg-3); cursor: text; }
 
 /* ---------- Ответ, реакции, закреп (2.4) ---------- */
-.msg-reply { position: relative; display: flex; align-items: center; gap: 8px; max-width: min(100%, 480px); margin: 2px 0 3px; padding: 1px 0 1px 10px; border-left: 2px solid color-mix(in srgb, var(--accent) 50%, transparent); border-radius: 2px; font-size: 11.5px; color: var(--muted); cursor: pointer; }
-.msg-reply::before { content: ''; position: absolute; left: -2px; top: -5px; width: 9px; height: 9px; border-left: 2px solid color-mix(in srgb, var(--accent) 50%, transparent); border-top: 2px solid color-mix(in srgb, var(--accent) 50%, transparent); border-top-left-radius: 7px; }
-.msg-reply:hover { border-left-color: var(--accent); }
-.msg-reply b { color: color-mix(in srgb, var(--accent) 80%, var(--text)); font-weight: 600; white-space: nowrap; padding-left: 2px; }
+.msg-reply {
+  position: relative; flex: 0 0 calc(100% - 52px); display: flex; align-items: center; gap: 6px; min-width: 0;
+  margin: 4px 0 2px 52px; color: var(--muted); font-size: 12px; line-height: 18px; cursor: pointer;
+}
+/* Дуга от аватарки автора к цитате */
+.msg-reply::before {
+  content: ''; position: absolute; left: -34px; top: 8px; bottom: -5px; width: 28px;
+  border-left: 2px solid var(--line-strong); border-top: 2px solid var(--line-strong); border-top-left-radius: 6px;
+}
+.msg-reply:hover { color: var(--text); }
+.msg-reply b { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .msg-reply span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-forward { display: flex; align-items: center; gap: 5px; margin: 1px 0 2px; color: var(--muted); font-size: 12px; font-style: italic; }
+.msg-forward svg { flex: none; width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.msg-forward b { font-style: normal; font-weight: 600; color: var(--text-2); }
 .msg-edited { margin-left: 6px; font-size: 11px; color: var(--muted); }
 .msg-reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .reaction-chip { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border: 1px solid var(--line); border-radius: 11px; background: var(--bg-3); color: var(--text-2); font-size: 12px; cursor: pointer; }
