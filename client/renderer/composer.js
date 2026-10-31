@@ -458,6 +458,19 @@ function insertEmoji(composer, emoji) {
   store.set('recentEmoji', recent);
 }
 
+/** Смайлики канала открытой комнаты; в личных чатах их нет */
+const pickerHubEmojis = () => (emojiTarget === roomComposer ? hubById(roomById(state.selectedRoomId)?.hubId)?.emojis || [] : []);
+
+function insertHubEmoji(composer, name) {
+  const area = composer.area;
+  const at = area.selectionStart ?? area.value.length;
+  const token = `:${name}: `;
+  area.value = area.value.slice(0, at) + token + area.value.slice(area.selectionEnd ?? at);
+  area.selectionStart = area.selectionEnd = at + token.length;
+  area.dispatchEvent(new Event('input'));
+  area.focus();
+}
+
 function buildEmojiPopover() {
   const pop = document.createElement('div');
   pop.className = 'emoji-popover hidden';
@@ -467,6 +480,20 @@ function buildEmojiPopover() {
   const grid = document.createElement('div');
   grid.className = 'emoji-grid';
   const show = (name) => {
+    if (name === 'Канал') {
+      grid.replaceChildren();
+      for (const t of tabs.children) t.classList.toggle('active', t.dataset.group === name);
+      for (const e of pickerHubEmojis()) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'emoji';
+        b.title = `:${e.name}:`;
+        b.append(Object.assign(document.createElement('img'), { className: 'hub-emoji', src: `${Api.base}${e.url}`, alt: e.name }));
+        b.onclick = () => insertHubEmoji(emojiTarget, e.name);
+        grid.append(b);
+      }
+      return;
+    }
     const group = name === 'Недавние' ? store.get('recentEmoji', []) : EMOJI_GROUPS.find(([n]) => n === name)[1].split(' ');
     grid.replaceChildren();
     for (const t of tabs.children) t.classList.toggle('active', t.dataset.group === name);
@@ -480,7 +507,7 @@ function buildEmojiPopover() {
       grid.append(b);
     }
   };
-  for (const [name, list] of [['Недавние', '🕐'], ...EMOJI_GROUPS.map(([n, l]) => [n, l.split(' ')[0]])]) {
+  for (const [name, list] of [['Канал', '⭐'], ['Недавние', '🕐'], ...EMOJI_GROUPS.map(([n, l]) => [n, l.split(' ')[0]])]) {
     const t = document.createElement('button');
     t.type = 'button';
     t.className = 'emoji-tab';
@@ -491,7 +518,11 @@ function buildEmojiPopover() {
     tabs.append(t);
   }
   pop.append(tabs, grid);
-  pop.show = () => show(store.get('recentEmoji', []).length ? 'Недавние' : EMOJI_GROUPS[0][0]);
+  pop.show = () => {
+    const own = pickerHubEmojis().length > 0;
+    tabs.querySelector('[data-group="Канал"]').classList.toggle('hidden', !own);
+    show(own ? 'Канал' : store.get('recentEmoji', []).length ? 'Недавние' : EMOJI_GROUPS[0][0]);
+  };
   document.body.append(pop);
   return pop;
 }

@@ -608,9 +608,10 @@ $('rail-home').onclick = () => selectContact(null);
 // ---------- Настройки канала ----------
 
 let settingsHubId = null;
+const HUB_MEMBER_TABS = ['members', 'emojis']; // что видно участнику без управления каналом
 let settingsTab = 'overview';
 let hubMemberQuery = '';
-const HUB_TABS = { overview: 'Обзор', roles: 'Роли и права', members: 'Участники', bans: 'Баны' };
+const HUB_TABS = { overview: 'Обзор', roles: 'Роли и права', emojis: 'Смайлики', members: 'Участники', bans: 'Баны' };
 
 function openHubSettings(id, tab = 'overview') {
   if (!hubById(id)) return;
@@ -631,21 +632,21 @@ function renderHubSettings() {
   const hub = hubById(settingsHubId);
   if (!hub) return closeHubSettings();
   const manager = canManageHub(hub);
-  if (!manager && settingsTab !== 'members') settingsTab = 'members';
+  if (!manager && !HUB_MEMBER_TABS.includes(settingsTab)) settingsTab = 'members';
   $('hs-hub-name').textContent = hub.name;
   $('hs-title').textContent = HUB_TABS[settingsTab];
   $('hs-member-count').textContent = hub.members.length;
   $('hs-ban-count').textContent = hub.bans.length || '';
   for (const t of document.querySelectorAll('#hs-nav [data-tab]')) {
     t.classList.toggle('active', t.dataset.tab === settingsTab);
-    t.classList.toggle('hidden', !manager && t.dataset.tab !== 'members');
+    t.classList.toggle('hidden', !manager && !HUB_MEMBER_TABS.includes(t.dataset.tab));
   }
   $('hs-leave').textContent = hub.ownerId === state.me.id ? 'Удалить канал' : 'Выйти из канала';
 
   const body = $('hs-body');
   const focused = document.activeElement?.dataset?.keep;
   const draft = focused && document.activeElement.value;
-  body.replaceChildren(...{ overview: hubOverviewPane, roles: rolesPane, members: hubMembersPane, bans: hubBansPane }[settingsTab](hub));
+  body.replaceChildren(...{ overview: hubOverviewPane, roles: rolesPane, emojis: hubEmojisPane, members: hubMembersPane, bans: hubBansPane }[settingsTab](hub));
   if (focused) {
     const input = body.querySelector(`[data-keep="${focused}"]`);
     if (input) {
@@ -706,6 +707,62 @@ function hubOverviewPane(hub) {
     el('div', {}, el('span', { className: 'muted small', textContent: 'Создан' }), el('b', { textContent: formatDay(hub.createdAt) })));
   return [form, facts];
 }
+
+let emojiDraftName = '';
+
+/** Смайлики канала: добавляет любой участник, удаляет автор или управляющий */
+function hubEmojisPane(hub) {
+  const name = el('input', { id: 'hs-emoji-name', placeholder: 'Имя, например кот', maxLength: 24, value: emojiDraftName });
+  name.dataset.keep = 'emoji-name';
+  name.oninput = () => (emojiDraftName = name.value);
+  const add = el('div', { className: 'rs-row' }, name, smallButton('Выбрать картинку', 'primary', () => {
+    if (!name.value.trim()) return ($('hs-error').textContent = 'Сначала придумайте имя');
+    $('hub-emoji-input').click();
+  }));
+  const hint = el('p', { className: 'muted small', textContent: `В сообщениях комнат этого канала: :имя:. Буквы, цифры и _, до 50 смайликов на канал. Сейчас: ${hub.emojis.length}.` });
+  const list = el('div', { className: 'hs-emojis' });
+  for (const e of hub.emojis) {
+    const row = el('div', { className: 'hs-emoji' },
+      el('img', { src: `${Api.base}${e.url}`, alt: e.name }),
+      el('b', { className: 'grow ellipsis', textContent: `:${e.name}:` }),
+      (e.createdBy === state.me.id || canManageHub(hub)) &&
+        smallButton('Удалить', '', () => hubAction(Api.del(`/hubs/${hub.id}/emojis/${e.id}`), 'Смайлик удалён')));
+    list.append(row);
+  }
+  return [add, hint, list];
+}
+
+/** Картинка смайлика: вписываем в квадрат 128×128, прозрачность сохраняем */
+async function emojiBlob(file) {
+  const bitmap = await createImageBitmap(file).catch(() => {
+    throw new Error('Не получилось открыть картинку');
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 128;
+  const scale = Math.min(128 / bitmap.width, 128 / bitmap.height);
+  const [w, h] = [bitmap.width * scale, bitmap.height * scale];
+  canvas.getContext('2d').drawImage(bitmap, (128 - w) / 2, (128 - h) / 2, w, h);
+  bitmap.close();
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.9));
+}
+
+async function addHubEmoji(file) {
+  try {
+    const blob = await emojiBlob(file);
+    const name = encodeURIComponent(emojiDraftName.trim());
+    await hubAction(Api.upload('PUT', `/hubs/${settingsHubId}/emojis/${name}`, blob), 'Смайлик добавлен');
+    if (!$('hs-error').textContent) emojiDraftName = '';
+    renderHubSettings();
+  } catch (err) {
+    $('hs-error').textContent = err.message;
+  }
+}
+
+$('hub-emoji-input').onchange = (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (file && settingsHubId) addHubEmoji(file);
+};
 
 function hubMembersPane(hub) {
   const out = [];

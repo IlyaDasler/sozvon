@@ -840,6 +840,10 @@ video.mirror { transform: scaleX(-1); }
 .msg-reply:hover { color: var(--text); }
 .msg-reply b { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .msg-reply span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hub-emoji { display: inline-block; width: 22px; height: 22px; object-fit: contain; vertical-align: -5px; }
+.hs-emojis { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.hs-emoji { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: var(--r-s); background: var(--bg-3); }
+.hs-emoji img { flex: none; width: 32px; height: 32px; object-fit: contain; }
 .msg-forward { display: flex; align-items: center; gap: 5px; margin: 1px 0 2px; color: var(--muted); font-size: 12px; font-style: italic; }
 .msg-forward svg { flex: none; width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .msg-forward b { font-style: normal; font-weight: 600; color: var(--text-2); }
