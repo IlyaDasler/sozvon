@@ -3,6 +3,11 @@
 // E2E_ONLY=слово — только истории с этим словом в названии
 const { ACCEPT_DIALOGS, api, befriend, register, js, waitFor, sleep, openClient, tilePlaying, runTest } = require('./e2e-lib');
 
+const crypto = require('node:crypto');
+const { clipboard } = require('electron');
+
+const PASSWORD = 'test-pass-1';
+const submit = "document.getElementById('auth-form').requestSubmit(); true";
 const fails = [];
 const only = process.env.E2E_ONLY;
 
@@ -15,6 +20,18 @@ async function story(name, run) {
     fails.push(`${name}: ${err.message}`);
     console.log(`✖ ${name}: ${err.message}`);
   }
+}
+
+/** Код из приложения-аутентификатора; ahead — на сколько шагов вперёд (один код нельзя использовать дважды) */
+function totp(secret, ahead = 0) {
+  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const bits = [...secret].map((c) => ALPHABET.indexOf(c).toString(2).padStart(5, '0')).join('');
+  const key = Buffer.from(bits.match(/.{8}/g).map((b) => parseInt(b, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000) + ahead));
+  const hmac = crypto.createHmac('sha1', key).update(counter).digest();
+  const at = hmac[19] & 15;
+  return String((hmac.readUInt32BE(at) & 0x7fffffff) % 1000000).padStart(6, '0');
 }
 
 const expect = (ok, what) => {
@@ -209,7 +226,8 @@ runTest(async () => {
     expect(!labels.includes('Удалить сообщение'), 'можно удалить чужое в личном чате');
     await js(winA, menuItem('Скопировать текст'));
     await sleep(200);
-    expect(!(await toastsOf(winA)).some((t) => /Не удалось/.test(t)), 'копирование не сработало');
+    const copied = await clipboard.readText();
+    expect(copied.includes('на оригинал'), `в буфере: ${copied}`);
   });
 
   await story('тема чата у обоих', async () => {
@@ -354,8 +372,21 @@ runTest(async () => {
     await js(winB, menuItem('Выключить уведомления'));
     await waitFor(winB, `!${hidden('hub-muted')}`, 'значок заглушённого канала');
     expect(await js(winB, `hubMuted(${h.id})`), 'заглушение не сохранилось');
+    // Заглушённый канал молчит, а после включения снова звучит
+    await js(winB, `(() => { window.pings = 0; const blip = tone.blip; tone.blip = function (kind, ...rest) { if (kind === 'notify') window.pings++; return blip.call(this, kind, ...rest); }; selectContact(null); return true; })()`);
+    await js(winA, `openHub(${h.id}); selectRoom(${h.text}); true`);
+    await js(winA, say('room-message-input', 'заглушено'));
+    await waitFor(winB, `loadNotifs()[0]?.body.includes('заглушено')`, 'запись в центре уведомлений');
+    await sleep(200);
+    expect((await js(winB, 'window.pings')) === 0, 'заглушённый канал издал звук');
+    await js(winB, `openHub(${h.id}); true`);
     await js(winB, click('#hub-menu-btn'));
     await js(winB, menuItem('Включить уведомления'));
+    await js(winB, 'selectContact(null); true');
+    await js(winA, say('room-message-input', 'снова слышно'));
+    await waitFor(winB, 'window.pings === 1', 'звук после включения');
+    await js(winB, `openHub(${h.id}); selectRoom(${h.text}); true`);
+    await waitFor(winB, `!state.roomUnread.has(${h.text})`, 'прочитано');
   });
 
   await story('канал: непрочитанное на значке, «Отметить прочитанным»', async () => {
@@ -719,6 +750,11 @@ runTest(async () => {
     expect(labels.includes('Отметить прочитанным'), 'нет пункта: ' + labels);
     await js(winB, menuItem('Отметить прочитанным'));
     await waitFor(winB, '!state.roomUnread.has(' + r.text + ')', 'отметка снята');
+    await js(winB, openMenu(`document.querySelector('#room-list [data-room="${r.text}"]')`));
+    await js(winB, menuItem('Скопировать название'));
+    await sleep(200);
+    const copied = await clipboard.readText();
+    expect(copied === (await js(winB, `roomById(${r.text}).name`)), `в буфере: ${copied}`);
   });
 
   await story('удалённое закреплённое сообщение убирает полосу', async () => {
@@ -814,6 +850,132 @@ runTest(async () => {
     await js(winC, click('#link-confirm'));
     await waitFor(winC, `state.me.email === ${JSON.stringify(mail)}`, 'почта привязана');
     await js(winC, 'closeSettings(); true');
+  });
+
+  await story('двухфакторный вход: включить, войти с кодом, войти резервным кодом, отключить', async () => {
+    const u = await register('tf', 'Тимур');
+    const win = await openClient('tf', u);
+    await js(win, "openSettings(); showSettingsTab('account'); true");
+    await js(win, click('#tf-start'));
+    await js(win, fill('tf-password', 'неверный-пароль'));
+    await js(win, click('#tf-next'));
+    await waitFor(win, `document.getElementById('tf-error').textContent !== ''`, 'неверный пароль отклонён');
+    await js(win, fill('tf-password', PASSWORD));
+    await js(win, click('#tf-next'));
+    await waitFor(win, `!${hidden('tf-scan-step')}`, 'шаг с QR');
+    expect(await js(win, `document.querySelector('#tf-qr svg') !== null`), 'нет QR-кода');
+    const secret = await js(win, text('tf-secret'));
+    await js(win, fill('tf-code', '000000'));
+    await js(win, click('#tf-confirm'));
+    await waitFor(win, `document.getElementById('tf-error').textContent !== ''`, 'неверный код отклонён');
+    await js(win, fill('tf-code', totp(secret)));
+    await js(win, click('#tf-confirm'));
+    await waitFor(win, `!${hidden('tf-codes-step')}`, 'резервные коды показаны');
+    const codes = (await js(win, text('tf-recovery'))).split('\n');
+    expect(codes.length === 10, `резервных кодов: ${codes.length}`);
+    await js(win, click('#tf-copy'));
+    await sleep(200);
+    expect((await clipboard.readText()).includes(codes[0]), 'коды не скопировались');
+    await js(win, click('#tf-done'));
+    await waitFor(win, `!${hidden('tf-stop')}`, 'кнопка отключения');
+    await js(win, 'closeSettings(); logout(); true');
+    const login = async (code) => {
+      await waitFor(win, `!document.getElementById('auth-form').closest('.hidden')`, 'экран входа');
+      await js(win, `document.getElementById('auth-error').textContent = ''; true`);
+      await js(win, fill('server-url', require('./e2e-lib').SERVER));
+      await js(win, fill('auth-username', u.user.username));
+      await js(win, fill('auth-password', PASSWORD));
+      await js(win, fill('auth-totp', code || ''));
+      await js(win, submit);
+    };
+    await login(null);
+    await waitFor(win, `!${hidden('totp-field')}`, 'просит код');
+    await login('111111');
+    await waitFor(win, `document.getElementById('auth-error').textContent !== ''`, 'неверный код при входе');
+    await login(totp(secret, 1));
+    await waitFor(win, `state.me?.id === ${u.user.id}`, 'вошли с кодом');
+    await js(win, 'logout(); true');
+    await login(codes[0]);
+    await waitFor(win, `state.me?.id === ${u.user.id}`, 'вошли резервным кодом');
+    await js(win, 'logout(); true');
+    await login(codes[0]);
+    await waitFor(win, `document.getElementById('auth-error').textContent !== ''`, 'резервный код одноразовый');
+    await login(codes[1]);
+    await waitFor(win, `state.me?.id === ${u.user.id}`, 'второй резервный код');
+    await js(win, "openSettings(); showSettingsTab('account'); true");
+    await js(win, click('#tf-stop'));
+    await js(win, fill('tf-off-code', codes[2]));
+    await js(win, click('#tf-off'));
+    await waitFor(win, `${hidden('tf-stop')} && !state.me.twoFactor`, 'отключён');
+    win.close();
+  });
+
+  await story('проверка динамиков: звук идёт на выбранное устройство', async () => {
+    await js(winB, "openSettings(); showSettingsTab('sound'); true");
+    const played = await js(winB, `(() => { let got = null; const blip = tone.blip; tone.blip = function (...args) { got = args; }; document.getElementById('speaker-test-btn').click(); tone.blip = blip; return got; })()`);
+    expect(played?.[0] === 'test', `звук не запущен: ${played}`);
+    await js(winB, "document.getElementById('speaker-test-btn').click(); closeSettings(); true");
+    await sleep(100);
+  });
+
+  await story('все темы: текст читается', async () => {
+    const themes = await js(winB, 'THEMES.map((t) => t.id)');
+    const start = await js(winB, 'currentTheme()');
+    const lum = (c) => {
+      const [r, g, b] = c.map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const contrast = (x, y) => {
+      const [hi, lo] = [lum(x), lum(y)].sort((p, q) => q - p);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+    for (const id of themes) {
+      await js(winB, `setTheme('${id}'); true`);
+      await sleep(700);
+      const look = await js(winB, `(() => {
+        const nums = (c) => c.match(/[\\d.]+/g).slice(0, 3).map(Number);
+        const shown = getComputedStyle(document.querySelector('#friends-view, .main, #app'));
+        const css = getComputedStyle(document.documentElement);
+        const probe = document.createElement('i');
+        document.body.append(probe);
+        const rgb = (name) => { probe.style.color = css.getPropertyValue(name).trim(); return nums(getComputedStyle(probe).color); };
+        const out = { text: rgb('--text'), muted: rgb('--muted'), bg: rgb('--bg') };
+        probe.remove();
+        return out;
+      })()`);
+      const main = contrast(look.text, look.bg);
+      const soft = look.muted ? contrast(look.muted, look.bg) : 99;
+      console.log(`  тема ${id}: текст ${main.toFixed(1)}, приглушённый ${soft.toFixed(1)}`);
+      expect(main >= 7, `тема ${id}: контраст текста ${main.toFixed(1)}`);
+      expect(soft >= 3, `тема ${id}: контраст приглушённого текста ${soft.toFixed(1)}`);
+    }
+    await js(winB, `setTheme('${start}'); true`);
+  });
+
+  await story('цвет баннера: подсказка-карточка не остаётся на экране', async () => {
+    winB.show(); // В скрытом окне браузер не доставляет движение мыши
+    const mouse = (type, x, y) => winB.webContents.sendInputEvent(type === 'mouseMove' ? { type, x, y } : { type, x, y, button: 'left', clickCount: 1 });
+    const hover = async () => {
+      await js(winB, "openSettings('profile'); showSettingsTab('profile'); true");
+      await sleep(200);
+      const at = await js(winB, `(() => { const r = document.querySelectorAll('#banner-picker .color')[3].getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()`);
+      mouse('mouseMove', at.x, at.y);
+      await waitFor(winB, `!${hidden('banner-peek')}`, 'подсказка открылась', 2000);
+      return at;
+    };
+    // Выбрали цвет и увели мышь
+    const at = await hover();
+    mouse('mouseDown', at.x, at.y);
+    mouse('mouseUp', at.x, at.y);
+    mouse('mouseMove', 20, 400);
+    await sleep(200);
+    expect(await js(winB, hidden('banner-peek')), 'после выбора цвета подсказка осталась');
+    // Закрыли настройки, не уводя мышь
+    await hover();
+    await js(winB, `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); true`);
+    await sleep(100);
+    expect(await js(winB, hidden('banner-peek')), 'подсказка пережила закрытие настроек');
+    mouse('mouseMove', 20, 400);
   });
 
   await story('рация: выбор клавиши сохраняется', async () => {
