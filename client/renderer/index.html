@@ -963,6 +963,15 @@
   <div class="profile-card hidden" id="profile-card"></div>
 
   <!-- Превью карточки профиля при наведении на цвет баннера -->
+  <div class="stream-peek hidden" id="stream-peek">
+    <div class="stream-peek-head"><span>Сейчас транслирует</span><b class="live">В ЭФИРЕ</b></div>
+    <div class="stream-peek-frame">
+      <img id="stream-peek-image" class="hidden" alt="Кадр трансляции">
+      <span id="stream-peek-empty">Кадр скоро появится</span>
+    </div>
+    <button type="button" class="btn primary" id="stream-peek-watch">Смотреть трансляцию</button>
+  </div>
+
   <div class="banner-peek hidden" id="banner-peek">
     <div class="pc-banner"></div>
     <div class="avatar banner-peek-avatar" id="banner-peek-avatar"></div>
@@ -999,6 +1008,7 @@
   <script src="ptt-keys.js"></script>
   <script src="voice-ui.js"></script>
   <script src="rooms.js"></script>
+  <script src="stream-peek.js"></script>
   <script src="room-settings.js"></script>
   <script src="rail-layout.js"></script>
   <script src="hubs.js"></script>
