@@ -1053,12 +1053,71 @@ function reactionsView(m) {
     chip.type = 'button';
     chip.className = `reaction-chip${r.mine ? ' mine' : ''}`;
     chip.textContent = `${r.emoji} ${r.count}`;
-    chip.title = r.mine ? 'Убрать реакцию' : 'Поставить реакцию';
+    chip.setAttribute('aria-label', r.mine ? 'Убрать реакцию' : 'Поставить реакцию');
     chip.dataset.emoji = r.emoji;
     row.append(chip);
   }
   return row;
 }
+
+// ---------- Кто поставил реакцию ----------
+// Слушаем ленту целиком: она перерисовывается, пока мышь стоит на реакции
+
+const WHO_DELAY_MS = 250;
+const WHO_MAX_NAMES = 10;
+let whoTimer = null;
+let whoChip = null;
+
+function hideReactionWho() {
+  clearTimeout(whoTimer);
+  whoChip = null;
+  $('reaction-who').classList.add('hidden');
+}
+
+function whoNames(users) {
+  const names = users.map((u) => u.displayName);
+  const rest = names.length - WHO_MAX_NAMES;
+  return rest > 0 ? `${names.slice(0, WHO_MAX_NAMES).join(', ')} и ещё ${rest}` : names.join(', ');
+}
+
+async function showReactionWho(chip, chat) {
+  const m = chip.closest('.msg')?.message;
+  if (!m) return;
+  const list = await Api.get(chatPath(chat, m, '/reactions')).catch(() => null);
+  if (whoChip !== chip) return;
+  const users = list?.find((r) => r.emoji === chip.dataset.emoji)?.users;
+  if (!users?.length) return;
+  const box = $('reaction-who');
+  box.textContent = `${chip.dataset.emoji} ${whoNames(users)}`;
+  box.classList.remove('hidden');
+  const r = chip.getBoundingClientRect();
+  const size = box.getBoundingClientRect();
+  box.style.left = `${Math.max(8, Math.min(r.left, innerWidth - size.width - 8))}px`;
+  box.style.top = `${Math.max(8, r.top - size.height - 6)}px`;
+}
+
+/** Видно ли в этом чате, кто поставил: в канале это выключается в настройках */
+function reactionsOpen(chat) {
+  if (chat.kind === 'dm') return true;
+  const hubId = roomById(chat.roomId)?.hubId;
+  return !hubId || hubById(hubId)?.reactionsVisible !== false;
+}
+
+function watchReactionChips(feedId, chatOf) {
+  $(feedId).addEventListener('mouseover', (e) => {
+    const chip = e.target.closest('.reaction-chip');
+    if (chip === whoChip) return;
+    hideReactionWho();
+    const chat = chatOf();
+    if (!chip || !reactionsOpen(chat)) return;
+    whoChip = chip;
+    whoTimer = setTimeout(() => showReactionWho(chip, chat), WHO_DELAY_MS);
+  });
+  $(feedId).addEventListener('mouseleave', hideReactionWho);
+  $(feedId).addEventListener('click', hideReactionWho);
+}
+watchReactionChips('messages', () => ({ kind: 'dm', peerId: state.selectedId }));
+watchReactionChips('room-messages', () => ({ kind: 'room', roomId: state.selectedRoomId }));
 
 // Лента сообщений: и для чата с другом, и для комнаты. Строка живёт, пока не поменялась: перестроить всю ленту значит
 // сбросить выделение, остановить видео, а пока картинки заново узнают размер — сдвинуть текст под глазами читателя
