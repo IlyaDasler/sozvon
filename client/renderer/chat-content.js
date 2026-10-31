@@ -168,6 +168,7 @@ function videoCard(link, preview) {
       thumb: preview?.image,
       embed: `https://www.instagram.com/${ig.type}/${ig.code}/embed/`,
       href: link,
+      frameClass: 'frame-tall',
     });
   }
   const tt = tiktokId(link);
@@ -178,6 +179,7 @@ function videoCard(link, preview) {
       thumb: preview?.image,
       embed: `https://www.tiktok.com/embed/v2/${tt}`,
       href: link,
+      frameClass: 'frame-tall',
     });
   }
   // Сайт сам отдал ссылку на видеофайл — играем его прямо в ленте
@@ -219,7 +221,7 @@ function vimeoId(url) {
 }
 
 /** Карточка с обложкой и кнопкой: по щелчку вместо неё встаёт встроенный плеер */
-function socialCard({ label, title, thumb, embed, href, thumbClass = '' }) {
+function socialCard({ label, title, thumb, embed, href, thumbClass = '', frameClass = '' }) {
   const card = document.createElement('div');
   card.className = 'link-card yt-card';
   const cover = document.createElement('button');
@@ -232,7 +234,7 @@ function socialCard({ label, title, thumb, embed, href, thumbClass = '' }) {
   text.className = 'link-card-text';
   text.append(siteLine(label), titleLink(title || 'Смотреть видео', href));
   card.append(cover, text);
-  cover.onclick = () => card.replaceChildren(embedFrame(embed, title || label, href));
+  cover.onclick = () => card.replaceChildren(embedFrame(embed, title || label, href, frameClass));
   return card;
 }
 
@@ -328,9 +330,9 @@ function titleLink(text, href) {
   return a;
 }
 
-function embedFrame(src, title, href) {
+function embedFrame(src, title, href, frameClass = '') {
   const wrap = document.createElement('div');
-  wrap.className = 'embed-wrap';
+  wrap.className = `embed-wrap${frameClass ? ` ${frameClass}` : ''}`;
   const frame = document.createElement('iframe');
   frame.className = 'yt-frame';
   frame.src = src;
