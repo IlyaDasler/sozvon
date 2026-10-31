@@ -1134,6 +1134,8 @@ kbd {
 .emoji-tab { flex: 1; height: 30px; border: 0; border-radius: var(--r-s); background: none; font-size: 16px; cursor: pointer; filter: grayscale(1); opacity: .7; transition: background var(--fast), opacity var(--fast), filter var(--fast); }
 .emoji-tab:hover, .emoji-tab.active { background: var(--bg-4); filter: none; opacity: 1; }
 .emoji-grid { flex: 1; overflow-y: auto; overflow-x: hidden; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); align-content: start; gap: 2px; padding: 8px; }
+/* Подсказка в пустых «Недавних» — во всю ширину, а не по слову в колонке */
+.emoji-grid .emoji-empty { grid-column: 1 / -1; margin: 6px 4px; line-height: 1.5; }
 .emoji-grid .emoji {
   height: 36px; min-width: 0; padding: 0; border: 0; border-radius: var(--r-s); background: none;
   font-size: 22px; line-height: 36px; cursor: pointer; overflow: hidden;
