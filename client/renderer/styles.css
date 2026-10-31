@@ -1154,8 +1154,16 @@ kbd {
 .msg-video { display: block; margin-top: 4px; max-width: min(480px, 100%); max-height: 320px; border-radius: 6px; background: #000; }
 .file-card { margin-top: 4px; max-width: 420px; padding: 10px 12px; border-radius: 8px; background: var(--bg-2); border: 1px solid var(--line); }
 .file-card-row { display: flex; align-items: center; gap: 10px; }
-.file-card-icon { color: var(--muted); }
-.file-card-icon svg { width: 30px; height: 30px; }
+.file-card-icon { color: var(--muted); flex: none; }
+.file-card-icon svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+/* Свой цвет у каждого типа файла: музыка, видео, архив, документы */
+.file-card-icon.type-audio { color: var(--accent); }
+.file-card-icon.type-video { color: #e8467c; }
+.file-card-icon.type-image { color: #3fc9b3; }
+.file-card-icon.type-archive { color: var(--warn); }
+.file-card-icon.type-pdf { color: var(--danger); }
+.file-card-icon.type-sheet { color: var(--ok); }
+.file-card-icon.type-code { color: #9d8cff; }
 .file-card-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .file-card-info a { color: var(--link); font-weight: 600; }
 .file-card audio { width: 100%; margin-top: 8px; height: 36px; }
