@@ -898,12 +898,14 @@ function editMessage(m, chat) {
 /** Сохранить правку: новый конверт с новым текстом, сервер текста не видит */
 async function saveEdit(m, chat, next) {
   const text = next.trim();
-  if (!text || text === m.plain?.text) return;
+  const { files = [], preview = null, reply = null } = m.plain || {};
+  // Без текста может остаться только сообщение с вложением
+  if ((!text && !files.length) || text === m.plain?.text) return;
   try {
     const conv = chat.kind === 'dm' ? dmConvOf(chat.peerId) : roomConvOf(chat.roomId);
-    const { body } = await encryptOutgoing(conv, { text });
-    const updated = await Api.patch(chatPath(chat, m), { enc: body.enc });
-    Object.assign(m, updated, { plain: { ...(m.plain || {}), text } });
+    // Конверт заменяется целиком: файлы (их ключи только здесь), цитата и превью должны перейти в новый
+    const { body, plain } = await encryptOutgoing(conv, { text, files, preview, reply });
+    Object.assign(m, await Api.patch(chatPath(chat, m), { enc: body.enc }), { plain });
     refreshChat(chat);
   } catch (err) {
     toast(err.message);
@@ -912,9 +914,11 @@ async function saveEdit(m, chat, next) {
 
 async function togglePin(m, chat) {
   try {
-    if (m.pinned) await Api.del(chatPath(chat, m, '/pin'));
-    else await Api.put(chatPath(chat, m, '/pin'), {});
-    m.pinned = !m.pinned;
+    // Значение запоминаем заранее: событие от сервера может прийти раньше ответа
+    const pinned = !m.pinned;
+    if (pinned) await Api.put(chatPath(chat, m, '/pin'), {});
+    else await Api.del(chatPath(chat, m, '/pin'));
+    m.pinned = pinned;
     refreshChat(chat);
     refreshPinned(chat);
   } catch (err) {
@@ -1117,32 +1121,32 @@ function messageRow(m, prev, list, actions, shown, fresh) {
     };
     tool('Ответить', '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 7 7v3"/></svg>', (e) => {
       e.stopPropagation();
-      startReply(m, actions.chat);
+      startReply(row.message, actions.chat);
     });
     tool('Переслать', '<svg viewBox="0 0 24 24"><path d="M15 14 20 9l-5-5"/><path d="M20 9h-9a7 7 0 0 0-7 7v3"/></svg>', (e) => {
       e.stopPropagation();
-      forwardMessage(m);
+      forwardMessage(row.message);
     });
     tool('Реакция', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0"/><path d="M9 9h.01M15 9h.01"/></svg>', (e) => {
       e.stopPropagation();
-      openReactions(m, actions.chat, e.currentTarget);
+      openReactions(row.message, actions.chat, e.currentTarget);
     });
     if (m.fromId === state.me.id)
       tool('Изменить', '<svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>', (e) => {
         e.stopPropagation();
-        editMessage(m, actions.chat);
+        editMessage(row.message, actions.chat);
       });
     tool(
       m.pinned ? 'Открепить' : 'Закрепить',
       '<svg viewBox="0 0 24 24"><path d="M9 4h6l-1 6 4 4H6l4-4z"/><path d="M12 14v6"/></svg>',
       (e) => {
         e.stopPropagation();
-        togglePin(m, actions.chat);
+        togglePin(row.message, actions.chat);
       }
     );
     if (actions.canDelete(m))
       tool('Удалить (с Shift — без вопроса)', '<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>', (e) => {
-        deleteMessage(m, actions.remove, e.shiftKey);
+        deleteMessage(row.message, actions.remove, e.shiftKey);
       }, ' danger');
     row.append(tools);
   }
@@ -1944,20 +1948,24 @@ $('link-confirm').onclick = async () => {
 
 const AVATAR_SIZE = 256;
 
-// Обрезаем по центру до квадрата, уменьшаем до 256×256 и сжимаем в WebP
-async function makeAvatarBlob(file) {
+// Человек выбирает квадрат, уменьшаем до 256×256 и сжимаем в WebP. null — передумал
+async function makeAvatarBlob(file, { title = 'Выберите область', round = true } = {}) {
   let bitmap;
   try {
     bitmap = await createImageBitmap(file);
   } catch {
     throw new Error('Не получилось открыть картинку. Попробуйте JPG или PNG');
   }
-  const side = Math.min(bitmap.width, bitmap.height);
+  const area = await askCrop(bitmap, { title, round });
+  if (!area) {
+    bitmap.close();
+    return null;
+  }
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = AVATAR_SIZE;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+  ctx.drawImage(bitmap, area.x, area.y, area.side, area.side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
   bitmap.close();
   for (const quality of [0.85, 0.7, 0.5]) {
     const blob = await new Promise((r) => canvas.toBlob(r, 'image/webp', quality));
@@ -2009,7 +2017,9 @@ async function uploadAvatar(file) {
   $('settings-error').textContent = '';
   $('avatar-upload-btn').disabled = true;
   try {
-    applyMe(await Api.upload('PUT', '/me/avatar', await makeAvatarBlob(file)));
+    const blob = await makeAvatarBlob(file, { title: 'Фото профиля' });
+    if (!blob) return;
+    applyMe(await Api.upload('PUT', '/me/avatar', blob));
     toast('Фото профиля обновлено');
   } catch (err) {
     $('settings-error').textContent = err.message;
