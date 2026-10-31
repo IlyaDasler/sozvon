@@ -821,16 +821,24 @@ function openReactions(m, chat, anchor) {
 document.addEventListener('click', () => closeReactionPicker());
 
 /** Пересылка: расшифрованный текст шифруем заново ключом целевой переписки — сервер не участвует */
+const forwardOrigin = (user) => ({
+  displayName: user?.displayName || '?',
+  avatarColor: user?.avatarColor || '#555',
+  avatarUrl: user?.avatarUrl || null,
+});
+
 async function forwardMessage(m) {
-  const { text = '', files: originals = [], preview = null } = m.plain || {};
+  const { text = '', files: originals = [], preview = null, forward: earlier = null } = m.plain || {};
   if (!text && !originals.length) return toast('Это сообщение нельзя переслать');
+  // Переслали пересланное — автором остаётся первый
+  const forward = earlier || forwardOrigin(userById(m.fromId));
   const target = await pickForwardTarget();
   if (!target) return;
   try {
     const conv = target.kind === 'dm' ? dmConvOf(target.id) : roomConvOf(target.id);
     // Вложение принадлежит одному сообщению и зашифровано своим ключом: в новую переписку уходит его копия
     const files = await Promise.all(originals.map(forwardFile));
-    const { body, plain } = await encryptOutgoing(conv, { text, files, preview });
+    const { body, plain } = await encryptOutgoing(conv, { text, files, preview, forward });
     if (target.kind === 'dm') addMessage({ ...(await Api.post(`/messages/${target.id}`, body)), plain });
     else addRoomMessage({ ...(await Api.post(`/rooms/${target.id}/messages`, body)), plain });
     toast(`Переслано: ${target.name}`);
@@ -905,13 +913,13 @@ function editMessage(m, chat) {
 /** Сохранить правку: новый конверт с новым текстом, сервер текста не видит */
 async function saveEdit(m, chat, next) {
   const text = next.trim();
-  const { files = [], preview = null, reply = null } = m.plain || {};
+  const { files = [], preview = null, reply = null, forward = null } = m.plain || {};
   // Без текста может остаться только сообщение с вложением
   if ((!text && !files.length) || text === m.plain?.text) return;
   try {
     const conv = chat.kind === 'dm' ? dmConvOf(chat.peerId) : roomConvOf(chat.roomId);
     // Конверт заменяется целиком: файлы (их ключи только здесь), цитата и превью должны перейти в новый
-    const { body, plain } = await encryptOutgoing(conv, { text, files, preview, reply });
+    const { body, plain } = await encryptOutgoing(conv, { text, files, preview, reply, forward });
     Object.assign(m, await Api.patch(chatPath(chat, m), { enc: body.enc }), { plain });
     refreshChat(chat);
   } catch (err) {
@@ -1030,17 +1038,32 @@ function replyOf(m, list) {
 }
 
 function replyQuote(reply) {
+  const user = userById(reply.fromId) || { displayName: '?', avatarColor: '#555' };
   const el = document.createElement('div');
   el.className = 'msg-reply';
   const name = document.createElement('b');
-  name.textContent = (userById(reply.fromId) || { displayName: '?' }).displayName;
+  name.textContent = user.displayName;
+  name.style.color = user.nameColor || user.avatarColor;
   const text = document.createElement('span');
   text.textContent = reply.text || 'вложение';
-  el.append(name, text);
+  el.append(makeAvatar(user, undefined, 'micro'), name, text);
   el.onclick = (e) => {
     e.stopPropagation();
     jumpToMessage(el.closest('.messages'), reply.id);
   };
+  return el;
+}
+
+/** «Переслано от …» над пересланным сообщением */
+function forwardMark(origin) {
+  const el = document.createElement('div');
+  el.className = 'msg-forward';
+  el.innerHTML = '<svg viewBox="0 0 24 24"><path d="M15 14 20 9l-5-5"/><path d="M20 9h-9a7 7 0 0 0-7 7v3"/></svg>';
+  const label = document.createElement('span');
+  label.textContent = 'Переслано от';
+  const name = document.createElement('b');
+  name.textContent = origin.displayName;
+  el.append(label, makeAvatar(origin, undefined, 'micro'), name);
   return el;
 }
 
@@ -1126,9 +1149,10 @@ watchReactionChips('room-messages', () => ({ kind: 'room', roomId: state.selecte
 function messageRow(m, prev, list, actions, shown, fresh) {
   const newDay = !prev || formatDay(prev.createdAt) !== formatDay(m.createdAt);
   const author = userById(m.fromId) || { displayName: '?', avatarColor: '#555' };
-  const continued = !newDay && prev.fromId === m.fromId && m.createdAt - prev.createdAt < 5 * 60_000;
-
   const reply = replyOf(m, list);
+  // У ответа своя дуга к аватарке, поэтому он всегда начинает новую группу
+  const continued = !reply && !newDay && prev.fromId === m.fromId && m.createdAt - prev.createdAt < 5 * 60_000;
+
   const look = JSON.stringify([continued, m.createdAt, m.editedAt, m.reactions, m.pinned, reply, mentionsMe(m), actions.canDelete(m), author.displayName, author.nameColor, author.avatarColor, author.avatarUrl]);
   const text = JSON.stringify([m.text, m.plain, m.attachments, m.preview]);
   if (shown?.look === look && shown.text === text) {
@@ -1143,6 +1167,10 @@ function messageRow(m, prev, list, actions, shown, fresh) {
   // Для меню по правой кнопке: само сообщение и что с ним можно сделать в этой ленте
   row.message = m;
   row.actions = actions;
+  if (reply) {
+    row.classList.add('has-reply');
+    row.append(replyQuote(reply));
+  }
   const avatar = makeAvatar(author);
   if (author.id) avatar.dataset.profile = author.id;
   row.append(avatar);
@@ -1160,7 +1188,7 @@ function messageRow(m, prev, list, actions, shown, fresh) {
     head.append(name, time);
     body.append(head);
   }
-  if (reply) body.append(replyQuote(reply));
+  if (m.plain?.forward) body.append(forwardMark(m.plain.forward));
   // Реакция или закреп меняют только строку: содержимое (картинки, идущее видео) остаётся тем же
   const content = shown?.text === text ? shown.content : messageContent(m);
   body.append(content);
