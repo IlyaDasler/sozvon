@@ -4,6 +4,8 @@
 
 ![Созвон](docs/screenshot.png)
 
+Скачать: [Releases](https://github.com/IlyaDasler/sozvon/releases) · [Code signing policy](docs/code-signing.md) · [Конфиденциальность](docs/privacy.md)
+
 ## Как это работает
 
 - **Друзья.** Добавляете друга по логину — ему приходит заявка. Приняли — можно писать и звонить.
