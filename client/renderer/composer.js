@@ -100,9 +100,11 @@ class Composer {
       e.stopPropagation();
       toggleEmojiPicker(this);
     };
-    area.addEventListener('input', () => {
+    area.addEventListener('input', (e) => {
       autoGrow(area);
       this.saveDraftText();
+      // inputType есть только у набора: черновик и правка, поставленные в поле программно, — не «печатает»
+      if (e.inputType && area.value && !editDraft) noteOwnTyping(this.draftKey);
       this.schedulePreview();
       this.updateMentions();
     });
@@ -380,6 +382,7 @@ class Composer {
     try {
       await this.send(payload);
       // Пока отправлялось, человек мог уйти в другой чат — чистим только черновик отправленного
+      resetOwnTyping();
       if (key === this.draftKey) this.reset();
       else {
         this.drafts.delete(key);

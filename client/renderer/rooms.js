@@ -268,6 +268,7 @@ function selectRoom(id) {
   $('empty-state').classList.toggle('hidden', Boolean(room) || state.view !== 'home');
   renderHubChrome();
   renderVoice();
+  renderTyping();
   if (!room) return;
 
   renderRoomView();
@@ -352,6 +353,7 @@ function renderRoomMessages() {
 }
 
 function addRoomMessage(m) {
+  stopTyping(`room:${m.roomId}`, m.fromId);
   const list = state.roomHistory.get(m.roomId);
   const known = list?.find((x) => x.id === m.id);
   if (known) {
