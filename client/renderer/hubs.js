@@ -681,6 +681,7 @@ function hubOverviewPane(hub) {
       paint();
     });
   paint();
+  const reactionsBox = el('input', { type: 'checkbox', id: 'hs-reactions-visible', checked: hub.reactionsVisible !== false });
   const form = el('form', { className: 'hs-overview' },
     el('div', { className: 'hs-icon-row' }, icon,
       el('div', { className: 'hs-icon-actions' },
@@ -690,10 +691,11 @@ function hubOverviewPane(hub) {
         el('p', { className: 'muted small', textContent: 'Загрузите картинку, чтобы канал отличался не только названием.' }))),
     el('label', { className: 'field' }, el('span', { textContent: 'Название' }), name),
     el('div', { className: 'field' }, el('span', { textContent: 'Цвет' }), colors),
+    el('label', { className: 'check' }, reactionsBox, el('span', { textContent: 'Показывать, кто поставил реакцию' })),
     el('div', { className: 'row' }, el('div', { className: 'spacer' }), el('button', { className: 'btn primary', textContent: 'Сохранить' })));
   form.onsubmit = (e) => {
     e.preventDefault();
-    hubAction(Api.patch(`/hubs/${hub.id}`, { name: name.value.trim(), iconColor: color }), 'Сохранено');
+    hubAction(Api.patch(`/hubs/${hub.id}`, { name: name.value.trim(), iconColor: color, reactionsVisible: reactionsBox.checked }), 'Сохранено');
   };
   const owner = hub.members.find((m) => m.id === hub.ownerId);
   const facts = el('div', { className: 'rs-facts' },
