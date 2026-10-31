@@ -1756,3 +1756,7 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 .yt-open { padding: 8px 12px 10px; color: var(--muted); }
 .video-card { max-width: 560px; width: 100%; margin-top: 6px; border-radius: 6px; background: #000; }
 .bare-card { border-left-color: var(--line-strong); }
+
+/* Вертикальные видео (Instagram, TikTok): кадр выше, чтобы внутри плеера не было скролла */
+.embed-wrap.frame-tall { max-width: 420px; }
+.embed-wrap.frame-tall .yt-frame { aspect-ratio: auto; height: min(78vh, 760px); border-radius: 6px; }
