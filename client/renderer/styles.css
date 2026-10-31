@@ -1736,3 +1736,23 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Плееры в чате: YouTube/Vimeo обложка и кадр, прямые видеофайлы */
+.yt-card { flex-direction: column; align-items: stretch; padding: 0; overflow: hidden; max-width: 560px; }
+.yt-thumb {
+  position: relative; width: 100%; aspect-ratio: 16 / 9; border: 0; padding: 0; cursor: pointer;
+  background: var(--bg-3) center / cover no-repeat; display: grid; place-items: center;
+}
+.yt-thumb.vimeo-thumb { background-image: linear-gradient(135deg, #1ab7ea, #0d7ea8); }
+.yt-play {
+  display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%;
+  background: rgba(0, 0, 0, .55); color: #fff; transition: transform var(--fast) var(--ease), background var(--fast);
+}
+.yt-play svg { width: 26px; height: 26px; fill: currentColor; }
+.yt-thumb:hover .yt-play { background: #f00; transform: scale(1.08); }
+.yt-card .link-card-text { padding: 10px 12px 12px; }
+.yt-frame { width: 100%; aspect-ratio: 16 / 9; border: 0; display: block; background: #000; }
+.embed-wrap { display: flex; flex-direction: column; max-width: 560px; }
+.yt-open { padding: 8px 12px 10px; color: var(--muted); }
+.video-card { max-width: 560px; width: 100%; margin-top: 6px; border-radius: 6px; background: #000; }
+.bare-card { border-left-color: var(--line-strong); }
