@@ -39,6 +39,28 @@ jobs:
       # Свой захват экрана (native/capture) — компилируется MSVC раннера
       - run: npm run native
       - run: npm run dist
+      # Подпись релиза (docs/code-signing.md): включается, когда в настройках репозитория задана переменная
+      # SIGNPATH_ORGANIZATION_ID и секрет SIGNPATH_API_TOKEN. Шаг ждёт ручного подтверждения на signpath.io
+      - id: unsigned
+        if: startsWith(github.ref, 'refs/tags/v') && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installer
+          path: client/dist/Sozvon-Setup-*.exe
+          if-no-files-found: error
+      - if: steps.unsigned.outcome == 'success'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: sozvon
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 18000
+          output-artifact-directory: client/dist-signed
+      - if: steps.unsigned.outcome == 'success'
+        run: node scripts/use-signed-installer.js dist dist-signed
       - uses: actions/upload-artifact@v4
         with:
           name: Sozvon-Setup
@@ -48,6 +70,7 @@ jobs:
       - if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          fail_on_unmatched_files: false # у подписанного релиза нет .blockmap
           files: |
             client/dist/*.exe
             client/dist/*.exe.blockmap
