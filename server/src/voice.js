@@ -27,6 +27,9 @@ export const voice = {
 
   get: (roomId, userId) => voiceRooms.get(roomId)?.get(userId),
 
+  /** Когда в комнате начался разговор; null — в голосе никого */
+  since: (roomId) => voiceRooms.get(roomId)?.startedAt ?? null,
+
   /** Как идёт голос в комнате сейчас; null — в голосе никого */
   mediaOf: (roomId) => voiceRooms.get(roomId)?.media ?? null,
 
@@ -38,7 +41,7 @@ export const voice = {
 
   join(roomId, userId, ws, flags, media = 'p2p') {
     let map = voiceRooms.get(roomId);
-    if (!map) voiceRooms.set(roomId, (map = Object.assign(new Map(), { media })));
+    if (!map) voiceRooms.set(roomId, (map = Object.assign(new Map(), { media, startedAt: Date.now() })));
     map.set(userId, { ws, muted: false, deafened: false, video: false, screen: false, ...flags, joinedAt: Date.now() });
   },
 
@@ -71,7 +74,7 @@ export const voice = {
   },
 
   broadcast(roomId) {
-    const message = { type: 'room:voice', roomId, participants: voice.participants(roomId), media: voice.mediaOf(roomId) };
+    const message = { type: 'room:voice', roomId, since: voice.since(roomId), participants: voice.participants(roomId), media: voice.mediaOf(roomId) };
     for (const m of rooms.members(roomId)) hub.send(m.id, message);
   },
 };
