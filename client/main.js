@@ -133,7 +133,7 @@ app.whenReady().then(() => {
   // «Ошибка настройки 153». Подставляем адрес сайта приложения — для плееров это обычное встраивание
   const SITE_REFERER = 'https://sozvon.sslip.io/';
   session.defaultSession.webRequest.onBeforeSendHeaders(
-    { urls: ['*://*.youtube.com/*', '*://*.youtube-nocookie.com/*', '*://*.vimeo.com/*'] },
+    { urls: ['*://*.youtube.com/*', '*://*.youtube-nocookie.com/*', '*://*.vimeo.com/*', '*://*.instagram.com/*', '*://*.tiktok.com/*'] },
     (details, callback) => {
       if (!details.requestHeaders.Referer) details.requestHeaders.Referer = SITE_REFERER;
       callback({ requestHeaders: details.requestHeaders });

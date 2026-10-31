@@ -154,20 +154,35 @@ function messageContent(m) {
   return box;
 }
 
-/** Плеер для ссылки на видео: YouTube, Vimeo и прямые файлы (mp4/webm/…) — иначе null */
+/** Плеер для ссылки на видео: YouTube, Vimeo, Instagram, TikTok, файл из og:video — иначе null */
 function videoCard(link, preview) {
   const yt = youtubeId(link);
   if (yt) return youtubeCard(yt, { ...(preview || {}), url: link });
   const vimeo = vimeoId(link);
   if (vimeo) return vimeoCard(vimeo, { ...(preview || {}), url: link });
-  if (directVideo(link)) {
-    const video = document.createElement('video');
-    video.className = 'video-card';
-    video.controls = true;
-    video.preload = 'metadata';
-    video.src = link;
-    return video;
+  const ig = instagramId(link);
+  if (ig) {
+    return socialCard({
+      label: 'Instagram',
+      title: preview?.title,
+      thumb: preview?.image,
+      embed: `https://www.instagram.com/${ig.type}/${ig.code}/embed/`,
+      href: link,
+    });
   }
+  const tt = tiktokId(link);
+  if (tt) {
+    return socialCard({
+      label: 'TikTok',
+      title: preview?.title,
+      thumb: preview?.image,
+      embed: `https://www.tiktok.com/embed/v2/${tt}`,
+      href: link,
+    });
+  }
+  // Сайт сам отдал ссылку на видеофайл — играем его прямо в ленте
+  if (preview?.video) return fileVideo(preview.video, preview.image);
+  if (directVideo(link)) return fileVideo(link, preview?.image);
   return null;
 }
 
@@ -203,49 +218,97 @@ function vimeoId(url) {
   return m ? m[1] : null;
 }
 
+/** Карточка с обложкой и кнопкой: по щелчку вместо неё встаёт встроенный плеер */
+function socialCard({ label, title, thumb, embed, href, thumbClass = '' }) {
+  const card = document.createElement('div');
+  card.className = 'link-card yt-card';
+  const cover = document.createElement('button');
+  cover.type = 'button';
+  cover.className = `yt-thumb${thumbClass ? ` ${thumbClass}` : ''}`;
+  if (thumb) cover.style.backgroundImage = `url("${thumb}")`;
+  cover.title = 'Смотреть в чате';
+  cover.innerHTML = '<span class="yt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>';
+  const text = document.createElement('div');
+  text.className = 'link-card-text';
+  text.append(siteLine(label), titleLink(title || 'Смотреть видео', href));
+  card.append(cover, text);
+  cover.onclick = () => card.replaceChildren(embedFrame(embed, title || label, href));
+  return card;
+}
+
+/** Карточка YouTube: обложка с кнопкой, по щелчку — встроенный плеер */
+function youtubeCard(id, p) {
+  const href = p.url || `https://www.youtube.com/watch?v=${id}`;
+  return socialCard({
+    label: 'YouTube',
+    title: p.title,
+    thumb: p.image || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+    embed: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`,
+    href,
+  });
+}
+
+/** Карточка Vimeo: кнопка, по щелчку — встроенный плеер */
+function vimeoCard(id, p) {
+  const href = p.url || `https://vimeo.com/${id}`;
+  return socialCard({
+    label: 'Vimeo',
+    title: p.title,
+    thumb: p.image,
+    embed: `https://player.vimeo.com/video/${id}?autoplay=1`,
+    href,
+    thumbClass: 'vimeo-thumb',
+  });
+}
+
+/** Ссылка на пост или рилс Instagram */
+function instagramId(url) {
+  if (!url) return null;
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  if (u.hostname.toLowerCase().replace(/^www\./, '') !== 'instagram.com') return null;
+  const m = /^\/(p|reel|reels|tv)\/([\w-]{5,})/.exec(u.pathname);
+  return m ? { type: m[1] === 'reels' ? 'reel' : m[1], code: m[2] } : null;
+}
+
+/** Ссылка на видео TikTok */
+function tiktokId(url) {
+  if (!url) return null;
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase().replace(/^www\.|^m\./, '');
+  if (host === 'vm.tiktok.com' || host === 'vt.tiktok.com') return null; // короткие ссылки требуют переадресации
+  if (host !== 'tiktok.com') return null;
+  const m = /^\/(?:@[^/]+\/)?video\/(\d{6,})/.exec(u.pathname);
+  return m ? m[1] : null;
+}
+
 /** Прямая ссылка на видеофайл — его можно проигрывать самим, без чужого плеера */
 function directVideo(url) {
   try {
-    return /\.(mp4|webm|ogv|ogg|m4v|mov)$/i.test(new URL(url).pathname);
+    return /\.(mp4|webm|ogv|ogg|m4v|mov|m3u8)$/i.test(new URL(url).pathname);
   } catch {
     return false;
   }
 }
 
-/** Карточка YouTube: обложка с кнопкой, по щелчку — встроенный плеер */
-function youtubeCard(id, p) {
-  const card = document.createElement('div');
-  card.className = 'link-card yt-card';
-  const thumb = document.createElement('button');
-  thumb.type = 'button';
-  thumb.className = 'yt-thumb';
-  thumb.style.backgroundImage = `url("https://i.ytimg.com/vi/${id}/hqdefault.jpg")`;
-  thumb.title = 'Смотреть в чате';
-  thumb.innerHTML = '<span class="yt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>';
-  const text = document.createElement('div');
-  text.className = 'link-card-text';
-  text.append(siteLine('YouTube'), titleLink(p.title || 'Смотреть ролик', p.url || `https://www.youtube.com/watch?v=${id}`));
-  card.append(thumb, text);
-  thumb.onclick = () => card.replaceChildren(embedFrame(`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`, 'Видео YouTube', p.url || `https://www.youtube.com/watch?v=${id}`));
-  return card;
-}
-
-/** Карточка Vimeo: кнопка, по щелчку — встроенный плеер */
-function vimeoCard(id, p) {
-  const card = document.createElement('div');
-  card.className = 'link-card yt-card';
-  const thumb = document.createElement('button');
-  thumb.type = 'button';
-  thumb.className = 'yt-thumb vimeo-thumb';
-  thumb.title = 'Смотреть в чате';
-  thumb.innerHTML = '<span class="yt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>';
-  const text = document.createElement('div');
-  text.className = 'link-card-text';
-  text.append(siteLine('Vimeo'), titleLink(p.title || 'Смотреть видео', p.url || `https://vimeo.com/${id}`));
-  card.append(thumb, text);
-  thumb.onclick = () =>
-    card.replaceChildren(embedFrame(`https://player.vimeo.com/video/${id}?autoplay=1`, 'Видео Vimeo', p.url || `https://vimeo.com/${id}`));
-  return card;
+/** Сам видеофайл: играем в ленте, постер — картинка превью, если она есть */
+function fileVideo(src, poster) {
+  const video = document.createElement('video');
+  video.className = 'video-card';
+  video.controls = true;
+  video.preload = 'metadata';
+  if (poster) video.poster = poster;
+  video.src = src;
+  return video;
 }
 
 function siteLine(name) {
