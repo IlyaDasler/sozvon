@@ -561,6 +561,7 @@ async function refreshContacts() {
 
 function logout(message) {
   closeDrafts();
+  clearTyping();
   hangup();
   leaveRoomVoice();
   if (state.incoming) declineIncoming();
@@ -697,6 +698,7 @@ async function selectContact(id) {
   $('room-view').classList.add('hidden');
   renderHubChrome();
   renderVoice();
+  renderTyping();
   if (!contact) return;
 
   renderChatHeader();
@@ -1298,6 +1300,7 @@ function syncJumpBar(box) {
 
 function addMessage(m) {
   const peerId = m.fromId === state.me.id ? m.toId : m.fromId;
+  stopTyping(`dm:${peerId}`, m.fromId);
   const list = state.history.get(peerId);
   // Своё сообщение приходит дважды (ответ на отправку и событие) — храним одно, с расшифровкой
   const known = list?.find((x) => x.id === m.id);
@@ -1389,6 +1392,8 @@ function handleEvent(msg) {
       renderContacts();
       renderRooms();
       return renderRail();
+    case 'typing':
+      return showTyping(msg);
     case 'keys:updated':
       return refreshConv(msg.conv);
     case 'message':

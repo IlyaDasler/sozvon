@@ -335,6 +335,7 @@
         <div id="messages" class="messages"></div>
 
         <!-- Поле ввода собирает composer.js: файлы, превью ссылки, «+», текст, смайлики, отправка -->
+        <div id="chat-typing" class="typing-bar" aria-live="polite"></div>
         <div id="chat-reply" class="reply-bar hidden"></div>
         <form id="message-form" class="composer">
           <textarea id="message-input" rows="1" placeholder="Написать сообщение" maxlength="2000"></textarea>
@@ -358,6 +359,7 @@
         <div id="room-lobby" class="room-lobby hidden"></div>
         <div id="room-pinned" class="pinned-bar hidden"></div>
         <div id="room-messages" class="messages"></div>
+        <div id="room-typing" class="typing-bar" aria-live="polite"></div>
         <div id="room-reply" class="reply-bar hidden"></div>
         <form id="room-message-form" class="composer">
           <textarea id="room-message-input" rows="1" placeholder="Написать в комнату" maxlength="2000"></textarea>
@@ -995,6 +997,7 @@
   <script src="gifs.js"></script>
   <script src="chat-theme.js"></script>
   <script src="history.js"></script>
+  <script src="typing.js"></script>
   <script src="devices.js"></script>
   <script src="vendor/qrcode.js"></script>
   <script src="two-factor.js"></script>
