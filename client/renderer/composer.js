@@ -374,7 +374,8 @@ class Composer {
     const text = this.area.value.trim();
     if (this.files.some((f) => !f.attachment && !f.error)) return toast('Подождите, файлы ещё загружаются');
     const ready = this.files.filter((f) => f.attachment);
-    if (!text && !ready.length) return;
+    const editing = Boolean(editDraft && composerOf(editDraft.chat) === this);
+    if (!text && !ready.length && !editing) return;
     const payload = { text, files: ready.map((f) => f.attachment), preview: null };
     if (this.preview?.data && text.includes(this.preview.url.replace(/^https:\/\/(?=www\.)/, ''))) payload.preview = this.preview.data;
     this.sendBtn.disabled = true;
@@ -383,6 +384,7 @@ class Composer {
       await this.send(payload);
       // Пока отправлялось, человек мог уйти в другой чат — чистим только черновик отправленного
       resetOwnTyping();
+      if (editing) return; // в поле вернулось то, что было набрано до правки
       if (key === this.draftKey) this.reset();
       else {
         this.drafts.delete(key);
@@ -596,9 +598,10 @@ function cancelEdit() {
 /** Отправка из поля, пока идёт правка: сохраняем правку вместо нового сообщения */
 async function finishEdit(kind, payload) {
   if (editDraft?.chat.kind !== kind) return false;
-  const { m, chat } = editDraft;
+  const { m, chat, kept } = editDraft;
   editDraft = null;
   renderReplyBars();
+  setComposerText(composerOf(chat), kept);
   await saveEdit(m, chat, payload.text || '');
   return true;
 }

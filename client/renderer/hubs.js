@@ -779,7 +779,8 @@ $('hub-icon-input').onchange = async (e) => {
   e.target.value = '';
   if (!file || !settingsHubId) return;
   try {
-    await hubAction(Api.upload('PUT', `/hubs/${settingsHubId}/icon`, await makeAvatarBlob(file)), 'Картинка канала обновлена');
+    const blob = await makeAvatarBlob(file, { title: 'Картинка канала', round: false });
+    if (blob) await hubAction(Api.upload('PUT', `/hubs/${settingsHubId}/icon`, blob), 'Картинка канала обновлена');
   } catch (err) {
     $('hs-error').textContent = err.message;
   }
