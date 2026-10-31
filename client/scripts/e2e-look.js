@@ -86,7 +86,7 @@ runTest(async () => {
     await js(win, `openSettings(); true`);
     await shot(`${tag}-settings`);
     await js(win, `closeSettings(); true`);
-    await js(win, `openRoomManage(${text.id}, 'roles'); true`);
+    await js(win, `openRoomManage(${text.id}, 'overview'); true`);
     await shot(`${tag}-room-settings`);
     await js(win, `closeRoomManage(); openHubSettings(${hub.id}, 'members'); true`);
     await shot(`${tag}-hub-settings`);

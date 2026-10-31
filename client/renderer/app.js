@@ -474,6 +474,8 @@ $('auth-form').onsubmit = async (e) => {
     if (mode === 'login' && (!username || !password)) return ($('auth-error').textContent = 'Введите почту (или логин) и пароль');
     if (mode !== 'login' && (!email || !password))
       return ($('auth-error').textContent = mode === 'reset' ? 'Введите почту и новый пароль' : 'Введите почту и пароль');
+    // Сразу, а не после письма с кодом: иначе человек узнает о слабом пароле в самом конце
+    if (mode !== 'login' && password.length < 8) return ($('auth-error').textContent = 'Пароль должен быть не короче 8 символов');
     // Кода ещё нет — сначала отправляем его на почту
     if (!code && mode !== 'login') return sendEmailCode();
   }
@@ -820,22 +822,27 @@ document.addEventListener('click', () => closeReactionPicker());
 
 /** Пересылка: расшифрованный текст шифруем заново ключом целевой переписки — сервер не участвует */
 async function forwardMessage(m) {
-  const text = m.plain?.text || '';
-  if (!text) {
-    toast('Пока пересылаются только текстовые сообщения');
-    return;
-  }
+  const { text = '', files: originals = [], preview = null } = m.plain || {};
+  if (!text && !originals.length) return toast('Это сообщение нельзя переслать');
   const target = await pickForwardTarget();
   if (!target) return;
   try {
     const conv = target.kind === 'dm' ? dmConvOf(target.id) : roomConvOf(target.id);
-    const { body, plain } = await encryptOutgoing(conv, { text });
+    // Вложение принадлежит одному сообщению и зашифровано своим ключом: в новую переписку уходит его копия
+    const files = await Promise.all(originals.map(forwardFile));
+    const { body, plain } = await encryptOutgoing(conv, { text, files, preview });
     if (target.kind === 'dm') addMessage({ ...(await Api.post(`/messages/${target.id}`, body)), plain });
     else addRoomMessage({ ...(await Api.post(`/rooms/${target.id}/messages`, body)), plain });
     toast(`Переслано: ${target.name}`);
   } catch (err) {
     toast(err.message);
   }
+}
+
+/** Копия вложения для пересылки: расшифрованный файл загружается заново, новым ключом */
+async function forwardFile(a) {
+  const blob = await (await fetch(await decryptedFileUrl(a))).blob();
+  return uploadEncrypted(new File([blob], a.name, { type: a.mime }), () => {}).done;
 }
 
 function pickForwardTarget() {
