@@ -17,12 +17,16 @@ runTest(async () => {
   for (const w of [winA, winB]) await js(w, `openHub(${hub.id}); openRoom(${room.id}); true`);
   for (const w of [winA, winB]) await waitFor(w, 'state.room?.joined && state.room.session.peers.size === 1', 'оба в голосе', 20000);
 
+  // Экран замирает по-настоящему: захват перестаёт присылать кадры, как на неподвижной картинке
+  await js(winA, `(() => { window.frozen = false; window.addEventListener('message', (e) => { if (window.frozen && e.data?.sozvonScreenFrame) { e.stopImmediatePropagation(); e.data.sozvonScreenFrame.close(); } }); return true; })()`);
   await js(winA, `store.set('screenTab', 'screen'); toggleScreen(); true`);
   await waitFor(winA, `document.querySelectorAll('#screen-sources .source.selected').length === 1 && !document.getElementById('screen-start').disabled`, 'выбор экрана', 8000);
   await js(winA, `document.getElementById('screen-start').click(); true`);
   await waitFor(winA, 'Boolean(activeSession().local.tracks.screen)', 'показ начался', 8000);
   await waitFor(winB, `Boolean(document.querySelector('.tile[data-key="u${a.user.id}:screen"] .tile-watch'))`, 'кнопка смотреть', 10000);
-  await sleep(4000); // кадры с начала показа уже прошли: зритель приходит позже
+  await sleep(1000);
+  await js(winA, 'window.frozen = true; true');
+  await sleep(3000); // кадры с начала показа уже прошли: зритель приходит позже
   await js(winB, `document.querySelector('.tile[data-key="u${a.user.id}:screen"] .tile-watch').click(); true`);
 
   const key = `u${a.user.id}:screen`;
