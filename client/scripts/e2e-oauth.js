@@ -8,6 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { listenForOAuth } = require('../oauth-loopback');
+const { registerVault } = require('../vault');
 
 const PORT = 3200;
 // Письма с кодами сервер пишет в этот файл вместо отправки
@@ -39,6 +40,8 @@ const click = (win, selector, text) =>
   win.webContents.executeJavaScript(
     `[...document.querySelectorAll(${JSON.stringify(selector)})].find((b) => b.textContent.includes(${JSON.stringify(text)})).click()`
   );
+
+registerVault();
 
 async function run(serverEnv) {
   // Вместо браузера: переходим по ссылке входа, поддельный сервис сразу перенаправляет на localhost
@@ -98,7 +101,10 @@ async function run(serverEnv) {
     const g = c.getContext('2d'); g.fillStyle = '#ff7a00'; g.fillRect(0, 0, 640, 480);
     g.fillStyle = '#1b2a6b'; g.beginPath(); g.arc(320, 240, 170, 0, Math.PI * 2); g.fill();
     const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
-    await uploadAvatar(new File([blob], 'photo.png', { type: 'image/png' }));
+    const upload = uploadAvatar(new File([blob], 'photo.png', { type: 'image/png' }));
+    while (!cropOpen()) await new Promise((r) => setTimeout(r, 20));
+    document.getElementById('crop-ok').click();
+    await upload;
   })()`);
   await waitFor(win, `/^\\/api\\/avatars\\/[a-f0-9]{32}\\.webp$/.test(state.me.avatarUrl || '')`, 'загрузка аватарки');
   const avatarOk = await win.webContents.executeJavaScript(`(async () => {
@@ -154,7 +160,7 @@ async function run(serverEnv) {
   );
   await set('auth-email', 'Anna@Mail.ru');
   await set('auth-display', 'Аня');
-  await set('auth-password', 'secret1');
+  await set('auth-password', 'secret-pass1');
   await set('auth-invite', 'friends');
   await click(win, '#auth-submit', 'Создать аккаунт'); // кода ещё нет — отправляет его
   await waitFor(win, `document.getElementById('code-hint').textContent.includes('Код отправлен')`, 'письмо с кодом');
@@ -187,10 +193,11 @@ app.whenReady().then(async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sozvon-e2e-oauth-'));
   const { startMockOAuth, oauthEnv } = await import(pathToFileURL(path.join(serverDir, 'test', 'mock-oauth.js')));
   const mock = await startMockOAuth();
-  const server = spawn('node', ['src/index.js'], {
+  const server = spawn(process.execPath, ['src/index.js'], {
     cwd: serverDir,
     env: {
       ...process.env,
+      ELECTRON_RUN_AS_NODE: '1',
       PORT: String(PORT),
       DATA_DIR: dataDir,
       INVITE_CODE: 'friends',
