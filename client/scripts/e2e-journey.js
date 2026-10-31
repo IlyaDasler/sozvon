@@ -38,6 +38,10 @@ async function signUp(name, email, displayName) {
   await js(win, `document.getElementById('server-url').onchange(); setAuthMode(true); true`);
   await js(win, fill('auth-email', email));
   await js(win, fill('auth-display', displayName));
+  await js(win, fill('auth-password', 'короткий'.slice(0, 7)));
+  await js(win, submit('auth-form'));
+  await waitFor(win, `document.getElementById('auth-error').textContent.includes('8 символов')`, 'короткий пароль отклонён сразу');
+  if (mailCode(email)) throw new Error('Письмо ушло до проверки пароля');
   await js(win, fill('auth-password', PASSWORD));
   await js(win, submit('auth-form'));
   for (let i = 0; i < 40 && !mailCode(email); i++) await sleep(100);

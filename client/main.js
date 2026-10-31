@@ -369,7 +369,6 @@ ipcMain.on('attention', () => {
 ipcMain.on('focus', showWindow);
 
 // Меню по правой кнопке: скопировать текст и команды правки в полях ввода
-ipcMain.handle('clipboard:write', (_event, text) => clipboard.writeText(String(text)));
 // Превью ссылки для зашифрованного сообщения — страницу грузит приложение отправителя, а не сервер
 ipcMain.handle('preview:fetch', (_event, url) => fetchPreview(String(url)));
 registerVault();

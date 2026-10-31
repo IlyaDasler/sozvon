@@ -1,7 +1,8 @@
-// Картинка в буфер обмена: страница присылает её готовым PNG (расшифровать может только она).
+// Буфер обмена: текст и картинка. Картинку страница присылает готовым PNG (расшифровать может только она).
 const { clipboard, ClipboardItem, ipcMain } = require('electron');
 
 function registerClipboardImage() {
+  ipcMain.handle('clipboard:write', (_event, text) => clipboard.writeText(String(text)));
   ipcMain.handle('clipboard:image', async (_event, dataUrl) => {
     const [, base64] = /^data:image\/png;base64,(.+)$/.exec(String(dataUrl)) || [];
     if (!base64) throw new Error('Не картинка');

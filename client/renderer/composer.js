@@ -452,7 +452,7 @@ function insertEmoji(composer, emoji) {
   const end = area.selectionEnd ?? start;
   area.value = area.value.slice(0, start) + emoji + area.value.slice(end);
   area.selectionStart = area.selectionEnd = start + emoji.length;
-  autoGrow(area);
+  area.dispatchEvent(new Event('input')); // высота поля, превью и черновик — как при наборе
   area.focus();
   const recent = [emoji, ...store.get('recentEmoji', []).filter((e) => e !== emoji)].slice(0, 16);
   store.set('recentEmoji', recent);
