@@ -141,8 +141,166 @@ function messageContent(m) {
       box.append(fileCard(a));
     }
   }
-  if (m.preview) box.append(linkCard(m.preview));
+  // Ссылка в сообщении: плеер (YouTube, Vimeo, прямой видеофайл) или карточка превью
+  const link = (m.preview && m.preview.url) || findLinks(m.text || '')[0] || null;
+  if (link) {
+    const video = videoCard(link, m.preview);
+    if (video) box.append(video);
+    else if (m.preview) box.append(linkCard(m.preview));
+    else if (m.preview === null) box.append(bareLinkCard(link));
+  } else if (m.preview) {
+    box.append(linkCard(m.preview));
+  }
   return box;
+}
+
+/** Плеер для ссылки на видео: YouTube, Vimeo и прямые файлы (mp4/webm/…) — иначе null */
+function videoCard(link, preview) {
+  const yt = youtubeId(link);
+  if (yt) return youtubeCard(yt, { ...(preview || {}), url: link });
+  const vimeo = vimeoId(link);
+  if (vimeo) return vimeoCard(vimeo, { ...(preview || {}), url: link });
+  if (directVideo(link)) {
+    const video = document.createElement('video');
+    video.className = 'video-card';
+    video.controls = true;
+    video.preload = 'metadata';
+    video.src = link;
+    return video;
+  }
+  return null;
+}
+
+/** id ролика YouTube из ссылки (watch, youtu.be, shorts, embed, live) */
+function youtubeId(url) {
+  if (!url) return null;
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase().replace(/^www\.|^m\./, '');
+  if (host === 'youtu.be') return u.pathname.slice(1).split('/')[0] || null;
+  if (host !== 'youtube.com' && host !== 'music.youtube.com') return null;
+  if (u.pathname === '/watch') return u.searchParams.get('v');
+  const m = /^\/(?:shorts|embed|live|v)\/([\w-]{6,})/.exec(u.pathname);
+  return m ? m[1] : null;
+}
+
+/** id ролика Vimeo */
+function vimeoId(url) {
+  if (!url) return null;
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase().replace(/^www\./, '');
+  if (host !== 'vimeo.com' && host !== 'player.vimeo.com') return null;
+  const m = /^(?:\/video)?\/(\d{6,})/.exec(u.pathname);
+  return m ? m[1] : null;
+}
+
+/** Прямая ссылка на видеофайл — его можно проигрывать самим, без чужого плеера */
+function directVideo(url) {
+  try {
+    return /\.(mp4|webm|ogv|ogg|m4v|mov)$/i.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
+
+/** Карточка YouTube: обложка с кнопкой, по щелчку — встроенный плеер */
+function youtubeCard(id, p) {
+  const card = document.createElement('div');
+  card.className = 'link-card yt-card';
+  const thumb = document.createElement('button');
+  thumb.type = 'button';
+  thumb.className = 'yt-thumb';
+  thumb.style.backgroundImage = `url("https://i.ytimg.com/vi/${id}/hqdefault.jpg")`;
+  thumb.title = 'Смотреть в чате';
+  thumb.innerHTML = '<span class="yt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>';
+  const text = document.createElement('div');
+  text.className = 'link-card-text';
+  text.append(siteLine('YouTube'), titleLink(p.title || 'Смотреть ролик', p.url || `https://www.youtube.com/watch?v=${id}`));
+  card.append(thumb, text);
+  thumb.onclick = () => card.replaceChildren(embedFrame(`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`, 'Видео YouTube', p.url || `https://www.youtube.com/watch?v=${id}`));
+  return card;
+}
+
+/** Карточка Vimeo: кнопка, по щелчку — встроенный плеер */
+function vimeoCard(id, p) {
+  const card = document.createElement('div');
+  card.className = 'link-card yt-card';
+  const thumb = document.createElement('button');
+  thumb.type = 'button';
+  thumb.className = 'yt-thumb vimeo-thumb';
+  thumb.title = 'Смотреть в чате';
+  thumb.innerHTML = '<span class="yt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>';
+  const text = document.createElement('div');
+  text.className = 'link-card-text';
+  text.append(siteLine('Vimeo'), titleLink(p.title || 'Смотреть видео', p.url || `https://vimeo.com/${id}`));
+  card.append(thumb, text);
+  thumb.onclick = () =>
+    card.replaceChildren(embedFrame(`https://player.vimeo.com/video/${id}?autoplay=1`, 'Видео Vimeo', p.url || `https://vimeo.com/${id}`));
+  return card;
+}
+
+function siteLine(name) {
+  const site = document.createElement('div');
+  site.className = 'link-card-site small';
+  site.textContent = name;
+  return site;
+}
+
+function titleLink(text, href) {
+  const a = document.createElement('a');
+  a.className = 'link-card-title';
+  a.href = href;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.textContent = text;
+  return a;
+}
+
+function embedFrame(src, title, href) {
+  const wrap = document.createElement('div');
+  wrap.className = 'embed-wrap';
+  const frame = document.createElement('iframe');
+  frame.className = 'yt-frame';
+  frame.src = src;
+  frame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
+  frame.allowFullscreen = true;
+  frame.title = title;
+  // Если встроенный плеер не поднимется — останется ссылка «Открыть»
+  const open = document.createElement('a');
+  open.className = 'yt-open small';
+  open.href = href;
+  open.target = '_blank';
+  open.rel = 'noopener noreferrer';
+  open.textContent = 'Открыть на сайте';
+  wrap.append(frame, open);
+  return wrap;
+}
+
+/** Мини-карточка, когда сайт закрыт от ботов и превью не получить: домен и путь */
+function bareLinkCard(url) {
+  let host = url;
+  let path = '';
+  try {
+    const u = new URL(url);
+    host = u.hostname.replace(/^www\./, '');
+    path = decodeURIComponent(u.pathname).replace(/[-_/]+/g, ' ').trim();
+  } catch {}
+  const card = document.createElement('div');
+  card.className = 'link-card bare-card';
+  const text = document.createElement('div');
+  text.className = 'link-card-text';
+  text.append(siteLine(host), titleLink(path || url, url));
+  card.append(text);
+  return card;
 }
 
 function fileCard(a) {
