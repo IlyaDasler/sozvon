@@ -201,6 +201,15 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS hub_roles_hub ON hub_roles (hub_id);
 `);
 if (!columnsOf('hub_members').includes('role_id')) db.exec('ALTER TABLE hub_members ADD COLUMN role_id INTEGER');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS room_groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
+    name TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS room_groups_hub ON room_groups (hub_id);
+`);
+if (!columnsOf('rooms').includes('group_id')) db.exec('ALTER TABLE rooms ADD COLUMN group_id INTEGER');
 if (!columnsOf('hubs').includes('reactions_visible')) db.exec('ALTER TABLE hubs ADD COLUMN reactions_visible INTEGER NOT NULL DEFAULT 1');
 if (!columnsOf('hubs').includes('default_perms')) db.exec(`ALTER TABLE hubs ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
 
@@ -416,6 +425,13 @@ const q = {
   deleteRole: db.prepare('DELETE FROM hub_roles WHERE id = ?'),
   hubsWithoutRoles: db.prepare('SELECT id FROM hubs WHERE id NOT IN (SELECT hub_id FROM hub_roles)'),
   setHubDefaultPerms: db.prepare('UPDATE hubs SET default_perms = ? WHERE id = ?'),
+  hubGroups: db.prepare('SELECT id, name FROM room_groups WHERE hub_id = ? ORDER BY id'),
+  hubGroup: db.prepare('SELECT * FROM room_groups WHERE id = ? AND hub_id = ?'),
+  insertGroup: db.prepare('INSERT INTO room_groups (hub_id, name) VALUES (?, ?)'),
+  renameGroup: db.prepare('UPDATE room_groups SET name = ? WHERE id = ?'),
+  deleteGroup: db.prepare('DELETE FROM room_groups WHERE id = ?'),
+  ungroupRooms: db.prepare('UPDATE rooms SET group_id = NULL WHERE group_id = ?'),
+  setRoomGroup: db.prepare('UPDATE rooms SET group_id = ? WHERE id = ?'),
   setHubReactionsVisible: db.prepare('UPDATE hubs SET reactions_visible = ? WHERE id = ?'),
 
   roomBans: db.prepare(`
@@ -604,6 +620,7 @@ export const rooms = {
     return rooms.byId(id);
   },
   rename: (id, name) => q.renameRoom.run(name, id),
+  setGroup: (id, groupId) => q.setRoomGroup.run(groupId, id),
   remove: (id) => q.deleteRoom.run(id),
   members: (roomId) => q.roomMembers.all(roomId),
   member: (roomId, userId) => q.roomMember.get(roomId, userId),
@@ -675,6 +692,15 @@ export const hubs = {
 
   update: (id, { name, iconColor }) => q.updateHub.run(name, iconColor, id),
   setDefaultPerms: (id, perms) => q.setHubDefaultPerms.run(perms, id),
+  groups: (id) => q.hubGroups.all(id),
+  group: (hubId, id) => q.hubGroup.get(id, hubId),
+  createGroup: (hubId, name) => q.insertGroup.run(hubId, name),
+  renameGroup: (id, name) => q.renameGroup.run(name, id),
+  /** Комнаты группы остаются в канале, просто без группы */
+  deleteGroup(id) {
+    q.ungroupRooms.run(id);
+    q.deleteGroup.run(id);
+  },
   setReactionsVisible: (id, visible) => q.setHubReactionsVisible.run(visible ? 1 : 0, id),
   setRole: (hubId, userId, roleId) => q.setMemberRole.run(roleId, hubId, userId),
   setIcon: (id, icon) => q.setHubIcon.run(icon, id),

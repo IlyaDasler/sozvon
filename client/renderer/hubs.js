@@ -456,6 +456,7 @@ function hubMenuItems(hub) {
   return [
     manager && { label: 'Пригласить друзей', onclick: () => openHubInvite(hub.id) },
     manager && { label: 'Создать комнату', onclick: () => openRoomCreate('voice', hub.id) },
+    manager && { label: 'Создать группу комнат', onclick: () => createRoomGroup(hub) },
     { label: muted ? 'Включить уведомления' : 'Выключить уведомления', icon: muted ? BELL_OFF : BELL_ON, onclick: () => toggleHubMute(hub) },
     { label: manager ? 'Настройки канала' : 'Участники канала', onclick: () => openHubSettings(hub.id, manager ? 'overview' : 'members') },
     'sep',
