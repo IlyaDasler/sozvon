@@ -435,14 +435,47 @@ function audioPlayer(a) {
   return box;
 }
 
+/** Иконки по типу файла: в карточке сразу видно, что это — музыка, видео, архив, документ */
+const FILE_ICONS = {
+  audio: '<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>',
+  video: '<svg viewBox="0 0 24 24"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>',
+  image: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-6 6-3-3-4 4"/></svg>',
+  archive: '<svg viewBox="0 0 24 24"><path d="M4 8h16v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M2 4h20v4H2zM10 12h4"/></svg>',
+  pdf: '<svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 17v-4h1.5a1.5 1.5 0 0 1 0 3H9"/></svg>',
+  doc: '<svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5M9 13h6M9 17h6"/></svg>',
+  sheet: '<svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5M8 12h8M8 16h8M11 12v8"/></svg>',
+  slides: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/></svg>',
+  code: '<svg viewBox="0 0 24 24"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6"/></svg>',
+  app: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/></svg>',
+  file: '<svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg>',
+};
+
+/** Тип файла: сначала по виду вложения, потом по расширению — на случай старых сообщений */
+function fileType(a) {
+  if (a.kind === 'audio' || a.kind === 'video' || a.kind === 'image') return a.kind;
+  const ext = String(a.name || '').toLowerCase().split('.').pop();
+  if (/^(mp3|wav|ogg|oga|flac|m4a|aac|opus|wma)$/.test(ext)) return 'audio';
+  if (/^(mp4|webm|mkv|mov|avi|m4v|ogv)$/.test(ext)) return 'video';
+  if (/^(png|jpe?g|gif|webp|bmp|svg|heic)$/.test(ext)) return 'image';
+  if (/^(zip|rar|7z|tar|gz|bz2|xz)$/.test(ext)) return 'archive';
+  if (ext === 'pdf') return 'pdf';
+  if (/^(xls|xlsx|csv|ods|numbers)$/.test(ext)) return 'sheet';
+  if (/^(doc|docx|rtf|odt|txt|md|pages)$/.test(ext)) return 'doc';
+  if (/^(ppt|pptx|odp|key)$/.test(ext)) return 'slides';
+  if (/^(js|ts|jsx|tsx|json|html|css|py|java|c|cpp|cs|go|rs|sh|yml|yaml|xml|sql)$/.test(ext)) return 'code';
+  if (/^(exe|msi|apk|dmg|deb|appimage)$/.test(ext)) return 'app';
+  return 'file';
+}
+
 function fileCard(a) {
   const card = document.createElement('div');
   card.className = 'file-card';
   const row = document.createElement('div');
   row.className = 'file-card-row';
+  const type = fileType(a);
   const icon = document.createElement('span');
-  icon.className = 'file-card-icon';
-  icon.innerHTML = COMPOSER_ICONS.file;
+  icon.className = `file-card-icon type-${type}`;
+  icon.innerHTML = FILE_ICONS[type] || FILE_ICONS.file;
   const info = document.createElement('div');
   info.className = 'file-card-info';
   const name = document.createElement('a');
