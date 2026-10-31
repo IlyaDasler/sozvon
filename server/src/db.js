@@ -186,6 +186,23 @@ const columnsOf = (table) => db.prepare(`PRAGMA table_info(${table})`).all().map
 if (!columnsOf('users').includes('avatar')) db.exec('ALTER TABLE users ADD COLUMN avatar TEXT');
 // Почта для входа (в нижнем регистре); у старых профилей её нет
 if (!columnsOf('users').includes('email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT');
+// Роли живут в канале: одна роль на все его комнаты. room_roles и room_members.role_id остались от версий до 2.6.3
+// и нужны только для переноса ниже
+const rolesInHubs = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'hub_roles'").get());
+db.exec(`
+  CREATE TABLE IF NOT EXISTS hub_roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL,
+    perms INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS hub_roles_hub ON hub_roles (hub_id);
+`);
+if (!columnsOf('hub_members').includes('role_id')) db.exec('ALTER TABLE hub_members ADD COLUMN role_id INTEGER');
+if (!columnsOf('hubs').includes('default_perms')) db.exec(`ALTER TABLE hubs ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
+
 // Токены версий до сессий (см. sessions.js) больше не действуют
 if (!columnsOf('users').includes('legacy_revoked')) db.exec('ALTER TABLE users ADD COLUMN legacy_revoked INTEGER NOT NULL DEFAULT 0');
 // Двухфакторный вход: секрет, ещё не подтверждённый секрет, последний принятый шаг, хэши резервных кодов
@@ -378,23 +395,26 @@ const q = {
   `),
   renameRoom: db.prepare('UPDATE rooms SET name = ? WHERE id = ?'),
   deleteRoom: db.prepare('DELETE FROM rooms WHERE id = ?'),
-  setDefaultPerms: db.prepare('UPDATE rooms SET default_perms = ? WHERE id = ?'),
   roomMembers: db.prepare(`
-    SELECT u.*, m.role_id, m.timeout_until FROM room_members m JOIN users u ON u.id = m.user_id
+    SELECT u.*, hm.role_id, m.timeout_until FROM room_members m
+    JOIN users u ON u.id = m.user_id
+    JOIN rooms r ON r.id = m.room_id
+    LEFT JOIN hub_members hm ON hm.hub_id = r.hub_id AND hm.user_id = m.user_id
     WHERE m.room_id = ? ORDER BY m.created_at, u.id
   `),
   roomMember: db.prepare('SELECT * FROM room_members WHERE room_id = ? AND user_id = ?'),
   isRoomMember: db.prepare('SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?'),
-  setMemberRole: db.prepare('UPDATE room_members SET role_id = ? WHERE room_id = ? AND user_id = ?'),
+  setMemberRole: db.prepare('UPDATE hub_members SET role_id = ? WHERE hub_id = ? AND user_id = ?'),
   setMemberTimeout: db.prepare('UPDATE room_members SET timeout_until = ? WHERE room_id = ? AND user_id = ?'),
-  clearRole: db.prepare('UPDATE room_members SET role_id = NULL WHERE role_id = ?'),
+  clearRole: db.prepare('UPDATE hub_members SET role_id = NULL WHERE role_id = ?'),
 
-  roomRoles: db.prepare('SELECT * FROM room_roles WHERE room_id = ? ORDER BY id'),
-  roleById: db.prepare('SELECT * FROM room_roles WHERE id = ?'),
-  insertRole: db.prepare('INSERT INTO room_roles (room_id, name, color, perms, created_at) VALUES (?, ?, ?, ?, ?)'),
-  updateRole: db.prepare('UPDATE room_roles SET name = ?, color = ?, perms = ? WHERE id = ?'),
-  deleteRole: db.prepare('DELETE FROM room_roles WHERE id = ?'),
-  roomsWithoutRoles: db.prepare('SELECT id FROM rooms WHERE id NOT IN (SELECT room_id FROM room_roles)'),
+  hubRoles: db.prepare('SELECT * FROM hub_roles WHERE hub_id = ? ORDER BY id'),
+  roleById: db.prepare('SELECT * FROM hub_roles WHERE id = ?'),
+  insertRole: db.prepare('INSERT INTO hub_roles (hub_id, name, color, perms, created_at) VALUES (?, ?, ?, ?, ?)'),
+  updateRole: db.prepare('UPDATE hub_roles SET name = ?, color = ?, perms = ? WHERE id = ?'),
+  deleteRole: db.prepare('DELETE FROM hub_roles WHERE id = ?'),
+  hubsWithoutRoles: db.prepare('SELECT id FROM hubs WHERE id NOT IN (SELECT hub_id FROM hub_roles)'),
+  setHubDefaultPerms: db.prepare('UPDATE hubs SET default_perms = ? WHERE id = ?'),
 
   roomBans: db.prepare(`
     SELECT u.*, b.created_at AS banned_at FROM room_bans b JOIN users u ON u.id = b.user_id
@@ -426,7 +446,7 @@ const q = {
   ownedHubs: db.prepare('SELECT COUNT(*) AS n FROM hubs WHERE owner_id = ?'),
   firstOwnedHub: db.prepare('SELECT * FROM hubs WHERE owner_id = ? ORDER BY id LIMIT 1'),
   hubMembers: db.prepare(`
-    SELECT u.*, m.manager, m.created_at AS joined_at FROM hub_members m JOIN users u ON u.id = m.user_id
+    SELECT u.*, m.manager, m.role_id, m.created_at AS joined_at FROM hub_members m JOIN users u ON u.id = m.user_id
     WHERE m.hub_id = ? ORDER BY m.created_at, u.id
   `),
   hubMember: db.prepare('SELECT * FROM hub_members WHERE hub_id = ? AND user_id = ?'),
@@ -579,25 +599,23 @@ export const rooms = {
     const id = Number(q.insertRoom.run(name, kind, ownerId, hubId, now).lastInsertRowid);
     q.addRoomMember.run(id, ownerId, now);
     if (everyone) for (const m of q.hubMembers.all(hubId)) q.addRoomMember.run(id, m.id, now);
-    roles.create(id, ADMIN_ROLE);
     return rooms.byId(id);
   },
   rename: (id, name) => q.renameRoom.run(name, id),
-  setDefaultPerms: (id, perms) => q.setDefaultPerms.run(perms, id),
   remove: (id) => q.deleteRoom.run(id),
   members: (roomId) => q.roomMembers.all(roomId),
   member: (roomId, userId) => q.roomMember.get(roomId, userId),
   isMember: (roomId, userId) => Boolean(q.isRoomMember.get(roomId, userId)),
   addMember: (roomId, userId) => q.addRoomMember.run(roomId, userId, Date.now()),
   removeMember: (roomId, userId) => q.removeRoomMember.run(roomId, userId),
-  setRole: (roomId, userId, roleId) => q.setMemberRole.run(roleId, roomId, userId),
 
   /** Права участника по роли (без учёта того, что создатель может всё); кик на время на них не влияет */
   rolePermsOf(room, userId) {
-    const member = q.roomMember.get(room.id, userId);
-    if (!member) return 0;
-    const role = member.role_id && q.roleById.get(member.role_id);
-    return role ? role.perms : room.default_perms;
+    if (!q.roomMember.get(room.id, userId)) return 0;
+    const hub = q.hubById.get(room.hub_id);
+    const roleId = q.hubMember.get(room.hub_id, userId)?.role_id;
+    const role = roleId && q.roleById.get(roleId);
+    return role ? role.perms : hub.default_perms;
   },
 
   /** Положение в комнате: создатель комнаты и создатель её канала могут всё, управляющий каналом — как администратор.
@@ -638,6 +656,7 @@ export const hubs = {
     const now = Date.now();
     const id = Number(q.insertHub.run(name, ownerId, iconColor, now).lastInsertRowid);
     q.addHubMember.run(id, ownerId, now);
+    roles.create(id, ADMIN_ROLE);
     return hubs.byId(id);
   },
 
@@ -653,6 +672,8 @@ export const hubs = {
   },
 
   update: (id, { name, iconColor }) => q.updateHub.run(name, iconColor, id),
+  setDefaultPerms: (id, perms) => q.setHubDefaultPerms.run(perms, id),
+  setRole: (hubId, userId, roleId) => q.setMemberRole.run(roleId, hubId, userId),
   setIcon: (id, icon) => q.setHubIcon.run(icon, id),
   remove: (id) => q.deleteHub.run(id),
   rooms: (hubId) => q.hubRooms.all(hubId),
@@ -664,7 +685,9 @@ export const hubs = {
   rankOf(hub, userId) {
     if (hub.owner_id === userId) return 3;
     const member = q.hubMember.get(hub.id, userId);
-    return member ? (member.manager ? 2 : 1) : 0;
+    if (!member) return 0;
+    const role = member.role_id && q.roleById.get(member.role_id);
+    return member.manager || role?.perms & (PERMS.manage | PERMS.admin) ? 2 : 1;
   },
 
   /** Вступить: канал и все его комнаты, кроме тех, где забанен. Возвращает комнаты, куда попал */
@@ -706,10 +729,10 @@ export const hubs = {
 };
 
 export const roles = {
-  of: (roomId) => q.roomRoles.all(roomId),
+  of: (hubId) => q.hubRoles.all(hubId),
   byId: (id) => q.roleById.get(id),
-  create(roomId, { name, color, perms }) {
-    const res = q.insertRole.run(roomId, name, color, perms, Date.now());
+  create(hubId, { name, color, perms }) {
+    const res = q.insertRole.run(hubId, name, color, perms, Date.now());
     return roles.byId(Number(res.lastInsertRowid));
   },
   update: (id, { name, color, perms }) => q.updateRole.run(name, color, perms, id),
@@ -733,8 +756,42 @@ transaction(() => {
   }
 });
 
-// В комнатах из версий без ролей создатель получает готовую роль администратора, которую можно раздать
-for (const { id } of q.roomsWithoutRoles.all()) roles.create(id, ADMIN_ROLE);
+// Роли версий до 2.6.3 были у каждой комнаты свои. Одноимённые роли комнат канала становятся одной ролью канала. Человеку
+// достаётся роль, которая была у него в большем числе комнат, при равенстве — с меньшими правами: перенос не должен расширять
+// права шире необходимого. Права по умолчанию — самые частые среди комнат канала. Старые таблицы остаются для отката
+if (!rolesInHubs)
+  transaction(() => {
+    for (const { id: hubId } of db.prepare('SELECT id FROM hubs').all()) {
+      const hubRooms = q.hubRooms.all(hubId);
+      const counts = new Map();
+      for (const room of hubRooms) counts.set(room.default_perms, (counts.get(room.default_perms) || 0) + 1);
+      const [common] = [...counts].sort((a, b) => b[1] - a[1])[0] || [DEFAULT_PERMS];
+      q.setHubDefaultPerms.run(common, hubId);
+
+      const byName = new Map(); // название -> роль канала
+      const newId = new Map(); // роль комнаты -> роль канала
+      const held = new Map(); // человек -> Map(роль канала -> в скольких комнатах)
+      for (const room of hubRooms) {
+        for (const old of db.prepare('SELECT * FROM room_roles WHERE room_id = ? ORDER BY id').all(room.id)) {
+          if (!byName.has(old.name)) byName.set(old.name, roles.create(hubId, old));
+          newId.set(old.id, byName.get(old.name));
+        }
+        for (const m of db.prepare('SELECT user_id, role_id FROM room_members WHERE room_id = ? AND role_id IS NOT NULL').all(room.id)) {
+          const role = newId.get(m.role_id);
+          if (!role) continue;
+          if (!held.has(m.user_id)) held.set(m.user_id, new Map());
+          held.get(m.user_id).set(role, (held.get(m.user_id).get(role) || 0) + 1);
+        }
+      }
+      for (const [userId, list] of held) {
+        const [best] = [...list].sort((a, b) => b[1] - a[1] || a[0].perms - b[0].perms)[0];
+        q.setMemberRole.run(best.id, hubId, userId);
+      }
+    }
+  });
+
+// У канала всегда есть готовая роль администратора, которую можно раздать
+for (const { id } of q.hubsWithoutRoles.all()) roles.create(id, ADMIN_ROLE);
 
 // Версия 2.0 называла каналы, созданные из старых комнат, «Сходка <имя>»; с 2.1 это «Канал <имя>»
 db.prepare("UPDATE hubs SET name = 'Канал' || substr(name, 7) WHERE substr(name, 1, 7) = 'Сходка '").run();
