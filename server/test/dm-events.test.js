@@ -39,7 +39,26 @@ test('закреп: виден обоим, у получателя событи�
   assert.equal((await cb.next('message:pinned')).peerId, a.user.id);
   assert.deepEqual((await api('GET', `/messages/${b.user.id}/pins`, null, a.token)).body.map((m) => m.id), [message.id]);
   assert.deepEqual((await api('GET', `/messages/${a.user.id}/pins`, null, b.token)).body.map((m) => m.id), [message.id]);
+  // В истории закреп отмечен у обоих
+  for (const [peer, token] of [[b, a.token], [a, b.token]]) assert.equal((await api('GET', `/messages/${peer.user.id}`, null, token)).body[0].pinned, true);
   await api('DELETE', `/messages/${a.user.id}/${message.id}/pin`, null, b.token);
   assert.equal((await cb.next('message:pinned')).pinned, false);
   assert.deepEqual((await api('GET', `/messages/${b.user.id}/pins`, null, a.token)).body, []);
+});
+
+test('ответ в комнате: номер совпадает с личным сообщением — отвечаем на сообщение комнаты', async () => {
+  const a = await reg('rep_a');
+  const b = await reg('rep_b');
+  await befriend(a, b);
+  const room = (await api('POST', '/rooms', { name: 'общая', kind: 'text', memberIds: [b.user.id] }, a.token)).body;
+  // Счётчики сообщений у личных чатов и комнат свои: дожимаем личные, пока в них не появится такой же номер
+  const target = (await api('POST', `/rooms/${room.id}/messages`, { text: 'в комнате' }, a.token)).body;
+  let dm;
+  do dm = (await api('POST', `/messages/${b.user.id}`, { text: 'личное' }, a.token)).body;
+  while (dm.id < target.id);
+
+  const reply = await api('POST', `/rooms/${room.id}/messages`, { text: 'ответ', replyToId: target.id }, b.token);
+  assert.equal(reply.status, 200);
+  assert.equal(reply.body.replyTo, target.id);
+  assert.equal((await api('POST', `/rooms/${room.id}/messages`, { text: 'чужое', replyToId: dm.id + 1000 }, b.token)).status, 400);
 });
