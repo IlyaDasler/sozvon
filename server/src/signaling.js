@@ -201,6 +201,19 @@ const handlers = {
     if (target) hub.sendTo(target.ws, { type: 'room:signal', roomId, from: user.id, data: msg.data });
   },
 
+  // «Печатает»: только факт набора и только тем, кто в этой переписке
+  typing(_ws, user, msg) {
+    const event = { type: 'typing', userId: user.id };
+    if (msg.to !== undefined) {
+      const to = Number(msg.to);
+      if (contacts.has(user.id, to)) hub.send(to, { ...event, conv: `dm:${user.id}` });
+      return;
+    }
+    const room = rooms.byId(Number(msg.roomId));
+    if (!room || !rooms.isMember(room.id, user.id) || !has(rooms.permsOf(room, user.id), PERMS.write)) return;
+    for (const member of rooms.members(room.id)) if (member.id !== user.id) hub.send(member.id, { ...event, conv: `room:${room.id}` });
+  },
+
   // Приложение сообщает, что за компьютером давно никого нет (или человек вернулся)
   'status:auto'(_ws, user, msg) {
     setAutoIdle(user.id, Boolean(msg.idle));
