@@ -323,6 +323,8 @@ function validateRoomName(name) {
   if (name.length < 1 || name.length > 40) throw new HttpError(400, 'Название комнаты — от 1 до 40 символов');
 }
 
+const rolesOf = (hubId) => roles.of(hubId).map((r) => ({ id: r.id, name: r.name, color: r.color, perms: r.perms }));
+
 const toRoom = (row) => ({
   id: row.id,
   name: row.name,
@@ -330,9 +332,10 @@ const toRoom = (row) => ({
   hubId: row.hub_id,
   ownerId: row.owner_id,
   createdAt: row.created_at,
-  defaultPerms: row.default_perms,
+  // Роли и права по умолчанию — канала: комната показывает их, чтобы приложения читали их как раньше
+  defaultPerms: hubs.byId(row.hub_id).default_perms,
   backgroundUrl: row.background ? `/api/avatars/${row.background}.webp` : null,
-  roles: roles.of(row.id).map((r) => ({ id: r.id, name: r.name, color: r.color, perms: r.perms })),
+  roles: rolesOf(row.hub_id),
   members: rooms.members(row.id).map((m) => ({
     ...withOnline(m),
     roleId: m.role_id,
@@ -362,7 +365,9 @@ const toHub = (row) => ({
   iconColor: row.icon_color,
   iconUrl: hubIconUrl(row),
   createdAt: row.created_at,
-  members: hubs.members(row.id).map((m) => ({ ...withOnline(m), manager: Boolean(m.manager), joinedAt: m.joined_at })),
+  defaultPerms: row.default_perms,
+  roles: rolesOf(row.id),
+  members: hubs.members(row.id).map((m) => ({ ...withOnline(m), manager: Boolean(m.manager), roleId: m.role_id, joinedAt: m.joined_at })),
   invited: hubs.invited(row.id),
   bans: hubs.bans(row.id).map((b) => ({ ...toPublicUser(b), bannedAt: b.banned_at })),
 });
@@ -375,6 +380,12 @@ function toHubInvite(row) {
     from: toPublicUser(users.byId(row.by_id)),
     createdAt: row.created_at,
   };
+}
+
+/** Роли и права поменялись: это касается канала и каждой его комнаты */
+function notifyHubRoles(hubId) {
+  for (const room of hubs.rooms(hubId)) notifyRoom(room.id);
+  return notifyHub(hubId);
 }
 
 // Свежие данные канала — всем его участникам
@@ -1378,6 +1389,69 @@ export function createApi() {
     return { name, color, perms };
   }
 
+  // ---------- Роли канала: и новые адреса /hubs/…, и старые /rooms/… приложений до 2.6.3 ----------
+
+  /** Кто настраивает роли: создатель канала, управляющий или роль с правом настройки */
+  function roleEditor(req, hubRow) {
+    if (hubs.rankOf(hubRow, req.user.id) < 2) throw new HttpError(403, 'Нет права настраивать роли канала');
+    return { isOwner: hubRow.owner_id === req.user.id };
+  }
+
+  /** Права поменялись на весь канал: проверяем голос во всех комнатах */
+  function applyRoles(hubId) {
+    for (const room of hubs.rooms(hubId)) enforceVoice(room);
+    return notifyHubRoles(hubId);
+  }
+
+  function createRole(req, hubRow) {
+    const who = roleEditor(req, hubRow);
+    if (roles.of(hubRow.id).length >= MAX_ROLES) throw new HttpError(400, `В канале может быть не больше ${MAX_ROLES} ролей`);
+    roles.create(hubRow.id, roleFields(req, who.isOwner));
+    return notifyHubRoles(hubRow.id);
+  }
+
+  function hubRole(req, hubRow) {
+    const who = roleEditor(req, hubRow);
+    const role = roles.byId(Number(req.params.roleId));
+    if (!role || role.hub_id !== hubRow.id) throw new HttpError(404, 'Роль не найдена');
+    if (role.perms & PERMS.admin && !who.isOwner) throw new HttpError(403, 'Роль администратора меняет только создатель канала');
+    return { role, who };
+  }
+
+  function updateRole(req, hubRow) {
+    const { role, who } = hubRole(req, hubRow);
+    roles.update(role.id, roleFields(req, who.isOwner));
+    return applyRoles(hubRow.id);
+  }
+
+  function deleteRole(req, hubRow) {
+    roles.remove(hubRole(req, hubRow).role.id);
+    return applyRoles(hubRow.id);
+  }
+
+  function assignRole(req, hubRow) {
+    const who = roleEditor(req, hubRow);
+    const userId = Number(req.params.userId);
+    if (!hubs.isMember(hubRow.id, userId)) throw new HttpError(404, 'Этого человека нет в канале');
+    if (userId === hubRow.owner_id) throw new HttpError(400, 'Создатель канала и так может всё');
+    if (userId !== req.user.id && hubs.rankOf(hubRow, req.user.id) <= hubs.rankOf(hubRow, userId))
+      throw new HttpError(403, 'Нельзя: у этого участника такие же или более высокие права');
+    const roleId = req.body.roleId == null ? null : Number(req.body.roleId);
+    if (roleId !== null) {
+      const role = roles.byId(roleId);
+      if (!role || role.hub_id !== hubRow.id) throw new HttpError(404, 'Роль не найдена');
+      if (role.perms & PERMS.admin && !who.isOwner) throw new HttpError(403, 'Назначать администраторов может только создатель канала');
+    }
+    hubs.setRole(hubRow.id, userId, roleId);
+    return applyRoles(hubRow.id);
+  }
+
+  function setDefaultPerms(req, hubRow) {
+    roleEditor(req, hubRow);
+    hubs.setDefaultPerms(hubRow.id, cleanPerms(req.body.defaultPerms) & ~PERMS.admin);
+    applyRoles(hubRow.id);
+  }
+
   // Права поменялись — кто потерял доступ к голосу, того отключаем
   function enforceVoice(room) {
     for (const p of voice.participants(room.id))
@@ -1423,8 +1497,7 @@ export function createApi() {
         rooms.rename(room.id, name);
       }
       if ('defaultPerms' in req.body) {
-        rooms.setDefaultPerms(room.id, cleanPerms(req.body.defaultPerms) & ~PERMS.admin);
-        enforceVoice(rooms.byId(room.id));
+        setDefaultPerms(req, hubs.byId(room.hub_id));
       }
       return notifyRoom(room.id);
     })
@@ -1482,19 +1555,7 @@ export function createApi() {
     '/rooms/:id/members/:userId/role',
     handle((req) => {
       const room = requireRoom(req);
-      const who = requirePerm(req, room, PERMS.manage, 'Нет права назначать роли');
-      const userId = Number(req.params.userId);
-      if (!rooms.isMember(room.id, userId)) throw new HttpError(404, 'Этого человека нет в комнате');
-      if (userId === room.owner_id) throw new HttpError(400, 'Создатель комнаты и так может всё');
-      if (userId !== req.user.id) requireOutranks(who, room, userId);
-      const roleId = req.body.roleId == null ? null : Number(req.body.roleId);
-      if (roleId !== null) {
-        const role = roles.byId(roleId);
-        if (!role || role.room_id !== room.id) throw new HttpError(404, 'Роль не найдена');
-        if (role.perms & PERMS.admin && !who.isOwner) throw new HttpError(403, 'Назначать администраторов может только создатель комнаты');
-      }
-      rooms.setRole(room.id, userId, roleId);
-      enforceVoice(room);
+      assignRole(req, hubs.byId(room.hub_id));
       return notifyRoom(room.id);
     })
   );
@@ -1503,28 +1564,16 @@ export function createApi() {
     '/rooms/:id/roles',
     handle((req) => {
       const room = requireRoom(req);
-      const who = requirePerm(req, room, PERMS.manage, 'Нет права настраивать роли');
-      if (roles.of(room.id).length >= MAX_ROLES) throw new HttpError(400, `В комнате может быть не больше ${MAX_ROLES} ролей`);
-      roles.create(room.id, roleFields(req, who.isOwner));
+      createRole(req, hubs.byId(room.hub_id));
       return notifyRoom(room.id);
     })
   );
-
-  function requireRole(req, room, who) {
-    const role = roles.byId(Number(req.params.roleId));
-    if (!role || role.room_id !== room.id) throw new HttpError(404, 'Роль не найдена');
-    if (role.perms & PERMS.admin && !who.isOwner) throw new HttpError(403, 'Роль администратора меняет только создатель комнаты');
-    return role;
-  }
 
   api.patch(
     '/rooms/:id/roles/:roleId',
     handle((req) => {
       const room = requireRoom(req);
-      const who = requirePerm(req, room, PERMS.manage, 'Нет права настраивать роли');
-      const role = requireRole(req, room, who);
-      roles.update(role.id, roleFields(req, who.isOwner));
-      enforceVoice(room);
+      updateRole(req, hubs.byId(room.hub_id));
       return notifyRoom(room.id);
     })
   );
@@ -1533,9 +1582,7 @@ export function createApi() {
     '/rooms/:id/roles/:roleId',
     handle((req) => {
       const room = requireRoom(req);
-      const who = requirePerm(req, room, PERMS.manage, 'Нет права настраивать роли');
-      roles.remove(requireRole(req, room, who).id);
-      enforceVoice(room);
+      deleteRole(req, hubs.byId(room.hub_id));
       return notifyRoom(room.id);
     })
   );
@@ -1743,6 +1790,11 @@ export function createApi() {
       throw new HttpError(403, 'Нельзя: у этого участника такие же или более высокие права');
   }
 
+  api.post('/hubs/:id/roles', handle((req) => createRole(req, requireHub(req))));
+  api.patch('/hubs/:id/roles/:roleId', handle((req) => updateRole(req, requireHub(req))));
+  api.delete('/hubs/:id/roles/:roleId', handle((req) => deleteRole(req, requireHub(req))));
+  api.put('/hubs/:id/members/:userId/role', handle((req) => assignRole(req, requireHub(req))));
+
   function requireHubOwner(req, hubRow) {
     if (hubRow.owner_id !== req.user.id) throw new HttpError(403, 'Это может только создатель канала');
   }
@@ -1784,6 +1836,7 @@ export function createApi() {
       const iconColor = 'iconColor' in req.body ? str(req.body.iconColor) : hubRow.icon_color;
       if (!COLOR_RE.test(iconColor)) throw new HttpError(400, 'Неверный цвет');
       hubs.update(hubRow.id, { name, iconColor });
+      if ('defaultPerms' in req.body) setDefaultPerms(req, hubRow);
       return notifyHub(hubRow.id);
     })
   );

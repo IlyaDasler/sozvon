@@ -107,7 +107,7 @@ function openProfileCard(userId, anchor) {
     roles.className = 'pc-chips';
     const role = roleOf(openRoom, userId);
     roles.append(isRoomOwner(openRoom, userId) ? chip('Создатель', '#f0b232') : role ? chip(role.name, role.color) : chip('Без роли'));
-    body.append(section(`Роль в «${openRoom.name}»`, roles));
+    body.append(section('Роль в канале', roles));
   }
   if (!isMe) {
     const shared = [...state.hubs.values()].filter((h) => h.members.some((m) => m.id === userId));
