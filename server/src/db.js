@@ -201,6 +201,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS hub_roles_hub ON hub_roles (hub_id);
 `);
 if (!columnsOf('hub_members').includes('role_id')) db.exec('ALTER TABLE hub_members ADD COLUMN role_id INTEGER');
+if (!columnsOf('hubs').includes('reactions_visible')) db.exec('ALTER TABLE hubs ADD COLUMN reactions_visible INTEGER NOT NULL DEFAULT 1');
 if (!columnsOf('hubs').includes('default_perms')) db.exec(`ALTER TABLE hubs ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
 
 // Токены версий до сессий (см. sessions.js) больше не действуют
@@ -415,6 +416,7 @@ const q = {
   deleteRole: db.prepare('DELETE FROM hub_roles WHERE id = ?'),
   hubsWithoutRoles: db.prepare('SELECT id FROM hubs WHERE id NOT IN (SELECT hub_id FROM hub_roles)'),
   setHubDefaultPerms: db.prepare('UPDATE hubs SET default_perms = ? WHERE id = ?'),
+  setHubReactionsVisible: db.prepare('UPDATE hubs SET reactions_visible = ? WHERE id = ?'),
 
   roomBans: db.prepare(`
     SELECT u.*, b.created_at AS banned_at FROM room_bans b JOIN users u ON u.id = b.user_id
@@ -673,6 +675,7 @@ export const hubs = {
 
   update: (id, { name, iconColor }) => q.updateHub.run(name, iconColor, id),
   setDefaultPerms: (id, perms) => q.setHubDefaultPerms.run(perms, id),
+  setReactionsVisible: (id, visible) => q.setHubReactionsVisible.run(visible ? 1 : 0, id),
   setRole: (hubId, userId, roleId) => q.setMemberRole.run(roleId, hubId, userId),
   setIcon: (id, icon) => q.setHubIcon.run(icon, id),
   remove: (id) => q.deleteHub.run(id),
@@ -918,6 +921,15 @@ export const reactions = {
     return !has;
   },
   of: (kind, messageId, me) => reactions.ofMessages(kind, [messageId], me)[messageId] || [],
+  /** [{ emoji, userIds }] — кто что поставил */
+  whoOf(kind, messageId) {
+    const groups = new Map();
+    for (const row of rOfMessage.all(kind, messageId)) {
+      if (!groups.has(row.emoji)) groups.set(row.emoji, []);
+      groups.get(row.emoji).push(row.user_id);
+    }
+    return [...groups].map(([emoji, userIds]) => ({ emoji, userIds }));
+  },
   clear: (kind, messageId) => rClear.run(kind, messageId),
 };
 
