@@ -1760,3 +1760,32 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 /* Вертикальные видео (Instagram, TikTok): кадр выше, чтобы внутри плеера не было скролла */
 .embed-wrap.frame-tall { max-width: 420px; }
 .embed-wrap.frame-tall .yt-frame { aspect-ratio: auto; height: min(78vh, 760px); border-radius: 6px; }
+
+/* Свой аудиоплеер в сообщении: в стиле приложения, вместо системных кнопок */
+.audio-player { margin-top: 8px; }
+.audio-player audio { display: none; }
+.audio-row {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+  border-radius: 999px; background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line);
+}
+.audio-btn {
+  width: 34px; height: 34px; flex: none; display: grid; place-items: center; padding: 0;
+  border: 0; border-radius: 50%; background: var(--accent); color: var(--on-accent); cursor: pointer;
+  transition: background var(--fast), transform var(--fast) var(--ease);
+}
+.audio-btn:hover { background: var(--accent-hover); }
+.audio-btn:active { transform: scale(.92); }
+.audio-btn svg { width: 18px; height: 18px; fill: currentColor; }
+.audio-seek {
+  flex: 1; min-width: 0; height: 18px; margin: 0; padding: 0; background: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+}
+.audio-seek::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--filled, 0%), var(--bg-4) var(--filled, 0%));
+}
+.audio-seek::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 12px; height: 12px; margin-top: -4px;
+  border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2px var(--bg-3);
+}
+.audio-time { flex: none; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }

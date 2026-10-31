@@ -131,11 +131,7 @@ function messageContent(m) {
       box.append(video);
     } else if (a.kind === 'audio') {
       const card = fileCard(a);
-      const audio = document.createElement('audio');
-      setFileSrc(audio, 'src', a);
-      audio.controls = true;
-      audio.preload = 'metadata';
-      card.append(audio);
+      card.append(audioPlayer(a));
       box.append(card);
     } else if (a.kind === 'file') {
       box.append(fileCard(a));
@@ -366,6 +362,77 @@ function bareLinkCard(url) {
   text.append(siteLine(host), titleLink(path || url, url));
   card.append(text);
   return card;
+}
+
+const AUDIO_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const AUDIO_PAUSE = '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
+
+const clock = (seconds) => {
+  const s = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
+/** Свой плеер аудио: кнопка, полоса перемотки и время — в стиле приложения, без системных кнопок */
+function audioPlayer(a) {
+  const box = document.createElement('div');
+  box.className = 'audio-player';
+  const audio = document.createElement('audio');
+  audio.preload = 'metadata';
+  setFileSrc(audio, 'src', a);
+
+  const row = document.createElement('div');
+  row.className = 'audio-row';
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'audio-btn';
+  toggle.title = 'Слушать';
+  toggle.innerHTML = AUDIO_PLAY;
+  const seek = document.createElement('input');
+  seek.type = 'range';
+  seek.className = 'audio-seek';
+  seek.min = '0';
+  seek.max = '1000';
+  seek.value = '0';
+  seek.setAttribute('aria-label', 'Перемотка');
+  const time = document.createElement('span');
+  time.className = 'audio-time';
+  time.textContent = '0:00 / 0:00';
+  row.append(toggle, seek, time);
+  box.append(audio, row);
+
+  const refresh = () => {
+    if (!seek.dataset.dragging) seek.value = String(audio.duration ? (audio.currentTime / audio.duration) * 1000 : 0);
+    time.textContent = `${clock(audio.currentTime)} / ${clock(audio.duration)}`;
+    toggle.innerHTML = audio.paused ? AUDIO_PLAY : AUDIO_PAUSE;
+    toggle.title = audio.paused ? 'Слушать' : 'Пауза';
+    seek.style.setProperty('--filled', `${seek.value / 10}%`);
+  };
+  audio.onloadedmetadata = refresh;
+  audio.ontimeupdate = refresh;
+  audio.onplay = () => {
+    // Одновременно звучит только одно сообщение
+    for (const other of document.querySelectorAll('audio')) if (other !== audio) other.pause();
+    refresh();
+  };
+  audio.onpause = refresh;
+  audio.onended = () => {
+    audio.currentTime = 0;
+    refresh();
+  };
+  toggle.onclick = () => (audio.paused ? audio.play().catch(() => {}) : audio.pause());
+  seek.oninput = () => {
+    seek.dataset.dragging = '1';
+    seek.style.setProperty('--filled', `${seek.value / 10}%`);
+    time.textContent = `${clock((seek.value / 1000) * audio.duration)} / ${clock(audio.duration)}`;
+  };
+  const commit = () => {
+    delete seek.dataset.dragging;
+    if (Number.isFinite(audio.duration)) audio.currentTime = (seek.value / 1000) * audio.duration;
+    refresh();
+  };
+  seek.onchange = commit;
+  seek.onpointerup = () => seek.dataset.dragging && commit();
+  return box;
 }
 
 function fileCard(a) {
