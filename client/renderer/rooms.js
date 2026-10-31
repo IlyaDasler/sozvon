@@ -100,6 +100,10 @@ function renderRooms() {
     (a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name, 'ru') : a.kind === 'voice' ? -1 : 1)
   );
 
+  const groups = hub.groups || [];
+  const groupIds = new Set(groups.map((g) => g.id));
+  const inGroup = (r) => groupIds.has(r.groupId);
+
   // Разделы «Голосовые» и «Текстовые»; кто управляет каналом, создаёт комнаты прямо отсюда
   for (const [kind, title] of [['voice', 'Голосовые'], ['text', 'Текстовые']]) {
     const head = document.createElement('li');
@@ -116,15 +120,99 @@ function renderRooms() {
       head.append(add);
     }
     list.append(head);
-    if (!sorted.some((r) => r.kind === kind)) {
+    const loose = sorted.filter((r) => r.kind === kind && !inGroup(r));
+    if (!loose.length && !groups.length) {
       const li = document.createElement('li');
       li.className = 'muted small pad room-none';
       li.textContent = kind === 'voice' ? 'Голосовых комнат нет' : 'Текстовых комнат нет';
       list.append(li);
     }
-    for (const room of sorted.filter((r) => r.kind === kind)) list.append(roomItem(room));
+    for (const room of loose) list.append(roomItem(room));
+  }
+  for (const group of groups) renderRoomGroup(list, hub, group, sorted.filter((r) => r.groupId === group.id));
+}
+
+// ---------- Группы комнат ----------
+
+const groupClosedKey = (id) => `roomGroup:closed:${id}`;
+
+function renderRoomGroup(list, hub, group, rooms) {
+  const closed = Boolean(store.get(groupClosedKey(group.id), false));
+  const head = document.createElement('li');
+  head.className = `list-title with-action room-section room-group${closed ? ' closed' : ''}`;
+  head.dataset.group = group.id;
+  const title = document.createElement('button');
+  title.type = 'button';
+  title.className = 'room-group-title';
+  title.innerHTML = '<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>';
+  title.append(Object.assign(document.createElement('span'), { className: 'ellipsis', textContent: group.name }));
+  title.onclick = () => {
+    store.set(groupClosedKey(group.id), !closed);
+    renderRooms();
+  };
+  head.append(title);
+  if (canManageHub(hub)) {
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'icon-btn';
+    add.title = 'Создать комнату в группе';
+    add.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+    add.onclick = () => openRoomCreate('voice', hub.id, group.id);
+    head.append(add);
+    head.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showMenu(e.clientX, e.clientY, [
+        { label: 'Создать комнату', onclick: () => openRoomCreate('voice', hub.id, group.id) },
+        { label: 'Переименовать', onclick: () => renameRoomGroup(hub, group) },
+        'sep',
+        { label: 'Удалить группу', danger: true, onclick: () => deleteRoomGroup(hub, group) },
+      ]);
+    };
+  }
+  list.append(head);
+  // В свёрнутой группе остаётся то, что сейчас важно: открытая комната и идущий разговор
+  for (const room of rooms) {
+    if (closed && room.id !== state.selectedRoomId && !room.voice?.length) continue;
+    const item = roomItem(room);
+    item.dataset.inGroup = group.id;
+    list.append(item);
   }
 }
+
+async function createRoomGroup(hub) {
+  const name = (await askText('Название группы'))?.trim();
+  if (name) await Api.post(`/hubs/${hub.id}/groups`, { name }).catch((err) => toast(err.message));
+}
+
+async function renameRoomGroup(hub, group) {
+  const name = (await askText('Название группы', group.name))?.trim();
+  if (name && name !== group.name) await Api.patch(`/hubs/${hub.id}/groups/${group.id}`, { name }).catch((err) => toast(err.message));
+}
+
+async function deleteRoomGroup(hub, group) {
+  if (!(await ask(`Комнаты из «${group.name}» останутся в канале.`, { title: 'Удалить группу?', ok: 'Удалить', danger: true }))) return;
+  await Api.del(`/hubs/${hub.id}/groups/${group.id}`).catch((err) => toast(err.message));
+}
+
+function moveRoomToGroup(room, groupId) {
+  Api.patch(`/rooms/${room.id}`, { groupId }).catch((err) => toast(err.message));
+}
+
+// ---------- Сколько идёт разговор ----------
+
+function formatVoiceTime(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const two = (n) => String(n).padStart(2, '0');
+  const hours = Math.floor(total / 3600);
+  const clock = `${two(Math.floor(total / 60) % 60)}:${two(total % 60)}`;
+  return hours ? `${hours}:${clock}` : clock;
+}
+
+function tickVoiceTimers() {
+  for (const el of document.querySelectorAll('.voice-timer')) el.textContent = formatVoiceTime(Date.now() - Number(el.dataset.since));
+}
+setInterval(tickVoiceTimers, 1000);
 
 function roomItem(room) {
   const li = document.createElement('li');
@@ -160,6 +248,13 @@ function roomItem(room) {
     badge.className = 'badge';
     badge.textContent = unread > 99 ? '99+' : unread;
     row.append(badge);
+  }
+  if (room.voiceSince && room.voice?.length) {
+    const timer = document.createElement('span');
+    timer.className = 'voice-timer';
+    timer.dataset.since = room.voiceSince;
+    timer.textContent = formatVoiceTime(Date.now() - room.voiceSince);
+    row.append(timer);
   }
   // Голосовая комната: щелчок сразу переносит в её голосовой канал (из другого — тоже)
   row.onclick = () => openRoom(room.id);
@@ -476,9 +571,12 @@ function handleRoomEvent(msg) {
   }
 }
 
-function onRoomVoice({ roomId, participants }) {
+function onRoomVoice({ roomId, participants, since = null }) {
   const room = roomById(roomId);
-  if (room) room.voice = participants;
+  if (room) {
+    room.voice = participants;
+    room.voiceSince = since;
+  }
   const v = state.room;
   if (v?.roomId === roomId && v.joined) {
     const ids = new Set(participants.map((p) => p.userId));
@@ -633,11 +731,13 @@ function onVoiceSocketStatus(ok) {
 // ---------- Создание комнаты ----------
 
 let createHubId = null;
+let createGroupId = null;
 
-function openRoomCreate(kind = 'voice', hubId = state.view) {
+function openRoomCreate(kind = 'voice', hubId = state.view, groupId = null) {
   const hub = hubById(hubId);
   if (!hub) return;
   createHubId = hub.id;
+  createGroupId = groupId;
   $('room-name').value = '';
   $('room-create-error').textContent = '';
   $('room-create-hint').textContent = `Комната появится в «${hub.name}» у всех участников канала.`;
@@ -655,7 +755,7 @@ $('room-create-form').onsubmit = async (e) => {
   const button = $('room-create-submit');
   button.disabled = true;
   try {
-    const room = await Api.post('/rooms', { hubId: createHubId, name, kind });
+    const room = await Api.post('/rooms', { hubId: createHubId, groupId: createGroupId, name, kind });
     state.rooms.set(room.id, room);
     $('room-create').classList.add('hidden');
     selectRoom(room.id);

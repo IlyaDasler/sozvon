@@ -313,6 +313,7 @@ function notifyProfile(row) {
 const ROOM_KINDS = ['voice', 'text'];
 const MAX_OWNED_HUBS = 10;
 const MAX_HUB_ROOMS = 30;
+const MAX_HUB_GROUPS = 30;
 // Участники комнаты — из участников канала, поэтому предел один
 const MAX_HUB_MEMBERS = 50;
 const MAX_ROOM_MEMBERS = MAX_HUB_MEMBERS;
@@ -330,6 +331,7 @@ const toRoom = (row) => ({
   name: row.name,
   kind: row.kind,
   hubId: row.hub_id,
+  groupId: row.group_id ?? null,
   ownerId: row.owner_id,
   createdAt: row.created_at,
   // Роли и права по умолчанию — канала: комната показывает их, чтобы приложения читали их как раньше
@@ -343,6 +345,7 @@ const toRoom = (row) => ({
   })),
   bans: rooms.bans(row.id).map((b) => ({ ...toPublicUser(b), bannedAt: b.banned_at })),
   voice: voice.participants(row.id),
+  voiceSince: voice.since(row.id),
 });
 
 // Свежие данные комнаты — всем его участникам
@@ -350,6 +353,18 @@ function notifyRoom(roomId) {
   const room = toRoom(rooms.byId(roomId));
   for (const m of room.members) hub.send(m.id, { type: 'room:updated', room });
   return room;
+}
+
+function validateGroupName(name) {
+  if (name.length < 1 || name.length > 40) throw new HttpError(400, 'Название группы — от 1 до 40 символов');
+}
+
+/** groupId из запроса: null — без группы; группа должна быть из этого канала */
+function groupIdIn(hubId, value) {
+  if (value == null) return null;
+  const group = hubs.group(hubId, Number(value));
+  if (!group) throw new HttpError(400, 'Такой группы в канале нет');
+  return group.id;
 }
 
 function validateHubName(name) {
@@ -367,6 +382,7 @@ const toHub = (row) => ({
   createdAt: row.created_at,
   defaultPerms: row.default_perms,
   reactionsVisible: Boolean(row.reactions_visible),
+  groups: hubs.groups(row.id),
   roles: rolesOf(row.id),
   members: hubs.members(row.id).map((m) => ({ ...withOnline(m), manager: Boolean(m.manager), roleId: m.role_id, joinedAt: m.joined_at })),
   invited: hubs.invited(row.id),
@@ -1497,7 +1513,9 @@ export function createApi() {
       if (!legacy) requireHubManager(req, hubRow);
       if (hubs.rooms(hubRow.id).length >= MAX_HUB_ROOMS)
         throw new HttpError(400, `В канале может быть не больше ${MAX_HUB_ROOMS} комнат`);
+      const groupId = groupIdIn(hubRow.id, req.body.groupId);
       const room = rooms.create(req.user.id, name, kind, hubRow.id, { everyone: !legacy });
+      if (groupId) rooms.setGroup(room.id, groupId);
       addMembers(req, room, memberIds);
       // Канал мог только что появиться — новые версии на других устройствах должны о нём узнать
       if (legacy) notifyHub(hubRow.id);
@@ -1519,6 +1537,7 @@ export function createApi() {
       if ('defaultPerms' in req.body) {
         setDefaultPerms(req, hubs.byId(room.hub_id));
       }
+      if ('groupId' in req.body) rooms.setGroup(room.id, groupIdIn(room.hub_id, req.body.groupId));
       return notifyRoom(room.id);
     })
   );
@@ -1870,6 +1889,50 @@ export function createApi() {
       if ('defaultPerms' in req.body) setDefaultPerms(req, hubRow);
       if ('reactionsVisible' in req.body) hubs.setReactionsVisible(hubRow.id, Boolean(req.body.reactionsVisible));
       return notifyHub(hubRow.id);
+    })
+  );
+
+  // Группы комнат: видны всем участникам канала
+  api.post(
+    '/hubs/:id/groups',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubManager(req, hubRow);
+      const name = str(req.body.name);
+      validateGroupName(name);
+      if (hubs.groups(hubRow.id).length >= MAX_HUB_GROUPS)
+        throw new HttpError(400, `В канале может быть не больше ${MAX_HUB_GROUPS} групп`);
+      hubs.createGroup(hubRow.id, name);
+      return notifyHub(hubRow.id);
+    })
+  );
+
+  const requireGroup = (req, hubRow) => {
+    const group = hubs.group(hubRow.id, Number(req.params.groupId));
+    if (!group) throw new HttpError(404, 'Группа не найдена');
+    return group;
+  };
+
+  api.patch(
+    '/hubs/:id/groups/:groupId',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubManager(req, hubRow);
+      const group = requireGroup(req, hubRow);
+      const name = str(req.body.name);
+      validateGroupName(name);
+      hubs.renameGroup(group.id, name);
+      return notifyHub(hubRow.id);
+    })
+  );
+
+  api.delete(
+    '/hubs/:id/groups/:groupId',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubManager(req, hubRow);
+      hubs.deleteGroup(requireGroup(req, hubRow).id);
+      return notifyHubRoles(hubRow.id);
     })
   );
 
