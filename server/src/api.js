@@ -366,6 +366,7 @@ const toHub = (row) => ({
   iconUrl: hubIconUrl(row),
   createdAt: row.created_at,
   defaultPerms: row.default_perms,
+  reactionsVisible: Boolean(row.reactions_visible),
   roles: rolesOf(row.id),
   members: hubs.members(row.id).map((m) => ({ ...withOnline(m), manager: Boolean(m.manager), roleId: m.role_id, joinedAt: m.joined_at })),
   invited: hubs.invited(row.id),
@@ -1149,6 +1150,25 @@ export function createApi() {
     })
   );
 
+  // Кто поставил реакции
+  const reactionUsers = (kind, id) =>
+    reactions.whoOf(kind, id).map(({ emoji, userIds }) => ({
+      emoji,
+      users: userIds.map((u) => users.byId(u)).filter(Boolean).map(toPublicUser),
+    }));
+
+  api.get(
+    '/messages/:peerId/:id/reactions',
+    handle((req) => {
+      const peerId = Number(req.params.peerId);
+      const me = req.user.id;
+      const row = messages.byId(Number(req.params.id));
+      const inChat = row && ((row.from_id === me && row.to_id === peerId) || (row.from_id === peerId && row.to_id === me));
+      if (!inChat) throw new HttpError(404, 'Сообщение не найдено');
+      return reactionUsers('dm', row.id);
+    })
+  );
+
   // Реакция: ставим и снимаем один и тот же смайлик
   api.post(
     '/messages/:peerId/:id/reactions',
@@ -1701,6 +1721,17 @@ export function createApi() {
     })
   );
 
+  api.get(
+    '/rooms/:id/messages/:messageId/reactions',
+    handle((req) => {
+      const room = requireRoom(req);
+      const row = roomMessages.byId(Number(req.params.messageId));
+      if (!row || row.room_id !== room.id) throw new HttpError(404, 'Сообщение не найдено');
+      if (room.hub_id && !hubs.byId(room.hub_id).reactions_visible) throw new HttpError(403, 'В этом канале скрыто, кто поставил реакцию');
+      return reactionUsers('room', row.id);
+    })
+  );
+
   api.post(
     '/rooms/:id/messages/:messageId/reactions',
     handle((req) => {
@@ -1837,6 +1868,7 @@ export function createApi() {
       if (!COLOR_RE.test(iconColor)) throw new HttpError(400, 'Неверный цвет');
       hubs.update(hubRow.id, { name, iconColor });
       if ('defaultPerms' in req.body) setDefaultPerms(req, hubRow);
+      if ('reactionsVisible' in req.body) hubs.setReactionsVisible(hubRow.id, Boolean(req.body.reactionsVisible));
       return notifyHub(hubRow.id);
     })
   );

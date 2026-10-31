@@ -931,6 +931,11 @@ kbd {
 }
 .color.selected { box-shadow: 0 0 0 2px var(--bg-2), 0 0 0 4px var(--text); }
 /* Превью карточки профиля при наведении на цвет баннера */
+.reaction-who {
+  position: fixed; z-index: 80; max-width: 280px; padding: 6px 10px; pointer-events: none;
+  border-radius: 8px; background: var(--bg-deep); color: var(--text); font-size: 12px;
+  box-shadow: var(--shadow), 0 0 0 1px var(--line-strong);
+}
 .stream-peek {
   position: fixed; z-index: 80; width: 280px; padding: 12px; display: flex; flex-direction: column; gap: 10px;
   border-radius: 10px; background: var(--bg-deep);
