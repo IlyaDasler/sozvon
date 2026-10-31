@@ -245,13 +245,7 @@ async function messageFrom(req, conv) {
   const rows = ids.length ? uploads.claim(ids, req.user.id) : [];
   if (!rows) throw new HttpError(400, 'Вложение не найдено или уже отправлено — прикрепите файл заново');
   const previewUrl = !enc && previewableUrl(req.body.previewUrl);
-  let preview = previewUrl && linkInText(text, req.body.previewUrl) ? await fetchPreview(previewUrl) : null;
-  // Клиент не прислал карточку (старая версия или не успел) — для незашифрованного текста достанем сами
-  if (!preview && !enc) {
-    const link = (text.match(/https?:\/\/[^\s<>"']+/i) || [])[0];
-    const clean = link && previewableUrl(link.replace(/[),.;!?]+$/, ''));
-    if (clean) preview = await fetchPreview(clean).catch(() => null);
-  }
+  const preview = previewUrl && linkInText(text, req.body.previewUrl) ? await fetchPreview(previewUrl) : null;
   return { text, attachments: rows.map(toAttachment), preview, enc };
 }
 
