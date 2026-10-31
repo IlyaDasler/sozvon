@@ -229,9 +229,28 @@ const handlers = {
     const perms = rooms.permsOf(rooms.byId(roomId), user.id);
     if (!has(perms, PERMS.speak)) p.muted = true;
     if (!has(perms, PERMS.video)) p.video = p.screen = false;
+    if (!p.screen) delete p.preview;
     voice.broadcast(roomId);
   },
+
+  // Кадр трансляции для карточки в списке голоса: только в памяти, пока идёт показ
+  'room:preview'(ws, user, msg) {
+    const p = voice.get(Number(msg.roomId), user.id);
+    if (p?.ws !== ws || !p.screen) return;
+    if (typeof msg.image !== 'string' || !msg.image.startsWith(PREVIEW_PREFIX) || msg.image.length > PREVIEW_MAX) return;
+    p.preview = msg.image;
+  },
+
+  'room:preview:get'(ws, user, msg) {
+    const roomId = Number(msg.roomId);
+    const userId = Number(msg.userId);
+    const image = rooms.isMember(roomId, user.id) ? (voice.get(roomId, userId)?.preview ?? null) : null;
+    hub.sendTo(ws, { type: 'room:preview', roomId, userId, image });
+  },
 };
+
+const PREVIEW_PREFIX = 'data:image/jpeg;base64,';
+const PREVIEW_MAX = 40_000; // сообщение должно пройти в maxPayload
 
 function onConnection(ws, user) {
   ws.isAlive = true;
