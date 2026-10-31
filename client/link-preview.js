@@ -51,8 +51,18 @@ function parsePreview(html, url) {
   const rawImage = meta['og:image'] || meta['og:image:url'] || meta['twitter:image'];
   if (rawImage) {
     try {
-      const resolved = new URL(unescape(rawImage), url);
+      // Некоторые сайты экранируют адрес дважды (&amp;amp;) — раскрываем до конца
+      const resolved = new URL(unescape(unescape(rawImage)), url);
       if (/^https?:$/.test(resolved.protocol)) image = resolved.toString();
+    } catch {}
+  }
+  // Ссылка на само видео: многие сайты отдают её в og:video — тогда в чате можно играть файл напрямую
+  let video = null;
+  const rawVideo = meta['og:video:secure_url'] || meta['og:video:url'] || meta['og:video'] || meta['twitter:player:stream'];
+  if (rawVideo) {
+    try {
+      const resolved = new URL(unescape(rawVideo), url);
+      if (/^https?:$/.test(resolved.protocol) && /\.(mp4|webm|ogv|m4v|mov|m3u8)(\?|#|$)/i.test(resolved.pathname)) video = resolved.toString();
     } catch {}
   }
   return {
@@ -60,6 +70,7 @@ function parsePreview(html, url) {
     title,
     description: clean(meta['og:description'] || meta['twitter:description'] || meta.description, 300),
     image,
+    video,
     siteName: clean(meta['og:site_name'], 80) || new URL(url).hostname.replace(/^www\./, ''),
   };
 }
