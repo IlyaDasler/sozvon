@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Что подписывает SignPath: установщик из артефакта сборки. Вставляется в настройки проекта на signpath.io -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="Sozvon-Setup-*.exe">
+      <authenticode-sign/>
+    </pe-file>
+  </zip-file>
+</artifact-configuration>
