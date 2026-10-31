@@ -209,6 +209,16 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS room_groups_hub ON room_groups (hub_id);
 `);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS hub_emojis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    file TEXT NOT NULL,
+    created_by INTEGER NOT NULL,
+    UNIQUE (hub_id, name)
+  );
+`);
 if (!columnsOf('rooms').includes('group_id')) db.exec('ALTER TABLE rooms ADD COLUMN group_id INTEGER');
 if (!columnsOf('hubs').includes('reactions_visible')) db.exec('ALTER TABLE hubs ADD COLUMN reactions_visible INTEGER NOT NULL DEFAULT 1');
 if (!columnsOf('hubs').includes('default_perms')) db.exec(`ALTER TABLE hubs ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
@@ -425,6 +435,10 @@ const q = {
   deleteRole: db.prepare('DELETE FROM hub_roles WHERE id = ?'),
   hubsWithoutRoles: db.prepare('SELECT id FROM hubs WHERE id NOT IN (SELECT hub_id FROM hub_roles)'),
   setHubDefaultPerms: db.prepare('UPDATE hubs SET default_perms = ? WHERE id = ?'),
+  hubEmojis: db.prepare('SELECT id, name, file, created_by FROM hub_emojis WHERE hub_id = ? ORDER BY id'),
+  hubEmoji: db.prepare('SELECT * FROM hub_emojis WHERE id = ? AND hub_id = ?'),
+  insertEmoji: db.prepare('INSERT OR IGNORE INTO hub_emojis (hub_id, name, file, created_by) VALUES (?, ?, ?, ?)'),
+  deleteEmoji: db.prepare('DELETE FROM hub_emojis WHERE id = ?'),
   hubGroups: db.prepare('SELECT id, name FROM room_groups WHERE hub_id = ? ORDER BY id'),
   hubGroup: db.prepare('SELECT * FROM room_groups WHERE id = ? AND hub_id = ?'),
   insertGroup: db.prepare('INSERT INTO room_groups (hub_id, name) VALUES (?, ?)'),
@@ -692,6 +706,11 @@ export const hubs = {
 
   update: (id, { name, iconColor }) => q.updateHub.run(name, iconColor, id),
   setDefaultPerms: (id, perms) => q.setHubDefaultPerms.run(perms, id),
+  emojis: (id) => q.hubEmojis.all(id),
+  emoji: (hubId, id) => q.hubEmoji.get(id, hubId),
+  /** false — такое имя в канале уже есть */
+  addEmoji: (hubId, name, file, userId) => q.insertEmoji.run(hubId, name, file, userId).changes > 0,
+  removeEmoji: (id) => q.deleteEmoji.run(id),
   groups: (id) => q.hubGroups.all(id),
   group: (hubId, id) => q.hubGroup.get(id, hubId),
   createGroup: (hubId, name) => q.insertGroup.run(hubId, name),
