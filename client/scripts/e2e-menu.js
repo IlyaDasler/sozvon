@@ -5,6 +5,7 @@ const { ipcMain } = require('electron');
 const { ACCEPT_DIALOGS, api, befriend, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
 
 let clipboard = null;
+ipcMain.removeHandler('clipboard:write');
 ipcMain.handle('clipboard:write', (_e, text) => (clipboard = text));
 ipcMain.on('edit', () => {});
 

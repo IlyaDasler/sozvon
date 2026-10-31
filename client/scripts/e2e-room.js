@@ -261,13 +261,13 @@ runTest(async () => {
   await roomTool(winA, roomId, 'settings');
   await waitFor(winA, `!document.getElementById('room-manage').classList.contains('hidden') && document.getElementById('rs-room-name').textContent === roomById(${roomId}).name`, 'настройки комнаты');
   if (await js(winA, `state.selectedRoomId === ${roomId}`)) throw new Error('Шестерёнка открыла саму комнату');
-  await js(winA, `document.querySelector('#rs-nav [data-tab="roles"]').click(); true`);
-  await waitFor(winA, `document.querySelectorAll('#rs-body .rs-role-item').length === 3 && Boolean(document.querySelector('#rm-role-editor .switch'))`, 'роли и переключатели прав');
+  await js(winA, `document.getElementById('rm-close').click(); openHubSettings(${hub.id}, 'roles'); true`);
+  await waitFor(winA, `document.querySelectorAll('#hs-body .rs-role-item').length === 3 && Boolean(document.querySelector('#rm-role-editor .switch'))`, 'роли и переключатели прав');
   // Роль «Голос»: переключатели показывают её права, назначить можно прямо отсюда
-  await js(winA, `[...document.querySelectorAll('#rs-body .rs-role-item')].find((b) => b.textContent.includes('Голос')).click(); true`);
+  await js(winA, `[...document.querySelectorAll('#hs-body .rs-role-item')].find((b) => b.textContent.includes('Голос')).click(); true`);
   await waitFor(winA, `document.querySelector('#rm-role-editor [data-perm="speak"]')?.checked === true && document.querySelector('#rm-role-editor [data-perm="kick"]')?.checked === false`, 'права роли «Голос»');
   await screenshot(winA, 'room-roles');
-  await js(winA, `document.querySelector('#rs-nav [data-tab="members"]').click(); true`);
+  await js(winA, `document.getElementById('hs-close').click(); openRoomManage(${roomId}, 'members'); true`);
   await waitFor(winA, `document.querySelectorAll('#rm-members .member-row').length === 3`, 'участники');
   await screenshot(winA, 'room-members');
   await js(winA, `document.getElementById('rm-close').click(); true`);
