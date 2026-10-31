@@ -37,6 +37,7 @@ const openModals = () => [...document.querySelectorAll('.modal:not(.hidden)')];
 function closeTopLayer() {
   if (anyPopoverOpen()) return closePopovers();
   if (document.querySelector('.fullview:not(.hidden)')) return closeFullView();
+  if (cropOpen()) return closeCrop(null);
   if (!$('image-viewer').classList.contains('hidden')) return closeImageViewer();
   // Верхнее окно — последнее в разметке
   const top = openModals().at(-1);

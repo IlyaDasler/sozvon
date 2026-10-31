@@ -260,22 +260,21 @@ function takeEmoji(value) {
 }
 
 /** Дополняет сообщения реакциями и признаком закрепа */
-function withMessageMeta(list, kind, chatId, me) {
+function withMessageMeta(list, kind, _chatId, me) {
   const react = reactions.ofMessages(kind, list.map((m) => m.id), me);
-  const pinned = new Set(pins.of(kind, chatId));
   for (const m of list) {
     m.reactions = react[m.id] || [];
-    m.pinned = pinned.has(m.id);
+    m.pinned = pins.has(kind, m.id);
   }
   return list;
 }
 
-/** id сообщения, на которое отвечают: оно должно быть из этой же переписки или комнаты */
-function replyTarget(value, belongs) {
+/** id сообщения, на которое отвечают: оно должно быть из этой же переписки или комнаты. У личных и комнатных счётчики свои */
+function replyTarget(value, table, belongs) {
   if (value == null || value === '') return null;
   const id = Number(value);
   if (!id) return null;
-  const row = messages.byId(id) || roomMessages.byId(id);
+  const row = table.byId(id);
   if (!row || !belongs(row)) throw new HttpError(400, 'Сообщение для ответа не найдено');
   return row.id;
 }
@@ -1084,7 +1083,7 @@ export function createApi() {
       const other = requireContact(req);
       const { text, ...extra } = await messageFrom(req, dmConv(req.user.id, other.id));
       const me = req.user.id;
-      const replyTo = replyTarget(req.body.replyToId, (r) =>
+      const replyTo = replyTarget(req.body.replyToId, messages, (r) =>
         (r.from_id === me && r.to_id === other.id) || (r.from_id === other.id && r.to_id === me)
       );
       const message = withMessageMeta(
@@ -1626,7 +1625,7 @@ export function createApi() {
       const room = requireRoom(req);
       requirePerm(req, room, PERMS.write, 'Вам нельзя писать в эту комнату');
       const { text, ...extra } = await messageFrom(req, roomConv(room.id));
-      const replyTo = replyTarget(req.body.replyToId, (r) => r.room_id === room.id);
+      const replyTo = replyTarget(req.body.replyToId, roomMessages, (r) => r.room_id === room.id);
       const message = withMessageMeta(
         [toRoomMessage(roomMessages.add(room.id, req.user.id, text, { ...extra, replyTo }))],
         'room',
