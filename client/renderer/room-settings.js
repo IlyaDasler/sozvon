@@ -56,7 +56,7 @@ function closeRoomManage() {
   manageRoomId = null;
 }
 
-const TAB_TITLES = { overview: 'Обзор', roles: 'Роли и права', members: 'Участники', bans: 'Баны' };
+const TAB_TITLES = { overview: 'Обзор', members: 'Участники', bans: 'Баны' };
 
 function renderRoomManage() {
   const room = manageRoom();
@@ -73,7 +73,7 @@ function renderRoomManage() {
   // Не перерисовываем поле, пока в нём печатают
   const focused = document.activeElement?.dataset?.keep;
   const draft = focused && document.activeElement.value;
-  body.replaceChildren(...{ overview: overviewPane, roles: rolesPane, members: membersPane, bans: bansPane }[manageTab](room));
+  body.replaceChildren(...{ overview: overviewPane, members: membersPane, bans: bansPane }[manageTab](room));
   if (focused) {
     const input = body.querySelector(`[data-keep="${focused}"]`);
     if (input) {
@@ -153,10 +153,11 @@ async function uploadRoomBackground(room, file) {
 
 // ---------- Роли ----------
 
-function rolesPane(room) {
-  const manage = can(room, PERMS.manage);
-  const isOwner = isRoomOwner(room, state.me.id);
-  if (selectedRoleId !== 'default' && !room.roles?.some((r) => r.id === selectedRoleId)) selectedRoleId = 'default';
+/** Настройки канала → «Роли и права»: роли действуют во всех комнатах канала */
+function rolesPane(hub) {
+  const manage = canManageHub(hub);
+  const isOwner = hub.ownerId === state.me.id;
+  if (selectedRoleId !== 'default' && !hub.roles?.some((r) => r.id === selectedRoleId)) selectedRoleId = 'default';
 
   const list = el('div', { className: 'rs-role-list' });
   const item = (id, name, color, count) => {
@@ -171,22 +172,22 @@ function rolesPane(room) {
     b.dataset.role = id;
     b.onclick = () => {
       selectedRoleId = id;
-      renderRoomManage();
+      renderHubSettings();
     };
     return b;
   };
-  const withoutRole = room.members.filter((m) => !isRoomOwner(room, m.id) && !m.roleId).length;
+  const withoutRole = hub.members.filter((m) => m.id !== hub.ownerId && !m.roleId).length;
   list.append(item('default', 'Все без роли', 'var(--muted)', withoutRole));
-  for (const r of room.roles || []) list.append(item(r.id, r.name, r.color, room.members.filter((m) => m.roleId === r.id).length));
+  for (const r of hub.roles || []) list.append(item(r.id, r.name, r.color, hub.members.filter((m) => m.roleId === r.id).length));
   if (manage) {
     const create = smallButton('+ Создать роль', 'rs-create', () => {
-      const n = (room.roles?.length || 0) + 1;
+      const n = (hub.roles?.length || 0) + 1;
       // Новая роль начинается с прав по умолчанию — дальше их правят переключателями
-      roomAction(Api.post(`/rooms/${room.id}/roles`, { name: `Роль ${n}`, color: '#5865f2', perms: (room.defaultPerms ?? ALL_PERMS) & ~PERMS.admin })).then((ok) => {
-        const roles = manageRoom()?.roles || [];
+      hubAction(Api.post(`/hubs/${hub.id}/roles`, { name: `Роль ${n}`, color: '#5865f2', perms: (hub.defaultPerms ?? ALL_PERMS) & ~PERMS.admin })).then((ok) => {
+        const roles = hubById(hub.id)?.roles || [];
         if (ok && roles.length) {
           selectedRoleId = roles.at(-1).id;
-          renderRoomManage();
+          renderHubSettings();
         }
       });
     });
@@ -194,16 +195,16 @@ function rolesPane(room) {
     list.append(create);
   }
 
-  const role = selectedRoleId === 'default' ? null : room.roles.find((r) => r.id === selectedRoleId);
+  const role = selectedRoleId === 'default' ? null : hub.roles.find((r) => r.id === selectedRoleId);
   const editable = manage && (!role || isOwner || !(role.perms & PERMS.admin));
   return [
-    el('p', { className: 'hint-text', textContent: 'Создатель может всё. Остальным права даёт роль, а без роли действуют права «Все без роли». Кикать, банить и менять роли можно только тех, у кого прав меньше.' }),
-    el('div', { className: 'rs-roles' }, list, roleEditor(room, role, editable)),
+    el('p', { className: 'hint-text', textContent: 'Роли действуют во всех комнатах канала. Создатель может всё. Остальным права даёт роль, а без роли действуют права «Все без роли». Кикать, банить и менять роли можно только тех, у кого прав меньше.' }),
+    el('div', { className: 'rs-roles' }, list, roleEditor(hub, role, editable)),
   ];
 }
 
-function roleEditor(room, role, editable) {
-  const isOwner = isRoomOwner(room, state.me.id);
+function roleEditor(hub, role, editable) {
+  const isOwner = hub.ownerId === state.me.id;
   const form = el('form', { className: 'rs-role-editor', id: 'rm-role-editor' });
   let nameInput = null;
   let colorInput = null;
@@ -220,7 +221,7 @@ function roleEditor(room, role, editable) {
     form.append(el('h4', { textContent: 'Все без роли' }), el('p', { className: 'muted small', textContent: 'Права всех, кому не назначена роль, — и новичков тоже.' }));
   }
 
-  const perms = role ? role.perms : room.defaultPerms ?? ALL_PERMS;
+  const perms = role ? role.perms : hub.defaultPerms ?? ALL_PERMS;
   const boxes = {};
   const toggles = el('div', { className: 'perm-list' });
   for (const [key, label, hint] of PERM_INFO) {
@@ -241,29 +242,29 @@ function roleEditor(room, role, editable) {
 
   // Кто с этой ролью — и кому её дать
   if (role) {
-    const holders = room.members.filter((m) => m.roleId === role.id);
+    const holders = hub.members.filter((m) => m.roleId === role.id);
     const box = el('div', { className: 'pc-chips rs-holders' });
     for (const m of holders) {
       const chip = el('span', { className: 'pc-chip', textContent: m.displayName });
       chip.style.setProperty('--chip', role.color);
-      if (editable && (outranks(room, m.id) || m.id === state.me.id)) {
+      if (editable && (hubRank(hub) > hubRank(hub, m.id) || m.id === state.me.id)) {
         const x = el('button', { type: 'button', className: 'chip-x', title: 'Снять роль', textContent: '×' });
-        x.onclick = () => setMemberRole(room, m, null);
+        x.onclick = () => setHubRole(hub, m.id, null);
         chip.append(x);
       }
       box.append(chip);
     }
     if (!holders.length) box.append(el('span', { className: 'muted small', textContent: 'Пока ни у кого' }));
-    const candidates = room.members.filter((m) => !isRoomOwner(room, m.id) && m.roleId !== role.id && (outranks(room, m.id) || m.id === state.me.id));
+    const candidates = hub.members.filter((m) => m.id !== hub.ownerId && m.roleId !== role.id && (hubRank(hub) > hubRank(hub, m.id) || m.id === state.me.id));
     const add = editable && candidates.length && el('select', { className: 'role-select', id: 'rm-role-assign' }, new Option('+ Назначить участнику', ''), ...candidates.map((m) => new Option(m.displayName, m.id)));
-    if (add) add.onchange = () => add.value && setMemberRole(room, memberOf(room, Number(add.value)), role.id);
+    if (add) add.onchange = () => add.value && setHubRole(hub, Number(add.value), role.id);
     form.append(el('h4', { textContent: `С этой ролью — ${holders.length}` }), box, add);
   }
 
   if (editable) {
     form.append(
       el('div', { className: 'row rs-actions' },
-        role && smallButton('Удалить роль', 'danger-outline', () => deleteRole(room, role)),
+        role && smallButton('Удалить роль', 'danger-outline', () => deleteRole(hub, role)),
         el('div', { className: 'spacer' }),
         el('button', { className: 'btn primary', textContent: 'Сохранить' }))
     );
@@ -273,7 +274,7 @@ function roleEditor(room, role, editable) {
     let value = 0;
     for (const [key, cb] of Object.entries(boxes)) if (cb.checked) value |= PERMS[key];
     const body = role ? { name: nameInput.value.trim(), color: colorInput.value, perms: value } : { defaultPerms: value };
-    await roomAction(role ? Api.patch(`/rooms/${room.id}/roles/${role.id}`, body) : Api.patch(`/rooms/${room.id}`, body), 'Права сохранены');
+    await hubAction(role ? Api.patch(`/hubs/${hub.id}/roles/${role.id}`, body) : Api.patch(`/hubs/${hub.id}`, body), 'Права сохранены');
   };
   return form;
 }
@@ -379,6 +380,9 @@ function setMemberRole(room, member, roleId) {
   return roomAction(Api.put(`/rooms/${room.id}/members/${member.id}/role`, { roleId }));
 }
 
+/** Роль на весь канал */
+const setHubRole = (hub, userId, roleId) => hubAction(Api.put(`/hubs/${hub.id}/members/${userId}/role`, { roleId }));
+
 async function removeRoomMember(room, member) {
   if (!(await ask(`Пригласить ${member.displayName} обратно в «${room.name}» можно будет в любой момент.`, { title: 'Исключить из комнаты?', ok: 'Исключить', danger: true }))) return;
   roomAction(Api.del(`/rooms/${room.id}/members/${member.id}`), `${member.displayName} исключён из комнаты`);
@@ -397,9 +401,9 @@ function liftKick(room, member) {
   roomAction(Api.del(`/rooms/${room.id}/timeouts/${member.id}`), `Кик снят: ${member.displayName} снова может всё, что даёт роль`);
 }
 
-async function deleteRole(room, role) {
+async function deleteRole(hub, role) {
   if (!(await ask(`У участников роли «${role.name}» останутся права «Все без роли».`, { title: 'Удалить роль?', ok: 'Удалить', danger: true }))) return;
-  roomAction(Api.del(`/rooms/${room.id}/roles/${role.id}`));
+  hubAction(Api.del(`/hubs/${hub.id}/roles/${role.id}`));
 }
 
 // ---------- Кик на время ----------

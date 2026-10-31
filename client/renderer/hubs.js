@@ -13,7 +13,9 @@ const roomsOfHub = (hubId) => [...state.rooms.values()].filter((r) => r.hubId ==
 function hubRank(hub, userId = state.me.id) {
   if (hub.ownerId === userId) return 3;
   const member = hub.members.find((m) => m.id === userId);
-  return member ? (member.manager ? 2 : 1) : 0;
+  if (!member) return 0;
+  const role = hub.roles?.find((x) => x.id === member.roleId);
+  return member.manager || (role?.perms ?? 0) & (PERMS.manage | PERMS.admin) ? 2 : 1;
 }
 const canManageHub = (hub) => Boolean(hub) && hubRank(hub) >= 2;
 
@@ -607,7 +609,7 @@ $('rail-home').onclick = () => selectContact(null);
 let settingsHubId = null;
 let settingsTab = 'overview';
 let hubMemberQuery = '';
-const HUB_TABS = { overview: 'Обзор', members: 'Участники', bans: 'Баны' };
+const HUB_TABS = { overview: 'Обзор', roles: 'Роли и права', members: 'Участники', bans: 'Баны' };
 
 function openHubSettings(id, tab = 'overview') {
   if (!hubById(id)) return;
@@ -642,7 +644,7 @@ function renderHubSettings() {
   const body = $('hs-body');
   const focused = document.activeElement?.dataset?.keep;
   const draft = focused && document.activeElement.value;
-  body.replaceChildren(...{ overview: hubOverviewPane, members: hubMembersPane, bans: hubBansPane }[settingsTab](hub));
+  body.replaceChildren(...{ overview: hubOverviewPane, roles: rolesPane, members: hubMembersPane, bans: hubBansPane }[settingsTab](hub));
   if (focused) {
     const input = body.querySelector(`[data-keep="${focused}"]`);
     if (input) {
@@ -724,12 +726,26 @@ function hubMembersPane(hub) {
     const tags = el('div', { className: 'member-tags' }, el('span', { className: 'muted small', textContent: `@${m.username}` }));
     if (m.id === hub.ownerId) tags.append(el('span', { className: 'tag owner', textContent: 'Создатель' }));
     else if (m.manager) tags.append(el('span', { className: 'tag', textContent: 'Управляет' }));
+    const role = hub.roles?.find((x) => x.id === m.roleId);
+    if (role) tags.append(el('span', { className: 'tag', textContent: role.name }));
     const info = el('div', { className: 'grow member-info' },
       el('div', { className: 'ellipsis member-name', textContent: mine ? `${m.displayName} (вы)` : m.displayName }), tags);
     info.dataset.profile = m.id;
     const avatar = makeAvatar(m, presenceIn(m));
     avatar.dataset.profile = m.id;
     const actions = el('div', { className: 'member-actions' });
+    // Роль на весь канал назначает тот, кто настраивает роли, и только тем, кто младше (себе — тоже можно)
+    if (myRank >= 2 && m.id !== hub.ownerId && (mine || myRank > hubRank(hub, m.id))) {
+      const select = el('select', { className: 'role-select', title: 'Роль в канале' }, new Option('Без роли', ''));
+      for (const r of hub.roles || []) {
+        const opt = new Option(r.name, r.id);
+        opt.disabled = Boolean(r.perms & PERMS.admin) && hub.ownerId !== state.me.id;
+        select.add(opt);
+      }
+      select.value = m.roleId ?? '';
+      select.onchange = () => setHubRole(hub, m.id, select.value ? Number(select.value) : null);
+      actions.append(select);
+    }
     // Право управлять раздаёт создатель; выгнать и забанить — только тех, кто младше
     if (hub.ownerId === state.me.id && !mine) {
       const sw = el('input', { type: 'checkbox', className: 'switch', checked: Boolean(m.manager), title: 'Может управлять каналом' });
