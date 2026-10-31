@@ -41,6 +41,36 @@ function messageSummary(m) {
   return n > 1 ? `📎 ${n} ${plural(n, 'файл', 'файла', 'файлов')}` : `📎 ${m.attachments?.[0]?.name || 'Файл'}`;
 }
 
+const HUB_EMOJI_RE = /:([a-zа-яё0-9_]{2,24}):/gi;
+
+/** :имя: в тексте сообщения → картинка смайлика канала; в коде и ссылках текст остаётся как есть */
+function showHubEmojis(root, emojis) {
+  if (!emojis?.length) return;
+  const known = new Map(emojis.map((e) => [e.name, e]));
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) if (walker.currentNode.nodeValue.includes(':')) nodes.push(walker.currentNode);
+  for (const node of nodes) {
+    if (node.parentElement.closest('code, pre, a')) continue;
+    const parts = document.createDocumentFragment();
+    let at = 0;
+    for (const match of node.nodeValue.matchAll(HUB_EMOJI_RE)) {
+      const emoji = known.get(match[1].toLowerCase());
+      if (!emoji) continue;
+      parts.append(node.nodeValue.slice(at, match.index));
+      const img = document.createElement('img');
+      img.className = 'hub-emoji';
+      img.src = `${Api.base}${emoji.url}`;
+      img.alt = img.title = match[0];
+      parts.append(img);
+      at = match.index + match[0].length;
+    }
+    if (!at) continue;
+    parts.append(node.nodeValue.slice(at));
+    node.replaceWith(parts);
+  }
+}
+
 function messageContent(m) {
   const box = document.createElement('div');
   box.className = 'msg-content';
@@ -57,6 +87,7 @@ function messageContent(m) {
     const text = document.createElement('div');
     text.className = `msg-text${EMOJI_ONLY.test(m.text.trim()) ? ' emoji-only' : ''}`;
     text.append(renderMarkdown(m.text));
+    if (m.roomId) showHubEmojis(text, hubById(roomById(m.roomId)?.hubId)?.emojis);
     box.append(text);
   }
   const attachments = m.attachments || [];
