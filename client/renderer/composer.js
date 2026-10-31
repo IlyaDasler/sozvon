@@ -376,8 +376,17 @@ class Composer {
     const ready = this.files.filter((f) => f.attachment);
     const editing = Boolean(editDraft && composerOf(editDraft.chat) === this);
     if (!text && !ready.length && !editing) return;
-    const payload = { text, files: ready.map((f) => f.attachment), preview: null };
-    if (this.preview?.data && text.includes(this.preview.url.replace(/^https:\/\/(?=www\.)/, ''))) payload.preview = this.preview.data;
+    // Превью ссылки: при быстрой отправке таймер ещё не успел его запросить — забираем прямо сейчас
+    const link = editing ? null : findLinks(text).find((u) => !this.removedPreviews.has(u)) || null;
+    let preview = link && this.preview?.url === link ? this.preview.data : undefined;
+    if (link && preview === undefined && window.desktop?.preview) {
+      preview = await Promise.race([
+        window.desktop.preview(link).catch(() => null),
+        new Promise((r) => setTimeout(() => r(null), 3500)),
+      ]);
+      if (preview) this.preview = { url: link, data: preview };
+    }
+    const payload = { text, files: ready.map((f) => f.attachment), preview: preview || null };
     this.sendBtn.disabled = true;
     const key = this.draftKey;
     try {

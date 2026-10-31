@@ -86,6 +86,31 @@ async function readHtml(res) {
   }
 }
 
+/** YouTube не отдаёт обычную страницу для разбора: название и обложку берём у oEmbed */
+async function youtubePreview(start, fetchImpl) {
+  const host = start.hostname.toLowerCase().replace(/^www\.|^m\./, '');
+  let id = null;
+  if (host === 'youtu.be') id = start.pathname.slice(1).split('/')[0];
+  else if (host === 'youtube.com' || host === 'music.youtube.com') {
+    if (start.pathname === '/watch') id = start.searchParams.get('v');
+    else id = (/^\/(?:shorts|embed|live|v)\/([\w-]{6,})/.exec(start.pathname) || [])[1] || null;
+  }
+  if (!id) return null;
+  const res = await fetchImpl(`https://www.youtube.com/oembed?url=${encodeURIComponent(start.toString())}&format=json`, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SozvonPreview/1.0)', Accept: 'application/json' },
+  }).catch(() => null);
+  const data = res?.ok ? await res.json().catch(() => null) : null;
+  if (!data?.title) return null;
+  return {
+    url: start.toString(),
+    title: data.title,
+    description: data.author_name ? `Канал: ${data.author_name}` : null,
+    image: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+    siteName: 'YouTube',
+  };
+}
+
 /** Превью страницы или null (ошибка сети, не HTML, нет заголовка) — тогда сообщение уйдёт без превью */
 async function fetchPreview(value, fetchImpl = fetch) {
   const start = previewableUrl(value);
@@ -104,11 +129,14 @@ async function fetchPreview(value, fetchImpl = fetch) {
         if (!url) return null;
         continue;
       }
-      if (res.status !== 200 || !/text\/html|application\/xhtml/i.test(res.headers.get('content-type') || '')) return null;
-      return parsePreview(await readHtml(res), start.toString());
+      if (res.status !== 200 || !/text\/html|application\/xhtml/i.test(res.headers.get('content-type') || '')) break;
+      const parsed = parsePreview(await readHtml(res), start.toString());
+      if (parsed) return parsed;
+      break; // страница без заголовка (YouTube отдаёт заглушку) — пробуем oEmbed
     }
   } catch {}
-  return null;
+  // Обычный разбор не вышел (YouTube отдаёт заглушку вместо страницы) — пробуем oEmbed
+  return youtubePreview(start, fetchImpl).catch(() => null);
 }
 
 module.exports = { parsePreview, previewableUrl, fetchPreview };
