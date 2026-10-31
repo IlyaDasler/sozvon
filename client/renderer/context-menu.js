@@ -101,6 +101,17 @@ function contactMenu(userId, anchor) {
 
 // ---------- Комната в списке ----------
 
+/** Куда переместить комнату: группы канала и «без группы» */
+function groupMenuItems(room) {
+  const hub = hubById(room.hubId);
+  if (!hub || !canManageHub(hub)) return [];
+  const items = (hub.groups || [])
+    .filter((g) => g.id !== room.groupId)
+    .map((g) => ({ label: `В группу «${g.name}»`, onclick: () => moveRoomToGroup(room, g.id) }));
+  if (room.groupId) items.push({ label: 'Убрать из группы', onclick: () => moveRoomToGroup(room, null) });
+  return items;
+}
+
 function roomMenu(roomId) {
   const room = roomById(roomId);
   if (!room) return [];
@@ -121,6 +132,7 @@ function roomMenu(roomId) {
     'sep',
     can(room, PERMS.invite) && { label: 'Пригласить', onclick: () => openRoomInvite(room.id) },
     { label: can(room, PERMS.manage) ? 'Настройки комнаты' : 'Участники и права', onclick: () => openRoomManage(room.id, can(room, PERMS.manage) ? 'overview' : 'members') },
+    ...groupMenuItems(room),
     { label: 'Скопировать название', onclick: () => copyText(room.name, 'Название скопировано') },
     'sep',
     {

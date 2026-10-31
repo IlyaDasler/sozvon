@@ -644,6 +644,11 @@ video.mirror { transform: scaleX(-1); }
 .list-title .icon-btn svg { width: 16px; height: 16px; }
 .room-item { list-style: none; }
 .room-row { padding: 6px 8px; }
+.voice-timer { flex: none; margin-left: auto; color: var(--ok); font-size: 12px; font-variant-numeric: tabular-nums; }
+.room-group-title { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; text-align: left; }
+.room-group-title:hover { color: var(--text); }
+.room-group-title svg { flex: none; width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform var(--fast); }
+.room-group.closed .room-group-title svg { transform: rotate(-90deg); }
 .room-icon { display: inline-grid; place-items: center; color: var(--muted); flex: none; }
 .room-icon.big { width: 36px; height: 36px; border-radius: 10px; background: var(--bg-3); color: var(--text); }
 .room-row.active .room-icon { color: var(--text); }
