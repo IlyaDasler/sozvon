@@ -222,21 +222,44 @@ const OLD_SCREEN_MODES = { motion: '720p90', detail: '1080p60' };
 const screenMode = (id) => SCREEN_MODES[OLD_SCREEN_MODES[id] || id] ? OLD_SCREEN_MODES[id] || id : DEFAULT_SCREEN_MODE;
 
 // Кодек для экрана: VP9 даёт картинку чище при той же скорости, H.264 — запасной (часто аппаратный)
+const SCREEN_REPEAT_MS = 1000;
+
 /** Дорожка из кадров своего захвата (их присылает preload); остановили дорожку — останавливаем и захват */
 function nativeScreenTrack(id) {
   const track = new MediaStreamTrackGenerator({ kind: 'video' });
   const writer = track.writable.getWriter();
-  const onFrame = (e) => {
-    const frame = e.source === window && e.data?.sozvonScreenFrame;
-    if (!frame) return;
+  const send = (frame) => {
     // Кодировщик не успевает — кадр не копим, берём следующий
     if (writer.desiredSize <= 0) return frame.close();
     writer.write(frame).catch(() => frame.close());
   };
+  // Захват присылает кадры, только когда картинка меняется. Без повтора зритель,
+  // нажавший «Смотреть» на неподвижном экране, ждал бы, пока что-нибудь сдвинется
+  let last = null;
+  let lastAt = 0;
+  let canvas = null;
+  const onFrame = (e) => {
+    const frame = e.source === window && e.data?.sozvonScreenFrame;
+    if (!frame) return;
+    last?.close();
+    last = frame.clone();
+    lastAt = performance.now();
+    send(frame);
+  };
+  const repeat = setInterval(() => {
+    const idle = performance.now() - lastAt;
+    if (!last || idle < SCREEN_REPEAT_MS) return;
+    // Копия кадра хранит старое время захвата, и кодировщик её отбрасывает: нужен новый кадр
+    canvas ??= new OffscreenCanvas(last.displayWidth, last.displayHeight);
+    canvas.getContext('2d').drawImage(last, 0, 0);
+    send(new VideoFrame(canvas, { timestamp: last.timestamp + idle * 1000 }));
+  }, SCREEN_REPEAT_MS);
   window.addEventListener('message', onFrame);
   const stopTrack = track.stop.bind(track);
   track.stop = () => {
     window.removeEventListener('message', onFrame);
+    clearInterval(repeat);
+    last?.close();
     window.desktop.screen.nativeStop(id);
     writer.close().catch(() => {});
     stopTrack();
