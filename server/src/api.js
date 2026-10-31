@@ -314,6 +314,8 @@ const ROOM_KINDS = ['voice', 'text'];
 const MAX_OWNED_HUBS = 10;
 const MAX_HUB_ROOMS = 30;
 const MAX_HUB_GROUPS = 30;
+const MAX_HUB_EMOJIS = 50;
+const EMOJI_NAME_RE = /^[a-zа-яё0-9_]{2,24}$/;
 // Участники комнаты — из участников канала, поэтому предел один
 const MAX_HUB_MEMBERS = 50;
 const MAX_ROOM_MEMBERS = MAX_HUB_MEMBERS;
@@ -383,6 +385,7 @@ const toHub = (row) => ({
   defaultPerms: row.default_perms,
   reactionsVisible: Boolean(row.reactions_visible),
   groups: hubs.groups(row.id),
+  emojis: hubs.emojis(row.id).map((e) => ({ id: e.id, name: e.name, createdBy: e.created_by, url: `/api/avatars/${e.file}.webp` })),
   roles: rolesOf(row.id),
   members: hubs.members(row.id).map((m) => ({ ...withOnline(m), manager: Boolean(m.manager), roleId: m.role_id, joinedAt: m.joined_at })),
   invited: hubs.invited(row.id),
@@ -1892,6 +1895,37 @@ export function createApi() {
     })
   );
 
+  // Свои смайлики канала: в тексте сообщения это :имя:, картинка общая для всех участников
+  api.put(
+    '/hubs/:id/emojis/:name',
+    express.raw({ type: 'image/webp', limit: AVATAR_MAX_BYTES }),
+    handle((req) => {
+      const hubRow = requireHub(req);
+      const name = req.params.name.toLowerCase();
+      if (!EMOJI_NAME_RE.test(name)) throw new HttpError(400, 'Имя смайлика — от 2 до 24 букв, цифр или _');
+      if (!Buffer.isBuffer(req.body) || !isWebp(req.body)) throw new HttpError(400, 'Нужна картинка в формате WebP');
+      if (hubs.emojis(hubRow.id).length >= MAX_HUB_EMOJIS)
+        throw new HttpError(400, `В канале может быть не больше ${MAX_HUB_EMOJIS} смайликов`);
+      const file = crypto.randomBytes(16).toString('hex');
+      if (!hubs.addEmoji(hubRow.id, name, file, req.user.id)) throw new HttpError(409, 'Смайлик с таким именем уже есть');
+      fs.writeFileSync(path.join(AVATAR_DIR, `${file}.webp`), req.body);
+      return notifyHub(hubRow.id);
+    })
+  );
+
+  api.delete(
+    '/hubs/:id/emojis/:emojiId',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      const emoji = hubs.emoji(hubRow.id, Number(req.params.emojiId));
+      if (!emoji) throw new HttpError(404, 'Смайлик не найден');
+      if (emoji.created_by !== req.user.id) requireHubManager(req, hubRow);
+      hubs.removeEmoji(emoji.id);
+      removeAvatarFile(emoji.file);
+      return notifyHub(hubRow.id);
+    })
+  );
+
   // Группы комнат: видны всем участникам канала
   api.post(
     '/hubs/:id/groups',
@@ -1999,8 +2033,10 @@ export function createApi() {
       const members = hubs.members(hubRow.id);
       const hubRooms = hubs.rooms(hubRow.id).map((room) => ({ id: room.id, members: rooms.members(room.id) }));
       for (const room of hubRooms) voice.closeRoom(room.id);
+      const emojiFiles = hubs.emojis(hubRow.id).map((e) => e.file);
       hubs.remove(hubRow.id);
       removeAvatarFile(hubRow.icon);
+      emojiFiles.forEach(removeAvatarFile);
       for (const room of hubRooms) for (const m of room.members) hub.send(m.id, { type: 'room:removed', roomId: room.id });
       for (const m of members) hub.send(m.id, { type: 'hub:removed', hubId: hubRow.id, reason: 'deleted' });
       return { ok: true };
