@@ -17,7 +17,7 @@ const SOVON_SVG = `<svg class="sovon" viewBox="0 0 160 160" aria-hidden="true">
       <circle cx="62" cy="82" r="8.5" fill="#1d1a33"/><circle cx="98" cy="82" r="8.5" fill="#1d1a33"/>
       <circle cx="65" cy="78.5" r="3" fill="#fff"/><circle cx="101" cy="78.5" r="3" fill="#fff"/>
     </g>
-    <g class="sovon-lids" fill="#a79cff"><rect x="42" y="62" width="36" height="0"/><rect x="82" y="62" width="36" height="0"/></g>
+    <g class="sovon-lids" fill="#a79cff"><circle class="sovon-lid" cx="60" cy="80" r="17"/><circle class="sovon-lid" cx="100" cy="80" r="17"/></g>
     <path d="M73 95h14l-7 11z" fill="#ffb547"/>
     <path d="M24 90C24 26 136 26 136 90" fill="none" stroke="#3ddc97" stroke-width="8" stroke-linecap="round"/>
     <rect x="14" y="76" width="22" height="34" rx="9" fill="#3ddc97"/><rect x="124" y="76" width="22" height="34" rx="9" fill="#3ddc97"/>
