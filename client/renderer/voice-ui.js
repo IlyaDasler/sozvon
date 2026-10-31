@@ -311,6 +311,7 @@ function voiceTitle() {
 }
 
 function renderVoice() {
+  syncPreviews();
   const session = activeSession();
   const panel = $('call-panel');
 

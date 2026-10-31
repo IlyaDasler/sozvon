@@ -188,6 +188,10 @@ function roomItem(room) {
       if (role || user.nameColor) n.style.color = role?.color || user.nameColor;
       item.append(n);
       if (p.screen) item.insertAdjacentHTML('beforeend', '<b class="live">В ЭФИРЕ</b>');
+      if (p.screen && p.userId !== state.me.id) {
+        item.dataset.liveRoom = room.id;
+        item.removeAttribute('title'); // имя не должно ложиться на карточку трансляции
+      }
       if (p.video) item.insertAdjacentHTML('beforeend', ICONS.cam);
       item.insertAdjacentHTML('beforeend', voiceStateIcons(p));
       users.append(item);
@@ -450,7 +454,10 @@ function handleRoomEvent(msg) {
       return;
     }
     case 'room:voice':
-      return onRoomVoice(msg);
+      onRoomVoice(msg);
+      return syncStreamPeek();
+    case 'room:preview':
+      return onRoomPreview(msg);
     case 'room:joined':
       return onRoomJoined(msg);
     case 'room:signal':
