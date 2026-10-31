@@ -1788,16 +1788,19 @@ function renderColorPicker() {
     pickedBanner = color;
     renderColorPicker();
   });
-  // Навели на цвет баннера — показываем, как будет выглядеть карточка профиля
-  for (const swatch of $('banner-picker').querySelectorAll('.color')) {
-    swatch.addEventListener('mouseenter', () => showBannerPeek(swatch));
-    swatch.addEventListener('mouseleave', hideBannerPeek);
-  }
   colorChoices($('name-picker'), [null, ...COLORS], pickedName, (color) => {
     pickedName = color;
     renderColorPicker();
   });
 }
+
+// Навели на цвет баннера — показываем, как будет выглядеть карточка профиля.
+// Слушаем весь ряд: кружки перерисовываются под мышью, и ухода с них браузер уже не сообщит
+$('banner-picker').addEventListener('mouseover', (e) => {
+  const swatch = e.target.closest('.color');
+  if (swatch) showBannerPeek(swatch);
+});
+$('banner-picker').addEventListener('mouseleave', hideBannerPeek);
 
 function hideBannerPeek() {
   $('banner-peek').classList.add('hidden');
@@ -2116,6 +2119,7 @@ async function openSettings(tab) {
 
 function closeSettings() {
   $('settings').classList.add('hidden');
+  hideBannerPeek();
   stopMicMeter();
   stopCamPreview();
 }
