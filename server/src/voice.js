@@ -74,7 +74,15 @@ export const voice = {
   },
 
   broadcast(roomId) {
-    const message = { type: 'room:voice', roomId, since: voice.since(roomId), participants: voice.participants(roomId), media: voice.mediaOf(roomId) };
+    const message = {
+      type: 'room:voice',
+      roomId,
+      since: voice.since(roomId),
+      participants: voice.participants(roomId),
+      media: voice.mediaOf(roomId),
+      // Часы сервера: клиент считает по ним поправку к своим, иначе у людей таймер расходится
+      now: Date.now(),
+    };
     for (const m of rooms.members(roomId)) hub.send(m.id, message);
   },
 };
