@@ -170,6 +170,8 @@ function rolesPane(hub) {
     );
     b.querySelector('.role-dot').style.background = color;
     b.dataset.role = id;
+    // В узком списке длинное название обрезается — целиком видно в подсказке
+    b.title = name;
     b.onclick = () => {
       selectedRoleId = id;
       renderHubSettings();
@@ -209,7 +211,7 @@ function roleEditor(hub, role, editable) {
   let nameInput = null;
   let colorInput = null;
   if (role) {
-    nameInput = el('input', { value: role.name, maxLength: 24, disabled: !editable });
+    nameInput = el('input', { value: role.name, maxLength: 64, disabled: !editable });
     nameInput.dataset.keep = `role-${role.id}`;
     colorInput = el('input', { type: 'color', value: role.color, disabled: !editable, title: 'Цвет имени' });
     form.append(

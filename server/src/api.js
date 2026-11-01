@@ -1423,7 +1423,7 @@ export function createApi() {
 
   function roleFields(req, allowAdmin) {
     const name = str(req.body.name);
-    if (name.length < 1 || name.length > 24) throw new HttpError(400, 'Название роли — от 1 до 24 символов');
+    if (name.length < 1 || name.length > 64) throw new HttpError(400, 'Название роли — от 1 до 64 символов');
     const color = COLOR_RE.test(req.body.color) ? req.body.color : '#8b919c';
     const perms = cleanPerms(req.body.perms);
     if (perms & PERMS.admin && !allowAdmin) throw new HttpError(403, 'Право администратора раздаёт только создатель комнаты');
