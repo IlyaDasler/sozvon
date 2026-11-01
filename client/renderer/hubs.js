@@ -533,7 +533,8 @@ function renderMembers() {
   );
   for (const g of [...groups, online, offline]) {
     if (!g.people.length) continue;
-    box.append(el('div', { className: 'members-group', textContent: `${g.title} — ${g.people.length}` }));
+    const groupTitle = `${g.title} — ${g.people.length}`;
+    box.append(el('div', { className: 'members-group', textContent: groupTitle, title: groupTitle }));
     for (const m of g.people.sort(byName)) {
       const hubMember = hub.members.find((x) => x.id === m.id);
       const name = el('div', { className: 'member-nick ellipsis', textContent: m.displayName });

@@ -131,18 +131,340 @@ function messageContent(m) {
       box.append(video);
     } else if (a.kind === 'audio') {
       const card = fileCard(a);
-      const audio = document.createElement('audio');
-      setFileSrc(audio, 'src', a);
-      audio.controls = true;
-      audio.preload = 'metadata';
-      card.append(audio);
+      card.append(audioPlayer(a));
       box.append(card);
     } else if (a.kind === 'file') {
       box.append(fileCard(a));
     }
   }
-  if (m.preview) box.append(linkCard(m.preview));
+  // Ссылка в сообщении: плеер (YouTube, Vimeo, прямой видеофайл) или карточка превью
+  const link = (m.preview && m.preview.url) || findLinks(m.text || '')[0] || null;
+  if (link) {
+    const video = videoCard(link, m.preview);
+    if (video) box.append(video);
+    else if (m.preview) box.append(linkCard(m.preview));
+    else if (m.preview === null) box.append(bareLinkCard(link));
+  } else if (m.preview) {
+    box.append(linkCard(m.preview));
+  }
   return box;
+}
+
+/** Плеер для ссылки на видео: YouTube, Vimeo, Instagram, TikTok, файл из og:video — иначе null */
+function videoCard(link, preview) {
+  const yt = youtubeId(link);
+  if (yt) return youtubeCard(yt, { ...(preview || {}), url: link });
+  const vimeo = vimeoId(link);
+  if (vimeo) return vimeoCard(vimeo, { ...(preview || {}), url: link });
+  const ig = instagramId(link);
+  if (ig) {
+    return socialCard({
+      label: 'Instagram',
+      title: preview?.title,
+      thumb: preview?.image,
+      embed: `https://www.instagram.com/${ig.type}/${ig.code}/embed/`,
+      href: link,
+      frameClass: 'frame-tall',
+    });
+  }
+  const tt = tiktokId(link);
+  if (tt) {
+    return socialCard({
+      label: 'TikTok',
+      title: preview?.title,
+      thumb: preview?.image,
+      embed: `https://www.tiktok.com/embed/v2/${tt}`,
+      href: link,
+      frameClass: 'frame-tall',
+    });
+  }
+  // Сайт сам отдал ссылку на видеофайл — играем его прямо в ленте
+  if (preview?.video) return fileVideo(preview.video, preview.image);
+  if (directVideo(link)) return fileVideo(link, preview?.image);
+  return null;
+}
+
+/** id ролика YouTube из ссылки (watch, youtu.be, shorts, embed, live) */
+function youtubeId(url) {
+  if (!url) return null;
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase().replace(/^www\.|^m\./, '');
+  if (host === 'youtu.be') return u.pathname.slice(1).split('/')[0] || null;
+  if (host !== 'youtube.com' && host !== 'music.youtube.com') return null;
+  if (u.pathname === '/watch') return u.searchParams.get('v');
+  const m = /^\/(?:shorts|embed|live|v)\/([\w-]{6,})/.exec(u.pathname);
+  return m ? m[1] : null;
+}
+
+/** id ролика Vimeo */
+function vimeoId(url) {
+  if (!url) return null;
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase().replace(/^www\./, '');
+  if (host !== 'vimeo.com' && host !== 'player.vimeo.com') return null;
+  const m = /^(?:\/video)?\/(\d{6,})/.exec(u.pathname);
+  return m ? m[1] : null;
+}
+
+/** Карточка с обложкой и кнопкой: по щелчку вместо неё встаёт встроенный плеер */
+function socialCard({ label, title, thumb, embed, href, thumbClass = '', frameClass = '' }) {
+  const card = document.createElement('div');
+  card.className = 'link-card yt-card';
+  const cover = document.createElement('button');
+  cover.type = 'button';
+  cover.className = `yt-thumb${thumbClass ? ` ${thumbClass}` : ''}`;
+  if (thumb) cover.style.backgroundImage = `url("${thumb}")`;
+  cover.title = 'Смотреть в чате';
+  cover.innerHTML = '<span class="yt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>';
+  const text = document.createElement('div');
+  text.className = 'link-card-text';
+  text.append(siteLine(label), titleLink(title || 'Смотреть видео', href));
+  card.append(cover, text);
+  cover.onclick = () => card.replaceChildren(embedFrame(embed, title || label, href, frameClass));
+  return card;
+}
+
+/** Карточка YouTube: обложка с кнопкой, по щелчку — встроенный плеер */
+function youtubeCard(id, p) {
+  const href = p.url || `https://www.youtube.com/watch?v=${id}`;
+  return socialCard({
+    label: 'YouTube',
+    title: p.title,
+    thumb: p.image || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+    embed: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`,
+    href,
+  });
+}
+
+/** Карточка Vimeo: кнопка, по щелчку — встроенный плеер */
+function vimeoCard(id, p) {
+  const href = p.url || `https://vimeo.com/${id}`;
+  return socialCard({
+    label: 'Vimeo',
+    title: p.title,
+    thumb: p.image,
+    embed: `https://player.vimeo.com/video/${id}?autoplay=1`,
+    href,
+    thumbClass: 'vimeo-thumb',
+  });
+}
+
+/** Ссылка на пост или рилс Instagram */
+function instagramId(url) {
+  if (!url) return null;
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  if (u.hostname.toLowerCase().replace(/^www\./, '') !== 'instagram.com') return null;
+  const m = /^\/(p|reel|reels|tv)\/([\w-]{5,})/.exec(u.pathname);
+  return m ? { type: m[1] === 'reels' ? 'reel' : m[1], code: m[2] } : null;
+}
+
+/** Ссылка на видео TikTok */
+function tiktokId(url) {
+  if (!url) return null;
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase().replace(/^www\.|^m\./, '');
+  if (host === 'vm.tiktok.com' || host === 'vt.tiktok.com') return null; // короткие ссылки требуют переадресации
+  if (host !== 'tiktok.com') return null;
+  const m = /^\/(?:@[^/]+\/)?video\/(\d{6,})/.exec(u.pathname);
+  return m ? m[1] : null;
+}
+
+/** Прямая ссылка на видеофайл — его можно проигрывать самим, без чужого плеера */
+function directVideo(url) {
+  try {
+    return /\.(mp4|webm|ogv|ogg|m4v|mov|m3u8)$/i.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
+
+/** Сам видеофайл: играем в ленте, постер — картинка превью, если она есть */
+function fileVideo(src, poster) {
+  const video = document.createElement('video');
+  video.className = 'video-card';
+  video.controls = true;
+  video.preload = 'metadata';
+  if (poster) video.poster = poster;
+  video.src = src;
+  return video;
+}
+
+function siteLine(name) {
+  const site = document.createElement('div');
+  site.className = 'link-card-site small';
+  site.textContent = name;
+  return site;
+}
+
+function titleLink(text, href) {
+  const a = document.createElement('a');
+  a.className = 'link-card-title';
+  a.href = href;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.textContent = text;
+  return a;
+}
+
+function embedFrame(src, title, href, frameClass = '') {
+  const wrap = document.createElement('div');
+  wrap.className = `embed-wrap${frameClass ? ` ${frameClass}` : ''}`;
+  const frame = document.createElement('iframe');
+  frame.className = 'yt-frame';
+  frame.src = src;
+  frame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
+  frame.allowFullscreen = true;
+  frame.title = title;
+  // Если встроенный плеер не поднимется — останется ссылка «Открыть»
+  const open = document.createElement('a');
+  open.className = 'yt-open small';
+  open.href = href;
+  open.target = '_blank';
+  open.rel = 'noopener noreferrer';
+  open.textContent = 'Открыть на сайте';
+  wrap.append(frame, open);
+  return wrap;
+}
+
+/** Мини-карточка, когда сайт закрыт от ботов и превью не получить: домен и путь */
+function bareLinkCard(url) {
+  let host = url;
+  let path = '';
+  try {
+    const u = new URL(url);
+    host = u.hostname.replace(/^www\./, '');
+    path = decodeURIComponent(u.pathname).replace(/[-_/]+/g, ' ').trim();
+  } catch {}
+  const card = document.createElement('div');
+  card.className = 'link-card bare-card';
+  const text = document.createElement('div');
+  text.className = 'link-card-text';
+  text.append(siteLine(host), titleLink(path || url, url));
+  card.append(text);
+  return card;
+}
+
+const AUDIO_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const AUDIO_PAUSE = '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
+
+const clock = (seconds) => {
+  const s = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
+/** Свой плеер аудио: кнопка, полоса перемотки и время — в стиле приложения, без системных кнопок */
+function audioPlayer(a) {
+  const box = document.createElement('div');
+  box.className = 'audio-player';
+  const audio = document.createElement('audio');
+  audio.preload = 'metadata';
+  setFileSrc(audio, 'src', a);
+
+  const row = document.createElement('div');
+  row.className = 'audio-row';
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'audio-btn';
+  toggle.title = 'Слушать';
+  toggle.innerHTML = AUDIO_PLAY;
+  const seek = document.createElement('input');
+  seek.type = 'range';
+  seek.className = 'audio-seek';
+  seek.min = '0';
+  seek.max = '1000';
+  seek.value = '0';
+  seek.setAttribute('aria-label', 'Перемотка');
+  const time = document.createElement('span');
+  time.className = 'audio-time';
+  time.textContent = '0:00 / 0:00';
+  row.append(toggle, seek, time);
+  box.append(audio, row);
+
+  const refresh = () => {
+    if (!seek.dataset.dragging) seek.value = String(audio.duration ? (audio.currentTime / audio.duration) * 1000 : 0);
+    time.textContent = `${clock(audio.currentTime)} / ${clock(audio.duration)}`;
+    toggle.innerHTML = audio.paused ? AUDIO_PLAY : AUDIO_PAUSE;
+    toggle.title = audio.paused ? 'Слушать' : 'Пауза';
+    seek.style.setProperty('--filled', `${seek.value / 10}%`);
+  };
+  audio.onloadedmetadata = refresh;
+  audio.ontimeupdate = refresh;
+  audio.onplay = () => {
+    // Одновременно звучит только одно сообщение
+    for (const other of document.querySelectorAll('audio')) if (other !== audio) other.pause();
+    refresh();
+  };
+  audio.onpause = refresh;
+  audio.onended = () => {
+    audio.currentTime = 0;
+    refresh();
+  };
+  toggle.onclick = () => (audio.paused ? audio.play().catch(() => {}) : audio.pause());
+  seek.oninput = () => {
+    seek.dataset.dragging = '1';
+    seek.style.setProperty('--filled', `${seek.value / 10}%`);
+    time.textContent = `${clock((seek.value / 1000) * audio.duration)} / ${clock(audio.duration)}`;
+  };
+  const commit = () => {
+    delete seek.dataset.dragging;
+    if (Number.isFinite(audio.duration)) audio.currentTime = (seek.value / 1000) * audio.duration;
+    refresh();
+  };
+  seek.onchange = commit;
+  seek.onpointerup = () => seek.dataset.dragging && commit();
+  return box;
+}
+
+/** Иконки по типу файла: в карточке сразу видно, что это — музыка, видео, архив, документ */
+const FILE_ICONS = {
+  audio: '<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>',
+  video: '<svg viewBox="0 0 24 24"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>',
+  image: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-6 6-3-3-4 4"/></svg>',
+  archive: '<svg viewBox="0 0 24 24"><path d="M4 8h16v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M2 4h20v4H2zM10 12h4"/></svg>',
+  pdf: '<svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 17v-4h1.5a1.5 1.5 0 0 1 0 3H9"/></svg>',
+  doc: '<svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5M9 13h6M9 17h6"/></svg>',
+  sheet: '<svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5M8 12h8M8 16h8M11 12v8"/></svg>',
+  slides: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/></svg>',
+  code: '<svg viewBox="0 0 24 24"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6"/></svg>',
+  app: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/></svg>',
+  file: '<svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg>',
+};
+
+/** Тип файла: сначала по виду вложения, потом по расширению — на случай старых сообщений */
+function fileType(a) {
+  if (a.kind === 'audio' || a.kind === 'video' || a.kind === 'image') return a.kind;
+  const ext = String(a.name || '').toLowerCase().split('.').pop();
+  if (/^(mp3|wav|ogg|oga|flac|m4a|aac|opus|wma)$/.test(ext)) return 'audio';
+  if (/^(mp4|webm|mkv|mov|avi|m4v|ogv)$/.test(ext)) return 'video';
+  if (/^(png|jpe?g|gif|webp|bmp|svg|heic)$/.test(ext)) return 'image';
+  if (/^(zip|rar|7z|tar|gz|bz2|xz)$/.test(ext)) return 'archive';
+  if (ext === 'pdf') return 'pdf';
+  if (/^(xls|xlsx|csv|ods|numbers)$/.test(ext)) return 'sheet';
+  if (/^(doc|docx|rtf|odt|txt|md|pages)$/.test(ext)) return 'doc';
+  if (/^(ppt|pptx|odp|key)$/.test(ext)) return 'slides';
+  if (/^(js|ts|jsx|tsx|json|html|css|py|java|c|cpp|cs|go|rs|sh|yml|yaml|xml|sql)$/.test(ext)) return 'code';
+  if (/^(exe|msi|apk|dmg|deb|appimage)$/.test(ext)) return 'app';
+  return 'file';
 }
 
 function fileCard(a) {
@@ -150,9 +472,10 @@ function fileCard(a) {
   card.className = 'file-card';
   const row = document.createElement('div');
   row.className = 'file-card-row';
+  const type = fileType(a);
   const icon = document.createElement('span');
-  icon.className = 'file-card-icon';
-  icon.innerHTML = COMPOSER_ICONS.file;
+  icon.className = `file-card-icon type-${type}`;
+  icon.innerHTML = FILE_ICONS[type] || FILE_ICONS.file;
   const info = document.createElement('div');
   info.className = 'file-card-info';
   const name = document.createElement('a');
