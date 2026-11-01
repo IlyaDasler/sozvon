@@ -1656,7 +1656,11 @@ kbd {
 .members-panel { position: relative; width: var(--members-w, 240px); flex: none; display: flex; flex-direction: column; background: var(--bg-2); border: 1px solid var(--line); border-width: 1px 0 0 1px; }
 .members-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 16px; }
 .members-head { display: flex; align-items: center; gap: 6px; height: 52px; margin: 0 -8px; padding: 0 16px; border-bottom: 1px solid var(--line); }
-.members-group { padding: 16px 8px 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.members-group {
+  padding: 16px 8px 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+  /* Длинное название роли — в одну строку с многоточием, панель не ломается */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .member-item { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
 .member-item:hover { background: color-mix(in srgb, var(--bg-4) 60%, transparent); }
 .member-item.offline { opacity: .45; }
