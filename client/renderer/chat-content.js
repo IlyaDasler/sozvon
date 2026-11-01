@@ -588,6 +588,13 @@ const closeImageViewer = () => {
   $('image-viewer-img').removeAttribute('src');
 };
 
+// Скопировать открытую картинку — то же, что копирование из чата: в буфер идёт PNG
+$('image-viewer-copy').onclick = (e) => {
+  e.stopPropagation();
+  const a = $('image-viewer-img').attachment;
+  if (a) copyImage(a);
+};
+
 $('image-viewer').onclick = (e) => {
   if (e.target.closest('a')) return;
   closeImageViewer();

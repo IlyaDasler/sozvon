@@ -539,11 +539,13 @@ body.has-voice .update-bar { bottom: 124px; }
 video.mirror { transform: scaleX(-1); }
 .tile-label {
   position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px);
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 6px; min-width: 0;
   padding: 3px 8px; border-radius: 6px;
   background: rgba(0, 0, 0, .55); font-size: 12px; font-weight: 600;
 }
-.tile-icons { display: inline-flex; align-items: center; gap: 4px; }
+/* Длинное имя сжимается и обрезается, а плашка «В ЭФИРЕ» и значки остаются целиком */
+.tile-label .tile-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile-icons { display: inline-flex; align-items: center; gap: 4px; flex: none; }
 .tile-icons svg { width: 14px; height: 14px; color: var(--danger); }
 .live { padding: 1px 5px; border-radius: 4px; background: var(--danger); color: #fff; font-size: 10px; letter-spacing: .03em; }
 .tile-tools {
@@ -560,12 +562,14 @@ video.mirror { transform: scaleX(-1); }
 /* Чужая трансляция, которую пока не смотрим: карточка с кнопкой «Смотреть» (как в Discord) */
 .tile-watch { display: none; }
 .tile.not-watching .tile-watch {
-  display: inline-flex; align-items: center; gap: 6px; position: relative; z-index: 1; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px; z-index: 2; white-space: nowrap;
+  /* Кнопка стоит над подписью, а не поверх имени */
+  position: absolute; left: 50%; bottom: 42px; transform: translateX(-50%);
   padding: 5px 12px; border: 0; border-radius: 999px; cursor: pointer;
   background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; font-size: 12px;
   box-shadow: 0 3px 10px var(--glow); transition: transform var(--fast) var(--ease), background var(--fast);
 }
-.tile.not-watching .tile-watch:hover { background: var(--accent-hover); transform: translateY(-1px); }
+.tile.not-watching .tile-watch:hover { background: var(--accent-hover); transform: translate(-50%, -1px); }
 .tile-watch svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
 .tile.not-watching .tile-avatar { display: none; }
 .tile.not-watching .tile-unwatch { display: none; }
@@ -1181,6 +1185,10 @@ kbd {
 .image-viewer img { max-width: 100%; max-height: calc(100% - 40px); object-fit: contain; border-radius: 4px; }
 .image-viewer-bar { display: flex; gap: 16px; align-items: center; max-width: 100%; color: #fff; font-size: 13px; }
 .image-viewer-bar a { color: #fff; text-decoration: underline; cursor: pointer; }
+/* Кнопка «Копировать» рядом со «Скачать» — выглядит так же, но это кнопка, а не ссылка */
+.image-viewer-bar .viewer-action {
+  padding: 0; border: 0; background: none; color: #fff; font: inherit; text-decoration: underline; cursor: pointer;
+}
 
 /* ---------- Карточка профиля ---------- */
 
