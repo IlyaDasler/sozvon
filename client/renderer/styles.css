@@ -765,6 +765,31 @@ video.mirror { transform: scaleX(-1); }
 .fullview:not(.show-bar) { cursor: none; }
 .fullview-bar .btn { height: 32px; font-size: 13px; }
 
+/* Плавающее окно трансляции: таскается за заголовок, размер переключается кнопкой */
+.stream-float {
+  position: fixed; z-index: 32; display: flex; flex-direction: column;
+  border-radius: 10px; overflow: hidden; background: #000;
+  border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
+}
+.stream-float.at-corner { right: 16px; bottom: 76px; }
+.stream-float.size-small { width: 320px; height: 200px; }
+.stream-float.size-medium { width: 480px; height: 290px; }
+.stream-float.size-large { width: 720px; height: 430px; }
+.stream-float-bar {
+  display: flex; align-items: center; gap: 8px; flex: none; height: 32px; padding: 0 8px;
+  background: rgba(0, 0, 0, .78); color: #fff; font-size: 12px; cursor: grab; user-select: none;
+}
+.stream-float-bar:active { cursor: grabbing; }
+.stream-float-bar .live { flex: none; }
+.stream-float-bar .ellipsis { min-width: 0; }
+.stream-float-btn {
+  width: 24px; height: 22px; flex: none; display: grid; place-items: center;
+  border: 0; border-radius: 5px; background: transparent; color: #fff; cursor: pointer; font-size: 12px; line-height: 1;
+}
+.stream-float-btn:hover { background: rgba(255, 255, 255, .16); }
+.stream-float video { flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #000; }
+.tile-pip svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+
 /* Выбор экрана: превью, значок и название окна */
 .source-preview { width: 100%; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; background: #000; display: grid; place-items: center; }
 .source-preview img { width: 100%; height: 100%; object-fit: contain; }
