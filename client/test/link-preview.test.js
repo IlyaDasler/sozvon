@@ -18,7 +18,20 @@ test('Open Graph: заголовок, описание, картинка по о
     description: 'Описание в две строки',
     image: 'https://store.example.com/img/cover.png',
     siteName: 'Steam',
+    video: null,
   });
+});
+
+test('og:video: ссылка на само видео попадает в превью, чтобы в чате игралось напрямую', () => {
+  const html = `<html><head>
+    <meta property="og:title" content="Ролик">
+    <meta property="og:video" content="https://cdn.example.com/game/trailer.mp4">
+    </head></html>`;
+  assert.equal(parsePreview(html, 'https://example.com/post').video, 'https://cdn.example.com/game/trailer.mp4');
+
+  // Не видео — не подставляем: иначе в чате появится битый плеер
+  const page = parsePreview('<html><head><meta property="og:title" content="Страница"><meta property="og:video" content="https://example.com/player"></head></html>', 'https://example.com/p');
+  assert.equal(page.video, null);
 });
 
 test('без Open Graph — <title> и адрес сайта; без заголовка — превью нет; картинка только http(s)', () => {

@@ -108,7 +108,9 @@ runTest(async () => {
   await waitFor(winA, `document.querySelector('#message-form .composer-preview').classList.contains('hidden')`, 'превью убрано');
   await js(winA, `document.getElementById('message-form').requestSubmit(); true`);
   await waitFor(winB, `[...document.querySelectorAll('#messages .msg-content')].at(-1)?.textContent.startsWith('ещё раз')`, 'сообщение без превью');
-  if (await js(winB, `Boolean([...document.querySelectorAll('#messages .msg-content')].at(-1).querySelector('.link-card'))`))
+  // Убранное превью не отправляется: полной карточки быть не должно. Короткая карточка
+  // со ссылкой при этом остаётся — так показываются сайты без полного превью
+  if (await js(winB, `Boolean([...document.querySelectorAll('#messages .msg-content')].at(-1).querySelector('.link-card:not(.bare-card)'))`))
     throw new Error('Превью ушло, хотя его убрали');
   site.close();
   console.log('✔ превью ссылки показывается и отправляется, крестик убирает его');
