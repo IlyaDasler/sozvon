@@ -19,30 +19,38 @@ test('комнаты: порядок меняется перетаскивани
   const voice = [await room('Голос 1', 'voice'), await room('Голос 2', 'voice'), await room('Голос 3', 'voice')];
   const text = [await room('Текст 1', 'text'), await room('Текст 2', 'text')];
 
-  // Канал создаётся с комнатами по умолчанию — смотрим только на свои
-  const ours = new Set(['Голос 1', 'Голос 2', 'Голос 3', 'Текст 1', 'Текст 2']);
-  const names = async () =>
-    (await api('GET', '/rooms', null, owner.token)).body.filter((r) => r.hubId === hub.id && ours.has(r.name)).map((r) => r.name);
+  // Канал создаётся с комнатами по умолчанию — они тоже участвуют в порядке своего раздела
+  const roomsOfHub = async () => (await api('GET', '/rooms', null, owner.token)).body.filter((r) => r.hubId === hub.id);
+  const namesOf = async (kind) => (await roomsOfHub()).filter((r) => r.kind === kind).map((r) => r.name);
+  // Перестановка присылает весь раздел: наши комнаты в нужном порядке, остальные — как были
+  const reorderKind = async (kind, ordered) => {
+    const all = (await roomsOfHub()).filter((r) => r.kind === kind).map((r) => r.id);
+    const ids = [...ordered, ...all.filter((id) => !ordered.includes(id))];
+    return api('PUT', `/hubs/${hub.id}/rooms/order`, { ids }, owner.token);
+  };
 
-  // Новые комнаты встают в конец — сначала в том порядке, как их создавали
-  assert.deepEqual(await names(), ['Голос 1', 'Голос 2', 'Голос 3', 'Текст 1', 'Текст 2']);
+  // Новые комнаты встают в конец своего раздела — в том порядке, как их создавали
+  const voiceBefore = await namesOf('voice');
+  assert.ok(voiceBefore.indexOf('Голос 1') < voiceBefore.indexOf('Голос 2'));
+  assert.ok(voiceBefore.indexOf('Голос 2') < voiceBefore.indexOf('Голос 3'));
+  const textBefore = await namesOf('text');
+  assert.ok(textBefore.indexOf('Текст 1') < textBefore.indexOf('Текст 2'));
 
   // Переставляем голосовые: третья — перед первой
-  const reorder = await api(
-    'PUT',
-    `/hubs/${hub.id}/rooms/order`,
-    { ids: [voice[2].id, voice[0].id, voice[1].id] },
-    owner.token
-  );
+  const reorder = await reorderKind('voice', [voice[2].id, voice[0].id, voice[1].id]);
   assert.equal(reorder.status, 200);
-  assert.deepEqual(await names(), ['Голос 3', 'Голос 1', 'Голос 2', 'Текст 1', 'Текст 2']);
+  const voiceAfter = await namesOf('voice');
+  assert.ok(voiceAfter.indexOf('Голос 3') < voiceAfter.indexOf('Голос 1'));
+  assert.ok(voiceAfter.indexOf('Голос 1') < voiceAfter.indexOf('Голос 2'));
 
   // Текстовые не тронуты: их порядок меняется только своим списком
-  await api('PUT', `/hubs/${hub.id}/rooms/order`, { ids: [text[1].id, text[0].id] }, owner.token);
-  assert.deepEqual(await names(), ['Голос 3', 'Голос 1', 'Голос 2', 'Текст 2', 'Текст 1']);
+  await reorderKind('text', [text[1].id, text[0].id]);
+  const textAfter = await namesOf('text');
+  assert.ok(textAfter.indexOf('Текст 2') < textAfter.indexOf('Текст 1'));
+  assert.equal(voiceAfter.join(), (await namesOf('voice')).join());
 
-  // Порядок переживает «перезаход»: данные комнат отдаются с позицией (позиции — внутри своего раздела)
-  const fresh = (await api('GET', '/rooms', null, owner.token)).body.filter((r) => r.hubId === hub.id && ours.has(r.name));
+  // Порядок переживает «перезаход»: позиции внутри раздела идут по возрастанию
+  const fresh = await roomsOfHub();
   for (const kind of ['voice', 'text']) {
     const positions = fresh.filter((r) => r.kind === kind).map((r) => r.position);
     assert.deepEqual(positions, [...positions].sort((a, b) => a - b), kind);
@@ -56,4 +64,30 @@ test('комнаты: порядок меняется перетаскивани
   const otherHub = (await api('POST', '/hubs', { name: 'Другой' }, owner.token)).body;
   const other = (await api('POST', '/rooms', { name: 'Чужая', kind: 'voice', hubId: otherHub.id }, owner.token)).body;
   assert.equal((await api('PUT', `/hubs/${hub.id}/rooms/order`, { ids: [other.id] }, owner.token)).status, 404);
+});
+
+test('неполный список комнат раздела не принимается', async () => {
+  const owner = await reg('order_partial');
+  const hub = (await api('POST', '/hubs', { name: 'Канал' }, owner.token)).body;
+  const voice = (await api('POST', '/rooms', { name: 'Голос', kind: 'voice', hubId: hub.id }, owner.token)).body;
+  const all = (await api('GET', '/rooms', null, owner.token)).body.filter((r) => r.hubId === hub.id && r.kind === 'voice');
+  assert.ok(all.length > 1, 'в канале должна быть не одна голосовая комната');
+
+  // Только одна комната из раздела — сервер обязан отказать, иначе порядок остальных поедет молча
+  const partial = await api('PUT', `/hubs/${hub.id}/rooms/order`, { ids: [voice.id] }, owner.token);
+  assert.equal(partial.status, 400);
+
+  // Весь раздел — принимается
+  const full = await api('PUT', `/hubs/${hub.id}/rooms/order`, { ids: all.map((r) => r.id).reverse() }, owner.token);
+  assert.equal(full.status, 200);
+});
+
+test('голосовые и текстовые нельзя перемешать в одном списке', async () => {
+  const owner = await reg('order_mixed');
+  const hub = (await api('POST', '/hubs', { name: 'Канал' }, owner.token)).body;
+  const voice = (await api('POST', '/rooms', { name: 'Голос', kind: 'voice', hubId: hub.id }, owner.token)).body;
+  const text = (await api('POST', '/rooms', { name: 'Текст', kind: 'text', hubId: hub.id }, owner.token)).body;
+
+  const mixed = await api('PUT', `/hubs/${hub.id}/rooms/order`, { ids: [voice.id, text.id] }, owner.token);
+  assert.equal(mixed.status, 400);
 });

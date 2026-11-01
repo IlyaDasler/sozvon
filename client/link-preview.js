@@ -7,15 +7,59 @@ const TIMEOUT_MS = 5000;
 const MAX_BYTES = 512 * 1024;
 const MAX_REDIRECTS = 3;
 
-/** Адрес, для которого можно делать превью: только http и https */
+const dns = require('node:dns');
+const net = require('node:net');
+
+// Тесты поднимают сайт на 127.0.0.1 — им разрешаем, боевому приложению нет
+const allowPrivate = () => process.env.LINK_PREVIEW_ALLOW_PRIVATE === '1';
+
+function ipv4Private(ip) {
+  const [a, b] = ip.split('.').map(Number);
+  return (
+    a === 0 || a === 10 || a === 127 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    a >= 224
+  );
+}
+
+/** Публичный ли адрес: не localhost, не домашняя сеть, не служебные диапазоны */
+function isPublicAddress(ip) {
+  if (net.isIPv4(ip)) return !ipv4Private(ip);
+  if (!net.isIPv6(ip)) return false;
+  const lower = ip.toLowerCase();
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(lower);
+  if (mapped) return !ipv4Private(mapped[1]);
+  return !(lower === '::' || lower === '::1' || /^f[cd]/.test(lower) || /^fe[89ab]/.test(lower));
+}
+
+/** Адрес, для которого можно делать превью: только http/https и только наружу */
 function previewableUrl(value) {
   if (typeof value !== 'string' || value.length > 2048) return null;
   try {
     const url = new URL(value);
-    return /^https?:$/.test(url.protocol) ? url : null;
+    if (!/^https?:$/.test(url.protocol)) return null;
+    if (!allowPrivate()) {
+      const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+      // Буквальный адрес проверяем сразу: имя вида localhost или 192.168.… внутрь не пускаем
+      if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return null;
+      if (net.isIP(host) && !isPublicAddress(host)) return null;
+    }
+    return url;
   } catch {
     return null;
   }
+}
+
+/** Имя может указывать на домашний адрес: смотрим, куда оно на самом деле ведёт */
+async function hostIsPublic(url) {
+  if (allowPrivate()) return true;
+  const host = url.hostname.replace(/^\[|\]$/g, '');
+  if (net.isIP(host)) return isPublicAddress(host);
+  const addresses = await dns.promises.lookup(host, { all: true }).catch(() => []);
+  return addresses.length > 0 && addresses.every((a) => isPublicAddress(a.address));
 }
 
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', laquo: '«', raquo: '»', mdash: '—', ndash: '–', hellip: '…' };
@@ -129,6 +173,8 @@ async function fetchPreview(value, fetchImpl = fetch) {
   let url = start;
   try {
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      // Куда на самом деле ведёт имя, проверяем на каждом шаге: редирект тоже может увести внутрь
+      if (!(await hostIsPublic(url))) return null;
       const res = await fetchImpl(url, {
         redirect: 'manual',
         signal: AbortSignal.timeout(TIMEOUT_MS),

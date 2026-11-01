@@ -47,3 +47,9 @@ test('превью — только для http и https', () => {
   assert.equal(previewableUrl('file:///C:/secret.txt'), null);
   assert.equal(previewableUrl('javascript:alert(1)'), null);
 });
+
+test('приватные адреса не годятся для превью: внутрь домашней сети приложение не ходит', () => {
+  const bad = ['http://127.0.0.1:3000/api/health', 'http://192.168.1.1/', 'http://10.0.0.5/', 'http://172.16.0.1/', 'http://localhost/', 'http://router.local/'];
+  for (const url of bad) assert.equal(previewableUrl(url), null, url);
+  assert.ok(previewableUrl('https://example.com/page'));
+});

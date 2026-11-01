@@ -183,7 +183,7 @@ const handlers = {
 
   // ---------- Голосовые комнаты ----------
 
-  'room:join'(ws, user, msg) {
+  async 'room:join'(ws, user, msg) {
     const roomId = Number(msg.roomId);
     const room = rooms.byId(roomId);
     const fail = (reason) => hub.sendTo(ws, { type: 'room:error', roomId, reason });
@@ -206,6 +206,9 @@ const handlers = {
       muted: Boolean(msg.muted) || !has(perms, PERMS.speak),
       deafened: Boolean(msg.deafened),
     }, media);
+    // Пропуск выдаём после того, как убрали старое подключение этого человека с медиасервера:
+    // иначе LiveKit откажется пускать второго с тем же именем
+    const livekit = media === 'sfu' ? await joinGrant(roomId, user, perms) : null;
     // Новичок сам звонит каждому, кто уже в комнате, — так у двух сторон не бывает встречных предложений.
     // Через LiveKit звонить не нужно: приложение подключается к медиасерверу по пропуску
     hub.sendTo(ws, {
@@ -213,7 +216,7 @@ const handlers = {
       roomId,
       peers: others.map((p) => p.userId),
       media,
-      ...(media === 'sfu' && { livekit: joinGrant(roomId, user, perms) }),
+      ...(livekit && { livekit }),
     });
     voice.broadcast(roomId);
   },
@@ -221,6 +224,13 @@ const handlers = {
   'room:leave'(ws, user, msg) {
     const roomId = Number(msg.roomId);
     if (voice.get(roomId, user.id)?.ws === ws) voice.leave(roomId, user.id);
+  },
+
+  // Приложение переподключилось после обрыва и просит вернуть его в голосовой канал
+  'room:resume'(ws, user, msg) {
+    const roomId = Number(msg.roomId);
+    if (voice.resume(ws, roomId, user.id)) return hub.sendTo(ws, { type: 'room:resumed', roomId });
+    hub.sendTo(ws, { type: 'room:resume:failed', roomId });
   },
 
   // Пересылаем SDP и ICE-кандидаты конкретному участнику комнаты
@@ -309,7 +319,8 @@ function onConnection(ws, user) {
       const uid = memberBySocket(call, ws);
       if (uid !== null) pauseMember(call, uid);
     }
-    voice.leaveSocket(ws);
+    // Связь с сервером оборвалась — место в комнате держим, человек может вернуться
+    voice.pauseSocket(ws);
     if (hub.remove(user.id, ws)) userGone(user.id);
   });
 }
