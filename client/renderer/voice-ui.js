@@ -263,6 +263,7 @@ function updateTile(el, t, focused) {
 
 function renderStage() {
   const stage = $('stage');
+  const strip = $('tile-strip');
   const tiles = voiceTiles();
   if (focusedTile && !tiles.some((t) => t.key === focusedTile)) focusedTile = null;
   // Чужой экран, который смотрим, сам разворачивается на всю панель
@@ -270,16 +271,30 @@ function renderStage() {
   stage.classList.toggle('has-focus', Boolean(focus));
   stage.classList.toggle('has-video', tiles.some((t) => t.video));
 
+  // Пока смотрим экран, профили живут отдельной строкой с прокруткой: большой экран их не съедает
+  const stageTiles = focus ? tiles.filter((t) => t.key === focus) : tiles;
+  const stripTiles = focus ? tiles.filter((t) => t.key !== focus) : [];
+
   // Плитки двигаем, только если порядок поменялся: перенос элемента сбивает щелчок и выводит его из полноэкранного режима
-  const existing = new Map([...stage.children].map((el) => [el.dataset.key, el]));
-  tiles.forEach((t, i) => {
-    let el = existing.get(t.key);
-    existing.delete(t.key);
-    if (!el) el = createTile(t);
-    updateTile(el, t, t.key === focus);
-    if (stage.children[i] !== el) stage.insertBefore(el, stage.children[i] || null);
-  });
-  for (const el of existing.values()) el.remove();
+  const place = (container, list) => {
+    const existing = new Map([...container.children].map((el) => [el.dataset.key, el]));
+    list.forEach((t, i) => {
+      let el = existing.get(t.key);
+      if (el) existing.delete(t.key);
+      // Плитка могла переехать из другой строки — тогда берём существующий элемент, а не создаём новый
+      else el = $('call-panel').querySelector(`.tile[data-key="${t.key}"]`) || null;
+      if (!el) el = createTile(t);
+      updateTile(el, t, t.key === focus);
+      if (container.children[i] !== el) container.insertBefore(el, container.children[i] || null);
+    });
+    for (const el of existing.values()) el.remove();
+  };
+  place(stage, stageTiles);
+  place(strip, stripTiles);
+  // Плитки, которых больше нет в разговоре
+  for (const el of $('call-panel').querySelectorAll('.tile')) {
+    if (!tiles.some((t) => t.key === el.dataset.key)) el.remove();
+  }
   updateFullView();
   updateFloating();
 }
@@ -442,7 +457,7 @@ $('stream-float-restore').onclick = () => {
 function setSpeaking(who, isSpeaking) {
   speaking.set(who, isSpeaking);
   const key = who === 'me' ? 'me' : `u${who}`;
-  $('stage').querySelector(`.tile[data-key="${key}"]`)?.classList.toggle('speaking', isSpeaking);
+  $('call-panel').querySelector(`.tile[data-key="${key}"]`)?.classList.toggle('speaking', isSpeaking);
   const id = who === 'me' ? state.me?.id : who;
   for (const el of document.querySelectorAll(`[data-voice-user="${id}"]`)) el.classList.toggle('speaking', isSpeaking);
 }
@@ -474,6 +489,7 @@ function renderVoice() {
   if (!session) {
     closeFullView();
     $('stage').replaceChildren();
+    $('tile-strip').replaceChildren();
     speaking.clear();
     focusedTile = null;
   }
@@ -547,7 +563,7 @@ function renderVoiceStatus() {
 
   // Значки качества на плитках собеседников
   for (const p of session.peers.values()) {
-    const tile = $('stage').querySelector(`.tile[data-key="u${p.id}"]`);
+    const tile = $('call-panel').querySelector(`.tile[data-key="u${p.id}"]`);
     const bars = tile?.querySelector('.q-bars');
     if (bars && p.quality) {
       setQualityBars(bars, p.quality);
