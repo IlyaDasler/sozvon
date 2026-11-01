@@ -711,6 +711,28 @@
     </form>
   </div>
 
+  <!-- Своё имя участника в канале: видно только там, где его изменили -->
+  <div id="nick-modal" class="modal hidden">
+    <form class="modal-card" id="nick-form">
+      <h3>Имя в канале</h3>
+      <p class="muted small">
+        Настоящее имя: <b id="nick-real"></b>. Новое имя будет видно только в канале
+        «<span id="nick-hub"></span>» — в остальных останется прежнее.
+      </p>
+      <label class="field">
+        <span>Новое имя</span>
+        <input id="nick-input" maxlength="32" autocomplete="off" placeholder="Как показывать в этом канале">
+      </label>
+      <p class="error" id="nick-error"></p>
+      <div class="row">
+        <button type="button" class="btn" id="nick-reset" title="Убрать своё имя в этом канале">Вернуть настоящее имя</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="nick-cancel">Отмена</button>
+        <button class="btn primary" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </div>
+
   <!-- Создать канал -->
   <div id="hub-create" class="modal hidden">
     <form class="modal-card room-card hub-create-card" id="hub-create-form">

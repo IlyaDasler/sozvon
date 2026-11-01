@@ -537,7 +537,7 @@ function renderMembers() {
     box.append(el('div', { className: 'members-group', textContent: groupTitle, title: groupTitle }));
     for (const m of g.people.sort(byName)) {
       const hubMember = hub.members.find((x) => x.id === m.id);
-      const name = el('div', { className: 'member-nick ellipsis', textContent: m.displayName });
+      const name = el('div', { className: 'member-nick ellipsis', textContent: m.nickname || m.displayName });
       if (g.role || m.nameColor) name.style.color = g.role?.color || m.nameColor;
       const sub = inVoice.has(m.id) ? 'В голосе'
         : m.id === hub.ownerId ? 'Создатель канала'
@@ -861,6 +861,71 @@ $('hub-icon-input').onchange = async (e) => {
   } catch (err) {
     $('hs-error').textContent = err.message;
   }
+};
+
+// ---------- Имя участника в канале ----------
+
+let nickTarget = null; // { hubId, userId }
+
+/** Своё имя человека в текущем канале (или null, если его там не переименовывали) */
+function channelNickOf(userId) {
+  const room = state.selectedRoomId && roomById(state.selectedRoomId);
+  const member = room?.members?.find((m) => m.id === userId) || currentHub()?.members?.find((m) => m.id === userId);
+  return member?.nickname || null;
+}
+
+function openNicknameDialog(hub, user) {
+  const member = hub.members.find((m) => m.id === user.id);
+  nickTarget = { hubId: hub.id, userId: user.id };
+  $('nick-real').textContent = user.displayName || user.username;
+  $('nick-hub').textContent = hub.name;
+  $('nick-input').value = member?.nickname || user.displayName || user.username || '';
+  $('nick-error').textContent = '';
+  $('nick-modal').classList.remove('hidden');
+  setTimeout(() => {
+    $('nick-input').focus();
+    $('nick-input').select();
+  }, 0);
+}
+
+const closeNicknameDialog = () => {
+  $('nick-modal').classList.add('hidden');
+  nickTarget = null;
+};
+
+$('nick-form').onsubmit = async (e) => {
+  e.preventDefault();
+  if (!nickTarget) return;
+  const name = $('nick-input').value.trim();
+  if (!name) {
+    $('nick-error').textContent = 'Имя не может быть пустым';
+    return;
+  }
+  try {
+    applyHub(await Api.put(`/hubs/${nickTarget.hubId}/members/${nickTarget.userId}/nickname`, { name }));
+    closeNicknameDialog();
+    toast('Имя в канале изменено');
+    renderMembers();
+  } catch (err) {
+    $('nick-error').textContent = err.message;
+  }
+};
+
+$('nick-reset').onclick = async () => {
+  if (!nickTarget) return;
+  try {
+    applyHub(await Api.del(`/hubs/${nickTarget.hubId}/members/${nickTarget.userId}/nickname`));
+    closeNicknameDialog();
+    toast('Вернули настоящее имя');
+    renderMembers();
+  } catch (err) {
+    $('nick-error').textContent = err.message;
+  }
+};
+
+$('nick-cancel').onclick = closeNicknameDialog;
+$('nick-modal').onclick = (e) => {
+  if (e.target === $('nick-modal')) closeNicknameDialog();
 };
 
 // ---------- Пригласить друзей в канал ----------

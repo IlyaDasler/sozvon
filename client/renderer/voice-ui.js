@@ -215,7 +215,7 @@ function createTile(t) {
 }
 
 function tileName(t) {
-  const name = t.user.displayName || t.user.username || '';
+  const name = channelNickOf(t.id) || t.user.displayName || t.user.username || '';
   return t.isMe ? (t.screen ? 'Ваш экран' : 'Вы') : t.screen ? `Экран: ${name}` : name;
 }
 
