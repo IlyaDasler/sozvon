@@ -75,9 +75,18 @@ function voiceAllowed(id) {
 /** Самому говорить нельзя — микрофон принудительно выключен (до входа — некому и нечего запрещать) */
 const forcedMute = () => Boolean(state.me) && !voiceAllowed(state.me.id).speak;
 
+// Часы сервера: у каждого компьютера свои, поэтому таймер разговора считаем по серверному времени.
+// Поправку берём из любого ответа, где сервер прислал своё «сейчас»
+let serverClockOffset = 0;
+const noteServerNow = (now) => {
+  if (Number.isFinite(now)) serverClockOffset = now - Date.now();
+};
+const serverNow = () => Date.now() + serverClockOffset;
+
 async function refreshRooms() {
   try {
     const list = await Api.get('/rooms');
+    noteServerNow(list[0]?.now);
     state.rooms = new Map(list.map((r) => [r.id, r]));
     renderRooms();
     scheduleKickExpiry();
@@ -295,7 +304,8 @@ function formatVoiceTime(ms) {
 }
 
 function tickVoiceTimers() {
-  for (const el of document.querySelectorAll('.voice-timer')) el.textContent = formatVoiceTime(Date.now() - Number(el.dataset.since));
+  const now = serverNow();
+  for (const el of document.querySelectorAll('.voice-timer')) el.textContent = formatVoiceTime(now - Number(el.dataset.since));
 }
 setInterval(tickVoiceTimers, 1000);
 
@@ -341,7 +351,7 @@ function roomItem(room) {
     const timer = document.createElement('span');
     timer.className = 'voice-timer';
     timer.dataset.since = room.voiceSince;
-    timer.textContent = formatVoiceTime(Date.now() - room.voiceSince);
+    timer.textContent = formatVoiceTime(serverNow() - room.voiceSince);
     row.append(timer);
   }
   // Голосовая комната: щелчок сразу переносит в её голосовой канал (из другого — тоже)
@@ -659,7 +669,8 @@ function handleRoomEvent(msg) {
   }
 }
 
-function onRoomVoice({ roomId, participants, since = null }) {
+function onRoomVoice({ roomId, participants, since = null, now = null }) {
+  noteServerNow(now);
   const room = roomById(roomId);
   if (room) {
     room.voice = participants;

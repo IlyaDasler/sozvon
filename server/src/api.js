@@ -350,6 +350,9 @@ const toRoom = (row) => ({
   bans: rooms.bans(row.id).map((b) => ({ ...toPublicUser(b), bannedAt: b.banned_at })),
   voice: voice.participants(row.id),
   voiceSince: voice.since(row.id),
+  // Часы сервера: по ним приложение считает поправку, чтобы таймер разговора был одинаковым
+  // у всех — у каждого компьютера свои часы
+  now: Date.now(),
 });
 
 // Свежие данные комнаты — всем его участникам
