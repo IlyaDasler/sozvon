@@ -26,12 +26,18 @@ test('разбор страницы: Open Graph, обычный title и отн�
     title: 'Котики & собачки',
     description: 'Лучшие фото',
     image: 'https://zoo.example/img/cat.jpg',
+    video: null,
     siteName: 'Зоо',
   });
   const plain = parsePreview('<title>  Просто страница </title><meta name="description" content="Описание">', 'https://a.ru/x');
-  assert.deepEqual(plain, { url: 'https://a.ru/x', title: 'Просто страница', description: 'Описание', image: null, siteName: 'a.ru' });
+  assert.deepEqual(plain, { url: 'https://a.ru/x', title: 'Просто страница', description: 'Описание', image: null, video: null, siteName: 'a.ru' });
   assert.equal(parsePreview('<p>без заголовка</p>', 'https://a.ru'), null);
   assert.equal(parsePreview('<meta property="og:title" content="t"><meta property="og:image" content="javascript:alert(1)">', 'https://a.ru').image, null);
+  // Ссылка на видео из og:video — по ней клиент покажет плеер
+  assert.equal(
+    parsePreview('<meta property="og:title" content="t"><meta property="og:video:secure_url" content="https://cdn.example.com/v.mp4">', 'https://a.ru').video,
+    'https://cdn.example.com/v.mp4'
+  );
 });
 
 // Сервер с разрешённым доступом к адресам этого компьютера (только для теста) и поддельный сайт
