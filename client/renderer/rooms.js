@@ -90,14 +90,99 @@ async function refreshRooms() {
 
 // ---------- Список в боковой панели ----------
 
+// ---------- Перетаскивание комнат: свой порядок внутри раздела ----------
+
+let roomDragId = null;
+let roomDragBound = false;
+
+const clearRoomDropMarks = () => {
+  for (const node of document.querySelectorAll('#room-list .drop-before, #room-list .drop-after, #room-list .dragging'))
+    node.classList.remove('drop-before', 'drop-after', 'dragging');
+};
+
+/** Куда можно бросить: только комната того же типа и той же группы */
+function roomDropTarget(e) {
+  const item = e.target.closest('#room-list .room-item[draggable="true"]');
+  if (!item || roomDragId == null) return null;
+  const target = state.rooms.get(Number(item.dataset.roomId));
+  const source = state.rooms.get(roomDragId);
+  if (!target || !source || target.id === source.id) return null;
+  if (target.kind !== source.kind) return null;
+  if ((target.groupId || null) !== (source.groupId || null)) return null;
+  return { item, room: target };
+}
+
+function ensureRoomDrag() {
+  if (roomDragBound) return;
+  const list = $('room-list');
+  if (!list) return;
+  roomDragBound = true;
+
+  list.addEventListener('dragstart', (e) => {
+    const item = e.target.closest('.room-item[draggable="true"]');
+    if (!item) return;
+    roomDragId = Number(item.dataset.roomId);
+    item.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(roomDragId));
+  });
+
+  list.addEventListener('dragend', () => {
+    roomDragId = null;
+    clearRoomDropMarks();
+  });
+
+  list.addEventListener('dragover', (e) => {
+    if (roomDragId == null) return;
+    const hit = roomDropTarget(e);
+    clearRoomDropMarks();
+    if (!hit) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const r = hit.item.getBoundingClientRect();
+    hit.item.classList.add(e.clientY < r.top + r.height / 2 ? 'drop-before' : 'drop-after');
+  });
+
+  list.addEventListener('drop', (e) => {
+    if (roomDragId == null) return;
+    const hit = roomDropTarget(e);
+    if (!hit) return;
+    e.preventDefault();
+    const source = state.rooms.get(roomDragId);
+    const r = hit.item.getBoundingClientRect();
+    const after = e.clientY >= r.top + r.height / 2;
+    const section = roomsOfHub(source.hubId).filter(
+      (x) => x.kind === source.kind && (x.groupId || null) === (source.groupId || null)
+    );
+    const order = section.map((x) => x.id).filter((id) => id !== source.id);
+    const index = order.indexOf(hit.room.id);
+    if (index < 0) return;
+    order.splice(after ? index + 1 : index, 0, source.id);
+    // Сначала показываем новый порядок, потом сохраняем
+    order.forEach((id, i) => {
+      const room = state.rooms.get(id);
+      if (room) room.position = i + 1;
+    });
+    roomDragId = null;
+    clearRoomDropMarks();
+    renderRooms();
+    Api.put(`/hubs/${source.hubId}/rooms/order`, { ids: order }).catch((err) => {
+      toast(err.message);
+      refreshRooms();
+    });
+  });
+}
+
 function renderRooms() {
   renderRail();
+  ensureRoomDrag();
   const list = $('room-list');
   list.replaceChildren();
   const hub = currentHub();
   if (!hub) return;
+  // Порядок — как человек расставил перетаскиванием (новые комнаты в конце)
   const sorted = roomsOfHub(hub.id).sort(
-    (a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name, 'ru') : a.kind === 'voice' ? -1 : 1)
+    (a, b) => (a.position ?? a.id) - (b.position ?? b.id) || a.name.localeCompare(b.name, 'ru')
   );
 
   const groups = hub.groups || [];
@@ -217,6 +302,9 @@ setInterval(tickVoiceTimers, 1000);
 function roomItem(room) {
   const li = document.createElement('li');
   li.className = 'room-item';
+  li.dataset.roomId = room.id;
+  // Перетаскивать порядок может тот, кто управляет каналом
+  if (canManageHub(hubById(room.hubId))) li.draggable = true;
   const row = document.createElement('div');
   row.className = `contact room-row${room.id === state.selectedRoomId ? ' active' : ''}`;
   row.dataset.room = room.id;
