@@ -384,13 +384,76 @@ ipcMain.handle('preview:fetch', (_event, url) => fetchPreview(String(url)));
 registerVault();
 registerClipboardImage();
 
+// ---------- Плавающее окно трансляции ----------
+// Отдельное окно Windows: его можно растянуть за края, унести на другой монитор и оставить поверх остальных.
+// Картинку шлём кадрами из главного окна — видео остаётся одно, звук идёт как обычно
+
+let pipWin = null;
+
+function closePip() {
+  if (pipWin && !pipWin.isDestroyed()) pipWin.close();
+}
+
+function pipTitle(text) {
+  if (pipWin && !pipWin.isDestroyed()) pipWin.webContents.send('pip:title', String(text || ''));
+}
+
+ipcMain.handle('pip:open', (_event, opts = {}) => {
+  if (pipWin && !pipWin.isDestroyed()) {
+    pipTitle(opts.title);
+    pipWin.focus();
+    return { ok: true };
+  }
+  const bounds = opts.bounds && typeof opts.bounds === 'object' ? opts.bounds : {};
+  const main = win && !win.isDestroyed() ? win.getBounds() : { x: 100, y: 100, width: 1100, height: 720 };
+  pipWin = new BrowserWindow({
+    width: Math.max(240, Math.round(bounds.width || 480)),
+    height: Math.max(150, Math.round(bounds.height || 300)),
+    x: Number.isFinite(bounds.x) ? Math.round(bounds.x) : main.x + 60,
+    y: Number.isFinite(bounds.y) ? Math.round(bounds.y) : main.y + 60,
+    minWidth: 240,
+    minHeight: 150,
+    frame: false,
+    resizable: true,
+    alwaysOnTop: true,
+    backgroundColor: '#07080c',
+    title: 'Созвон — трансляция',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      backgroundThrottling: false,
+      autoplayPolicy: 'no-user-gesture-required',
+    },
+  });
+  pipWin.loadFile(path.join(__dirname, 'renderer', 'pip.html'));
+  pipWin.webContents.once('did-finish-load', () => pipTitle(opts.title));
+  // Место и размер окна запоминаем: в следующий раз откроется там же
+  pipWin.on('close', () => {
+    if (win && !win.isDestroyed()) win.webContents.send('pip:closed', pipWin.getBounds());
+  });
+  pipWin.on('closed', () => {
+    pipWin = null;
+  });
+  return { ok: true };
+});
+
+ipcMain.on('pip:frame', (_event, dataUrl) => {
+  if (pipWin && !pipWin.isDestroyed() && typeof dataUrl === 'string') pipWin.webContents.send('pip:frame', dataUrl);
+});
+ipcMain.on('pip:close', () => closePip());
+
 const EDIT_COMMANDS = new Set(['cut', 'copy', 'paste', 'selectAll']);
 ipcMain.on('edit', (event, command) => {
   if (EDIT_COMMANDS.has(command)) event.sender[command]();
 });
 
 // Любой настоящий выход (в том числе quitAndInstall внутри electron-updater) и завершение работы Windows
-app.on('before-quit', () => (quitting = true));
+app.on('before-quit', () => {
+  quitting = true;
+  closePip();
+});
 app.on('session-end', () => (quitting = true));
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();

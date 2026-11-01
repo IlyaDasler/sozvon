@@ -371,9 +371,66 @@ function placeFloating() {
   }
 }
 
+/** В приложении плавающее окно — отдельное окно Windows, в браузере — картинка внутри страницы */
+const nativePip = () => Boolean(window.desktop?.pip);
+
+let pipVideo = null;
+let pipTimer = null;
+let pipCanvas = null;
+
+/** Скрытое видео, из которого снимаем кадры для отдельного окна */
+function pipSource() {
+  if (!pipVideo) {
+    pipVideo = document.createElement('video');
+    pipVideo.autoplay = true;
+    pipVideo.muted = true;
+    pipVideo.playsInline = true;
+    // Не display:none — иначе браузер перестаёт рисовать кадры, и снимать нечего
+    pipVideo.style.cssText = 'position:fixed;left:-4px;top:-4px;width:2px;height:2px;opacity:0;pointer-events:none';
+    document.body.append(pipVideo);
+  }
+  return pipVideo;
+}
+
+function startPipFrames() {
+  stopPipFrames();
+  pipCanvas ??= document.createElement('canvas');
+  pipTimer = setInterval(() => {
+    const t = floatView && voiceTiles().find((x) => x.key === floatView);
+    if (!t?.video) return;
+    const v = pipSource();
+    if (v.srcObject?.getVideoTracks()[0] !== t.video) {
+      v.srcObject = new MediaStream([t.video]);
+      v.play().catch(() => {});
+    }
+    if (!v.videoWidth) return;
+    // 960 px по ширине и 20 кадров в секунду — картинка читаемая, а канал не забит
+    const w = Math.min(960, v.videoWidth);
+    const h = Math.round((v.videoHeight * w) / v.videoWidth);
+    if (pipCanvas.width !== w || pipCanvas.height !== h) {
+      pipCanvas.width = w;
+      pipCanvas.height = h;
+    }
+    pipCanvas.getContext('2d').drawImage(v, 0, 0, w, h);
+    window.desktop.pip.frame(pipCanvas.toDataURL('image/jpeg', 0.7));
+  }, 50);
+}
+
+function stopPipFrames() {
+  clearInterval(pipTimer);
+  pipTimer = null;
+}
+
 function openFloating(key) {
-  if (!voiceTiles().some((t) => t.key === key && t.video)) return;
+  const t = voiceTiles().find((x) => x.key === key && x.video);
+  if (!t) return;
   floatView = key;
+  if (nativePip()) {
+    // Размер и место отдельного окна запоминаем
+    window.desktop.pip.open({ title: `Экран: ${tileName(t)}`, bounds: store.get('pip:bounds', null) });
+    startPipFrames();
+    return;
+  }
   floatBox().classList.remove('hidden');
   placeFloating();
   updateFloating();
@@ -382,14 +439,29 @@ function openFloating(key) {
 function closeFloating() {
   if (!floatView) return;
   floatView = null;
+  stopPipFrames();
+  if (nativePip()) {
+    window.desktop.pip.close();
+    return;
+  }
   floatBox().classList.add('hidden');
   $('stream-float-video').srcObject = null;
 }
+
+// Окно закрыли крестиком или Alt+F4 — прекращаем снимать кадры и запоминаем его размер
+window.desktop?.pip?.onClosed?.((bounds) => {
+  if (bounds && Number.isFinite(bounds.width)) store.set('pip:bounds', bounds);
+  if (!floatView) return;
+  floatView = null;
+  stopPipFrames();
+});
 
 function updateFloating() {
   if (!floatView) return;
   const t = voiceTiles().find((x) => x.key === floatView);
   if (!t?.video) return closeFloating();
+  // В отдельном окне картинку собирает startPipFrames, страница для этого не нужна
+  if (nativePip()) return;
   const video = $('stream-float-video');
   if (video.srcObject?.getVideoTracks()[0] !== t.video) video.srcObject = new MediaStream([t.video]);
   if (video.paused) video.play().catch(() => {});
