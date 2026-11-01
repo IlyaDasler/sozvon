@@ -498,8 +498,12 @@ function renderVoiceStatus() {
     const room = state.room;
     connected = room.joined;
     const count = session.peers.size + 1;
+    // Время разговора — по серверным часам и от первого вошедшего: иначе в панели и в списке
+    // комнат получаются разные цифры
+    const since = roomById(room.roomId)?.voiceSince;
+    const elapsed = Number.isFinite(since) ? serverNow() - since : Date.now() - room.connectedAt;
     text = room.joined
-      ? `${formatDuration(Date.now() - room.connectedAt)} · ${count} ${plural(count, 'участник', 'участника', 'участников')}`
+      ? `${formatDuration(elapsed)} · ${count} ${plural(count, 'участник', 'участника', 'участников')}`
       : 'Подключение…';
   }
   $('call-status').textContent = text ?? '';
