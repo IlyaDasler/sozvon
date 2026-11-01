@@ -23,11 +23,14 @@ export const livekitRoom = (roomId) => `sozvon-room-${roomId}`;
 /** Как пойдёт голос в комнате, где разговор только начинается: большая комната — через LiveKit */
 export const mediaFor = (memberCount) => (livekitEnabled && memberCount >= lk.minMembers ? 'sfu' : 'p2p');
 
-/** Пропуск в комнату LiveKit: что можно публиковать — по правам роли (говорить, камера и экран) */
-export function joinGrant(roomId, user, perms) {
+/** Пропуск в комнату LiveKit: что можно публиковать — по правам роли (говорить, камера и экран).
+ *  Перед выдачей убираем прежнее подключение этого человека: иначе LiveKit не пустит второго
+ *  с тем же именем («a participant with the same identity is already in the room») */
+export async function joinGrant(roomId, user, perms) {
   const sources = [];
   if (has(perms, PERMS.speak)) sources.push('microphone');
   if (has(perms, PERMS.video)) sources.push('camera', 'screen_share', 'screen_share_audio');
+  await removeFromLivekit(roomId, user.id).catch(() => {});
   const token = sign(
     {
       sub: String(user.id),
@@ -41,8 +44,8 @@ export function joinGrant(roomId, user, perms) {
 
 // Управление комнатами LiveKit (Twirp API) — пропуск администратора на минуту
 function roomService(method, body) {
-  if (!livekitEnabled) return;
-  fetch(`${lk.apiUrl}/twirp/livekit.RoomService/${method}`, {
+  if (!livekitEnabled) return Promise.resolve();
+  return fetch(`${lk.apiUrl}/twirp/livekit.RoomService/${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sign({ video: { roomAdmin: true, roomList: true, room: body.room } }, 60)}` },
     body: JSON.stringify(body),

@@ -2,6 +2,7 @@
 // сервер только пересылает сигналы WebRTC), либо в больших комнатах — через медиасервер LiveKit. Как именно,
 // решается, когда разговор в комнате начинается, и не меняется, пока в голосе кто-то есть.
 import { rooms } from './db.js';
+import { config } from './config.js';
 import { hub } from './hub.js';
 import { closeLivekitRoom, removeFromLivekit } from './livekit.js';
 
@@ -50,6 +51,7 @@ export const voice = {
     const map = voiceRooms.get(roomId);
     const p = map?.get(userId);
     if (!p) return;
+    clearTimeout(p.timer);
     map.delete(userId);
     if (!map.size) voiceRooms.delete(roomId);
     if (reason) hub.sendTo(p.ws, { type: 'room:left', roomId, reason });
@@ -63,6 +65,32 @@ export const voice = {
     for (const [roomId, map] of [...voiceRooms]) {
       for (const [userId, p] of map) if (p.ws === ws) voice.leave(roomId, userId);
     }
+  },
+
+  // Связь оборвалась, но человек может вернуться: держим его место в комнате, пока идёт окно
+  // ожидания. Голос идёт напрямую, поэтому короткий обрыв не должен выкидывать из канала
+  pauseSocket(ws) {
+    for (const [roomId, map] of [...voiceRooms]) {
+      for (const [userId, p] of map) {
+        if (p.ws !== ws || p.timer) continue;
+        p.ws = null;
+        p.timer = setTimeout(() => voice.leave(roomId, userId, 'disconnected'), config.callReconnectGraceMs);
+      }
+      voice.broadcast(roomId);
+    }
+  },
+
+  /** Вернулся после обрыва: новое соединение занимает то же место в комнате */
+  resume(ws, roomId, userId) {
+    const map = voiceRooms.get(roomId);
+    const p = map?.get(userId);
+    if (!p) return false;
+    if (p.ws) return true; // уже с живого соединения
+    clearTimeout(p.timer);
+    p.timer = null;
+    p.ws = ws;
+    voice.broadcast(roomId);
+    return true;
   },
 
   closeRoom(roomId) {

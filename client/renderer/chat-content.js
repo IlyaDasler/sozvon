@@ -332,6 +332,9 @@ function embedFrame(src, title, href, frameClass = '') {
   const frame = document.createElement('iframe');
   frame.className = 'yt-frame';
   frame.src = src;
+  // Чужой странице нечего делать с нашим окном: только её собственный скрипт, полноэкранный
+  // показ и всплывающие окна плеера — ничего из возможностей Electron
+  frame.sandbox = 'allow-scripts allow-same-origin allow-presentation allow-popups allow-forms';
   frame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
   frame.allowFullscreen = true;
   frame.title = title;

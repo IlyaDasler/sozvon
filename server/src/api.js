@@ -2030,7 +2030,9 @@ export function createApi() {
   );
 
   // Порядок комнат в канале: перетаскивание в списке. Меняет тот, кто управляет каналом.
-  // Голосовые и текстовые живут в своих разделах — клиент присылает только комнаты одного раздела
+  // Голосовые и текстовые живут в своих разделах — клиент присылает только комнаты одного раздела.
+  // Проверяем, что список полный и из одного раздела: иначе у части комнат остались бы старые
+  // номера и порядок бы поехал молча
   api.put(
     '/hubs/:id/rooms/order',
     handle((req) => {
@@ -2038,9 +2040,16 @@ export function createApi() {
       requireHubManager(req, hubRow);
       const ids = Array.isArray(req.body.ids) ? req.body.ids.map(Number) : [];
       if (!ids.length || ids.some((id) => !Number.isInteger(id))) throw new HttpError(400, 'Неверный порядок комнат');
-      const own = new Set(hubs.rooms(hubRow.id).map((r) => r.id));
-      if (!ids.every((id) => own.has(id))) throw new HttpError(404, 'Комната не найдена');
-      rooms.reorder([...new Set(ids)]);
+      const own = hubs.rooms(hubRow.id);
+      const byId = new Map(own.map((r) => [r.id, r]));
+      if (!ids.every((id) => byId.has(id))) throw new HttpError(404, 'Комната не найдена');
+      const unique = [...new Set(ids)];
+      const kind = byId.get(unique[0]).kind;
+      if (unique.some((id) => byId.get(id).kind !== kind))
+        throw new HttpError(400, 'Голосовые и текстовые комнаты сортируются по отдельности');
+      const expected = own.filter((r) => r.kind === kind).map((r) => r.id);
+      if (unique.length !== expected.length) throw new HttpError(400, 'Пришёл неполный список комнат');
+      rooms.reorder(unique);
       return { ok: true };
     })
   );

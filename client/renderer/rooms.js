@@ -653,6 +653,23 @@ function handleRoomEvent(msg) {
       return onRoomPreview(msg);
     case 'room:joined':
       return onRoomJoined(msg);
+    case 'room:resumed': {
+      // Сервер подтвердил: мы снова в том же голосовом канале
+      const v = state.room;
+      if (v?.roomId !== msg.roomId) return;
+      v.reconnecting = false;
+      renderVoice();
+      return;
+    }
+    case 'room:resume:failed': {
+      // Место уже не держат — заходим заново, как в первый раз
+      const v = state.room;
+      if (v?.roomId !== msg.roomId) return;
+      v.reconnecting = false;
+      v.joined = false;
+      sendRoomJoin(v.roomId);
+      return;
+    }
     case 'room:signal':
       if (state.room?.roomId === msg.roomId && state.room.joined) state.room.session.handleSignal(msg.from, msg.data);
       return;
@@ -745,6 +762,7 @@ async function onRoomJoined({ roomId, peers, media, livekit }) {
   }
   dropP2pPeers(v);
   v.joined = true;
+  v.reconnecting = false;
   v.connectedAt ??= Date.now();
   v.lastIds = null;
   v.sentState = '';
@@ -812,19 +830,21 @@ function sendRoomState() {
   socket?.send({ type: 'room:state', roomId: v.roomId, ...st });
 }
 
-// Связь с сервером пропала: из голоса сервер нас уже убрал. Вернулась — заходим обратно
+// Связь с сервером пропала: сервер держит наше место в комнате, голос идёт напрямую.
+// Вернулась — просим вернуть нас в тот же канал, а не заходим заново
 function onVoiceSocketStatus(ok) {
   const v = state.room;
   if (!v) return;
   if (!ok) {
-    if (v.joined) {
-      v.joined = false;
-      dropP2pPeers(v);
+    if (v.joined && !v.reconnecting) {
+      v.reconnecting = true;
+      toast('Связь с сервером прервалась, переподключаемся…');
       renderVoice();
     }
     return;
   }
-  if (!v.joined) sendRoomJoin(v.roomId);
+  if (!v.joined) return sendRoomJoin(v.roomId);
+  if (v.reconnecting) socket?.send({ type: 'room:resume', roomId: v.roomId });
 }
 
 // ---------- Создание комнаты ----------
