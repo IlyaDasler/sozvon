@@ -949,7 +949,7 @@
     </div>
   </div>
 
-  <!-- Трансляция или камера во весь экран -->
+  <!-- Трансляция или камера: развёрнуто внутри приложения или во весь монитор -->
   <div id="fullview" class="fullview hidden">
     <video id="fullview-video" autoplay playsinline muted></video>
     <div class="fullview-bar">
@@ -957,8 +957,22 @@
       <span id="fullview-name" class="ellipsis"></span>
       <span id="fullview-info" class="muted small"></span>
       <div class="spacer"></div>
-      <button type="button" class="btn" id="fullview-exit">Выйти из полноэкранного режима (Esc)</button>
+      <button type="button" class="btn" id="fullview-float">Плавающее окно</button>
+      <button type="button" class="btn" id="fullview-screen">Во весь экран</button>
+      <button type="button" class="btn" id="fullview-exit">Закрыть (Esc)</button>
     </div>
+  </div>
+
+  <!-- Плавающее окно трансляции: поверх чатов, его можно таскать и менять размер -->
+  <div id="stream-float" class="stream-float hidden">
+    <div class="stream-float-bar" id="stream-float-bar">
+      <b class="live">В ЭФИРЕ</b>
+      <span id="stream-float-name" class="ellipsis"></span>
+      <button type="button" class="stream-float-btn" id="stream-float-size" title="Размер окна">⤢</button>
+      <button type="button" class="stream-float-btn" id="stream-float-restore" title="Развернуть">⛶</button>
+      <button type="button" class="stream-float-btn" id="stream-float-close" title="Закрыть">✕</button>
+    </div>
+    <video id="stream-float-video" autoplay playsinline muted></video>
   </div>
 
   <!-- Картинка из чата крупно -->

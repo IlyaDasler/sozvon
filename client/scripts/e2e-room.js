@@ -182,21 +182,44 @@ runTest(async () => {
   if (process.env.E2E_SKIP_FULLSCREEN === '1') console.log('  (пропущено: трансляция во весь экран — E2E_SKIP_FULLSCREEN)');
   else {
     await winA.webContents.executeJavaScript(`${fullBtn}.click()`, true);
-    const inFull = `(() => {
+    // Развернули внутри приложения: кадр занимает всё окно, режим «во весь монитор» не включается
+    const inApp = `(() => {
       const v = document.getElementById('fullview-video');
       const r = v.getBoundingClientRect();
-      return document.fullscreenElement?.id === 'fullview' && fullView === 'u${b.user.id}:screen' &&
-        v.videoWidth > 0 && !v.paused && r.width === innerWidth && r.height === innerHeight;
+      return fullView === 'u${b.user.id}:screen' && !document.getElementById('fullview').classList.contains('hidden') &&
+        v.videoWidth > 0 && !v.paused && r.width === innerWidth && r.height === innerHeight && !document.fullscreenElement;
     })()`;
-    await waitFor(winA, inFull, 'трансляция во весь экран');
-    await sleep(800);
-    if (!(await js(winA, inFull))) throw new Error('Полноэкранный режим сам выключился');
+    await waitFor(winA, inApp, 'трансляция развёрнута в приложении');
+    await sleep(600);
+    if (!(await js(winA, inApp))) throw new Error('Развёрнутый просмотр сам закрылся');
+
+    // Кнопка «Во весь экран» уводит на весь монитор, повторное нажатие возвращает в окно
+    await js(winA, `document.getElementById('fullview-screen').click(); true`);
+    await waitFor(winA, `document.fullscreenElement?.id === 'fullview'`, 'полноэкранный режим');
     if (!winA.isFullScreen()) throw new Error('Окно приложения не ушло в полноэкранный режим');
     await screenshot(winA, 'room-fullview');
+    await js(winA, `document.getElementById('fullview-screen').click(); true`);
+    await waitFor(winA, `!document.fullscreenElement && fullView !== null`, 'возврат в окно приложения');
+
     // Выход — кнопкой на панели
     await js(winA, `document.getElementById('fullview-exit').click(); true`);
-    await waitFor(winA, `!document.fullscreenElement && fullView === null && document.getElementById('fullview').classList.contains('hidden')`, 'выход из полноэкранного режима');
-    console.log('✔ трансляция открывается на весь монитор и закрывается кнопкой');
+    await waitFor(winA, `fullView === null && document.getElementById('fullview').classList.contains('hidden')`, 'выход из развёрнутого просмотра');
+    console.log('✔ трансляция разворачивается в приложении и на весь монитор, закрывается кнопкой');
+  }
+
+  // Плавающее окно: кадр поверх переписки, размер переключается, закрывается
+  const pipBtn = `document.querySelector('.tile[data-key="u${b.user.id}:screen"] .tile-pip')`;
+  if (await js(winA, `Boolean(${pipBtn})`)) {
+    await js(winA, `${pipBtn}.click(); true`);
+    await waitFor(winA, `!document.getElementById('stream-float').classList.contains('hidden') && document.getElementById('stream-float-video').videoWidth > 0`, 'плавающее окно с кадром');
+    const sizes = `document.getElementById('stream-float').className`;
+    const small = await js(winA, `document.getElementById('stream-float').classList.contains('size-small')`);
+    await js(winA, `document.getElementById('stream-float-size').click(); true`);
+    const bigger = await js(winA, `!document.getElementById('stream-float').classList.contains('size-small')`);
+    if (!small || !bigger) throw new Error(`Плавающее окно не меняет размер: ${sizes}`);
+    await js(winA, `document.getElementById('stream-float-close').click(); true`);
+    await waitFor(winA, `document.getElementById('stream-float').classList.contains('hidden')`, 'плавающее окно закрыто');
+    console.log('✔ плавающее окно показывает трансляцию и закрывается');
   }
 
   // «Перестать смотреть» — видео пропадает, Боря перестаёт слать Ане экран

@@ -157,9 +157,21 @@ function createTile(t) {
     unwatch.onclick = (e) => {
       e.stopPropagation();
       if (fullView === t.key) closeFullView();
+      if (floatView === t.key) closeFloating();
       activeSession()?.setWatching(t.id, false);
     };
     tools.append(unwatch);
+
+    // Увести показ в плавающее окно поверх переписки
+    const pip = document.createElement('button');
+    pip.className = 'tile-btn tile-pip';
+    pip.title = 'Плавающее окно';
+    pip.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="11" y="11" width="8" height="6" rx="1"/></svg>';
+    pip.onclick = (e) => {
+      e.stopPropagation();
+      openFloating(t.key);
+    };
+    tools.append(pip);
   }
 
   const full = document.createElement('button');
@@ -242,23 +254,24 @@ function renderStage() {
   });
   for (const el of existing.values()) el.remove();
   updateFullView();
+  updateFloating();
 }
 
-// ---------- Просмотр во весь экран ----------
-// Трансляция (или камера) открывается в отдельном проигрывателе на весь монитор:
-// окно приложения уходит в полноэкранный режим Windows. Выход — Esc, двойной щелчок или кнопка
+// ---------- Просмотр развёрнуто и в плавающем окне ----------
+// Развернуть можно внутри приложения (на всё его окно) и во весь монитор — это две разные
+// вещи, переключаются кнопкой. Отдельно трансляцию можно увести в плавающее окно поверх чатов
 
-let fullView = null; // ключ плитки, которую смотрим
+let fullView = null; // ключ плитки, которую смотрим развёрнуто
 let fullViewBarTimer = null;
 
 function openFullView(key) {
   if (!voiceTiles().some((t) => t.key === key && t.video)) return;
+  closeFloating();
   fullView = key;
   $('fullview').classList.remove('hidden');
   updateFullView();
   showFullViewBar();
-  // Не получилось — проигрыватель всё равно закрывает всё окно приложения
-  $('fullview').requestFullscreen().catch(() => {});
+  updateFullViewScreenButton();
 }
 
 function closeFullView() {
@@ -283,6 +296,65 @@ function updateFullView() {
   $('fullview-info').textContent = [size, t.quality && qualityText(t.quality)].filter(Boolean).join(' · ');
 }
 
+// Кнопка говорит, что произойдёт: развернуть на весь монитор или вернуть в окно приложения
+function updateFullViewScreenButton() {
+  $('fullview-screen').textContent = document.fullscreenElement ? 'Свернуть в окно' : 'Во весь экран';
+}
+
+// ---------- Плавающее окно ----------
+
+let floatView = null; // ключ плитки в плавающем окне
+const FLOAT_SIZES = ['small', 'medium', 'large'];
+
+const floatBox = () => $('stream-float');
+
+function applyFloatSize(size) {
+  const box = floatBox();
+  box.classList.remove(...FLOAT_SIZES.map((s) => `size-${s}`));
+  box.classList.add(`size-${FLOAT_SIZES.includes(size) ? size : 'small'}`);
+}
+
+function placeFloating() {
+  applyFloatSize(store.get('float:size', 'small'));
+  const pos = store.get('float:pos', null);
+  const box = floatBox();
+  if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+    box.classList.remove('at-corner');
+    box.style.left = `${Math.max(4, Math.min(pos.x, innerWidth - 120))}px`;
+    box.style.top = `${Math.max(4, Math.min(pos.y, innerHeight - 80))}px`;
+  } else {
+    box.classList.add('at-corner');
+    box.style.left = '';
+    box.style.top = '';
+  }
+}
+
+function openFloating(key) {
+  if (!voiceTiles().some((t) => t.key === key && t.video)) return;
+  floatView = key;
+  floatBox().classList.remove('hidden');
+  placeFloating();
+  updateFloating();
+}
+
+function closeFloating() {
+  if (!floatView) return;
+  floatView = null;
+  floatBox().classList.add('hidden');
+  $('stream-float-video').srcObject = null;
+}
+
+function updateFloating() {
+  if (!floatView) return;
+  const t = voiceTiles().find((x) => x.key === floatView);
+  if (!t?.video) return closeFloating();
+  const video = $('stream-float-video');
+  if (video.srcObject?.getVideoTracks()[0] !== t.video) video.srcObject = new MediaStream([t.video]);
+  if (video.paused) video.play().catch(() => {});
+  video.classList.toggle('mirror', Boolean(t.isMe && !t.screen));
+  $('stream-float-name').textContent = tileName(t);
+}
+
 // Панель с названием и кнопкой выхода видна при движении мыши и прячется через 2,5 секунды
 function showFullViewBar() {
   $('fullview').classList.add('show-bar');
@@ -293,9 +365,52 @@ function showFullViewBar() {
 $('fullview').onmousemove = showFullViewBar;
 $('fullview-video').ondblclick = closeFullView;
 $('fullview-exit').onclick = closeFullView;
-document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement && fullView) closeFullView();
+$('fullview-screen').onclick = () => {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else $('fullview').requestFullscreen().catch(() => {});
+};
+$('fullview-float').onclick = () => {
+  const key = fullView;
+  if (!key) return;
+  closeFullView();
+  openFloating(key);
+};
+// Выход из полноэкранного режима ОС не закрывает просмотр — остаёмся развёрнутыми в окне
+document.addEventListener('fullscreenchange', updateFullViewScreenButton);
+
+// Перетаскивание плавающего окна за заголовок
+let floatDrag = null;
+$('stream-float-bar').addEventListener('pointerdown', (e) => {
+  if (e.target.closest('button')) return;
+  const r = floatBox().getBoundingClientRect();
+  floatDrag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+  floatBox().classList.remove('at-corner');
+  e.preventDefault();
 });
+addEventListener('pointermove', (e) => {
+  if (!floatDrag) return;
+  const box = floatBox();
+  const x = Math.max(4, Math.min(e.clientX - floatDrag.dx, innerWidth - box.offsetWidth - 4));
+  const y = Math.max(4, Math.min(e.clientY - floatDrag.dy, innerHeight - box.offsetHeight - 4));
+  box.style.left = `${x}px`;
+  box.style.top = `${y}px`;
+  store.set('float:pos', { x, y });
+});
+addEventListener('pointerup', () => {
+  floatDrag = null;
+});
+$('stream-float-close').onclick = closeFloating;
+$('stream-float-size').onclick = () => {
+  const cur = store.get('float:size', 'small');
+  const next = FLOAT_SIZES[(FLOAT_SIZES.indexOf(cur) + 1) % FLOAT_SIZES.length];
+  store.set('float:size', next);
+  applyFloatSize(next);
+};
+$('stream-float-restore').onclick = () => {
+  const key = floatView;
+  closeFloating();
+  if (key) openFullView(key);
+};
 
 function setSpeaking(who, isSpeaking) {
   speaking.set(who, isSpeaking);
