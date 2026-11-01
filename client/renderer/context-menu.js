@@ -24,8 +24,12 @@ function roomContext(userId) {
 
 function toggleMuteFor(userId) {
   const muted = store.get(`volume:${userId}`, 100) === 0;
-  store.set(`volume:${userId}`, muted ? 100 : 0);
+  const level = muted ? 100 : 0;
+  store.set(`volume:${userId}`, level);
+  // Трансляцию этого человека тоже глушим: иначе игра из его экрана продолжит звучать
+  store.set(`volume:screen:${userId}`, level);
   activeSession()?.setVolume(userId, muted ? 1 : 0);
+  activeSession()?.setScreenVolume(userId, muted ? 1 : 0);
   renderStage();
   renderRooms(); // знак «заглушён для вас» в списке голоса
 }

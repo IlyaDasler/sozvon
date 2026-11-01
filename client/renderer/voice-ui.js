@@ -32,6 +32,8 @@ function sessionOptions(sendSignal) {
       renderStage();
     },
     volumeOf: (id) => store.get(`volume:${id}`, 100) / 100,
+    // Звук трансляции — своя громкость у каждого человека
+    screenVolumeOf: (id) => store.get(`volume:screen:${id}`, 100) / 100,
     allowed: voiceAllowed,
   };
 }
@@ -105,6 +107,39 @@ function voiceTiles() {
   return tiles;
 }
 
+/** Ползунок громкости: значение хранится в store под своим ключом */
+function volumeSlider(title, key, onSet, icon = ICONS.volume) {
+  const label = document.createElement('label');
+  label.className = 'tile-volume';
+  label.title = title;
+  label.innerHTML = icon;
+  const range = document.createElement('input');
+  range.type = 'range';
+  range.min = 0;
+  range.max = 100;
+  range.value = store.get(key, 100);
+  range.oninput = () => {
+    store.set(key, Number(range.value));
+    onSet(range.value / 100);
+  };
+  range.onclick = (e) => e.stopPropagation();
+  label.append(range);
+  return label;
+}
+
+/** Громкость: у плитки экрана — звук трансляции, у плитки человека — его голос. Это разные ползунки */
+function tileVolumes(t) {
+  const box = document.createElement('div');
+  box.className = 'tile-volumes';
+  box.dataset.screen = String(Boolean(t.screen));
+  if (t.screen) {
+    box.append(volumeSlider('Громкость трансляции', `volume:screen:${t.id}`, (v) => activeSession()?.setScreenVolume(t.id, v), ICONS.screen));
+  } else {
+    box.append(volumeSlider('Громкость голоса', `volume:${t.id}`, (v) => activeSession()?.setVolume(t.id, v)));
+  }
+  return box;
+}
+
 function createTile(t) {
   const el = document.createElement('div');
   el.className = 'tile';
@@ -117,26 +152,8 @@ function createTile(t) {
     <div class="tile-tools"></div>`;
   const tools = el.querySelector('.tile-tools');
 
-  // Громкость человека (своя у каждого, запоминается). Для трансляции — та же громкость
-  // стримящего: звук экрана идёт вместе с его голосом
-  if (!t.isMe) {
-    const label = document.createElement('label');
-    label.className = 'tile-volume';
-    label.title = t.screen ? 'Громкость трансляции' : 'Громкость';
-    label.innerHTML = ICONS.volume;
-    const range = document.createElement('input');
-    range.type = 'range';
-    range.min = 0;
-    range.max = 100;
-    range.value = store.get(`volume:${t.id}`, 100);
-    range.oninput = () => {
-      store.set(`volume:${t.id}`, Number(range.value));
-      activeSession()?.setVolume(t.id, range.value / 100);
-    };
-    range.onclick = (e) => e.stopPropagation();
-    label.append(range);
-    tools.append(label);
-  }
+  // Громкость: голос и звук трансляции — раздельно, у каждого человека своя и запоминается
+  if (!t.isMe) tools.append(tileVolumes(t));
 
   // Чужая трансляция: «Смотреть» посередине и «Перестать смотреть» среди кнопок плитки
   if (t.screen && !t.isMe) {
@@ -204,6 +221,16 @@ function tileName(t) {
 
 function updateTile(el, t, focused) {
   const video = el.querySelector('video');
+  // Начал или закончил показывать экран — добавляем или убираем ползунок звука трансляции
+  if (!t.isMe) {
+    const tools = el.querySelector('.tile-tools');
+    const box = tools.querySelector('.tile-volumes');
+    if (box && box.dataset.screen !== String(Boolean(t.screen))) {
+      const fresh = tileVolumes(t);
+      if (box) box.replaceWith(fresh);
+      else tools.prepend(fresh);
+    }
+  }
   el.classList.toggle('focused', focused);
   el.classList.toggle('screen', Boolean(t.screen));
   el.classList.toggle('speaking', Boolean(t.speaking) && !t.screen);
