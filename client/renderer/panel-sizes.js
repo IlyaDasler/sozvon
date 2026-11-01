@@ -5,7 +5,8 @@
 
 const PANELS = {
   sidebar: { min: 200, max: 420, default: 248 },
-  members: { min: 200, max: 380, default: 240 },
+  // 280 px по умолчанию: в заголовке группы помещается название роли до 26 символов
+  members: { min: 200, max: 380, default: 280 },
 };
 const RAIL_WIDTH = 72;
 const CHAT_MIN = 380;
