@@ -75,7 +75,8 @@ runTest(async () => {
   await js(winA, `document.getElementById('room-name').value = 'Мемы'; document.getElementById('room-create-submit').click(); true`);
   await waitFor(winB, `[...document.querySelectorAll('#room-list .room-row .name')].some((n) => n.textContent === 'Мемы')`, 'новая комната у Васи');
   const names = await sectionRooms(winB);
-  if (names.join() !== 'Голосовая,Мемы,Общий чат') throw new Error(`Комнаты не по разделам: ${names}`);
+  // Свой порядок комнат: новая комната встаёт в конец своего раздела, а не по алфавиту
+  if (names.join() !== 'Голосовая,Общий чат,Мемы') throw new Error(`Комнаты не по разделам: ${names}`);
   // Переписка в комнате канала
   const memes = await js(winA, `[...state.rooms.values()].find((r) => r.name === 'Мемы').id`);
   await api('POST', `/rooms/${memes}/messages`, { text: 'Свежий мем' }, b.token);

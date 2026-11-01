@@ -2,7 +2,7 @@ name: Сборка
 
 on:
   push:
-    branches: [main]
+    branches: [main, main-v2]
     tags: ['v*']
   pull_request:
   workflow_dispatch:

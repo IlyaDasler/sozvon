@@ -357,7 +357,7 @@ class Composer {
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.className = 'file-remove';
-    remove.title = 'Убрать превью — отправится только ссылка';
+    remove.title = 'Убрать карточку — останется короткая ссылка';
     remove.innerHTML = COMPOSER_ICONS.close;
     remove.onclick = () => {
       this.removedPreviews.add(p.url);
