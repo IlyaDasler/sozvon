@@ -597,11 +597,13 @@ video.mirror { transform: scaleX(-1); }
 /* Развёрнутая плитка (чужой экран или по клику) занимает всё свободное место, остальные — рядами снизу */
 .stage.has-focus {
   display: grid; align-content: stretch;
+  /* Когда смотрим экран, сцена не прокручивается: кадр подстраивается под её высоту */
+  overflow: hidden;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  grid-template-rows: minmax(120px, 1fr); grid-auto-rows: auto;
+  grid-template-rows: minmax(0, 1fr); grid-auto-rows: auto;
 }
 .stage.has-focus .tile { width: 100%; max-width: 160px; justify-self: center; }
-.stage.has-focus .tile.focused { order: -1; grid-column: 1 / -1; max-width: none; height: 100%; aspect-ratio: auto; }
+.stage.has-focus .tile.focused { order: -1; grid-column: 1 / -1; max-width: none; height: 100%; min-height: 0; aspect-ratio: auto; }
 .stage.has-focus .tile:not(.focused) .avatar.big { width: 52px; height: 52px; font-size: 22px; }
 .tile:fullscreen { border-radius: 0; box-shadow: none; cursor: default; }
 .tile:fullscreen video { object-fit: contain; }
