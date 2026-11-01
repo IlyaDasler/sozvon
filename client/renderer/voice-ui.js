@@ -117,11 +117,12 @@ function createTile(t) {
     <div class="tile-tools"></div>`;
   const tools = el.querySelector('.tile-tools');
 
-  // Громкость человека (своя у каждого, запоминается)
-  if (!t.isMe && !t.screen) {
+  // Громкость человека (своя у каждого, запоминается). Для трансляции — та же громкость
+  // стримящего: звук экрана идёт вместе с его голосом
+  if (!t.isMe) {
     const label = document.createElement('label');
     label.className = 'tile-volume';
-    label.title = 'Громкость';
+    label.title = t.screen ? 'Громкость трансляции' : 'Громкость';
     label.innerHTML = ICONS.volume;
     const range = document.createElement('input');
     range.type = 'range';
@@ -172,6 +173,11 @@ function createTile(t) {
   tools.append(full);
 
   el.onclick = () => {
+    // По чужой трансляции щелчок сразу включает показ — кнопка не единственный вход
+    if (t.screen && !t.isMe && !t.watching) {
+      activeSession()?.setWatching(t.id, true);
+      return;
+    }
     focusedTile = focusedTile === t.key ? null : t.key;
     renderStage();
   };
