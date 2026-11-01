@@ -37,6 +37,7 @@ function toMembers(call, message, except = null) {
 
 function endCall(call, reason) {
   if (!calls.delete(call.id)) return;
+  for (const m of call.members.values()) clearTimeout(m?.timer);
   const message = { type: 'call:ended', callId: call.id, reason };
   toMembers(call, message);
   // Пока звонок не принят, он звонит на всех устройствах человека
@@ -49,9 +50,33 @@ function endCall(call, reason) {
 /** Человек вышел из звонка; когда остаётся один участник — звонок закончен */
 function leaveCall(call, uid, reason) {
   if (call.state === 'ringing') return endCall(call, reason);
+  clearTimeout(call.members.get(uid)?.timer);
   call.members.delete(uid);
   toMembers(call, memberEvent(call, uid, 'left'));
   if (call.members.size < 2) endCall(call, reason);
+}
+
+// Связь оборвалась, но человек может вернуться: держим его место в звонке, пока идёт окно ожидания.
+// Звук идёт напрямую между компьютерами, поэтому короткий обрыв не должен рвать разговор
+function pauseMember(call, uid) {
+  const m = call.members.get(uid);
+  if (!m || m.timer) return;
+  m.ws = null;
+  m.timer = setTimeout(() => leaveCall(call, uid, 'disconnected'), config.callReconnectGraceMs);
+  toMembers(call, memberEvent(call, uid, 'reconnecting'));
+}
+
+/** Вернулся после обрыва: новое соединение занимает то же место в звонке */
+function resumeMember(ws, user, callId) {
+  const call = calls.get(callId);
+  const m = call?.members.get(user.id);
+  if (!m) return hub.sendTo(ws, { type: 'call:ended', callId, reason: 'disconnected' });
+  if (m.ws) return hub.sendTo(ws, { type: 'call:ended', callId, reason: 'answered-elsewhere' });
+  clearTimeout(m.timer);
+  m.timer = null;
+  m.ws = ws;
+  hub.sendTo(ws, { type: 'call:resumed', callId });
+  toMembers(call, memberEvent(call, user.id, 'joined'));
 }
 
 /** Тому, кого позвали, так и не ответили (или он отказался) — звонок у остальных продолжается */
@@ -140,6 +165,11 @@ const handlers = {
   'call:hangup'(ws, user, msg) {
     const call = calls.get(msg.callId);
     if (call && memberBySocket(call, ws) === user.id) leaveCall(call, user.id, 'hangup');
+  },
+
+  // Приложение переподключилось после обрыва и просит вернуть его в звонок
+  'call:resume'(ws, user, msg) {
+    resumeMember(ws, user, msg.callId);
   },
 
   // Пересылаем SDP и ICE-кандидаты: адресату (to) или, в звонке на двоих, второму участнику
@@ -277,7 +307,7 @@ function onConnection(ws, user) {
   ws.on('close', () => {
     for (const call of [...calls.values()]) {
       const uid = memberBySocket(call, ws);
-      if (uid !== null) leaveCall(call, uid, 'disconnected');
+      if (uid !== null) pauseMember(call, uid);
     }
     voice.leaveSocket(ws);
     if (hub.remove(user.id, ws)) userGone(user.id);

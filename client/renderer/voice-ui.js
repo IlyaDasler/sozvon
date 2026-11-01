@@ -423,7 +423,10 @@ function onPeerState(id, st) {
       return hangup('Не удалось соединиться. Скорее всего, мешает сеть — попробуйте ещё раз.');
     call.phase = 'reconnecting';
     call.failTimer ??= setTimeout(() => {
-      if (state.call === call && call.phase !== 'connected') hangup('Связь потеряна');
+      if (state.call !== call) return;
+      // Связи с сервером нет — звонок не рвём сами: сервер держит наше место, ждём переподключения
+      if (!Api.online) return;
+      if (call.phase !== 'connected') hangup('Связь потеряна');
     }, 20_000);
   }
   renderVoice();
