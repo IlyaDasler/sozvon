@@ -376,8 +376,17 @@ class Composer {
     const ready = this.files.filter((f) => f.attachment);
     const editing = Boolean(editDraft && composerOf(editDraft.chat) === this);
     if (!text && !ready.length && !editing) return;
-    const payload = { text, files: ready.map((f) => f.attachment), preview: null };
-    if (this.preview?.data && text.includes(this.preview.url.replace(/^https:\/\/(?=www\.)/, ''))) payload.preview = this.preview.data;
+    // Превью ссылки: при быстрой отправке таймер ещё не успел его запросить — забираем прямо сейчас
+    const link = editing ? null : findLinks(text).find((u) => !this.removedPreviews.has(u)) || null;
+    let preview = link && this.preview?.url === link ? this.preview.data : undefined;
+    if (link && preview === undefined && window.desktop?.preview) {
+      preview = await Promise.race([
+        window.desktop.preview(link).catch(() => null),
+        new Promise((r) => setTimeout(() => r(null), 3500)),
+      ]);
+      if (preview) this.preview = { url: link, data: preview };
+    }
+    const payload = { text, files: ready.map((f) => f.attachment), preview: preview || null };
     this.sendBtn.disabled = true;
     const key = this.draftKey;
     try {
@@ -497,7 +506,7 @@ function buildEmojiPopover() {
     const group = name === 'Недавние' ? store.get('recentEmoji', []) : EMOJI_GROUPS.find(([n]) => n === name)[1].split(' ');
     grid.replaceChildren();
     for (const t of tabs.children) t.classList.toggle('active', t.dataset.group === name);
-    if (!group.length) grid.append(Object.assign(document.createElement('p'), { className: 'muted small', textContent: 'Здесь появятся смайлики, которые вы отправляете чаще всего' }));
+    if (!group.length) grid.append(Object.assign(document.createElement('p'), { className: 'muted small emoji-empty', textContent: 'Отправьте смайлик — и он появится здесь' }));
     for (const emoji of group) {
       const b = document.createElement('button');
       b.type = 'button';

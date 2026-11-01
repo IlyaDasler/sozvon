@@ -220,6 +220,9 @@ db.exec(`
   );
 `);
 if (!columnsOf('rooms').includes('group_id')) db.exec('ALTER TABLE rooms ADD COLUMN group_id INTEGER');
+// Свой порядок комнат в канале (перетаскивание): меньше — выше
+if (!columnsOf('rooms').includes('position')) db.exec('ALTER TABLE rooms ADD COLUMN position INTEGER');
+db.exec('UPDATE rooms SET position = id WHERE position IS NULL');
 if (!columnsOf('hubs').includes('reactions_visible')) db.exec('ALTER TABLE hubs ADD COLUMN reactions_visible INTEGER NOT NULL DEFAULT 1');
 if (!columnsOf('hubs').includes('default_perms')) db.exec(`ALTER TABLE hubs ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
 
@@ -411,7 +414,7 @@ const q = {
   roomById: db.prepare('SELECT * FROM rooms WHERE id = ?'),
   roomsOf: db.prepare(`
     SELECT r.* FROM room_members m JOIN rooms r ON r.id = m.room_id
-    WHERE m.user_id = ? ORDER BY r.kind DESC, r.name COLLATE NOCASE
+    WHERE m.user_id = ? ORDER BY r.kind DESC, COALESCE(r.position, r.id), r.name COLLATE NOCASE
   `),
   renameRoom: db.prepare('UPDATE rooms SET name = ? WHERE id = ?'),
   deleteRoom: db.prepare('DELETE FROM rooms WHERE id = ?'),
@@ -446,6 +449,8 @@ const q = {
   deleteGroup: db.prepare('DELETE FROM room_groups WHERE id = ?'),
   ungroupRooms: db.prepare('UPDATE rooms SET group_id = NULL WHERE group_id = ?'),
   setRoomGroup: db.prepare('UPDATE rooms SET group_id = ? WHERE id = ?'),
+  setRoomPosition: db.prepare('UPDATE rooms SET position = ? WHERE id = ?'),
+  nextRoomPosition: db.prepare('SELECT COALESCE(MAX(position), 0) + 1 AS pos FROM rooms WHERE hub_id = ?'),
   setHubReactionsVisible: db.prepare('UPDATE hubs SET reactions_visible = ? WHERE id = ?'),
 
   roomBans: db.prepare(`
@@ -485,7 +490,7 @@ const q = {
   addHubMember: db.prepare('INSERT OR IGNORE INTO hub_members (hub_id, user_id, created_at) VALUES (?, ?, ?)'),
   removeHubMember: db.prepare('DELETE FROM hub_members WHERE hub_id = ? AND user_id = ?'),
   setManager: db.prepare('UPDATE hub_members SET manager = ? WHERE hub_id = ? AND user_id = ?'),
-  hubRooms: db.prepare('SELECT * FROM rooms WHERE hub_id = ? ORDER BY id'),
+  hubRooms: db.prepare('SELECT * FROM rooms WHERE hub_id = ? ORDER BY COALESCE(position, id), id'),
   // Участники комнаты становятся участниками её канала (перенос старых комнат, приглашения из старых версий)
   roomMembersToHub: db.prepare(`
     INSERT OR IGNORE INTO hub_members (hub_id, user_id, created_at) SELECT ?, user_id, created_at FROM room_members WHERE room_id = ?
@@ -631,10 +636,16 @@ export const rooms = {
     const id = Number(q.insertRoom.run(name, kind, ownerId, hubId, now).lastInsertRowid);
     q.addRoomMember.run(id, ownerId, now);
     if (everyone) for (const m of q.hubMembers.all(hubId)) q.addRoomMember.run(id, m.id, now);
+    // «Порядок» комнат: новая встаёт в конец списка канала
+    if (hubId) q.setRoomPosition.run(q.nextRoomPosition.get(hubId).pos, id);
     return rooms.byId(id);
   },
   rename: (id, name) => q.renameRoom.run(name, id),
   setGroup: (id, groupId) => q.setRoomGroup.run(groupId, id),
+  /** Порядок комнат в канале: ids — комнаты в нужном порядке */
+  reorder(ids) {
+    ids.forEach((id, index) => q.setRoomPosition.run(index + 1, id));
+  },
   remove: (id) => q.deleteRoom.run(id),
   members: (roomId) => q.roomMembers.all(roomId),
   member: (roomId, userId) => q.roomMember.get(roomId, userId),

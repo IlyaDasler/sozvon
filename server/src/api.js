@@ -334,6 +334,8 @@ const toRoom = (row) => ({
   kind: row.kind,
   hubId: row.hub_id,
   groupId: row.group_id ?? null,
+  // Порядок в списке канала: меняется перетаскиванием
+  position: row.position ?? row.id,
   ownerId: row.owner_id,
   createdAt: row.created_at,
   // Роли и права по умолчанию — канала: комната показывает их, чтобы приложения читали их как раньше
@@ -1421,7 +1423,7 @@ export function createApi() {
 
   function roleFields(req, allowAdmin) {
     const name = str(req.body.name);
-    if (name.length < 1 || name.length > 24) throw new HttpError(400, 'Название роли — от 1 до 24 символов');
+    if (name.length < 1 || name.length > 64) throw new HttpError(400, 'Название роли — от 1 до 64 символов');
     const color = COLOR_RE.test(req.body.color) ? req.body.color : '#8b919c';
     const perms = cleanPerms(req.body.perms);
     if (perms & PERMS.admin && !allowAdmin) throw new HttpError(403, 'Право администратора раздаёт только создатель комнаты');
@@ -2021,6 +2023,22 @@ export function createApi() {
       removeAvatarFile(hubRow.icon);
       hubs.setIcon(hubRow.id, null);
       return notifyHub(hubRow.id);
+    })
+  );
+
+  // Порядок комнат в канале: перетаскивание в списке. Меняет тот, кто управляет каналом.
+  // Голосовые и текстовые живут в своих разделах — клиент присылает только комнаты одного раздела
+  api.put(
+    '/hubs/:id/rooms/order',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubManager(req, hubRow);
+      const ids = Array.isArray(req.body.ids) ? req.body.ids.map(Number) : [];
+      if (!ids.length || ids.some((id) => !Number.isInteger(id))) throw new HttpError(400, 'Неверный порядок комнат');
+      const own = new Set(hubs.rooms(hubRow.id).map((r) => r.id));
+      if (!ids.every((id) => own.has(id))) throw new HttpError(404, 'Комната не найдена');
+      rooms.reorder([...new Set(ids)]);
+      return { ok: true };
     })
   );
 

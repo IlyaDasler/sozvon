@@ -1134,6 +1134,8 @@ kbd {
 .emoji-tab { flex: 1; height: 30px; border: 0; border-radius: var(--r-s); background: none; font-size: 16px; cursor: pointer; filter: grayscale(1); opacity: .7; transition: background var(--fast), opacity var(--fast), filter var(--fast); }
 .emoji-tab:hover, .emoji-tab.active { background: var(--bg-4); filter: none; opacity: 1; }
 .emoji-grid { flex: 1; overflow-y: auto; overflow-x: hidden; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); align-content: start; gap: 2px; padding: 8px; }
+/* Подсказка в пустых «Недавних» — во всю ширину, а не по слову в колонке */
+.emoji-grid .emoji-empty { grid-column: 1 / -1; margin: 6px 4px; line-height: 1.5; }
 .emoji-grid .emoji {
   height: 36px; min-width: 0; padding: 0; border: 0; border-radius: var(--r-s); background: none;
   font-size: 22px; line-height: 36px; cursor: pointer; overflow: hidden;
@@ -1152,8 +1154,16 @@ kbd {
 .msg-video { display: block; margin-top: 4px; max-width: min(480px, 100%); max-height: 320px; border-radius: 6px; background: #000; }
 .file-card { margin-top: 4px; max-width: 420px; padding: 10px 12px; border-radius: 8px; background: var(--bg-2); border: 1px solid var(--line); }
 .file-card-row { display: flex; align-items: center; gap: 10px; }
-.file-card-icon { color: var(--muted); }
-.file-card-icon svg { width: 30px; height: 30px; }
+.file-card-icon { color: var(--muted); flex: none; }
+.file-card-icon svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+/* Свой цвет у каждого типа файла: музыка, видео, архив, документы */
+.file-card-icon.type-audio { color: var(--accent); }
+.file-card-icon.type-video { color: #e8467c; }
+.file-card-icon.type-image { color: #3fc9b3; }
+.file-card-icon.type-archive { color: var(--warn); }
+.file-card-icon.type-pdf { color: var(--danger); }
+.file-card-icon.type-sheet { color: var(--ok); }
+.file-card-icon.type-code { color: #9d8cff; }
 .file-card-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .file-card-info a { color: var(--link); font-weight: 600; }
 .file-card audio { width: 100%; margin-top: 8px; height: 36px; }
@@ -1264,11 +1274,12 @@ kbd {
 .mascot-art .sovon { width: 170px; height: 170px; margin-bottom: 6px; }
 .sovon-bob { animation: sovon-bob 3.2s ease-in-out infinite; }
 .sovon-shadow { animation: sovon-shadow 3.2s ease-in-out infinite; transform-origin: 80px 150px; }
-.sovon-lids rect { animation: sovon-blink 5s infinite; }
+/* Веки — круги, которые «закрывают» глаз сверху вниз, поэтому моргание круглое */
+.sovon-lid { transform-box: fill-box; transform-origin: 50% 0; transform: scaleY(0); animation: sovon-blink 5s infinite; }
 @keyframes sovon-bob { 50% { transform: translateY(-5px); } }
 @keyframes sovon-shadow { 50% { transform: scaleX(.86); opacity: .18; } }
-@keyframes sovon-blink { 0%, 92%, 100% { height: 0; } 95% { height: 38px; } }
-@media (prefers-reduced-motion: reduce) { .sovon-bob, .sovon-shadow, .sovon-lids rect { animation: none; } }
+@keyframes sovon-blink { 0%, 92%, 100% { transform: scaleY(0); } 95% { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .sovon-bob, .sovon-shadow, .sovon-lid { animation: none; } }
 .friend-row {
   display: flex; align-items: center; gap: 12px; padding: 10px 10px; margin: 0 -10px;
   border-top: 1px solid var(--line); border-radius: 8px;
@@ -1645,7 +1656,11 @@ kbd {
 .members-panel { position: relative; width: var(--members-w, 240px); flex: none; display: flex; flex-direction: column; background: var(--bg-2); border: 1px solid var(--line); border-width: 1px 0 0 1px; }
 .members-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 16px; }
 .members-head { display: flex; align-items: center; gap: 6px; height: 52px; margin: 0 -8px; padding: 0 16px; border-bottom: 1px solid var(--line); }
-.members-group { padding: 16px 8px 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.members-group {
+  padding: 16px 8px 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+  /* Длинное название роли — в одну строку с многоточием, панель не ломается */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .member-item { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
 .member-item:hover { background: color-mix(in srgb, var(--bg-4) 60%, transparent); }
 .member-item.offline { opacity: .45; }
@@ -1733,3 +1748,62 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Плееры в чате: YouTube/Vimeo обложка и кадр, прямые видеофайлы */
+.yt-card { flex-direction: column; align-items: stretch; padding: 0; overflow: hidden; max-width: 560px; }
+.yt-thumb {
+  position: relative; width: 100%; aspect-ratio: 16 / 9; border: 0; padding: 0; cursor: pointer;
+  background: var(--bg-3) center / cover no-repeat; display: grid; place-items: center;
+}
+.yt-thumb.vimeo-thumb { background-image: linear-gradient(135deg, #1ab7ea, #0d7ea8); }
+.yt-play {
+  display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%;
+  background: rgba(0, 0, 0, .55); color: #fff; transition: transform var(--fast) var(--ease), background var(--fast);
+}
+.yt-play svg { width: 26px; height: 26px; fill: currentColor; }
+.yt-thumb:hover .yt-play { background: #f00; transform: scale(1.08); }
+.yt-card .link-card-text { padding: 10px 12px 12px; }
+.yt-frame { width: 100%; aspect-ratio: 16 / 9; border: 0; display: block; background: #000; }
+.embed-wrap { display: flex; flex-direction: column; max-width: 560px; }
+.yt-open { padding: 8px 12px 10px; color: var(--muted); }
+.video-card { max-width: 560px; width: 100%; margin-top: 6px; border-radius: 6px; background: #000; }
+.bare-card { border-left-color: var(--line-strong); }
+
+/* Вертикальные видео (Instagram, TikTok): кадр выше, чтобы внутри плеера не было скролла */
+.embed-wrap.frame-tall { max-width: 420px; }
+.embed-wrap.frame-tall .yt-frame { aspect-ratio: auto; height: min(78vh, 760px); border-radius: 6px; }
+
+/* Свой аудиоплеер в сообщении: в стиле приложения, вместо системных кнопок */
+.audio-player { margin-top: 8px; }
+.audio-player audio { display: none; }
+.audio-row {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+  border-radius: 999px; background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line);
+}
+.audio-btn {
+  width: 34px; height: 34px; flex: none; display: grid; place-items: center; padding: 0;
+  border: 0; border-radius: 50%; background: var(--accent); color: var(--on-accent); cursor: pointer;
+  transition: background var(--fast), transform var(--fast) var(--ease);
+}
+.audio-btn:hover { background: var(--accent-hover); }
+.audio-btn:active { transform: scale(.92); }
+.audio-btn svg { width: 18px; height: 18px; fill: currentColor; }
+.audio-seek {
+  flex: 1; min-width: 0; height: 18px; margin: 0; padding: 0; background: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+}
+.audio-seek::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--filled, 0%), var(--bg-4) var(--filled, 0%));
+}
+.audio-seek::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 12px; height: 12px; margin-top: -4px;
+  border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2px var(--bg-3);
+}
+.audio-time { flex: none; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Перетаскивание комнат: подсветка цели и «тащим» у исходной */
+#room-list .room-item[draggable="true"] { cursor: grab; }
+#room-list .room-item.dragging { opacity: .45; }
+#room-list .room-item.drop-before > .room-row { box-shadow: inset 0 2px 0 var(--accent); }
+#room-list .room-item.drop-after > .room-row { box-shadow: inset 0 -2px 0 var(--accent); }
