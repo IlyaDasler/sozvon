@@ -80,6 +80,18 @@ runTest(async () => {
   }
   console.log('✔ щелчок по комнате подключает к голосу, каждый соединён с каждым');
 
+  // Время разговора в панели и в списке комнат — одно и то же (плюс-минус секунда на тик)
+  await sleep(2200);
+  const secondsOf = (text) => {
+    const m = /(\d+):(\d\d)/.exec(text || '');
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  };
+  const panel = secondsOf(await js(winA, `document.getElementById('call-status').textContent`));
+  const list = secondsOf(await js(winA, `document.querySelector('#room-list .voice-timer')?.textContent`));
+  if (panel === null || list === null || Math.abs(panel - list) > 1)
+    throw new Error(`Таймеры расходятся: панель ${panel}, список ${list}`);
+  console.log('✔ время разговора в панели и в списке комнат совпадает');
+
   const before = await Promise.all(all.map(([w]) => received(w)));
   await sleep(2000);
   const after = await Promise.all(all.map(([w]) => received(w)));
