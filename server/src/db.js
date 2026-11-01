@@ -201,6 +201,15 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS hub_roles_hub ON hub_roles (hub_id);
 `);
 if (!columnsOf('hub_members').includes('role_id')) db.exec('ALTER TABLE hub_members ADD COLUMN role_id INTEGER');
+// Своё имя участника в канале: видно только в этом канале и его комнатах
+db.exec(`
+  CREATE TABLE IF NOT EXISTS hub_nicknames (
+    hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    PRIMARY KEY (hub_id, user_id)
+  );
+`);
 db.exec(`
   CREATE TABLE IF NOT EXISTS room_groups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -486,6 +495,13 @@ const q = {
     SELECT u.*, m.manager, m.role_id, m.created_at AS joined_at FROM hub_members m JOIN users u ON u.id = m.user_id
     WHERE m.hub_id = ? ORDER BY m.created_at, u.id
   `),
+  hubNicknames: db.prepare('SELECT user_id, name FROM hub_nicknames WHERE hub_id = ?'),
+  hubNickname: db.prepare('SELECT name FROM hub_nicknames WHERE hub_id = ? AND user_id = ?'),
+  setHubNickname: db.prepare(`
+    INSERT INTO hub_nicknames (hub_id, user_id, name) VALUES (?, ?, ?)
+    ON CONFLICT (hub_id, user_id) DO UPDATE SET name = excluded.name
+  `),
+  clearHubNickname: db.prepare('DELETE FROM hub_nicknames WHERE hub_id = ? AND user_id = ?'),
   hubMember: db.prepare('SELECT * FROM hub_members WHERE hub_id = ? AND user_id = ?'),
   addHubMember: db.prepare('INSERT OR IGNORE INTO hub_members (hub_id, user_id, created_at) VALUES (?, ?, ?)'),
   removeHubMember: db.prepare('DELETE FROM hub_members WHERE hub_id = ? AND user_id = ?'),
@@ -733,6 +749,11 @@ export const hubs = {
   },
   setReactionsVisible: (id, visible) => q.setHubReactionsVisible.run(visible ? 1 : 0, id),
   setRole: (hubId, userId, roleId) => q.setMemberRole.run(roleId, hubId, userId),
+  /** Своё имя участника в канале: видно только в этом канале */
+  setNickname: (hubId, userId, name) => q.setHubNickname.run(hubId, userId, name),
+  clearNickname: (hubId, userId) => q.clearHubNickname.run(hubId, userId),
+  nicknameOf: (hubId, userId) => q.hubNickname.get(hubId, userId)?.name || null,
+  nicknames: (hubId) => q.hubNicknames.all(hubId),
   setIcon: (id, icon) => q.setHubIcon.run(icon, id),
   remove: (id) => q.deleteHub.run(id),
   rooms: (hubId) => q.hubRooms.all(hubId),

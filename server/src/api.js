@@ -345,6 +345,8 @@ const toRoom = (row) => ({
   members: rooms.members(row.id).map((m) => ({
     ...withOnline(m),
     roleId: m.role_id,
+    // Своё имя в канале — видно только в этом канале и его комнатах
+    nickname: row.hub_id ? hubs.nicknameOf(row.hub_id, m.id) : null,
     timeoutUntil: m.timeout_until > Date.now() ? m.timeout_until : null,
   })),
   bans: rooms.bans(row.id).map((b) => ({ ...toPublicUser(b), bannedAt: b.banned_at })),
@@ -392,7 +394,16 @@ const toHub = (row) => ({
   groups: hubs.groups(row.id),
   emojis: hubs.emojis(row.id).map((e) => ({ id: e.id, name: e.name, createdBy: e.created_by, url: `/api/avatars/${e.file}.webp` })),
   roles: rolesOf(row.id),
-  members: hubs.members(row.id).map((m) => ({ ...withOnline(m), manager: Boolean(m.manager), roleId: m.role_id, joinedAt: m.joined_at })),
+  members: (() => {
+    const nick = new Map(hubs.nicknames(row.id).map((n) => [n.user_id, n.name]));
+    return hubs.members(row.id).map((m) => ({
+      ...withOnline(m),
+      manager: Boolean(m.manager),
+      roleId: m.role_id,
+      nickname: nick.get(m.id) || null,
+      joinedAt: m.joined_at,
+    }));
+  })(),
   invited: hubs.invited(row.id),
   bans: hubs.bans(row.id).map((b) => ({ ...toPublicUser(b), bannedAt: b.banned_at })),
 });
@@ -1852,6 +1863,48 @@ export function createApi() {
   api.patch('/hubs/:id/roles/:roleId', handle((req) => updateRole(req, requireHub(req))));
   api.delete('/hubs/:id/roles/:roleId', handle((req) => deleteRole(req, requireHub(req))));
   api.put('/hubs/:id/members/:userId/role', handle((req) => assignRole(req, requireHub(req))));
+
+  // ---------- Своё имя участника в канале ----------
+  // Видно только в этом канале: в других каналах человек остаётся со своим обычным именем
+
+  /** Менять имена может создатель канала, управляющий или роль с правом настройки */
+  function requireHubNickManager(req, hubRow) {
+    if (hubRow.owner_id === req.user.id) return;
+    const member = hubs.members(hubRow.id).find((m) => m.id === req.user.id);
+    const role = member?.role_id ? roles.byId(member.role_id) : null;
+    const perms = (role?.perms || 0) | (hubs.rankOf(hubRow, req.user.id) >= 2 ? PERMS.admin : 0);
+    if (!has(perms, PERMS.manage)) throw new HttpError(403, 'Нет права менять имена в канале');
+  }
+
+  /** Новое имя нужно всем: в данных канала и во всех его комнатах */
+  function notifyHubNicknames(hubId) {
+    for (const room of hubs.rooms(hubId)) notifyRoom(room.id);
+    return notifyHub(hubId);
+  }
+
+  api.put(
+    '/hubs/:id/members/:userId/nickname',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubNickManager(req, hubRow);
+      const userId = Number(req.params.userId);
+      if (!hubs.isMember(hubRow.id, userId)) throw new HttpError(404, 'Этого человека нет в канале');
+      const name = str(req.body.name).trim();
+      if (name.length < 1 || name.length > 32) throw new HttpError(400, 'Имя в канале — от 1 до 32 символов');
+      hubs.setNickname(hubRow.id, userId, name);
+      return notifyHubNicknames(hubRow.id);
+    })
+  );
+
+  api.delete(
+    '/hubs/:id/members/:userId/nickname',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubNickManager(req, hubRow);
+      hubs.clearNickname(hubRow.id, Number(req.params.userId));
+      return notifyHubNicknames(hubRow.id);
+    })
+  );
 
   function requireHubOwner(req, hubRow) {
     if (hubRow.owner_id !== req.user.id) throw new HttpError(403, 'Это может только создатель канала');

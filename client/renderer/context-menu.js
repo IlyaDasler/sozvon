@@ -60,6 +60,8 @@ function userMenu(userId, anchor) {
   const above = room && outranks(room, userId);
   const roomMember = room && memberOf(room, userId);
   const inRoomVoice = room && (room.voice || []).some((p) => p.userId === userId);
+  // Своё имя в канале может задать тот, кто каналом управляет (создатель, управляющий, роль с правами)
+  const canRenameInHub = hub && canManageHub(hub) && hub.members.some((m) => m.id === userId) && userId !== hub.ownerId;
 
   return [
     { label: 'Профиль', onclick: () => openProfileCard(userId, anchor) },
@@ -68,6 +70,7 @@ function userMenu(userId, anchor) {
     canAddToCall && { label: 'Добавить в звонок', onclick: () => socket.send({ type: 'call:add', callId: call.callId, to: userId }) },
     inVoiceWithMe && { label: muted ? 'Включить звук у себя' : 'Заглушить для себя', onclick: () => toggleMuteFor(userId) },
     canInviteToHub && { label: `Пригласить в «${hub.name}»`, onclick: () => hubAction(Api.post(`/hubs/${hub.id}/invites`, { userIds: [userId] }), `${user.displayName}: приглашение отправлено`) },
+    canRenameInHub && { label: 'Изменить имя в канале…', onclick: () => openNicknameDialog(hub, user) },
     'sep',
     !friend && !blocked && incoming && { label: 'Принять заявку в друзья', onclick: () => acceptFriend(user) },
     !friend && !blocked && !incoming && !outgoing && { label: 'Добавить в друзья', onclick: () => sendFriendRequest(user.username).then(() => toast(`Заявка отправлена: ${user.displayName}`)).catch((err) => toast(err.message)) },

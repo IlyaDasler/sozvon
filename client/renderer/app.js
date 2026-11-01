@@ -1158,7 +1158,10 @@ watchReactionChips('room-messages', () => ({ kind: 'room', roomId: state.selecte
 /** Строка сообщения; shown — та же строка, уже показанная в ленте (вернётся она же, если ничего не поменялось) */
 function messageRow(m, prev, list, actions, shown, fresh) {
   const newDay = !prev || formatDay(prev.createdAt) !== formatDay(m.createdAt);
-  const author = userById(m.fromId) || { displayName: '?', avatarColor: '#555' };
+  const base = userById(m.fromId) || { displayName: '?', avatarColor: '#555' };
+  // В комнате у человека может быть своё имя в канале — показываем его
+  const nick = actions.chat?.kind === 'room' ? channelNickOf(m.fromId) : null;
+  const author = nick ? { ...base, displayName: nick } : base;
   const reply = replyOf(m, list);
   // У ответа своя дуга к аватарке, поэтому он всегда начинает новую группу
   const continued = !reply && !newDay && prev.fromId === m.fromId && m.createdAt - prev.createdAt < 5 * 60_000;
