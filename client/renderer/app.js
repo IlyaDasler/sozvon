@@ -537,6 +537,16 @@ function enterMain(user) {
         refreshHubs();
         refreshRooms();
         sendAutoStatus();
+        resumeCall();
+      } else if (state.call?.callId) {
+        // Связь с сервером пропала, но разговор не рвём: сервер держит наше место,
+        // а звук идёт напрямую — ждём переподключения
+        if (state.call.phase !== 'reconnecting') {
+          state.call.phase = 'reconnecting';
+          toast('Связь с сервером прервалась, переподключаемся…');
+        }
+        renderVoice();
+        renderChatHeader();
       } else if (state.call) {
         finishCall('Связь с сервером прервалась, звонок завершён');
       }
@@ -1548,6 +1558,17 @@ function handleEvent(msg) {
       return;
     case 'call:ended':
       return onCallEnded(msg);
+    case 'call:resumed': {
+      // Сервер подтвердил: мы снова в том же звонке, разговор продолжается
+      const c = state.call;
+      if (c?.callId !== msg.callId) return;
+      clearTimeout(c.resumeTimer);
+      c.resumeTimer = null;
+      if (c.phase === 'reconnecting') c.phase = c.connectedAt ? 'connected' : 'connecting';
+      renderVoice();
+      renderChatHeader();
+      return;
+    }
     case 'signal':
       // from есть у сервера 2.2+; без него сигнал — от единственного собеседника
       if (state.call?.callId === msg.callId) state.call.session.handleSignal(msg.from ?? state.call.peerId, msg.data);
@@ -1673,6 +1694,8 @@ function onCallMember({ callId, userId, state: st, user }) {
     call.session.removePeer(userId);
     tone.blip('leave');
     toast(`${name} вышел из звонка`);
+  } else if (st === 'reconnecting') {
+    toast(`Связь с ${name} прервалась, ждём…`);
   } else if (st === 'ringing') {
     toast(`Звоним ${name}…`);
   } else if (st === 'declined' || st === 'missed') {
@@ -1762,11 +1785,24 @@ function hangup(message) {
   finishCall(message);
 }
 
+// Связь вернулась: просим сервер вернуть нас в тот же звонок. Если за 25 секунд он не подтвердит,
+// значит звонок уже завершён — тогда честно показываем это человеку
+function resumeCall() {
+  const c = state.call;
+  if (!c?.callId) return;
+  socket.send({ type: 'call:resume', callId: c.callId });
+  clearTimeout(c.resumeTimer);
+  c.resumeTimer = setTimeout(() => {
+    if (state.call === c) finishCall('Связь с сервером не восстановилась, звонок завершён');
+  }, 25_000);
+}
+
 function finishCall(message) {
   const c = state.call;
   if (!c) return;
   state.call = null;
   clearTimeout(c.failTimer);
+  clearTimeout(c.resumeTimer);
   c.session.close();
   $('call-add-modal').classList.add('hidden');
   renderRail();

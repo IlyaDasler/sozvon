@@ -45,6 +45,9 @@ export const config = {
   messageRateLimit: Number(process.env.MESSAGE_RATE_LIMIT) || 20,
   uploadRateLimit: Number(process.env.UPLOAD_RATE_LIMIT) || 30,
   socketRateLimit: Number(process.env.SOCKET_RATE_LIMIT) || 600,
+  // Сколько ждать вернувшегося после обрыва связи, прежде чем считать, что человек вышел из звонка.
+  // За это время приложение успевает переподключиться, а звук всё равно идёт напрямую и не прерывается
+  callReconnectGraceMs: Number(process.env.CALL_RECONNECT_GRACE_MS) || 20_000,
   stunUrls: list(
     process.env.STUN_URLS ?? (turnEmbedded && publicIp ? `stun:${publicIp}:${turnPort}` : 'stun:stun.l.google.com:19302')
   ),
