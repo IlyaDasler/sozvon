@@ -1840,3 +1840,6 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 #room-list .room-item.dragging { opacity: .45; }
 #room-list .room-item.drop-before > .room-row { box-shadow: inset 0 2px 0 var(--accent); }
 #room-list .room-item.drop-after > .room-row { box-shadow: inset 0 -2px 0 var(--accent); }
+
+/* Громкость: голос и звук трансляции — два отдельных ползунка */
+.tile-volumes { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
