@@ -1,4 +1,4 @@
-﻿import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { config } from './config.js';
 import { canonicalEmail } from './email-address.js';
@@ -282,6 +282,8 @@ for (const table of ['messages', 'room_messages']) {
 // Карточка профиля: «О себе» и цвет баннера (пусто — по цвету аватара)
 if (!columnsOf('users').includes('bio')) db.exec("ALTER TABLE users ADD COLUMN bio TEXT NOT NULL DEFAULT ''");
 if (!columnsOf('users').includes('banner_color')) db.exec('ALTER TABLE users ADD COLUMN banner_color TEXT');
+// Баннер картинкой или гифкой: имя файла в data/banners, пусто — только цвет
+if (!columnsOf('users').includes('banner')) db.exec('ALTER TABLE users ADD COLUMN banner TEXT');
 // Цвет ника в чате, голосе и участниках; пусто — как цвет аватара
 if (!columnsOf('users').includes('name_color')) db.exec('ALTER TABLE users ADD COLUMN name_color TEXT');
 if (!columnsOf('users').includes('status')) db.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'online'");
@@ -350,6 +352,7 @@ export const toPublicUser = (row) =>
     avatarUrl: row.avatar ? `/api/avatars/${row.avatar}.webp` : null,
     bio: row.bio || '',
     bannerColor: row.banner_color || null,
+    bannerUrl: row.banner ? `/api/banners/${row.banner}` : null,
     nameColor: row.name_color || null,
     memberSince: row.created_at,
     publicKey: row.public_key || null,
@@ -395,6 +398,7 @@ const q = {
   setTotpStep: db.prepare('UPDATE users SET totp_last_step = ? WHERE id = ?'),
   setTotpRecovery: db.prepare('UPDATE users SET totp_recovery = ? WHERE id = ?'),
   updateAvatar: db.prepare('UPDATE users SET avatar = ? WHERE id = ?'),
+  updateBanner: db.prepare('UPDATE users SET banner = ? WHERE id = ?'),
 
   listContacts: db.prepare(`
     SELECT u.*, c.chat_theme FROM contacts c JOIN users u ON u.id = c.contact_id
@@ -609,6 +613,7 @@ export const users = {
   setTotpStep: (id, step) => q.setTotpStep.run(step, id),
   setTotpRecovery: (id, recoveryHashes) => q.setTotpRecovery.run(JSON.stringify(recoveryHashes), id),
   updateAvatar: (id, avatar) => q.updateAvatar.run(avatar, id),
+  updateBanner: (id, banner) => q.updateBanner.run(banner, id),
 };
 
 // Дружба взаимная: при добавлении записываем обе стороны
