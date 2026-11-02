@@ -1759,7 +1759,19 @@ export function createApi() {
       // Автор сразу «буду», приглашённые — «приглашён»
       events.respond(row.id, req.user.id, 'yes');
       for (const id of invitees) {
-        if (id !== req.user.id && rooms.isMember(room.id, id)) events.respond(row.id, id, 'invited');
+        if (id === req.user.id || !rooms.isMember(room.id, id)) continue;
+        events.respond(row.id, id, 'invited');
+        // Приглашённому — отдельное уведомление в колокольчик, его выделяем среди прочих
+        hub.send(id, {
+          type: 'event:invite',
+          eventId: row.id,
+          title,
+          startsAt,
+          roomId: room.id,
+          roomName: room.name,
+          hubId: room.hub_id,
+          from: toPublicUser(req.user),
+        });
       }
       return notifyRoom(room.id);
     })
