@@ -164,4 +164,34 @@ runTest(async () => {
   if (!/50%|999px/.test(rd.radius)) throw new Error(`Радиокнопка не круглая: ${rd.radius}`);
   if (rd.height !== '18px' || rd.padding !== '0px') throw new Error(`К радиокнопке применились стили поля: ${rd.height}, ${rd.padding}`);
   console.log('✔ радиокнопки — ровные круги, без стилей поля');
+
+  // ---------- Анимации только для стекла; рейл без рамок вокруг аватарок ----------
+  const themes = await js(win, `(async () => {
+    const out = {};
+    document.documentElement.dataset.theme = 'sozvon';
+    await new Promise((r) => setTimeout(r, 120));
+    out.pillOnDefault = Boolean(document.querySelector('.liquid-pill'));
+    document.documentElement.dataset.theme = 'glass';
+    await new Promise((r) => setTimeout(r, 200));
+    out.pillOnGlass = Boolean(document.querySelector('.liquid-pill'));
+    const item = document.querySelector('.rail-item');
+    const tile = item && item.querySelector('.rail-tile');
+    const cs = item ? getComputedStyle(item) : null;
+    out.itemBorder = cs ? cs.borderTopWidth : null;
+    out.itemBg = cs ? cs.backgroundColor : null;
+    if (tile) {
+      const ir = item.getBoundingClientRect();
+      const tr = tile.getBoundingClientRect();
+      out.tileInside = tr.left >= ir.left - 1 && tr.right <= ir.right + 1;
+    }
+    document.documentElement.dataset.theme = 'sozvon';
+    return JSON.stringify(out);
+  })()`);
+  const th = JSON.parse(themes);
+  if (th.pillOnDefault) throw new Error('Жидкая подложка осталась в обычной теме');
+  if (!th.pillOnGlass) throw new Error('В теме стекла пропала жидкая подложка вкладок');
+  if (th.itemBorder !== '0px') throw new Error(`У обёртки канала рамка ${th.itemBorder} — она выезжает за аватарку`);
+  if (th.itemBg !== 'rgba(0, 0, 0, 0)') throw new Error(`У обёртки канала свой фон: ${th.itemBg}`);
+  if (th.tileInside === false) throw new Error('Плитка канала вылезает за обёртку');
+  console.log('✔ анимации только в стекле, рейл без рамок вокруг аватарок');
 });

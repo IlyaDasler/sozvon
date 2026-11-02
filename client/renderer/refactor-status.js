@@ -6,6 +6,10 @@
     ['Контролы: кнопки, поля, свитчеры, радио, вкладки', 'done'],
     ['Узкое окно: одноколоночный режим', 'done'],
     ['Экран входа и тосты под стеклом', 'done'],
+    ['Анимации вкладок и свитчеров только в теме стекла', 'done'],
+    ['Вкладки: дальний переход без растягивания «колбасой»', 'done'],
+    ['Рейл каналов: рамки больше не выходят за аватарки', 'done'],
+    ['Переключение каналов с жидкой анимацией (стекло)', 'done'],
     ['Единые отступы и высоты шапок', 'now'],
     ['Типографика и плотность (заголовки, компактный режим)', 'todo'],
     ['Экран звонка: плитки, панель, плавающие контролы', 'todo'],
@@ -25,7 +29,7 @@
     for (const [title, status] of PLAN) {
       const li = document.createElement('li');
       li.className = 'plan-item ' + status;
-      li.innerHTML = `<span class="plan-dot"></span><span class="plan-text">${title}</span>`;
+      li.innerHTML = '<span class="plan-dot"></span><span class="plan-text">' + title + '</span>';
       list.appendChild(li);
       if (status === 'now') now = title;
     }
