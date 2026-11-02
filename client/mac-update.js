@@ -65,11 +65,27 @@ function getJson(url) {
   });
 }
 
-/** Качает файл, сообщая прогресс в процентах */
+/** Качает файл, сообщая прогресс в процентах. Если соединение «замолчало» — обрываем:
+ *  иначе окно обновления висит на одном проценте бесконечно */
 function download(url, dest, onProgress = () => {}) {
+  const STALL_MS = 45000;
+  const TOTAL_MS = 15 * 60_000;
   return new Promise((resolve, reject) => {
+    let watchdog = null;
+    const totalTimer = setTimeout(() => fail(new Error('Загрузка обновления заняла слишком много времени')), TOTAL_MS);
+    const finish = (fn, arg) => {
+      clearTimeout(watchdog);
+      clearTimeout(totalTimer);
+      fn(arg);
+    };
+    const fail = (err) => finish(reject, err);
+    const arm = () => {
+      clearTimeout(watchdog);
+      watchdog = setTimeout(() => fail(new Error('Загрузка остановилась: сервер перестал отвечать')), STALL_MS);
+    };
     const go = (target, hops = 0) => {
-      if (hops > 5) return reject(new Error('Слишком много перенаправлений'));
+      if (hops > 5) return fail(new Error('Слишком много перенаправлений'));
+      arm();
       https
         .get(target, { headers: { 'User-Agent': 'Sozvon-Updater' } }, (res) => {
           if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
@@ -78,71 +94,95 @@ function download(url, dest, onProgress = () => {}) {
           }
           if (res.statusCode !== 200) {
             res.resume();
-            return reject(new Error(`Не удалось скачать обновление: ${res.statusCode}`));
+            return fail(new Error(`Не удалось скачать обновление: ${res.statusCode}`));
           }
           const total = Number(res.headers['content-length']) || 0;
           let got = 0;
           const out = fs.createWriteStream(dest);
           res.on('data', (chunk) => {
             got += chunk.length;
+            arm();
             if (total) onProgress(Math.min(100, Math.round((got / total) * 100)));
           });
+          res.on('error', fail);
           res.pipe(out);
-          out.on('finish', () => out.close(() => resolve(dest)));
-          out.on('error', reject);
+          out.on('finish', () => out.close(() => finish(resolve, dest)));
+          out.on('error', fail);
         })
-        .on('error', reject);
+        .on('error', fail);
     };
     go(url);
   });
 }
 
-/** Скрипт подмены: ждёт выхода приложения, ставит новую копию и запускает её */
-function swapScript({ pid, appDir, newApp }) {
+/** Скрипт подмены: ждёт выхода приложения (не дольше 30 секунд), ставит новую копию,
+ *  запускает её и пишет каждый шаг в журнал — иначе «зависание» не отличить от ожидания */
+function swapScript({ pid, appDir, newApp, log }) {
   const q = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
   return `#!/bin/sh
-# Ждём, пока приложение закроется, и подменяем бандл целиком
+exec >> ${q(log)} 2>&1
 PID=${pid}
 APP=${q(appDir)}
 NEW=${q(newApp)}
 OLD="$APP.old"
-while kill -0 "$PID" 2>/dev/null; do sleep 0.3; done
+echo "=== $(date '+%Y-%m-%d %H:%M:%S') старт: pid=$PID"
+i=0
+while kill -0 "$PID" 2>/dev/null; do
+  i=$((i+1))
+  if [ "$i" -gt 100 ]; then
+    echo "приложение не закрылось за 30 секунд — оставляем старую версию"
+    open "$APP" 2>/dev/null
+    exit 1
+  fi
+  sleep 0.3
+done
+echo "приложение закрылось"
 xattr -dr com.apple.quarantine "$NEW" 2>/dev/null
 rm -rf "$OLD"
-if [ -d "$APP" ]; then mv "$APP" "$OLD" || exit 1; fi
+if [ -d "$APP" ]; then
+  mv "$APP" "$OLD" || { echo "не удалось отодвинуть старую копию"; open "$OLD" 2>/dev/null; exit 1; }
+fi
 if ! mv "$NEW" "$APP"; then
-  # Не получилось — возвращаем старую версию на место
+  echo "не удалось поставить новую копию — возвращаем старую"
   [ -d "$OLD" ] && mv "$OLD" "$APP"
+  open "$APP" 2>/dev/null
   exit 1
 fi
+echo "новая версия на месте"
 xattr -dr com.apple.quarantine "$APP" 2>/dev/null
-# Подпись должна быть валидной, иначе macOS скажет «приложение повреждено» (на Apple Silicon
-# это требование ко всему коду). Архив уже подписан адхоком, но подстрахуемся
+# Подпись должна быть валидной, иначе macOS скажет «приложение повреждено»
 codesign --force --deep --sign - "$APP" 2>/dev/null
-open "$APP" || true
+echo "подпись обновлена"
+open "$APP" || echo "не удалось запустить приложение"
 sleep 2
 rm -rf "$OLD"
+echo "готово"
 `;
 }
 
 const workDir = () => path.join(os.tmpdir(), 'sozvon-update');
+const swapLog = () => path.join(workDir(), 'swap.log');
 
 /** Скачать и распаковать обновление; возвращает путь к новой .app */
-async function prepare({ version, onProgress }) {
+async function prepare({ version, onProgress, onStage = () => {} }) {
   const dir = workDir();
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
 
-  const release = await getJson(RELEASES_API).catch(() => null);
-  const asset = release && pickAsset(release);
-  if (!asset) throw new Error('В последнем релизе нет архива для этого Mac');
-  if (version && asset.version !== version) throw new Error('Версия на GitHub не совпала с ожидаемой');
-
+  // Ссылку собираем по шаблону релиза: не зависим от GitHub API, у которого лимит запросов
+  const asset = { version, name: assetName(version), url: `${DOWNLOAD_PREFIX}v${version}/${assetName(version)}` };
   const zip = path.join(dir, asset.name);
   await download(asset.url, zip, onProgress);
   const size = fs.statSync(zip).size;
-  if (asset.size && size !== asset.size) throw new Error('Архив скачался не полностью');
+  // Архив меньше мегабайта — значит скачалась страница ошибки, а не приложение
+  if (size < 1024 * 1024) throw new Error('Скачался не архив приложения');
+  const head = Buffer.alloc(2);
+  const fd = fs.openSync(zip, 'r');
+  fs.readSync(fd, head, 0, 2, 0);
+  fs.closeSync(fd);
+  if (head.toString('latin1') !== 'PK') throw new Error('Файл не похож на zip-архив');
 
+  onStage('unpacking');
   const unpacked = path.join(dir, 'app');
   await new Promise((resolve, reject) => {
     const ditto = spawn('ditto', ['-x', '-k', zip, unpacked], { stdio: 'ignore' });
@@ -155,7 +195,8 @@ async function prepare({ version, onProgress }) {
   return app;
 }
 
-/** Поставить скачанное и перезапуститься */
+/** Поставить скачанное и перезапуститься. Каждый шаг скрипт пишет в swap.log:
+ *  по нему видно, где именно встало обновление */
 function apply({ newApp, app, onQuit }) {
   const dir = path.dirname(app);
   try {
@@ -163,12 +204,15 @@ function apply({ newApp, app, onQuit }) {
   } catch {
     return { ok: false, reason: 'Нет прав на запись рядом с приложением' };
   }
+  fs.mkdirSync(workDir(), { recursive: true });
   const script = path.join(workDir(), 'swap.sh');
-  fs.writeFileSync(script, swapScript({ pid: process.pid, appDir: app, newApp }), { mode: 0o755 });
+  const log = swapLog();
+  fs.writeFileSync(log, `обновление запущено ${new Date().toISOString()}\n`);
+  fs.writeFileSync(script, swapScript({ pid: process.pid, appDir: app, newApp, log }), { mode: 0o755 });
   const child = spawn('/bin/sh', [script], { detached: true, stdio: 'ignore' });
   child.unref();
   onQuit?.();
-  return { ok: true };
+  return { ok: true, log };
 }
 
-module.exports = { bundlePath, assetName, pickAsset, swapScript, prepare, apply, getJson };
+module.exports = { bundlePath, assetName, pickAsset, swapScript, prepare, apply, getJson, swapLog };

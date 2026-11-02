@@ -35,4 +35,8 @@ function runStartup(updater, { onStatus, timeoutMs = CHECK_TIMEOUT_MS }) {
   });
 }
 
-module.exports = { runStartup, CHECK_TIMEOUT_MS };
+// Ставим ли обновление при запуске этим путём (Squirrel/NSIS). На macOS нельзя: Squirrel.Mac
+// ставит только подписанное приложение и на неподписанном зависает на заставке «Устанавливаем…»
+const canAutoInstall = (platform, result) => result === 'install' && platform !== 'darwin';
+
+module.exports = { runStartup, CHECK_TIMEOUT_MS, canAutoInstall };

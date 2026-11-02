@@ -3,7 +3,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
-const { runStartup } = require('../startup');
+const { runStartup, canAutoInstall } = require('../startup');
 
 function fakeUpdater(script) {
   const u = new EventEmitter();
@@ -76,4 +76,12 @@ test('после запуска события обновления больше
   const { shown } = await run(u);
   u.emit('update-available', { version: '9.9.9' });
   assert.equal(shown.length, 2);
+});
+test('на macOS обновление при запуске не ставим: Squirrel без подписи зависает', () => {
+  // Заставка «Устанавливаем…» на macOS не должна уходить в quitAndInstall
+  assert.equal(canAutoInstall('darwin', 'install'), false);
+  assert.equal(canAutoInstall('win32', 'install'), true);
+  // Если ставить нечего — приложение просто открывается на любой платформе
+  assert.equal(canAutoInstall('win32', 'start'), false);
+  assert.equal(canAutoInstall('darwin', 'start'), false);
 });
