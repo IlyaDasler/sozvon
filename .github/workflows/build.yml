@@ -29,6 +29,10 @@ jobs:
   mac-builder:
     runs-on: macos-latest
     needs: server-tests
+    # Пустой секрет нельзя передавать как CSC_LINK: electron-builder примет его за путь к файлу.
+    # Поэтому значение поднимаем в переменную и выбираем шаг сборки по ней
+    env:
+      MAC_CERT: ${{ secrets.MAC_CERT_P12 }}
     defaults:
       run:
         working-directory: client
@@ -38,10 +42,16 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
-      # Своего нативного захвата экрана для macOS нет: трансляция идёт через Chromium.
-      # Подпись включается сама, когда в настройках репозитория появятся секреты
-      # (docs/macos-signing.md): без сертификата Apple автообновление на macOS невозможно
-      - run: npm run dist:mac
+      # Своего нативного захвата экрана для macOS нет: трансляция идёт через Chromium
+      - name: Сборка без подписи
+        if: env.MAC_CERT == ''
+        run: npm run dist:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # Включается само, когда в репозитории появятся секреты (docs/macos-signing.md)
+      - name: Сборка с подписью Apple
+        if: env.MAC_CERT != ''
+        run: npm run dist:mac
         env:
           CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
