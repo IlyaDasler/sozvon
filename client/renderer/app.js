@@ -454,6 +454,33 @@ function normalizeServer(url) {
   return url;
 }
 
+// Свой сервер: ссылка на экране входа открывает поле адреса
+$('server-toggle').onclick = () => {
+  const field = $('server-field');
+  if (field.classList.contains('hidden')) {
+    field.classList.remove('hidden');
+    $('server-url').focus();
+    $('server-url').select();
+  } else {
+    field.classList.add('hidden');
+  }
+};
+
+// Настройки → Сервер: сменить адрес (аккаунты на разных серверах не связаны)
+$('server-change-btn').onclick = async () => {
+  const host = $('server-current-main').textContent;
+  const ok = await ask(
+    `Сейчас приложение подключено к ${host}. После смены адреса нужно войти заново: аккаунты на разных серверах не связаны.`,
+    { title: 'Сменить сервер?', ok: 'Сменить' }
+  );
+  if (!ok) return;
+  store.set('session', null);
+  Api.token = '';
+  state.me = null;
+  showScreen('auth');
+  $('server-field').classList.remove('hidden');
+  $('server-url').focus();
+};
 $('auth-toggle').onclick = (e) => {
   e.preventDefault();
   setAuthMode(state.authMode === 'login' || !state.authMode ? 'register' : 'login');
@@ -2686,10 +2713,26 @@ async function completeWebOAuth() {
 async function boot() {
   setAuthMode(false);
   applySpeaker();
-  // Пользователь адрес не вводит: всегда общий сервер
-  $('server-url').value = DEFAULT_SERVER;
-  $('server-url').onchange = () => loadProviders(normalizeServer($('server-url').value));
-  loadProviders(isWeb ? location.origin : normalizeServer($('server-url').value));
+  // Сервер по умолчанию общий; свой адрес вводят по ссылке «Свой сервер» (docs/self-hosting.md)
+  const applyServer = () => {
+    const url = isWeb ? location.origin : normalizeServer($('server-url').value) || DEFAULT_SERVER;
+    const host = url.replace(/^https?:\/\//, '');
+    $('server-hint').classList.toggle('hidden', isWeb || url === DEFAULT_SERVER);
+    $('server-current').textContent = host;
+    $('server-current-main').textContent = host;
+    return url;
+  };
+  $('server-url').value = (!isWeb && store.get('customServer', '')) || DEFAULT_SERVER;
+  $('server-url').onchange = () => {
+    if (isWeb) return;
+    const url = normalizeServer($('server-url').value) || DEFAULT_SERVER;
+    store.set('customServer', url === DEFAULT_SERVER ? '' : url);
+    $('server-url').value = url;
+    applyServer();
+    loadProviders(url);
+  };
+  const startServer = applyServer();
+  loadProviders(isWeb ? location.origin : startServer);
 
   // Вернулись из Яндекса — входим сразу, экран авторизации не показываем
   if (await completeWebOAuth()) return;
@@ -2711,6 +2754,7 @@ async function boot() {
   if (session && (!isWeb || session.base === location.origin)) {
     Api.base = session.base;
     Api.token = session.token;
+    $('server-current-main').textContent = session.base.replace(/^https?:\/\//, '');
     try {
       return enterMain(await Api.get('/me'));
     } catch (err) {

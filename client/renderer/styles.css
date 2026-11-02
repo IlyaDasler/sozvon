@@ -318,6 +318,11 @@ body:has(#auth:not(.hidden)) .nav-btn { visibility: hidden; }
 #auth .btn.primary.wide::after { content: '\2192'; font-size: 15px; line-height: 1; }
 
 .auth-switch { margin: 13px 0 0; text-align: center; font-size: 12.5px; color: var(--muted); }
+/* Ссылка «Свой сервер» на экране входа и подпись с текущим адресом */
+.auth-server { margin: 6px 0 0; }
+.linkish { border: 0; background: none; padding: 0; color: var(--accent); font: inherit; cursor: pointer; }
+.linkish:hover { text-decoration: underline; }
+#server-section .row { margin-top: 10px; }
 .auth-switch a { margin-left: 4px; }
 .auth-version { margin-top: 9px; font-size: 11px; }
 
