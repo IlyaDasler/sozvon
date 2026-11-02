@@ -248,6 +248,8 @@ function setUpdateStatus(status) {
   } catch {}
 }
 
+let updateRetried = false;
+
 function checkForUpdates() {
   if (!app.isPackaged) {
     setUpdateStatus({ state: 'unsupported' });
@@ -296,9 +298,28 @@ function setupUpdater({ checkNow = true } = {}) {
   );
   autoUpdater.on('download-progress', (p) => setUpdateStatus({ state: 'downloading', percent: Math.round(p.percent) }));
   // Последняя версия — вместе с её описанием: в окне проверки видно, что нового
-  autoUpdater.on('update-not-available', (info) => setUpdateStatus({ state: 'latest', notes: releaseNotes(info), checkedAt: Date.now() }));
+  autoUpdater.on('update-not-available', (info) => {
+    updateRetried = false;
+    setUpdateStatus({ state: 'latest', notes: releaseNotes(info), checkedAt: Date.now() });
+  });
   autoUpdater.on('update-downloaded', (info) => setUpdateStatus({ state: 'ready', version: info.version }));
-  autoUpdater.on('error', (err) => setUpdateStatus({ state: 'error', message: err.message, checkedAt: Date.now() }));
+  autoUpdater.on('error', (err) => {
+    const message = String(err?.message || '');
+    // Нет файла обновлений — значит просто нет релиза для этой платформы: это не ошибка
+    if (/404|cannot find|not found/i.test(message)) {
+      updateRetried = false;
+      setUpdateStatus({ state: 'latest', checkedAt: Date.now() });
+      return;
+    }
+    // Сеть моргнула — один раз пробуем ещё, и только потом говорим об ошибке
+    if (!updateRetried) {
+      updateRetried = true;
+      setTimeout(() => checkForUpdates(), 1500);
+      return;
+    }
+    updateRetried = false;
+    setUpdateStatus({ state: 'error', message, checkedAt: Date.now() });
+  });
 
   if (checkNow) checkForUpdates();
   // И дальше сами: каждые 10 минут, при возврате в окно и после сна — Созвон неделями живёт в трее
