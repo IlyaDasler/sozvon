@@ -393,6 +393,46 @@
   </div>
 </div>
 
+<h2>Настройки</h2>
+<div class="glass" style="padding:0; overflow:hidden">
+  <div style="display:flex; min-height:320px">
+    <div style="width:190px; padding:14px 10px; border-right:1px solid var(--line); background:rgba(10,14,28,.35)">
+      <div class="small muted" style="padding:0 10px 8px; text-transform:uppercase; letter-spacing:.08em">Настройки</div>
+      <div class="row" style="padding:7px 10px; border-radius:10px; background:rgba(255,255,255,.12)"><b>Профиль</b></div>
+      <div class="row" style="padding:7px 10px; border-radius:10px; color:var(--text-2)">Оформление</div>
+      <div class="row" style="padding:7px 10px; border-radius:10px; color:var(--text-2)">Звук и видео</div>
+      <div class="row" style="padding:7px 10px; border-radius:10px; color:var(--text-2)">Уведомления</div>
+      <div class="row" style="padding:7px 10px; border-radius:10px; color:var(--text-2)">Аккаунт</div>
+    </div>
+    <div style="flex:1; padding:20px 24px">
+      <h3 style="margin:0 0 16px">Оформление</h3>
+      <div class="field"><label>Тема</label><input value="Жидкое стекло" readonly></div>
+      <div class="row" style="gap:24px; margin:16px 0">
+        <label class="row"><input type="checkbox" class="switch" checked> Прозрачность</label>
+        <label class="row"><input type="checkbox" class="switch"> Плотный режим</label>
+      </div>
+      <div class="field"><label>Прозрачность стекла</label><input type="range" min="2" max="30" value="7"></div>
+      <div class="field"><label>Размытие</label><input type="range" min="0" max="40" value="26"></div>
+      <div class="row" style="gap:10px; margin-top:16px"><button class="btn">Сбросить</button><button class="btn primary">Сохранить</button></div>
+    </div>
+  </div>
+</div>
+
+<h2>Вход</h2>
+<div class="glass" style="display:flex; gap:20px; align-items:center; flex-wrap:wrap">
+  <div style="flex:1; min-width:260px">
+    <div class="small muted">С ВОЗВРАЩЕНИЕМ</div>
+    <h3 style="margin:6px 0 10px">Войдите в Созвон</h3>
+    <div class="field"><label>Почта или логин</label><input placeholder="name@yandex.ru"></div>
+    <div class="field"><label>Пароль</label><input type="password" value="password"></div>
+    <label class="row" style="margin:10px 0"><input type="checkbox" checked> Запомнить меня</label>
+    <button class="btn primary" style="width:100%">Войти →</button>
+  </div>
+  <div style="width:220px; height:200px; border-radius:16px; background:
+    radial-gradient(120% 90% at 30% 20%, rgba(122,167,255,.5), transparent 60%),
+    rgba(255,255,255,.06); display:grid; place-items:center; font-size:44px">👾</div>
+</div>
+
 <h2>Токены</h2>
 <div class="glass">
   <div class="tokens">
