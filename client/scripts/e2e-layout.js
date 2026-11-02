@@ -238,4 +238,24 @@ runTest(async () => {
   win.setSize(1280, 900);
   await sleep(400);
   console.log('✔ адаптив 480 / 760 / 1280 без переполнений');
+
+  // ---------- Центровка иконок во всех кнопках ----------
+  const icons = await js(win, `(() => {
+    const bad = [];
+    for (const btn of document.querySelectorAll('.icon-btn, .round-btn, .composer-btn')) {
+      if (!btn.getClientRects().length) continue;
+      const svg = btn.querySelector('svg');
+      if (!svg) continue;
+      const b = btn.getBoundingClientRect();
+      const s = svg.getBoundingClientRect();
+      const dx = (s.left - b.left) - (b.right - s.right);
+      const dy = (s.top - b.top) - (b.bottom - s.bottom);
+      if (Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5)
+        bad.push((btn.id || btn.className) + ' parent=' + (btn.parentElement?.className || '') + ' pad=' + getComputedStyle(btn).padding + ' ' + dx.toFixed(1) + '/' + dy.toFixed(1));
+    }
+    return JSON.stringify(bad);
+  })()`);
+  const misaligned = JSON.parse(icons);
+  if (misaligned.length) throw new Error(`Иконки не по центру: ${misaligned.join(', ')}`);
+  console.log('✔ иконки в кнопках отцентрованы');
 });
