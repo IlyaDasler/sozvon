@@ -8,6 +8,11 @@
   --r-xl: 18px;
   --dock-h: 56px;
   --head-h: 52px;
+  --fs-title: 19px;
+  --fs-section: 15px;
+  --fs-body: 14px;
+  --fs-caption: 12px;
+  --lh-body: 1.45;
   --head-pad-x: 16px;
   --dock-gap: 8px;
   --rail-tile: 46px;
@@ -406,7 +411,7 @@ body:has(#auth:not(.hidden)) .nav-btn { visibility: hidden; }
 .sidebar-head { padding-right: 14px; }
 .conn-dot.ok { background: var(--ok); }
 
-.list-title { padding: 10px 16px 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.list-title { padding: 10px 16px 6px; font-size: var(--fs-caption); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 
 .sidebar-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
 .contact-list { list-style: none; margin: 0; padding: 0 8px; }
@@ -853,7 +858,7 @@ video.mirror { transform: scaleX(-1); }
 .msg-head b { font-weight: 600; }
 .msg-head time { font-size: 11px; color: var(--muted); }
 /* Р СћР ВµР С”РЎРѓРЎвЂљ РЎРѓР С•Р С•Р В±РЎвЂ°Р ВµР Р…Р С‘РЎРЏ РЎРѓ РЎР‚Р В°Р В·Р СР ВµРЎвЂљР С”Р С•Р в„– */
-.msg-text { overflow-wrap: anywhere; line-height: 1.45; }
+.msg-text { overflow-wrap: anywhere; line-height: var(--lh-body); }
 .msg-text p { margin: 0; white-space: pre-wrap; }
 .msg-text p + p, .msg-text p + *, .msg-text * + p { margin-top: 6px; }
 .msg-text a { color: var(--link); text-decoration: none; }
@@ -1386,7 +1391,7 @@ kbd {
 .rs-nav .rs-danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 .rs-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .rs-head { display: flex; align-items: center; height: var(--head-h); padding: 0 var(--head-pad-x) 0 20px; border-bottom: 1px solid var(--line); }
-.rs-head h3 { flex: 1; margin: 0; font-size: 18px; }
+.rs-head h3 { flex: 1; margin: 0; font-size: var(--fs-title); }
 .rs-main > .error { padding: 0 28px; }
 .rs-body { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 28px 24px; }
 .rs-body h4 { margin: 20px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-2); }
@@ -2270,7 +2275,7 @@ input[type='radio']:disabled { opacity: .45; cursor: default; }
 }
 /* ---------- Панель «План 3.0» ---------- */
 .plan-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.plan-title { font-weight: 700; }
+.plan-title { font-weight: 700; font-size: var(--fs-section); }
 .plan-current { color: var(--accent); font-weight: 600; font-size: 13px; }
 .plan-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .plan-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; color: var(--text-2); }
@@ -2279,3 +2284,13 @@ input[type='radio']:disabled { opacity: .45; cursor: default; }
 .plan-item.now { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); }
 .plan-item.now .plan-dot { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent); }
 .plan-item.todo .plan-dot { background: color-mix(in srgb, var(--muted) 45%, transparent); }
+/* ---------- Плотность интерфейса (компактный режим) ---------- */
+[data-density='compact'] .contact,
+[data-density='compact'] .friend-row,
+[data-density='compact'] .room-row,
+[data-density='compact'] .member-row { padding-top: 4px; padding-bottom: 4px; }
+[data-density='compact'] .msg { margin-top: -1px; margin-bottom: -1px; }
+[data-density='compact'] .list-title { padding-top: 7px; padding-bottom: 4px; }
+[data-density='compact'] .set-block { padding: 12px; }
+[data-density='compact'] .rs-nav button,
+[data-density='compact'] .set-nav button { padding: 5px 9px; }
