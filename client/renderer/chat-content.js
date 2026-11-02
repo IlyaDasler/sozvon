@@ -646,6 +646,31 @@ function eventCard(event, roomId) {
   when.textContent = `${formatDay(event.startsAt)} · ${formatTime(event.startsAt)}`;
   card.append(head, when);
 
+  // Повтор и напоминание
+  const REPEAT_LABEL = { daily: 'Каждый день', weekdays: 'По будням', weekly: 'Каждую неделю' };
+  if (event.repeat && event.repeat !== 'none') {
+    const repeat = document.createElement('div');
+    repeat.className = 'event-repeat';
+    const remind = event.remind ? ` · напомним за ${event.remind} мин` : '';
+    repeat.textContent = `${REPEAT_LABEL[event.repeat] || ''}${remind}`;
+    card.append(repeat);
+  } else if (event.remind) {
+    const repeat = document.createElement('div');
+    repeat.className = 'event-repeat';
+    repeat.textContent = `Напомним за ${event.remind} мин`;
+    card.append(repeat);
+  }
+
+  // Прошедшее событие: больше не отвечаем
+  if (event.completed) {
+    const done = document.createElement('div');
+    done.className = 'event-done';
+    done.textContent = 'Событие завершено';
+    card.classList.add('completed');
+    card.append(done);
+    return card;
+  }
+
   const people = document.createElement('div');
   people.className = 'event-people';
   const answers = (event.responses || []).filter((r) => r.status !== 'invited');
@@ -684,25 +709,83 @@ function eventCard(event, roomId) {
   };
   actions.append(option('Буду', 'yes'), option('Не смогу', 'no'));
 
-  // «Готов в 21:30»: своё время рядом с кнопкой
-  const later = document.createElement('span');
+  // «Готов в другое время»: своё окно выбора времени в стиле приложения
+  const readyDate = mine?.status === 'maybe' && mine.readyAt ? new Date(mine.readyAt) : new Date(event.startsAt);
+  const draft = { h: readyDate.getHours(), m: Math.floor(readyDate.getMinutes() / 5) * 5 };
+
+  const later = document.createElement('div');
   later.className = 'event-later';
-  const time = document.createElement('input');
-  time.type = 'time';
-  time.className = 'event-time';
-  if (mine?.status === 'maybe' && mine.readyAt) time.value = new Date(mine.readyAt).toTimeString().slice(0, 5);
+  const wrap = document.createElement('div');
+  wrap.className = 'event-time-wrap';
   const laterBtn = document.createElement('button');
   laterBtn.type = 'button';
   laterBtn.className = `btn small event-btn${mine?.status === 'maybe' ? ' active' : ''}`;
-  laterBtn.textContent = 'Готов в другое время';
-  laterBtn.onclick = () => {
-    if (!time.value) return toast('Укажите время');
-    const [h, min] = time.value.split(':').map(Number);
-    const at = new Date(event.startsAt);
-    at.setHours(h, min, 0, 0);
-    answer('maybe', at.getTime());
+  const syncLater = () => {
+    laterBtn.textContent = `Готов в ${pad2(draft.h)}:${pad2(draft.m)}`;
   };
-  later.append(time, laterBtn);
+  syncLater();
+  const pop = document.createElement('div');
+  pop.className = 'event-time-pop hidden';
+
+  const drawPop = () => {
+    const hourTitle = document.createElement('div');
+    hourTitle.className = 'time-title';
+    hourTitle.textContent = 'Часы';
+    const hourGrid = document.createElement('div');
+    hourGrid.className = 'time-grid';
+    for (let h = 0; h < 24; h++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `time-cell${h === draft.h ? ' selected' : ''}`;
+      b.textContent = pad2(h);
+      b.onclick = () => {
+        draft.h = h;
+        drawPop();
+        syncLater();
+      };
+      hourGrid.append(b);
+    }
+    const minTitle = document.createElement('div');
+    minTitle.className = 'time-title';
+    minTitle.textContent = 'Минуты';
+    const minGrid = document.createElement('div');
+    minGrid.className = 'time-grid';
+    for (let m = 0; m < 60; m += 5) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `time-cell${m === draft.m ? ' selected' : ''}`;
+      b.textContent = pad2(m);
+      b.onclick = () => {
+        draft.m = m;
+        drawPop();
+        syncLater();
+      };
+      minGrid.append(b);
+    }
+    const foot = document.createElement('div');
+    foot.className = 'time-foot';
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'btn small primary';
+    ok.textContent = 'ОК';
+    ok.onclick = () => {
+      const at = new Date(event.startsAt);
+      at.setHours(draft.h, draft.m, 0, 0);
+      pop.classList.add('hidden');
+      answer('maybe', at.getTime());
+    };
+    foot.append(ok);
+    pop.replaceChildren(hourTitle, hourGrid, minTitle, minGrid, foot);
+  };
+
+  laterBtn.onclick = (e) => {
+    e.stopPropagation();
+    const opening = pop.classList.contains('hidden');
+    drawPop();
+    pop.classList.toggle('hidden', !opening);
+  };
+  wrap.append(laterBtn, pop);
+  later.append(wrap);
   actions.append(later);
   card.append(actions);
   return card;

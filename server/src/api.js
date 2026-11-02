@@ -366,7 +366,25 @@ function notifyRoom(roomId) {
   return room;
 }
 
+const EVENT_REPEATS = new Set(['none', 'daily', 'weekdays', 'weekly']);
+const EVENT_REMIND = new Set([0, 5, 10, 15, 30, 60]);
+
+/** Ближайший запуск события: для повторяющихся считаем от «сейчас», для разового — само время */
+function nextStart(row, now = Date.now()) {
+  const base = row.starts_at;
+  const repeat = row.repeat || 'none';
+  if (repeat === 'none') return base > now ? base : null;
+  const b = new Date(base);
+  const d = new Date(now);
+  d.setHours(b.getHours(), b.getMinutes(), 0, 0);
+  if (d.getTime() <= now) d.setDate(d.getDate() + 1);
+  if (repeat === 'weekdays') while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  if (repeat === 'weekly') while (d.getDay() !== b.getDay()) d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+
 function toEvent(row) {
+  const repeat = row.repeat || 'none';
   return {
     id: row.id,
     roomId: row.room_id,
@@ -374,6 +392,11 @@ function toEvent(row) {
     startsAt: row.starts_at,
     createdBy: row.created_by,
     createdAt: row.created_at,
+    repeat,
+    remind: row.remind || 0,
+    nextAt: nextStart(row),
+    // Разовое событие через час после начала считаем прошедшим
+    completed: repeat === 'none' && Date.now() > row.starts_at + 3_600_000,
     // Готовность: yes — буду, no — не смогу, maybe — готов в другое время (readyAt)
     responses: events.responses(row.id).map((r) => ({ userId: r.user_id, status: r.status, readyAt: r.ready_at })),
   };
@@ -1755,7 +1778,9 @@ export function createApi() {
       if (!Number.isFinite(startsAt) || startsAt < Date.now() - 86_400_000)
         throw new HttpError(400, 'Укажите дату и время события');
       const invitees = Array.isArray(req.body.invitees) ? req.body.invitees.map(Number) : [];
-      const row = events.create(room.id, room.hub_id, title, startsAt, req.user.id);
+      const repeat = EVENT_REPEATS.has(req.body.repeat) ? req.body.repeat : 'none';
+      const remind = EVENT_REMIND.has(Number(req.body.remind)) ? Number(req.body.remind) : 0;
+      const row = events.create(room.id, room.hub_id, title, startsAt, req.user.id, repeat, remind);
       // Автор сразу «буду», приглашённые — «приглашён»
       events.respond(row.id, req.user.id, 'yes');
       for (const id of invitees) {
@@ -2351,3 +2376,38 @@ export function createApi() {
 
   return api;
 }
+
+// Напоминания о событиях: раз в полминуты проверяем ближайшие запуски.
+// Если напоминание включено и время подошло — пишем всем участникам комнаты (кроме автора)
+const eventReminders = setInterval(() => {
+  const now = Date.now();
+  let rows = [];
+  try {
+    rows = events.all();
+  } catch {
+    return;
+  }
+  for (const row of rows) {
+    if (!row.remind) continue;
+    const next = nextStart(row, now);
+    if (!next) continue;
+    if (now < next - row.remind * 60_000 || now > next) continue;
+    if (row.last_remind === next) continue;
+    events.markReminded(row.id, next);
+    const room = rooms.byId(row.room_id);
+    if (!room) continue;
+    for (const m of rooms.members(room.id)) {
+      hub.send(m.id, {
+        type: 'event:remind',
+        eventId: row.id,
+        title: row.title,
+        startsAt: next,
+        minutes: row.remind,
+        roomId: room.id,
+        roomName: room.name,
+        hubId: room.hub_id,
+      });
+    }
+  }
+}, 30_000);
+eventReminders.unref?.();

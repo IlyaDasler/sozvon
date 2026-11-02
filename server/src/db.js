@@ -35,7 +35,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS messages_pair ON messages (from_id, to_id, id);
 
-  -- Аккаунты сервисов (сейчас — Яндекс), через которые можно войти в профиль
+  -- РђРєРєР°СѓРЅС‚С‹ СЃРµСЂРІРёСЃРѕРІ (СЃРµР№С‡Р°СЃ вЂ” РЇРЅРґРµРєСЃ), С‡РµСЂРµР· РєРѕС‚РѕСЂС‹Рµ РјРѕР¶РЅРѕ РІРѕР№С‚Рё РІ РїСЂРѕС„РёР»СЊ
   CREATE TABLE IF NOT EXISTS identities (
     provider TEXT NOT NULL,
     provider_user_id TEXT NOT NULL,
@@ -46,7 +46,7 @@ db.exec(`
     UNIQUE (user_id, provider)
   );
 
-  -- Комнаты: голосовые (общий голосовой канал + чат) и текстовые (только чат)
+  -- РљРѕРјРЅР°С‚С‹: РіРѕР»РѕСЃРѕРІС‹Рµ (РѕР±С‰РёР№ РіРѕР»РѕСЃРѕРІРѕР№ РєР°РЅР°Р» + С‡Р°С‚) Рё С‚РµРєСЃС‚РѕРІС‹Рµ (С‚РѕР»СЊРєРѕ С‡Р°С‚)
   CREATE TABLE IF NOT EXISTS rooms (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -72,7 +72,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS room_messages_room ON room_messages (room_id, id);
 
-  -- Роли комнаты: название, цвет и набор прав (см. perms.js)
+  -- Р РѕР»Рё РєРѕРјРЅР°С‚С‹: РЅР°Р·РІР°РЅРёРµ, С†РІРµС‚ Рё РЅР°Р±РѕСЂ РїСЂР°РІ (СЃРј. perms.js)
   CREATE TABLE IF NOT EXISTS room_roles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
@@ -83,7 +83,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS room_roles_room ON room_roles (room_id);
 
-  -- Загруженные файлы: пока used = 0, файл ещё не прикреплён ни к одному сообщению
+  -- Р—Р°РіСЂСѓР¶РµРЅРЅС‹Рµ С„Р°Р№Р»С‹: РїРѕРєР° used = 0, С„Р°Р№Р» РµС‰С‘ РЅРµ РїСЂРёРєСЂРµРїР»С‘РЅ РЅРё Рє РѕРґРЅРѕРјСѓ СЃРѕРѕР±С‰РµРЅРёСЋ
   CREATE TABLE IF NOT EXISTS uploads (
     id TEXT PRIMARY KEY,
     owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -95,7 +95,7 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
 
-  -- Заявки в друзья: from_id зовёт to_id; друзьями становятся, когда to_id примет
+  -- Р—Р°СЏРІРєРё РІ РґСЂСѓР·СЊСЏ: from_id Р·РѕРІС‘С‚ to_id; РґСЂСѓР·СЊСЏРјРё СЃС‚Р°РЅРѕРІСЏС‚СЃСЏ, РєРѕРіРґР° to_id РїСЂРёРјРµС‚
   CREATE TABLE IF NOT EXISTS friend_requests (
     from_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     to_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -104,7 +104,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS friend_requests_to ON friend_requests (to_id);
 
-  -- Кого человек заблокировал: ни заявок, ни дружбы в обе стороны
+  -- РљРѕРіРѕ С‡РµР»РѕРІРµРє Р·Р°Р±Р»РѕРєРёСЂРѕРІР°Р»: РЅРё Р·Р°СЏРІРѕРє, РЅРё РґСЂСѓР¶Р±С‹ РІ РѕР±Рµ СЃС‚РѕСЂРѕРЅС‹
   CREATE TABLE IF NOT EXISTS blocks (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -120,9 +120,9 @@ db.exec(`
     PRIMARY KEY (room_id, user_id)
   );
 
-  -- Каналы (в коде — hubs; не путать с hub.js, рассылкой по WebSocket): свой «сервер» с комнатами внутри.
-  -- Участник канала — участник его комнат (кроме тех, где забанен); создатель может всё,
-  -- управляющий (manager = 1) — создавать и удалять комнаты, переименовывать, звать, выгонять и банить
+  -- РљР°РЅР°Р»С‹ (РІ РєРѕРґРµ вЂ” hubs; РЅРµ РїСѓС‚Р°С‚СЊ СЃ hub.js, СЂР°СЃСЃС‹Р»РєРѕР№ РїРѕ WebSocket): СЃРІРѕР№ В«СЃРµСЂРІРµСЂВ» СЃ РєРѕРјРЅР°С‚Р°РјРё РІРЅСѓС‚СЂРё.
+  -- РЈС‡Р°СЃС‚РЅРёРє РєР°РЅР°Р»Р° вЂ” СѓС‡Р°СЃС‚РЅРёРє РµРіРѕ РєРѕРјРЅР°С‚ (РєСЂРѕРјРµ С‚РµС…, РіРґРµ Р·Р°Р±Р°РЅРµРЅ); СЃРѕР·РґР°С‚РµР»СЊ РјРѕР¶РµС‚ РІСЃС‘,
+  -- СѓРїСЂР°РІР»СЏСЋС‰РёР№ (manager = 1) вЂ” СЃРѕР·РґР°РІР°С‚СЊ Рё СѓРґР°Р»СЏС‚СЊ РєРѕРјРЅР°С‚С‹, РїРµСЂРµРёРјРµРЅРѕРІС‹РІР°С‚СЊ, Р·РІР°С‚СЊ, РІС‹РіРѕРЅСЏС‚СЊ Рё Р±Р°РЅРёС‚СЊ
   CREATE TABLE IF NOT EXISTS hubs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -141,7 +141,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS hub_members_user ON hub_members (user_id);
 
-  -- Приглашения: друг вступает в канал, только когда сам примет
+  -- РџСЂРёРіР»Р°С€РµРЅРёСЏ: РґСЂСѓРі РІСЃС‚СѓРїР°РµС‚ РІ РєР°РЅР°Р», С‚РѕР»СЊРєРѕ РєРѕРіРґР° СЃР°Рј РїСЂРёРјРµС‚
   CREATE TABLE IF NOT EXISTS hub_invites (
     hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -151,8 +151,8 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS hub_invites_user ON hub_invites (user_id);
 
-  -- Ключи переписок: для каждой версии (epoch) ключа — копия, запечатанная публичным ключом участника.
-  -- Сервер открыть их не может; conv — «dm:<a>-<b>» или «room:<id>»
+  -- РљР»СЋС‡Рё РїРµСЂРµРїРёСЃРѕРє: РґР»СЏ РєР°Р¶РґРѕР№ РІРµСЂСЃРёРё (epoch) РєР»СЋС‡Р° вЂ” РєРѕРїРёСЏ, Р·Р°РїРµС‡Р°С‚Р°РЅРЅР°СЏ РїСѓР±Р»РёС‡РЅС‹Рј РєР»СЋС‡РѕРј СѓС‡Р°СЃС‚РЅРёРєР°.
+  -- РЎРµСЂРІРµСЂ РѕС‚РєСЂС‹С‚СЊ РёС… РЅРµ РјРѕР¶РµС‚; conv вЂ” В«dm:<a>-<b>В» РёР»Рё В«room:<id>В»
   CREATE TABLE IF NOT EXISTS conv_keys (
     conv TEXT NOT NULL,
     epoch INTEGER NOT NULL,
@@ -164,7 +164,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS conv_keys_user ON conv_keys (user_id);
 
-  -- Перенос ключа на новое устройство: зашифрованный кодом ключ, живёт 10 минут; id — хэш кода
+  -- РџРµСЂРµРЅРѕСЃ РєР»СЋС‡Р° РЅР° РЅРѕРІРѕРµ СѓСЃС‚СЂРѕР№СЃС‚РІРѕ: Р·Р°С€РёС„СЂРѕРІР°РЅРЅС‹Р№ РєРѕРґРѕРј РєР»СЋС‡, Р¶РёРІС‘С‚ 10 РјРёРЅСѓС‚; id вЂ” С…СЌС€ РєРѕРґР°
   CREATE TABLE IF NOT EXISTS key_transfers (
     id TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -181,13 +181,13 @@ db.exec(`
   );
 `);
 
-// Миграции для баз, созданных старыми версиями
+// РњРёРіСЂР°С†РёРё РґР»СЏ Р±Р°Р·, СЃРѕР·РґР°РЅРЅС‹С… СЃС‚Р°СЂС‹РјРё РІРµСЂСЃРёСЏРјРё
 const columnsOf = (table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
 if (!columnsOf('users').includes('avatar')) db.exec('ALTER TABLE users ADD COLUMN avatar TEXT');
-// Почта для входа (в нижнем регистре); у старых профилей её нет
+// РџРѕС‡С‚Р° РґР»СЏ РІС…РѕРґР° (РІ РЅРёР¶РЅРµРј СЂРµРіРёСЃС‚СЂРµ); Сѓ СЃС‚Р°СЂС‹С… РїСЂРѕС„РёР»РµР№ РµС‘ РЅРµС‚
 if (!columnsOf('users').includes('email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT');
-// Роли живут в канале: одна роль на все его комнаты. room_roles и room_members.role_id остались от версий до 2.6.3
-// и нужны только для переноса ниже
+// Р РѕР»Рё Р¶РёРІСѓС‚ РІ РєР°РЅР°Р»Рµ: РѕРґРЅР° СЂРѕР»СЊ РЅР° РІСЃРµ РµРіРѕ РєРѕРјРЅР°С‚С‹. room_roles Рё room_members.role_id РѕСЃС‚Р°Р»РёСЃСЊ РѕС‚ РІРµСЂСЃРёР№ РґРѕ 2.6.3
+// Рё РЅСѓР¶РЅС‹ С‚РѕР»СЊРєРѕ РґР»СЏ РїРµСЂРµРЅРѕСЃР° РЅРёР¶Рµ
 const rolesInHubs = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'hub_roles'").get());
 db.exec(`
   CREATE TABLE IF NOT EXISTS hub_roles (
@@ -201,7 +201,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS hub_roles_hub ON hub_roles (hub_id);
 `);
 if (!columnsOf('hub_members').includes('role_id')) db.exec('ALTER TABLE hub_members ADD COLUMN role_id INTEGER');
-// Своё имя участника в канале: видно только в этом канале и его комнатах
+// РЎРІРѕС‘ РёРјСЏ СѓС‡Р°СЃС‚РЅРёРєР° РІ РєР°РЅР°Р»Рµ: РІРёРґРЅРѕ С‚РѕР»СЊРєРѕ РІ СЌС‚РѕРј РєР°РЅР°Р»Рµ Рё РµРіРѕ РєРѕРјРЅР°С‚Р°С…
 db.exec(`
   CREATE TABLE IF NOT EXISTS hub_nicknames (
     hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
@@ -210,8 +210,8 @@ db.exec(`
     PRIMARY KEY (hub_id, user_id)
   );
 `);
-// События канала: собираемся играть в 21:00. Публикуются сообщением в выбранную комнату,
-// а готовность участников («буду», «не смогу», «готов в 21:30») живёт здесь
+// РЎРѕР±С‹С‚РёСЏ РєР°РЅР°Р»Р°: СЃРѕР±РёСЂР°РµРјСЃСЏ РёРіСЂР°С‚СЊ РІ 21:00. РџСѓР±Р»РёРєСѓСЋС‚СЃСЏ СЃРѕРѕР±С‰РµРЅРёРµРј РІ РІС‹Р±СЂР°РЅРЅСѓСЋ РєРѕРјРЅР°С‚Сѓ,
+// Р° РіРѕС‚РѕРІРЅРѕСЃС‚СЊ СѓС‡Р°СЃС‚РЅРёРєРѕРІ (В«Р±СѓРґСѓВ», В«РЅРµ СЃРјРѕРіСѓВ», В«РіРѕС‚РѕРІ РІ 21:30В») Р¶РёРІС‘С‚ Р·РґРµСЃСЊ
 db.exec(`
   CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -231,6 +231,14 @@ db.exec(`
     PRIMARY KEY (event_id, user_id)
   );
 `);
+// РџРѕРІС‚РѕСЂ СЃРѕР±С‹С‚РёСЏ Рё РЅР°РїРѕРјРёРЅР°РЅРёРµ: РєР°Р¶РґС‹Р№ РґРµРЅСЊ, РїРѕ Р±СѓРґРЅСЏРј, СЂР°Р· РІ РЅРµРґРµР»СЋ; РЅР°РїРѕРјРЅРёС‚СЊ Р·Р° N РјРёРЅСѓС‚
+for (const [name, sql] of [
+  ['repeat', "ALTER TABLE events ADD COLUMN repeat TEXT NOT NULL DEFAULT 'none'"],
+  ['remind', 'ALTER TABLE events ADD COLUMN remind INTEGER NOT NULL DEFAULT 0'],
+  ['last_remind', 'ALTER TABLE events ADD COLUMN last_remind INTEGER'],
+]) {
+  if (!columnsOf('events').includes(name)) db.exec(sql);
+}
 db.exec(`
   CREATE TABLE IF NOT EXISTS room_groups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -250,49 +258,49 @@ db.exec(`
   );
 `);
 if (!columnsOf('rooms').includes('group_id')) db.exec('ALTER TABLE rooms ADD COLUMN group_id INTEGER');
-// Свой порядок комнат в канале (перетаскивание): меньше — выше
+// РЎРІРѕР№ РїРѕСЂСЏРґРѕРє РєРѕРјРЅР°С‚ РІ РєР°РЅР°Р»Рµ (РїРµСЂРµС‚Р°СЃРєРёРІР°РЅРёРµ): РјРµРЅСЊС€Рµ вЂ” РІС‹С€Рµ
 if (!columnsOf('rooms').includes('position')) db.exec('ALTER TABLE rooms ADD COLUMN position INTEGER');
 db.exec('UPDATE rooms SET position = id WHERE position IS NULL');
 if (!columnsOf('hubs').includes('reactions_visible')) db.exec('ALTER TABLE hubs ADD COLUMN reactions_visible INTEGER NOT NULL DEFAULT 1');
 if (!columnsOf('hubs').includes('default_perms')) db.exec(`ALTER TABLE hubs ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
 
-// Токены версий до сессий (см. sessions.js) больше не действуют
+// РўРѕРєРµРЅС‹ РІРµСЂСЃРёР№ РґРѕ СЃРµСЃСЃРёР№ (СЃРј. sessions.js) Р±РѕР»СЊС€Рµ РЅРµ РґРµР№СЃС‚РІСѓСЋС‚
 if (!columnsOf('users').includes('legacy_revoked')) db.exec('ALTER TABLE users ADD COLUMN legacy_revoked INTEGER NOT NULL DEFAULT 0');
-// Двухфакторный вход: секрет, ещё не подтверждённый секрет, последний принятый шаг, хэши резервных кодов
+// Р”РІСѓС…С„Р°РєС‚РѕСЂРЅС‹Р№ РІС…РѕРґ: СЃРµРєСЂРµС‚, РµС‰С‘ РЅРµ РїРѕРґС‚РІРµСЂР¶РґС‘РЅРЅС‹Р№ СЃРµРєСЂРµС‚, РїРѕСЃР»РµРґРЅРёР№ РїСЂРёРЅСЏС‚С‹Р№ С€Р°Рі, С…СЌС€Рё СЂРµР·РµСЂРІРЅС‹С… РєРѕРґРѕРІ
 for (const [column, type] of [['totp_secret', 'TEXT'], ['totp_pending', 'TEXT'], ['totp_last_step', 'INTEGER NOT NULL DEFAULT 0'], ['totp_recovery', 'TEXT']])
   if (!columnsOf('users').includes(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} ${type}`);
-// email — единый вид адреса (по нему вход и «ящик занят»), email_shown — как человек его ввёл, его и показываем
+// email вЂ” РµРґРёРЅС‹Р№ РІРёРґ Р°РґСЂРµСЃР° (РїРѕ РЅРµРјСѓ РІС…РѕРґ Рё В«СЏС‰РёРє Р·Р°РЅСЏС‚В»), email_shown вЂ” РєР°Рє С‡РµР»РѕРІРµРє РµРіРѕ РІРІС‘Р», РµРіРѕ Рё РїРѕРєР°Р·С‹РІР°РµРј
 if (!columnsOf('users').includes('email_shown')) db.exec('ALTER TABLE users ADD COLUMN email_shown TEXT');
-// Выбранный статус: online, idle, dnd, invisible (см. presence.js)
-// Вложения и предпросмотр ссылки хранятся в сообщении как JSON
+// Р’С‹Р±СЂР°РЅРЅС‹Р№ СЃС‚Р°С‚СѓСЃ: online, idle, dnd, invisible (СЃРј. presence.js)
+// Р’Р»РѕР¶РµРЅРёСЏ Рё РїСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ СЃСЃС‹Р»РєРё С…СЂР°РЅСЏС‚СЃСЏ РІ СЃРѕРѕР±С‰РµРЅРёРё РєР°Рє JSON
 for (const table of ['messages', 'room_messages']) {
   const cols = columnsOf(table);
   if (!cols.includes('attachments')) db.exec(`ALTER TABLE ${table} ADD COLUMN attachments TEXT`);
   if (!cols.includes('preview')) db.exec(`ALTER TABLE ${table} ADD COLUMN preview TEXT`);
 }
-// Карточка профиля: «О себе» и цвет баннера (пусто — по цвету аватара)
+// РљР°СЂС‚РѕС‡РєР° РїСЂРѕС„РёР»СЏ: В«Рћ СЃРµР±РµВ» Рё С†РІРµС‚ Р±Р°РЅРЅРµСЂР° (РїСѓСЃС‚Рѕ вЂ” РїРѕ С†РІРµС‚Сѓ Р°РІР°С‚Р°СЂР°)
 if (!columnsOf('users').includes('bio')) db.exec("ALTER TABLE users ADD COLUMN bio TEXT NOT NULL DEFAULT ''");
 if (!columnsOf('users').includes('banner_color')) db.exec('ALTER TABLE users ADD COLUMN banner_color TEXT');
-// Цвет ника в чате, голосе и участниках; пусто — как цвет аватара
+// Р¦РІРµС‚ РЅРёРєР° РІ С‡Р°С‚Рµ, РіРѕР»РѕСЃРµ Рё СѓС‡Р°СЃС‚РЅРёРєР°С…; РїСѓСЃС‚Рѕ вЂ” РєР°Рє С†РІРµС‚ Р°РІР°С‚Р°СЂР°
 if (!columnsOf('users').includes('name_color')) db.exec('ALTER TABLE users ADD COLUMN name_color TEXT');
 if (!columnsOf('users').includes('status')) db.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'online'");
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE email IS NOT NULL');
 if (!columnsOf('rooms').includes('default_perms'))
   db.exec(`ALTER TABLE rooms ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
 if (!columnsOf('room_members').includes('role_id')) db.exec('ALTER TABLE room_members ADD COLUMN role_id INTEGER');
-// Тема личного чата «у обоих» — одна на пару, хранится в обеих строках дружбы
+// РўРµРјР° Р»РёС‡РЅРѕРіРѕ С‡Р°С‚Р° В«Сѓ РѕР±РѕРёС…В» вЂ” РѕРґРЅР° РЅР° РїР°СЂСѓ, С…СЂР°РЅРёС‚СЃСЏ РІ РѕР±РµРёС… СЃС‚СЂРѕРєР°С… РґСЂСѓР¶Р±С‹
 if (!columnsOf('contacts').includes('chat_theme')) db.exec('ALTER TABLE contacts ADD COLUMN chat_theme TEXT');
-// Свой фон комнаты: имя картинки в папке аватарок (как иконка канала)
+// РЎРІРѕР№ С„РѕРЅ РєРѕРјРЅР°С‚С‹: РёРјСЏ РєР°СЂС‚РёРЅРєРё РІ РїР°РїРєРµ Р°РІР°С‚Р°СЂРѕРє (РєР°Рє РёРєРѕРЅРєР° РєР°РЅР°Р»Р°)
 if (!columnsOf('rooms').includes('background')) db.exec('ALTER TABLE rooms ADD COLUMN background TEXT');
-// Кик на время: до этого момента (мс) участник может только читать чат
+// РљРёРє РЅР° РІСЂРµРјСЏ: РґРѕ СЌС‚РѕРіРѕ РјРѕРјРµРЅС‚Р° (РјСЃ) СѓС‡Р°СЃС‚РЅРёРє РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ С‡РёС‚Р°С‚СЊ С‡Р°С‚
 if (!columnsOf('room_members').includes('timeout_until')) db.exec('ALTER TABLE room_members ADD COLUMN timeout_until INTEGER');
-// Канал комнаты (с 2.0); комнаты старых версий переносятся ниже
+// РљР°РЅР°Р» РєРѕРјРЅР°С‚С‹ (СЃ 2.0); РєРѕРјРЅР°С‚С‹ СЃС‚Р°СЂС‹С… РІРµСЂСЃРёР№ РїРµСЂРµРЅРѕСЃСЏС‚СЃСЏ РЅРёР¶Рµ
 if (!columnsOf('rooms').includes('hub_id')) db.exec('ALTER TABLE rooms ADD COLUMN hub_id INTEGER REFERENCES hubs(id) ON DELETE CASCADE');
 db.exec('CREATE INDEX IF NOT EXISTS rooms_hub ON rooms (hub_id)');
-// Сквозное шифрование (2.3): публичный ключ человека и конверт сообщения вместо текста
+// РЎРєРІРѕР·РЅРѕРµ С€РёС„СЂРѕРІР°РЅРёРµ (2.3): РїСѓР±Р»РёС‡РЅС‹Р№ РєР»СЋС‡ С‡РµР»РѕРІРµРєР° Рё РєРѕРЅРІРµСЂС‚ СЃРѕРѕР±С‰РµРЅРёСЏ РІРјРµСЃС‚Рѕ С‚РµРєСЃС‚Р°
 if (!columnsOf('users').includes('public_key')) db.exec('ALTER TABLE users ADD COLUMN public_key TEXT');
 for (const table of ['messages', 'room_messages']) if (!columnsOf(table).includes('enc')) db.exec(`ALTER TABLE ${table} ADD COLUMN enc TEXT`);
-// Ответ, правка, реакции и закреп (2.4). Ответ хранится только id — текст не дублируем, он зашифрован
+// РћС‚РІРµС‚, РїСЂР°РІРєР°, СЂРµР°РєС†РёРё Рё Р·Р°РєСЂРµРї (2.4). РћС‚РІРµС‚ С…СЂР°РЅРёС‚СЃСЏ С‚РѕР»СЊРєРѕ id вЂ” С‚РµРєСЃС‚ РЅРµ РґСѓР±Р»РёСЂСѓРµРј, РѕРЅ Р·Р°С€РёС„СЂРѕРІР°РЅ
 for (const table of ['messages', 'room_messages']) {
   if (!columnsOf(table).includes('reply_to')) db.exec(`ALTER TABLE ${table} ADD COLUMN reply_to INTEGER`);
   if (!columnsOf(table).includes('edited_at')) db.exec(`ALTER TABLE ${table} ADD COLUMN edited_at INTEGER`);
@@ -318,7 +326,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS message_pins_chat ON message_pins (kind, chat_id, created_at);
 `);
 
-/** Выполняет fn целиком или никак */
+/** Р’С‹РїРѕР»РЅСЏРµС‚ fn С†РµР»РёРєРѕРј РёР»Рё РЅРёРєР°Рє */
 function transaction(fn) {
   db.exec('BEGIN');
   try {
@@ -330,7 +338,7 @@ function transaction(fn) {
   }
 }
 
-const ADMIN_ROLE = { name: 'Администратор', color: '#e5484d', perms: PERMS.admin };
+const ADMIN_ROLE = { name: 'РђРґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ', color: '#e5484d', perms: PERMS.admin };
 
 export const toPublicUser = (row) =>
   row && {
@@ -492,7 +500,7 @@ const q = {
   removeBan: db.prepare('DELETE FROM room_bans WHERE room_id = ? AND user_id = ?'),
   addRoomMember: db.prepare('INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) VALUES (?, ?, ?)'),
   removeRoomMember: db.prepare('DELETE FROM room_members WHERE room_id = ? AND user_id = ?'),
-  // Все, с кем человек в одной комнате или канале: им тоже нужны его статус «в сети» и новый профиль
+  // Р’СЃРµ, СЃ РєРµРј С‡РµР»РѕРІРµРє РІ РѕРґРЅРѕР№ РєРѕРјРЅР°С‚Рµ РёР»Рё РєР°РЅР°Р»Рµ: РёРј С‚РѕР¶Рµ РЅСѓР¶РЅС‹ РµРіРѕ СЃС‚Р°С‚СѓСЃ В«РІ СЃРµС‚РёВ» Рё РЅРѕРІС‹Р№ РїСЂРѕС„РёР»СЊ
   roomNeighbours: db.prepare(`
     SELECT b.user_id AS id FROM room_members a JOIN room_members b ON a.room_id = b.room_id
     WHERE a.user_id = ? AND b.user_id != a.user_id
@@ -523,10 +531,12 @@ const q = {
     ON CONFLICT (hub_id, user_id) DO UPDATE SET name = excluded.name
   `),
   clearHubNickname: db.prepare('DELETE FROM hub_nicknames WHERE hub_id = ? AND user_id = ?'),
-  // События канала
-  insertEvent: db.prepare('INSERT INTO events (room_id, hub_id, title, starts_at, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
+  // РЎРѕР±С‹С‚РёСЏ РєР°РЅР°Р»Р°
+  insertEvent: db.prepare('INSERT INTO events (room_id, hub_id, title, starts_at, created_by, created_at, repeat, remind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
+  setEventReminded: db.prepare('UPDATE events SET last_remind = ? WHERE id = ?'),
   eventById: db.prepare('SELECT * FROM events WHERE id = ?'),
   eventsOfRoom: db.prepare('SELECT * FROM events WHERE room_id = ? ORDER BY starts_at, id'),
+  allEvents: db.prepare('SELECT * FROM events'),
   deleteEvent: db.prepare('DELETE FROM events WHERE id = ?'),
   eventResponses: db.prepare('SELECT * FROM event_responses WHERE event_id = ? ORDER BY updated_at, user_id'),
   setEventResponse: db.prepare(`
@@ -539,7 +549,7 @@ const q = {
   removeHubMember: db.prepare('DELETE FROM hub_members WHERE hub_id = ? AND user_id = ?'),
   setManager: db.prepare('UPDATE hub_members SET manager = ? WHERE hub_id = ? AND user_id = ?'),
   hubRooms: db.prepare('SELECT * FROM rooms WHERE hub_id = ? ORDER BY COALESCE(position, id), id'),
-  // Участники комнаты становятся участниками её канала (перенос старых комнат, приглашения из старых версий)
+  // РЈС‡Р°СЃС‚РЅРёРєРё РєРѕРјРЅР°С‚С‹ СЃС‚Р°РЅРѕРІСЏС‚СЃСЏ СѓС‡Р°СЃС‚РЅРёРєР°РјРё РµС‘ РєР°РЅР°Р»Р° (РїРµСЂРµРЅРѕСЃ СЃС‚Р°СЂС‹С… РєРѕРјРЅР°С‚, РїСЂРёРіР»Р°С€РµРЅРёСЏ РёР· СЃС‚Р°СЂС‹С… РІРµСЂСЃРёР№)
   roomMembersToHub: db.prepare(`
     INSERT OR IGNORE INTO hub_members (hub_id, user_id, created_at) SELECT ?, user_id, created_at FROM room_members WHERE room_id = ?
   `),
@@ -598,7 +608,7 @@ export const users = {
   updateAvatar: (id, avatar) => q.updateAvatar.run(avatar, id),
 };
 
-// Дружба взаимная: при добавлении записываем обе стороны
+// Р”СЂСѓР¶Р±Р° РІР·Р°РёРјРЅР°СЏ: РїСЂРё РґРѕР±Р°РІР»РµРЅРёРё Р·Р°РїРёСЃС‹РІР°РµРј РѕР±Рµ СЃС‚РѕСЂРѕРЅС‹
 export const contacts = {
   list: (userId) => q.listContacts.all(userId),
   has: (userId, contactId) => Boolean(q.hasContact.get(userId, contactId)),
@@ -616,7 +626,7 @@ export const contacts = {
   },
 };
 
-/** Заявки в друзья: from зовёт to */
+/** Р—Р°СЏРІРєРё РІ РґСЂСѓР·СЊСЏ: from Р·РѕРІС‘С‚ to */
 export const friendRequests = {
   incoming: (userId) => q.incomingRequests.all(userId),
   outgoing: (userId) => q.outgoingRequests.all(userId),
@@ -625,7 +635,7 @@ export const friendRequests = {
   remove: (fromId, toId) => q.removeRequest.run(fromId, toId),
 };
 
-/** Блокировка односторонняя, но мешает в обе стороны: ни заявок, ни дружбы */
+/** Р‘Р»РѕРєРёСЂРѕРІРєР° РѕРґРЅРѕСЃС‚РѕСЂРѕРЅРЅСЏСЏ, РЅРѕ РјРµС€Р°РµС‚ РІ РѕР±Рµ СЃС‚РѕСЂРѕРЅС‹: РЅРё Р·Р°СЏРІРѕРє, РЅРё РґСЂСѓР¶Р±С‹ */
 export const blocks = {
   of: (userId) => q.blockedBy.all(userId),
   has: (userId, otherId) => Boolean(q.isBlocked.get(userId, otherId)),
@@ -647,7 +657,7 @@ export const identities = {
   remove: (userId, provider) => q.removeIdentity.run(userId, provider),
 };
 
-// Данные о себе: публичный профиль плюс способы входа
+// Р”Р°РЅРЅС‹Рµ Рѕ СЃРµР±Рµ: РїСѓР±Р»РёС‡РЅС‹Р№ РїСЂРѕС„РёР»СЊ РїР»СЋСЃ СЃРїРѕСЃРѕР±С‹ РІС…РѕРґР°
 export const toSelf = (row) => ({
   ...toPublicUser(row),
   email: row.email_shown || row.email || null,
@@ -662,7 +672,7 @@ export const messages = {
     const res = q.insertMessage.run(fromId, toId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), enc && JSON.stringify(enc), replyTo, Date.now());
     return q.messageById.get(Number(res.lastInsertRowid));
   },
-  /** Правка: новый зашифрованный конверт вместо текста */
+  /** РџСЂР°РІРєР°: РЅРѕРІС‹Р№ Р·Р°С€РёС„СЂРѕРІР°РЅРЅС‹Р№ РєРѕРЅРІРµСЂС‚ РІРјРµСЃС‚Рѕ С‚РµРєСЃС‚Р° */
   setEnc(id, enc) {
     db.prepare('UPDATE messages SET enc = ?, text = ?, edited_at = ? WHERE id = ?').run(enc && JSON.stringify(enc), '', Date.now(), id);
     return q.messageById.get(id);
@@ -678,19 +688,19 @@ export const rooms = {
   byId: (id) => q.roomById.get(id),
   setBackground: (id, background) => q.setRoomBackground.run(background, id),
   of: (userId) => q.roomsOf.all(userId),
-  /** Комната в канале hubId. everyone — сразу позвать всех участников канала (старые версии зовут поимённо) */
+  /** РљРѕРјРЅР°С‚Р° РІ РєР°РЅР°Р»Рµ hubId. everyone вЂ” СЃСЂР°Р·Сѓ РїРѕР·РІР°С‚СЊ РІСЃРµС… СѓС‡Р°СЃС‚РЅРёРєРѕРІ РєР°РЅР°Р»Р° (СЃС‚Р°СЂС‹Рµ РІРµСЂСЃРёРё Р·РѕРІСѓС‚ РїРѕРёРјС‘РЅРЅРѕ) */
   create(ownerId, name, kind, hubId, { everyone = true } = {}) {
     const now = Date.now();
     const id = Number(q.insertRoom.run(name, kind, ownerId, hubId, now).lastInsertRowid);
     q.addRoomMember.run(id, ownerId, now);
     if (everyone) for (const m of q.hubMembers.all(hubId)) q.addRoomMember.run(id, m.id, now);
-    // «Порядок» комнат: новая встаёт в конец списка канала
+    // В«РџРѕСЂСЏРґРѕРєВ» РєРѕРјРЅР°С‚: РЅРѕРІР°СЏ РІСЃС‚Р°С‘С‚ РІ РєРѕРЅРµС† СЃРїРёСЃРєР° РєР°РЅР°Р»Р°
     if (hubId) q.setRoomPosition.run(q.nextRoomPosition.get(hubId).pos, id);
     return rooms.byId(id);
   },
   rename: (id, name) => q.renameRoom.run(name, id),
   setGroup: (id, groupId) => q.setRoomGroup.run(groupId, id),
-  /** Порядок комнат в канале: ids — комнаты в нужном порядке */
+  /** РџРѕСЂСЏРґРѕРє РєРѕРјРЅР°С‚ РІ РєР°РЅР°Р»Рµ: ids вЂ” РєРѕРјРЅР°С‚С‹ РІ РЅСѓР¶РЅРѕРј РїРѕСЂСЏРґРєРµ */
   reorder(ids) {
     ids.forEach((id, index) => q.setRoomPosition.run(index + 1, id));
   },
@@ -701,7 +711,7 @@ export const rooms = {
   addMember: (roomId, userId) => q.addRoomMember.run(roomId, userId, Date.now()),
   removeMember: (roomId, userId) => q.removeRoomMember.run(roomId, userId),
 
-  /** Права участника по роли (без учёта того, что создатель может всё); кик на время на них не влияет */
+  /** РџСЂР°РІР° СѓС‡Р°СЃС‚РЅРёРєР° РїРѕ СЂРѕР»Рё (Р±РµР· СѓС‡С‘С‚Р° С‚РѕРіРѕ, С‡С‚Рѕ СЃРѕР·РґР°С‚РµР»СЊ РјРѕР¶РµС‚ РІСЃС‘); РєРёРє РЅР° РІСЂРµРјСЏ РЅР° РЅРёС… РЅРµ РІР»РёСЏРµС‚ */
   rolePermsOf(room, userId) {
     if (!q.roomMember.get(room.id, userId)) return 0;
     const hub = q.hubById.get(room.hub_id);
@@ -710,8 +720,8 @@ export const rooms = {
     return role ? role.perms : hub.default_perms;
   },
 
-  /** Положение в комнате: создатель комнаты и создатель её канала могут всё, управляющий каналом — как администратор.
-   *  rank — старшинство (см. rankOf): действовать можно только на тех, кто младше */
+  /** РџРѕР»РѕР¶РµРЅРёРµ РІ РєРѕРјРЅР°С‚Рµ: СЃРѕР·РґР°С‚РµР»СЊ РєРѕРјРЅР°С‚С‹ Рё СЃРѕР·РґР°С‚РµР»СЊ РµС‘ РєР°РЅР°Р»Р° РјРѕРіСѓС‚ РІСЃС‘, СѓРїСЂР°РІР»СЏСЋС‰РёР№ РєР°РЅР°Р»РѕРј вЂ” РєР°Рє Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ.
+   *  rank вЂ” СЃС‚Р°СЂС€РёРЅСЃС‚РІРѕ (СЃРј. rankOf): РґРµР№СЃС‚РІРѕРІР°С‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ РЅР° С‚РµС…, РєС‚Рѕ РјР»Р°РґС€Рµ */
   standing(room, userId) {
     const hub = room.hub_id && q.hubById.get(room.hub_id);
     const isOwner = room.owner_id === userId || hub?.owner_id === userId;
@@ -720,13 +730,13 @@ export const rooms = {
     return { isOwner, perms, rank: rankOf(isOwner, perms) };
   },
 
-  /** Действующие права: кикнутый на время может только читать чат */
+  /** Р”РµР№СЃС‚РІСѓСЋС‰РёРµ РїСЂР°РІР°: РєРёРєРЅСѓС‚С‹Р№ РЅР° РІСЂРµРјСЏ РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ С‡РёС‚Р°С‚СЊ С‡Р°С‚ */
   permsOf(room, userId) {
     const { isOwner, perms } = rooms.standing(room, userId);
     return isOwner || !rooms.timeoutOf(room.id, userId) ? perms : 0;
   },
 
-  /** До какого момента участник кикнут, или null */
+  /** Р”Рѕ РєР°РєРѕРіРѕ РјРѕРјРµРЅС‚Р° СѓС‡Р°СЃС‚РЅРёРє РєРёРєРЅСѓС‚, РёР»Рё null */
   timeoutOf(roomId, userId) {
     const until = q.roomMember.get(roomId, userId)?.timeout_until;
     return until > Date.now() ? until : null;
@@ -739,7 +749,7 @@ export const rooms = {
   unban: (roomId, userId) => q.removeBan.run(roomId, userId),
 };
 
-/** Каналы. Участник канала — участник его комнат, кроме тех, где его забанили */
+/** РљР°РЅР°Р»С‹. РЈС‡Р°СЃС‚РЅРёРє РєР°РЅР°Р»Р° вЂ” СѓС‡Р°СЃС‚РЅРёРє РµРіРѕ РєРѕРјРЅР°С‚, РєСЂРѕРјРµ С‚РµС…, РіРґРµ РµРіРѕ Р·Р°Р±Р°РЅРёР»Рё */
 export const hubs = {
   byId: (id) => q.hubById.get(id),
   of: (userId) => q.hubsOf.all(userId),
@@ -752,12 +762,12 @@ export const hubs = {
     return hubs.byId(id);
   },
 
-  /** Куда класть комнату без канала (старые версии и перенос): в первый свой канал, а нет — в новый «Канал <имя>» */
+  /** РљСѓРґР° РєР»Р°СЃС‚СЊ РєРѕРјРЅР°С‚Сѓ Р±РµР· РєР°РЅР°Р»Р° (СЃС‚Р°СЂС‹Рµ РІРµСЂСЃРёРё Рё РїРµСЂРµРЅРѕСЃ): РІ РїРµСЂРІС‹Р№ СЃРІРѕР№ РєР°РЅР°Р», Р° РЅРµС‚ вЂ” РІ РЅРѕРІС‹Р№ В«РљР°РЅР°Р» <РёРјСЏ>В» */
   defaultFor(owner) {
-    return q.firstOwnedHub.get(owner.id) || hubs.create(owner.id, `Канал ${owner.display_name}`.slice(0, 40), owner.avatar_color);
+    return q.firstOwnedHub.get(owner.id) || hubs.create(owner.id, `РљР°РЅР°Р» ${owner.display_name}`.slice(0, 40), owner.avatar_color);
   },
 
-  /** Переносит комнату в канал вместе с его участниками */
+  /** РџРµСЂРµРЅРѕСЃРёС‚ РєРѕРјРЅР°С‚Сѓ РІ РєР°РЅР°Р» РІРјРµСЃС‚Рµ СЃ РµРіРѕ СѓС‡Р°СЃС‚РЅРёРєР°РјРё */
   attachRoom(hubId, roomId) {
     q.setRoomHub.run(hubId, roomId);
     q.roomMembersToHub.run(hubId, roomId);
@@ -767,21 +777,21 @@ export const hubs = {
   setDefaultPerms: (id, perms) => q.setHubDefaultPerms.run(perms, id),
   emojis: (id) => q.hubEmojis.all(id),
   emoji: (hubId, id) => q.hubEmoji.get(id, hubId),
-  /** false — такое имя в канале уже есть */
+  /** false вЂ” С‚Р°РєРѕРµ РёРјСЏ РІ РєР°РЅР°Р»Рµ СѓР¶Рµ РµСЃС‚СЊ */
   addEmoji: (hubId, name, file, userId) => q.insertEmoji.run(hubId, name, file, userId).changes > 0,
   removeEmoji: (id) => q.deleteEmoji.run(id),
   groups: (id) => q.hubGroups.all(id),
   group: (hubId, id) => q.hubGroup.get(id, hubId),
   createGroup: (hubId, name) => q.insertGroup.run(hubId, name),
   renameGroup: (id, name) => q.renameGroup.run(name, id),
-  /** Комнаты группы остаются в канале, просто без группы */
+  /** РљРѕРјРЅР°С‚С‹ РіСЂСѓРїРїС‹ РѕСЃС‚Р°СЋС‚СЃСЏ РІ РєР°РЅР°Р»Рµ, РїСЂРѕСЃС‚Рѕ Р±РµР· РіСЂСѓРїРїС‹ */
   deleteGroup(id) {
     q.ungroupRooms.run(id);
     q.deleteGroup.run(id);
   },
   setReactionsVisible: (id, visible) => q.setHubReactionsVisible.run(visible ? 1 : 0, id),
   setRole: (hubId, userId, roleId) => q.setMemberRole.run(roleId, hubId, userId),
-  /** Своё имя участника в канале: видно только в этом канале */
+  /** РЎРІРѕС‘ РёРјСЏ СѓС‡Р°СЃС‚РЅРёРєР° РІ РєР°РЅР°Р»Рµ: РІРёРґРЅРѕ С‚РѕР»СЊРєРѕ РІ СЌС‚РѕРј РєР°РЅР°Р»Рµ */
   setNickname: (hubId, userId, name) => q.setHubNickname.run(hubId, userId, name),
   clearNickname: (hubId, userId) => q.clearHubNickname.run(hubId, userId),
   nicknameOf: (hubId, userId) => q.hubNickname.get(hubId, userId)?.name || null,
@@ -793,7 +803,7 @@ export const hubs = {
   isMember: (hubId, userId) => Boolean(q.hubMember.get(hubId, userId)),
   setManager: (hubId, userId, manager) => q.setManager.run(manager ? 1 : 0, hubId, userId),
 
-  /** Старшинство в канале: создатель 3, управляющий 2, участник 1, чужой 0 */
+  /** РЎС‚Р°СЂС€РёРЅСЃС‚РІРѕ РІ РєР°РЅР°Р»Рµ: СЃРѕР·РґР°С‚РµР»СЊ 3, СѓРїСЂР°РІР»СЏСЋС‰РёР№ 2, СѓС‡Р°СЃС‚РЅРёРє 1, С‡СѓР¶РѕР№ 0 */
   rankOf(hub, userId) {
     if (hub.owner_id === userId) return 3;
     const member = q.hubMember.get(hub.id, userId);
@@ -802,7 +812,7 @@ export const hubs = {
     return member.manager || role?.perms & (PERMS.manage | PERMS.admin) ? 2 : 1;
   },
 
-  /** Вступить: канал и все его комнаты, кроме тех, где забанен. Возвращает комнаты, куда попал */
+  /** Р’СЃС‚СѓРїРёС‚СЊ: РєР°РЅР°Р» Рё РІСЃРµ РµРіРѕ РєРѕРјРЅР°С‚С‹, РєСЂРѕРјРµ С‚РµС…, РіРґРµ Р·Р°Р±Р°РЅРµРЅ. Р’РѕР·РІСЂР°С‰Р°РµС‚ РєРѕРјРЅР°С‚С‹, РєСѓРґР° РїРѕРїР°Р» */
   join(hubId, userId) {
     const now = Date.now();
     const joined = [];
@@ -818,7 +828,7 @@ export const hubs = {
     return joined;
   },
 
-  /** Только запись участника: из комнат его убирает вызывающий (там ещё голос и события) */
+  /** РўРѕР»СЊРєРѕ Р·Р°РїРёСЃСЊ СѓС‡Р°СЃС‚РЅРёРєР°: РёР· РєРѕРјРЅР°С‚ РµРіРѕ СѓР±РёСЂР°РµС‚ РІС‹Р·С‹РІР°СЋС‰РёР№ (С‚Р°Рј РµС‰С‘ РіРѕР»РѕСЃ Рё СЃРѕР±С‹С‚РёСЏ) */
   removeMember: (hubId, userId) => q.removeHubMember.run(hubId, userId),
   addMemberOnly: (hubId, userId) => {
     q.addHubMember.run(hubId, userId, Date.now());
@@ -841,17 +851,19 @@ export const hubs = {
 };
 
 export const events = {
-  create(roomId, hubId, title, startsAt, createdBy) {
-    const id = Number(q.insertEvent.run(roomId, hubId, title, startsAt, createdBy, Date.now()).lastInsertRowid);
+  create(roomId, hubId, title, startsAt, createdBy, repeat = 'none', remind = 0) {
+    const id = Number(q.insertEvent.run(roomId, hubId, title, startsAt, createdBy, Date.now(), repeat, remind).lastInsertRowid);
     return q.eventById.get(id);
   },
   byId: (id) => q.eventById.get(id),
   ofRoom: (roomId) => q.eventsOfRoom.all(roomId),
   remove: (id) => q.deleteEvent.run(id),
   responses: (eventId) => q.eventResponses.all(eventId),
-  /** Готовность: yes (буду), no (не смогу), maybe (готов в другое время — ready_at) */
+  /** Р“РѕС‚РѕРІРЅРѕСЃС‚СЊ: yes (Р±СѓРґСѓ), no (РЅРµ СЃРјРѕРіСѓ), maybe (РіРѕС‚РѕРІ РІ РґСЂСѓРіРѕРµ РІСЂРµРјСЏ вЂ” ready_at) */
   respond: (eventId, userId, status, readyAt = null) => q.setEventResponse.run(eventId, userId, status, readyAt, Date.now()),
   clearResponse: (eventId, userId) => q.clearEventResponse.run(eventId, userId),
+  markReminded: (id, at) => q.setEventReminded.run(at, id),
+  all: () => q.allEvents.all(),
 };
 
 export const roles = {
@@ -868,13 +880,13 @@ export const roles = {
   },
 };
 
-// Адреса из версий до 1.8 приводим к одному виду (у Яндекса много доменов). Если такой ящик уже у другого профиля, не трогаем
+// РђРґСЂРµСЃР° РёР· РІРµСЂСЃРёР№ РґРѕ 1.8 РїСЂРёРІРѕРґРёРј Рє РѕРґРЅРѕРјСѓ РІРёРґСѓ (Сѓ РЇРЅРґРµРєСЃР° РјРЅРѕРіРѕ РґРѕРјРµРЅРѕРІ). Р•СЃР»Рё С‚Р°РєРѕР№ СЏС‰РёРє СѓР¶Рµ Сѓ РґСЂСѓРіРѕРіРѕ РїСЂРѕС„РёР»СЏ, РЅРµ С‚СЂРѕРіР°РµРј
 for (const { id, email } of db.prepare('SELECT id, email FROM users WHERE email IS NOT NULL').all()) {
   const canonical = canonicalEmail(email);
   if (canonical !== email && !q.userByEmail.get(canonical)) q.setEmail.run(canonical, email, id);
 }
 
-// Комнаты из версий до 2.0 жили сами по себе: у каждого создателя собираем их в канал вместе с участниками
+// РљРѕРјРЅР°С‚С‹ РёР· РІРµСЂСЃРёР№ РґРѕ 2.0 Р¶РёР»Рё СЃР°РјРё РїРѕ СЃРµР±Рµ: Сѓ РєР°Р¶РґРѕРіРѕ СЃРѕР·РґР°С‚РµР»СЏ СЃРѕР±РёСЂР°РµРј РёС… РІ РєР°РЅР°Р» РІРјРµСЃС‚Рµ СЃ СѓС‡Р°СЃС‚РЅРёРєР°РјРё
 transaction(() => {
   for (const { owner_id } of q.ownersOfLooseRooms.all()) {
     const hub = hubs.defaultFor(q.userById.get(owner_id));
@@ -882,9 +894,9 @@ transaction(() => {
   }
 });
 
-// Роли версий до 2.6.3 были у каждой комнаты свои. Одноимённые роли комнат канала становятся одной ролью канала. Человеку
-// достаётся роль, которая была у него в большем числе комнат, при равенстве — с меньшими правами: перенос не должен расширять
-// права шире необходимого. Права по умолчанию — самые частые среди комнат канала. Старые таблицы остаются для отката
+// Р РѕР»Рё РІРµСЂСЃРёР№ РґРѕ 2.6.3 Р±С‹Р»Рё Сѓ РєР°Р¶РґРѕР№ РєРѕРјРЅР°С‚С‹ СЃРІРѕРё. РћРґРЅРѕРёРјС‘РЅРЅС‹Рµ СЂРѕР»Рё РєРѕРјРЅР°С‚ РєР°РЅР°Р»Р° СЃС‚Р°РЅРѕРІСЏС‚СЃСЏ РѕРґРЅРѕР№ СЂРѕР»СЊСЋ РєР°РЅР°Р»Р°. Р§РµР»РѕРІРµРєСѓ
+// РґРѕСЃС‚Р°С‘С‚СЃСЏ СЂРѕР»СЊ, РєРѕС‚РѕСЂР°СЏ Р±С‹Р»Р° Сѓ РЅРµРіРѕ РІ Р±РѕР»СЊС€РµРј С‡РёСЃР»Рµ РєРѕРјРЅР°С‚, РїСЂРё СЂР°РІРµРЅСЃС‚РІРµ вЂ” СЃ РјРµРЅСЊС€РёРјРё РїСЂР°РІР°РјРё: РїРµСЂРµРЅРѕСЃ РЅРµ РґРѕР»Р¶РµРЅ СЂР°СЃС€РёСЂСЏС‚СЊ
+// РїСЂР°РІР° С€РёСЂРµ РЅРµРѕР±С…РѕРґРёРјРѕРіРѕ. РџСЂР°РІР° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ вЂ” СЃР°РјС‹Рµ С‡Р°СЃС‚С‹Рµ СЃСЂРµРґРё РєРѕРјРЅР°С‚ РєР°РЅР°Р»Р°. РЎС‚Р°СЂС‹Рµ С‚Р°Р±Р»РёС†С‹ РѕСЃС‚Р°СЋС‚СЃСЏ РґР»СЏ РѕС‚РєР°С‚Р°
 if (!rolesInHubs)
   transaction(() => {
     for (const { id: hubId } of db.prepare('SELECT id FROM hubs').all()) {
@@ -894,9 +906,9 @@ if (!rolesInHubs)
       const [common] = [...counts].sort((a, b) => b[1] - a[1])[0] || [DEFAULT_PERMS];
       q.setHubDefaultPerms.run(common, hubId);
 
-      const byName = new Map(); // название -> роль канала
-      const newId = new Map(); // роль комнаты -> роль канала
-      const held = new Map(); // человек -> Map(роль канала -> в скольких комнатах)
+      const byName = new Map(); // РЅР°Р·РІР°РЅРёРµ -> СЂРѕР»СЊ РєР°РЅР°Р»Р°
+      const newId = new Map(); // СЂРѕР»СЊ РєРѕРјРЅР°С‚С‹ -> СЂРѕР»СЊ РєР°РЅР°Р»Р°
+      const held = new Map(); // С‡РµР»РѕРІРµРє -> Map(СЂРѕР»СЊ РєР°РЅР°Р»Р° -> РІ СЃРєРѕР»СЊРєРёС… РєРѕРјРЅР°С‚Р°С…)
       for (const room of hubRooms) {
         for (const old of db.prepare('SELECT * FROM room_roles WHERE room_id = ? ORDER BY id').all(room.id)) {
           if (!byName.has(old.name)) byName.set(old.name, roles.create(hubId, old));
@@ -916,13 +928,13 @@ if (!rolesInHubs)
     }
   });
 
-// У канала всегда есть готовая роль администратора, которую можно раздать
+// РЈ РєР°РЅР°Р»Р° РІСЃРµРіРґР° РµСЃС‚СЊ РіРѕС‚РѕРІР°СЏ СЂРѕР»СЊ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°, РєРѕС‚РѕСЂСѓСЋ РјРѕР¶РЅРѕ СЂР°Р·РґР°С‚СЊ
 for (const { id } of q.hubsWithoutRoles.all()) roles.create(id, ADMIN_ROLE);
 
-// Версия 2.0 называла каналы, созданные из старых комнат, «Сходка <имя>»; с 2.1 это «Канал <имя>»
-db.prepare("UPDATE hubs SET name = 'Канал' || substr(name, 7) WHERE substr(name, 1, 7) = 'Сходка '").run();
+// Р’РµСЂСЃРёСЏ 2.0 РЅР°Р·С‹РІР°Р»Р° РєР°РЅР°Р»С‹, СЃРѕР·РґР°РЅРЅС‹Рµ РёР· СЃС‚Р°СЂС‹С… РєРѕРјРЅР°С‚, В«РЎС…РѕРґРєР° <РёРјСЏ>В»; СЃ 2.1 СЌС‚Рѕ В«РљР°РЅР°Р» <РёРјСЏ>В»
+db.prepare("UPDATE hubs SET name = 'РљР°РЅР°Р»' || substr(name, 7) WHERE substr(name, 1, 7) = 'РЎС…РѕРґРєР° '").run();
 
-/** id всех, кому важны обновления пользователя: друзья и соседи по комнатам */
+/** id РІСЃРµС…, РєРѕРјСѓ РІР°Р¶РЅС‹ РѕР±РЅРѕРІР»РµРЅРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ: РґСЂСѓР·СЊСЏ Рё СЃРѕСЃРµРґРё РїРѕ РєРѕРјРЅР°С‚Р°Рј */
 export function relatedUserIds(userId) {
   const ids = new Set(q.listContacts.all(userId).map((u) => u.id));
   for (const row of q.roomNeighbours.all(userId, userId)) ids.add(row.id);
@@ -947,7 +959,7 @@ export const roomMessages = {
     const res = q.insertRoomMessage.run(roomId, fromId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), enc && JSON.stringify(enc), replyTo, Date.now());
     return q.roomMessageById.get(Number(res.lastInsertRowid));
   },
-  /** Правка: новый зашифрованный конверт вместо текста */
+  /** РџСЂР°РІРєР°: РЅРѕРІС‹Р№ Р·Р°С€РёС„СЂРѕРІР°РЅРЅС‹Р№ РєРѕРЅРІРµСЂС‚ РІРјРµСЃС‚Рѕ С‚РµРєСЃС‚Р° */
   setEnc(id, enc) {
     db.prepare('UPDATE room_messages SET enc = ?, text = ?, edited_at = ? WHERE id = ?').run(enc && JSON.stringify(enc), '', Date.now(), id);
     return q.roomMessageById.get(id);
@@ -962,10 +974,10 @@ export const roomMessages = {
 export const uploads = {
   add: ({ id, ownerId, name, mime, size, kind }) => q.insertUpload.run(id, ownerId, name, mime, size, kind, Date.now()),
   byId: (id) => q.uploadById.get(id),
-  /** Сколько байт файлов человека лежит на диске */
+  /** РЎРєРѕР»СЊРєРѕ Р±Р°Р№С‚ С„Р°Р№Р»РѕРІ С‡РµР»РѕРІРµРєР° Р»РµР¶РёС‚ РЅР° РґРёСЃРєРµ */
   usedBy: (ownerId) => q.uploadsSize.get(ownerId).total,
 
-  /** Прикрепляет загрузки к сообщению: все должны быть своими и ещё не прикреплёнными. Иначе — null и ничего не меняется */
+  /** РџСЂРёРєСЂРµРїР»СЏРµС‚ Р·Р°РіСЂСѓР·РєРё Рє СЃРѕРѕР±С‰РµРЅРёСЋ: РІСЃРµ РґРѕР»Р¶РЅС‹ Р±С‹С‚СЊ СЃРІРѕРёРјРё Рё РµС‰С‘ РЅРµ РїСЂРёРєСЂРµРїР»С‘РЅРЅС‹РјРё. РРЅР°С‡Рµ вЂ” null Рё РЅРёС‡РµРіРѕ РЅРµ РјРµРЅСЏРµС‚СЃСЏ */
   claim(ids, ownerId) {
     const rows = ids.map((id) => q.uploadById.get(id));
     if (rows.some((row) => !row || row.owner_id !== ownerId || row.used)) return null;
@@ -975,19 +987,19 @@ export const uploads = {
     return rows;
   },
 
-  /** Загрузки, которые так и не прикрепили, старше времени cutoff */
+  /** Р—Р°РіСЂСѓР·РєРё, РєРѕС‚РѕСЂС‹Рµ С‚Р°Рє Рё РЅРµ РїСЂРёРєСЂРµРїРёР»Рё, СЃС‚Р°СЂС€Рµ РІСЂРµРјРµРЅРё cutoff */
   stale: (cutoff) => q.staleUploads.all(cutoff).map((row) => row.id),
   remove: (id) => q.deleteUpload.run(id),
 };
 
-/** Ключи переписок: версии и копии, запечатанные для каждого участника */
+/** РљР»СЋС‡Рё РїРµСЂРµРїРёСЃРѕРє: РІРµСЂСЃРёРё Рё РєРѕРїРёРё, Р·Р°РїРµС‡Р°С‚Р°РЅРЅС‹Рµ РґР»СЏ РєР°Р¶РґРѕРіРѕ СѓС‡Р°СЃС‚РЅРёРєР° */
 export const convKeys = {
   epoch: (conv) => q.convEpoch.get(conv).epoch || 0,
   mine: (conv, userId) => Object.fromEntries(q.convMine.all(conv, userId).map((r) => [r.epoch, r.sealed])),
   holders: (conv, epoch) => q.convHolders.all(conv, epoch).map((r) => r.user_id),
   has: (conv, epoch, userId) => Boolean(q.convHas.get(conv, epoch, userId)),
 
-  /** Добавить копии; новая версия — целиком или никак (кто-то мог успеть раньше) */
+  /** Р”РѕР±Р°РІРёС‚СЊ РєРѕРїРёРё; РЅРѕРІР°СЏ РІРµСЂСЃРёСЏ вЂ” С†РµР»РёРєРѕРј РёР»Рё РЅРёРєР°Рє (РєС‚Рѕ-С‚Рѕ РјРѕРі СѓСЃРїРµС‚СЊ СЂР°РЅСЊС€Рµ) */
   add(conv, epoch, sealed, byId) {
     const now = Date.now();
     transaction(() => {
@@ -995,7 +1007,7 @@ export const convKeys = {
     });
   },
 
-  /** Человек сменил ключ — его старые копии никто уже не откроет */
+  /** Р§РµР»РѕРІРµРє СЃРјРµРЅРёР» РєР»СЋС‡ вЂ” РµРіРѕ СЃС‚Р°СЂС‹Рµ РєРѕРїРёРё РЅРёРєС‚Рѕ СѓР¶Рµ РЅРµ РѕС‚РєСЂРѕРµС‚ */
   dropUser: (userId) => q.convDropUser.run(userId),
 };
 
@@ -1003,7 +1015,7 @@ export const setPublicKey = (userId, key) => q.setPublicKey.run(key, userId);
 
 const TRANSFER_TTL = 10 * 60_000;
 
-/** Перенос ключа на новое устройство: забрать можно один раз, своим аккаунтом, за 10 минут */
+/** РџРµСЂРµРЅРѕСЃ РєР»СЋС‡Р° РЅР° РЅРѕРІРѕРµ СѓСЃС‚СЂРѕР№СЃС‚РІРѕ: Р·Р°Р±СЂР°С‚СЊ РјРѕР¶РЅРѕ РѕРґРёРЅ СЂР°Р·, СЃРІРѕРёРј Р°РєРєР°СѓРЅС‚РѕРј, Р·Р° 10 РјРёРЅСѓС‚ */
 export const keyTransfers = {
   put: (id, userId, blob) => q.transferPut.run(id, userId, blob, Date.now()),
   take(id, userId) {
@@ -1013,7 +1025,7 @@ export const keyTransfers = {
   },
 };
 
-// ---------- Реакции и закреп (2.4): только id сообщений и смайлики, без текста ----------
+// ---------- Р РµР°РєС†РёРё Рё Р·Р°РєСЂРµРї (2.4): С‚РѕР»СЊРєРѕ id СЃРѕРѕР±С‰РµРЅРёР№ Рё СЃРјР°Р№Р»РёРєРё, Р±РµР· С‚РµРєСЃС‚Р° ----------
 
 const rAdd = db.prepare('INSERT OR IGNORE INTO message_reactions (kind, message_id, user_id, emoji, created_at) VALUES (?, ?, ?, ?, ?)');
 const rRemove = db.prepare('DELETE FROM message_reactions WHERE kind = ? AND message_id = ? AND user_id = ? AND emoji = ?');
@@ -1021,7 +1033,7 @@ const rOfMessage = db.prepare('SELECT emoji, user_id FROM message_reactions WHER
 const rClear = db.prepare('DELETE FROM message_reactions WHERE kind = ? AND message_id = ?');
 
 export const reactions = {
-  /** { messageId: [{ emoji, count, mine }] } для набора сообщений */
+  /** { messageId: [{ emoji, count, mine }] } РґР»СЏ РЅР°Р±РѕСЂР° СЃРѕРѕР±С‰РµРЅРёР№ */
   ofMessages(kind, ids, me) {
     const out = {};
     for (const id of ids) {
@@ -1036,7 +1048,7 @@ export const reactions = {
     }
     return out;
   },
-  /** Ставит или снимает смайлик: true — теперь стоит */
+  /** РЎС‚Р°РІРёС‚ РёР»Рё СЃРЅРёРјР°РµС‚ СЃРјР°Р№Р»РёРє: true вЂ” С‚РµРїРµСЂСЊ СЃС‚РѕРёС‚ */
   toggle(kind, messageId, userId, emoji) {
     const has = rOfMessage.all(kind, messageId).some((r) => r.user_id === userId && r.emoji === emoji);
     if (has) rRemove.run(kind, messageId, userId, emoji);
@@ -1044,7 +1056,7 @@ export const reactions = {
     return !has;
   },
   of: (kind, messageId, me) => reactions.ofMessages(kind, [messageId], me)[messageId] || [],
-  /** [{ emoji, userIds }] — кто что поставил */
+  /** [{ emoji, userIds }] вЂ” РєС‚Рѕ С‡С‚Рѕ РїРѕСЃС‚Р°РІРёР» */
   whoOf(kind, messageId) {
     const groups = new Map();
     for (const row of rOfMessage.all(kind, messageId)) {
@@ -1062,7 +1074,7 @@ const pOfChat = db.prepare('SELECT * FROM message_pins WHERE kind = ? AND chat_i
 const pHas = db.prepare('SELECT 1 FROM message_pins WHERE kind = ? AND message_id = ?');
 const pClear = db.prepare('DELETE FROM message_pins WHERE kind = ? AND message_id = ?');
 
-// Что человек прочитал: conv — 'dm:<собеседник>' или 'room:<комната>', last_id — последнее прочитанное сообщение
+// Р§С‚Рѕ С‡РµР»РѕРІРµРє РїСЂРѕС‡РёС‚Р°Р»: conv вЂ” 'dm:<СЃРѕР±РµСЃРµРґРЅРёРє>' РёР»Рё 'room:<РєРѕРјРЅР°С‚Р°>', last_id вЂ” РїРѕСЃР»РµРґРЅРµРµ РїСЂРѕС‡РёС‚Р°РЅРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ
 db.exec(`
   CREATE TABLE IF NOT EXISTS read_state (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -1071,7 +1083,7 @@ db.exec(`
     PRIMARY KEY (user_id, conv)
   );
   CREATE INDEX IF NOT EXISTS messages_to ON messages (to_id, id);
-  -- Что считать прочитанным там, где человек ещё ничего не отмечал: всё, что было до появления счётчиков
+  -- Р§С‚Рѕ СЃС‡РёС‚Р°С‚СЊ РїСЂРѕС‡РёС‚Р°РЅРЅС‹Рј С‚Р°Рј, РіРґРµ С‡РµР»РѕРІРµРє РµС‰С‘ РЅРёС‡РµРіРѕ РЅРµ РѕС‚РјРµС‡Р°Р»: РІСЃС‘, С‡С‚Рѕ Р±С‹Р»Рѕ РґРѕ РїРѕСЏРІР»РµРЅРёСЏ СЃС‡С‘С‚С‡РёРєРѕРІ
   CREATE TABLE IF NOT EXISTS read_baseline (dm INTEGER NOT NULL, room INTEGER NOT NULL);
   INSERT INTO read_baseline
     SELECT (SELECT COALESCE(MAX(id), 0) FROM messages), (SELECT COALESCE(MAX(id), 0) FROM room_messages)
@@ -1102,7 +1114,7 @@ const rRoomUnread = db.prepare(`
   GROUP BY m.room_id
 `);
 
-// Сессии: каждый вход в профиль (см. sessions.js)
+// РЎРµСЃСЃРёРё: РєР°Р¶РґС‹Р№ РІС…РѕРґ РІ РїСЂРѕС„РёР»СЊ (СЃРј. sessions.js)
 db.exec(`
   CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
@@ -1136,7 +1148,7 @@ export const sessions = {
 };
 
 export const readState = {
-  /** Прочитано всё, что уже есть в личной переписке */
+  /** РџСЂРѕС‡РёС‚Р°РЅРѕ РІСЃС‘, С‡С‚Рѕ СѓР¶Рµ РµСЃС‚СЊ РІ Р»РёС‡РЅРѕР№ РїРµСЂРµРїРёСЃРєРµ */
   readDm: (userId, peerId) => rMark.run(userId, `dm:${peerId}`, rDmNewest.get(peerId, userId).id),
   readRoom: (userId, roomId) => rMark.run(userId, `room:${roomId}`, rRoomNewest.get(roomId).id),
   unread: (userId) => ({ dm: rDmUnread.all(userId), rooms: rRoomUnread.all(userId) }),
