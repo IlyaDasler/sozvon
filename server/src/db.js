@@ -1,4 +1,4 @@
-import { DatabaseSync } from 'node:sqlite';
+﻿import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { config } from './config.js';
 import { canonicalEmail } from './email-address.js';
@@ -201,6 +201,45 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS hub_roles_hub ON hub_roles (hub_id);
 `);
 if (!columnsOf('hub_members').includes('role_id')) db.exec('ALTER TABLE hub_members ADD COLUMN role_id INTEGER');
+// Своё имя участника в канале: видно только в этом канале и его комнатах
+db.exec(`
+  CREATE TABLE IF NOT EXISTS hub_nicknames (
+    hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    PRIMARY KEY (hub_id, user_id)
+  );
+`);
+// События канала: собираемся играть в 21:00. Публикуются сообщением в выбранную комнату,
+// а готовность участников («буду», «не смогу», «готов в 21:30») живёт здесь
+db.exec(`
+  CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    starts_at INTEGER NOT NULL,
+    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS event_responses (
+    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL,
+    ready_at INTEGER,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (event_id, user_id)
+  );
+`);
+// Повтор события и напоминание: каждый день, по будням, раз в неделю; напомнить за N минут
+for (const [name, sql] of [
+  ['repeat', "ALTER TABLE events ADD COLUMN repeat TEXT NOT NULL DEFAULT 'none'"],
+  ['remind', 'ALTER TABLE events ADD COLUMN remind INTEGER NOT NULL DEFAULT 0'],
+  ['last_remind', 'ALTER TABLE events ADD COLUMN last_remind INTEGER'],
+  ['active', 'ALTER TABLE events ADD COLUMN active INTEGER NOT NULL DEFAULT 1'],
+]) {
+  if (!columnsOf('events').includes(name)) db.exec(sql);
+}
 db.exec(`
   CREATE TABLE IF NOT EXISTS room_groups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -486,6 +525,28 @@ const q = {
     SELECT u.*, m.manager, m.role_id, m.created_at AS joined_at FROM hub_members m JOIN users u ON u.id = m.user_id
     WHERE m.hub_id = ? ORDER BY m.created_at, u.id
   `),
+  hubNicknames: db.prepare('SELECT user_id, name FROM hub_nicknames WHERE hub_id = ?'),
+  hubNickname: db.prepare('SELECT name FROM hub_nicknames WHERE hub_id = ? AND user_id = ?'),
+  setHubNickname: db.prepare(`
+    INSERT INTO hub_nicknames (hub_id, user_id, name) VALUES (?, ?, ?)
+    ON CONFLICT (hub_id, user_id) DO UPDATE SET name = excluded.name
+  `),
+  clearHubNickname: db.prepare('DELETE FROM hub_nicknames WHERE hub_id = ? AND user_id = ?'),
+  // События канала
+  insertEvent: db.prepare('INSERT INTO events (room_id, hub_id, title, starts_at, created_by, created_at, repeat, remind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
+  setEventReminded: db.prepare('UPDATE events SET last_remind = ? WHERE id = ?'),
+  finishEvent: db.prepare('UPDATE events SET active = 0 WHERE id = ?'),
+  updateEvent: db.prepare('UPDATE events SET title = ?, starts_at = ?, repeat = ?, remind = ? WHERE id = ?'),
+  eventById: db.prepare('SELECT * FROM events WHERE id = ?'),
+  eventsOfRoom: db.prepare('SELECT * FROM events WHERE room_id = ? ORDER BY starts_at, id'),
+  allEvents: db.prepare('SELECT * FROM events'),
+  deleteEvent: db.prepare('DELETE FROM events WHERE id = ?'),
+  eventResponses: db.prepare('SELECT * FROM event_responses WHERE event_id = ? ORDER BY updated_at, user_id'),
+  setEventResponse: db.prepare(`
+    INSERT INTO event_responses (event_id, user_id, status, ready_at, updated_at) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT (event_id, user_id) DO UPDATE SET status = excluded.status, ready_at = excluded.ready_at, updated_at = excluded.updated_at
+  `),
+  clearEventResponse: db.prepare('DELETE FROM event_responses WHERE event_id = ? AND user_id = ?'),
   hubMember: db.prepare('SELECT * FROM hub_members WHERE hub_id = ? AND user_id = ?'),
   addHubMember: db.prepare('INSERT OR IGNORE INTO hub_members (hub_id, user_id, created_at) VALUES (?, ?, ?)'),
   removeHubMember: db.prepare('DELETE FROM hub_members WHERE hub_id = ? AND user_id = ?'),
@@ -733,6 +794,11 @@ export const hubs = {
   },
   setReactionsVisible: (id, visible) => q.setHubReactionsVisible.run(visible ? 1 : 0, id),
   setRole: (hubId, userId, roleId) => q.setMemberRole.run(roleId, hubId, userId),
+  /** Своё имя участника в канале: видно только в этом канале */
+  setNickname: (hubId, userId, name) => q.setHubNickname.run(hubId, userId, name),
+  clearNickname: (hubId, userId) => q.clearHubNickname.run(hubId, userId),
+  nicknameOf: (hubId, userId) => q.hubNickname.get(hubId, userId)?.name || null,
+  nicknames: (hubId) => q.hubNicknames.all(hubId),
   setIcon: (id, icon) => q.setHubIcon.run(icon, id),
   remove: (id) => q.deleteHub.run(id),
   rooms: (hubId) => q.hubRooms.all(hubId),
@@ -785,6 +851,24 @@ export const hubs = {
     q.removeHubInvite.run(hubId, userId);
   },
   unban: (hubId, userId) => q.removeHubBan.run(hubId, userId),
+};
+
+export const events = {
+  create(roomId, hubId, title, startsAt, createdBy, repeat = 'none', remind = 0) {
+    const id = Number(q.insertEvent.run(roomId, hubId, title, startsAt, createdBy, Date.now(), repeat, remind).lastInsertRowid);
+    return q.eventById.get(id);
+  },
+  byId: (id) => q.eventById.get(id),
+  ofRoom: (roomId) => q.eventsOfRoom.all(roomId),
+  remove: (id) => q.deleteEvent.run(id),
+  responses: (eventId) => q.eventResponses.all(eventId),
+  /** Готовность: yes (буду), no (не смогу), maybe (готов в другое время — ready_at) */
+  respond: (eventId, userId, status, readyAt = null) => q.setEventResponse.run(eventId, userId, status, readyAt, Date.now()),
+  clearResponse: (eventId, userId) => q.clearEventResponse.run(eventId, userId),
+  markReminded: (id, at) => q.setEventReminded.run(at, id),
+  finish: (id) => q.finishEvent.run(id),
+  update: (id, title, startsAt, repeat, remind) => q.updateEvent.run(title, startsAt, repeat, remind, id),
+  all: () => q.allEvents.all(),
 };
 
 export const roles = {

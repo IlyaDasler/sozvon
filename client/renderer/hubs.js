@@ -438,6 +438,9 @@ document.addEventListener(
 const BELL_ON = '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
 const BELL_OFF =
   '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-9.3-5.2M6 9v-1a6 6 0 0 0-.9 3c0 7-3 9-3 9h14"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M3 3l18 18"/></svg>';
+// Календарь с плюсом — событие канала
+const EVENT_ICON =
+  '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M12 14v5M9.5 16.5h5"/></svg>';
 
 const hubMuteKey = (id) => `hub:mute:${id}`;
 const hubMuted = (id) => Boolean(store.get(hubMuteKey(id), false));
@@ -457,6 +460,7 @@ function hubMenuItems(hub) {
     manager && { label: 'Пригласить друзей', onclick: () => openHubInvite(hub.id) },
     manager && { label: 'Создать комнату', onclick: () => openRoomCreate('voice', hub.id) },
     manager && { label: 'Создать группу комнат', onclick: () => createRoomGroup(hub) },
+    manager && { label: 'Создать событие', icon: EVENT_ICON, onclick: () => openEventCreate(hub) },
     { label: muted ? 'Включить уведомления' : 'Выключить уведомления', icon: muted ? BELL_OFF : BELL_ON, onclick: () => toggleHubMute(hub) },
     { label: manager ? 'Настройки канала' : 'Участники канала', onclick: () => openHubSettings(hub.id, manager ? 'overview' : 'members') },
     'sep',
@@ -537,7 +541,7 @@ function renderMembers() {
     box.append(el('div', { className: 'members-group', textContent: groupTitle, title: groupTitle }));
     for (const m of g.people.sort(byName)) {
       const hubMember = hub.members.find((x) => x.id === m.id);
-      const name = el('div', { className: 'member-nick ellipsis', textContent: m.displayName });
+      const name = el('div', { className: 'member-nick ellipsis', textContent: m.nickname || m.displayName });
       if (g.role || m.nameColor) name.style.color = g.role?.color || m.nameColor;
       const sub = inVoice.has(m.id) ? 'В голосе'
         : m.id === hub.ownerId ? 'Создатель канала'
@@ -612,7 +616,7 @@ let settingsHubId = null;
 const HUB_MEMBER_TABS = ['members', 'emojis']; // что видно участнику без управления каналом
 let settingsTab = 'overview';
 let hubMemberQuery = '';
-const HUB_TABS = { overview: 'Обзор', roles: 'Роли и права', emojis: 'Смайлики', members: 'Участники', bans: 'Баны' };
+const HUB_TABS = { overview: 'Обзор', events: 'События', roles: 'Роли и права', emojis: 'Смайлики', members: 'Участники', bans: 'Баны' };
 
 function openHubSettings(id, tab = 'overview') {
   if (!hubById(id)) return;
@@ -647,7 +651,7 @@ function renderHubSettings() {
   const body = $('hs-body');
   const focused = document.activeElement?.dataset?.keep;
   const draft = focused && document.activeElement.value;
-  body.replaceChildren(...{ overview: hubOverviewPane, roles: rolesPane, emojis: hubEmojisPane, members: hubMembersPane, bans: hubBansPane }[settingsTab](hub));
+  body.replaceChildren(...{ overview: hubOverviewPane, events: hubEventsPane, roles: rolesPane, emojis: hubEmojisPane, members: hubMembersPane, bans: hubBansPane }[settingsTab](hub));
   if (focused) {
     const input = body.querySelector(`[data-keep="${focused}"]`);
     if (input) {
@@ -765,6 +769,553 @@ $('hub-emoji-input').onchange = (e) => {
   if (file && settingsHubId) addHubEmoji(file);
 };
 
+// ---------- События канала ----------
+
+let eventHubId = null;
+
+/** Все события канала: лежат в комнатах, куда их опубликовали */
+function hubEvents(hub) {
+  return roomsOfHub(hub.id)
+    .flatMap((room) => (room.events || []).map((ev) => ({ ev, room })))
+    .sort((a, b) => a.ev.startsAt - b.ev.startsAt);
+}
+
+function hubEventsPane(hub) {
+  const box = el(
+    'div',
+    { className: 'hub-events' },
+    el('p', {
+      className: 'muted small',
+      textContent:
+        'Событие появится в выбранном чате: участники отметят готовность — «буду», «не смогу» или «готов в другое время».',
+    })
+  );
+  const create = el('button', { className: 'btn primary', type: 'button', textContent: 'Создать событие' });
+  create.onclick = () => openEventCreate(hub);
+  box.append(el('div', { className: 'row' }, create));
+
+  const list = hubEvents(hub);
+  if (!list.length) {
+    box.append(el('p', { className: 'muted small', textContent: 'Пока событий нет' }));
+    return [box];
+  }
+  for (const { ev, room } of list) {
+    const going = (ev.responses || []).filter((r) => r.status === 'yes').length;
+    const row = el(
+      'div',
+      { className: 'hub-event' },
+      el(
+        'div',
+        { className: 'hub-event-main' },
+        el('b', { textContent: ev.title }),
+        el('span', {
+          className: 'muted small',
+          textContent: `${formatDay(ev.startsAt)} · ${formatTime(ev.startsAt)} · #${room.name}`,
+        })
+      ),
+      el('span', { className: 'muted small', textContent: `Будут: ${going}` })
+    );
+    const del = el('button', { className: 'btn small', type: 'button', textContent: 'Удалить' });
+    del.onclick = () => hubAction(Api.del(`/events/${ev.id}`), 'Событие удалено');
+    row.append(del);
+    box.append(row);
+  }
+  return [box];
+}
+
+// Выбранное в окне события: день, время и чат
+let eventDraft = { date: null, time: '00:00', roomId: null, repeat: 'none', remind: 0 };
+const pad2 = (n) => String(n).padStart(2, '0');
+
+const EVENT_REPEATS = [
+  ['none', 'Однократно'],
+  ['daily', 'Каждый день'],
+  ['weekdays', 'По будням'],
+  ['weekly', 'Каждую неделю в этот день'],
+];
+const EVENT_REMIND = [
+  [0, 'Без напоминания'],
+  [5, 'За 5 минут'],
+  [10, 'За 10 минут'],
+  [15, 'За 15 минут'],
+  [30, 'За 30 минут'],
+  [60, 'За час'],
+];
+
+function syncEventPickers() {
+  $('event-date').value = eventDraft.date ? eventDraft.date.toLocaleDateString('ru-RU') : '';
+  $('event-time').value = eventDraft.time;
+  const room = roomById(eventDraft.roomId);
+  $('event-room').textContent = room ? `# ${room.name}` : 'Выберите чат';
+  $('event-repeat').textContent = EVENT_REPEATS.find(([id]) => id === eventDraft.repeat)?.[1] || 'Однократно';
+  $('event-remind').textContent = EVENT_REMIND.find(([id]) => id === eventDraft.remind)?.[1] || 'Без напоминания';
+}
+
+/** Дата, вписанная руками: 12.11.2026, 12.11 или 12.11.26 */
+function parseDateText(text) {
+  const m = String(text).trim().match(/^(\d{1,2})\s*[.\/,:\s-]\s*(\d{1,2})(?:\s*[.\/,:\s-]\s*(\d{2,4}))?$/);
+  if (!m) return null;
+  const day = Number(m[1]);
+  const month = Number(m[2]) - 1;
+  let year = m[3] ? Number(m[3]) : new Date().getFullYear();
+  if (year < 100) year += 2000;
+  const date = new Date(year, month, day);
+  return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day ? date : null;
+}
+
+/** Время, вписанное руками: 21:30, 21.30, 2130 или просто 21 → 21:00 */
+function parseTimeText(text) {
+  const raw = String(text).trim();
+  const m = raw.match(/^(\d{1,2})\s*[:.,\s]\s*(\d{2})$/) || raw.match(/^(\d{1,2})(\d{2})$/);
+  const single = raw.match(/^(\d{1,2})$/);
+  const h = single ? Number(single[1]) : m ? Number(m[1]) : NaN;
+  const min = single ? 0 : m ? Number(m[2]) : NaN;
+  if (!Number.isInteger(h) || !Number.isInteger(min) || h > 23 || min > 59) return null;
+  return `${pad2(h)}:${pad2(min)}`;
+}
+
+// Вписал руками — сразу подхватываем
+$('event-date').onchange = () => {
+  const date = parseDateText($('event-date').value);
+  if (date) eventDraft.date = date;
+  $('event-date').value = eventDraft.date ? eventDraft.date.toLocaleDateString('ru-RU') : '';
+};
+$('event-time').onchange = () => {
+  const time = parseTimeText($('event-time').value);
+  if (time) eventDraft.time = time;
+  $('event-time').value = eventDraft.time;
+};
+
+// Календарь в стиле приложения
+function buildEventCalendar() {
+  const pop = $('event-date-pop');
+  const start = eventDraft.date ? new Date(eventDraft.date) : new Date();
+  let view = new Date(start.getFullYear(), start.getMonth(), 1);
+
+  const draw = () => {
+    const head = el('div', { className: 'cal-head' });
+    const prev = el('button', { type: 'button', className: 'cal-nav', textContent: '‹' });
+    const next = el('button', { type: 'button', className: 'cal-nav', textContent: '›' });
+    const title = el('b', { textContent: view.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }) });
+    head.append(prev, title, next);
+
+    const grid = el('div', { className: 'cal-grid' });
+    for (const w of ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']) grid.append(el('span', { className: 'cal-dow', textContent: w }));
+    const first = new Date(view.getFullYear(), view.getMonth(), 1);
+    const shift = (first.getDay() + 6) % 7;
+    const days = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+    for (let i = 0; i < shift; i++) grid.append(el('span', { className: 'cal-empty' }));
+    for (let d = 1; d <= days; d++) {
+      const date = new Date(view.getFullYear(), view.getMonth(), d);
+      const cell = el('button', { type: 'button', className: 'cal-day', textContent: String(d) });
+      if (eventDraft.date && date.toDateString() === eventDraft.date.toDateString()) cell.classList.add('selected');
+      if (date.toDateString() === new Date().toDateString()) cell.classList.add('today');
+      cell.onclick = () => {
+        eventDraft.date = date;
+        syncEventPickers();
+        pop.classList.add('hidden');
+      };
+      grid.append(cell);
+    }
+
+    const foot = el('div', { className: 'cal-foot' });
+    const today = el('button', { type: 'button', className: 'btn small', textContent: 'Сегодня' });
+    today.onclick = () => {
+      eventDraft.date = new Date();
+      syncEventPickers();
+      pop.classList.add('hidden');
+    };
+    foot.append(today);
+
+    prev.onclick = () => {
+      view = new Date(view.getFullYear(), view.getMonth() - 1, 1);
+      draw();
+    };
+    next.onclick = () => {
+      view = new Date(view.getFullYear(), view.getMonth() + 1, 1);
+      draw();
+    };
+    pop.replaceChildren(head, grid, foot);
+  };
+  draw();
+}
+
+// Время: часы и минуты сеткой, подтверждение — «ОК»
+/** Колёса-барабаны: часы и минуты прокручиваются и «прилипают» к выбранному значению */
+function buildTimeDrum(container, time, onChange) {
+  let [h, m] = String(time).split(':').map(Number);
+  if (!Number.isFinite(h)) h = 0;
+  if (!Number.isFinite(m)) m = 0;
+
+  const wrap = el('div', { className: 'drum' });
+  const columns = [];
+
+  const makeColumn = (values, getValue, setValue) => {
+    const col = el('div', { className: 'drum-col' });
+    for (const v of values) {
+      const b = el('button', { type: 'button', className: 'time-cell', textContent: pad2(v) });
+      b.dataset.value = v;
+      b.onclick = () => {
+        setValue(v);
+        centerColumn(col, v);
+        onChange(h, m);
+      };
+      col.append(b);
+    }
+    columns.push({ col, getValue });
+    return col;
+  };
+
+  const centerColumn = (col, value) => {
+    const cells = [...col.children];
+    cells.forEach((c) => c.classList.toggle('selected', Number(c.dataset.value) === value));
+    const cell = cells.find((c) => Number(c.dataset.value) === value);
+    if (cell) col.scrollTop = cell.offsetTop - col.clientHeight / 2 + cell.offsetHeight / 2;
+  };
+
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const mins = Array.from({ length: 12 }, (_, i) => i * 5);
+  wrap.append(
+    makeColumn(hours, () => h, (v) => (h = v)),
+    makeColumn(mins, () => m, (v) => (m = v))
+  );
+  container.replaceChildren(wrap);
+
+  // Прокрутка тоже выбирает: значение, ближайшее к центру, становится выбранным
+  for (const [index, { col, getValue }] of columns.entries()) {
+    centerColumn(col, getValue());
+    let lock = true;
+    let timer = null;
+    setTimeout(() => (lock = false), 320);
+    col.addEventListener('scroll', () => {
+      if (lock) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const center = col.scrollTop + col.clientHeight / 2;
+        let best = col.children[0];
+        for (const c of col.children) {
+          if (Math.abs(c.offsetTop + c.offsetHeight / 2 - center) < Math.abs(best.offsetTop + best.offsetHeight / 2 - center)) best = c;
+        }
+        const value = Number(best.dataset.value);
+        [...col.children].forEach((c) => c.classList.toggle('selected', c === best));
+        if (index === 0) h = value;
+        else m = value;
+        onChange(h, m);
+      }, 150);
+    });
+  }
+}
+function buildEventTimePicker() {
+  const pop = $('event-time-pop');
+  const body = el('div', { className: 'time-drum-body' });
+  buildTimeDrum(body, eventDraft.time, (h, m) => {
+    eventDraft.time = `${pad2(h)}:${pad2(m)}`;
+    syncEventPickers();
+  });
+
+  const foot = el('div', { className: 'time-foot' });
+  const ok = el('button', { type: 'button', className: 'btn small primary', textContent: 'ОК' });
+  ok.onclick = () => pop.classList.add('hidden');
+  foot.append(ok);
+  pop.replaceChildren(body, foot);
+}
+
+// Список чатов канала
+// Список вариантов: повтор и напоминание
+function buildEventOptionPicker(popId, options, current, onPick) {
+  const pop = $(popId);
+  pop.replaceChildren(
+    ...options.map(([value, label]) => {
+      const b = el('button', {
+        type: 'button',
+        className: `picker-option${value === current ? ' selected' : ''}`,
+        textContent: label,
+      });
+      b.onclick = () => {
+        onPick(value);
+        syncEventPickers();
+        pop.classList.add('hidden');
+      };
+      return b;
+    })
+  );
+}
+
+// Список чатов канала
+function buildEventRoomPicker(rooms) {
+  const pop = $('event-room-pop');
+  pop.replaceChildren(
+    ...rooms.map((room) => {
+      const b = el('button', {
+        type: 'button',
+        className: `picker-option${room.id === eventDraft.roomId ? ' selected' : ''}`,
+        textContent: `# ${room.name}`,
+      });
+      b.onclick = () => {
+        eventDraft.roomId = room.id;
+        syncEventPickers();
+        pop.classList.add('hidden');
+      };
+      return b;
+    })
+  );
+}
+
+let editingEventId = null;
+function openEventCreate(hub, editEvent = null) {
+  eventHubId = hub.id;
+  $('event-error').textContent = '';
+  editingEventId = editEvent?.id ?? null;
+
+  // По умолчанию — сегодня, через час; при правке — как в событии
+  const soon = new Date(Date.now() + 60 * 60_000);
+  soon.setMinutes(0, 0, 0);
+  const base = editEvent ? new Date(editEvent.startsAt) : soon;
+  const rooms = roomsOfHub(hub.id);
+  const current = rooms.find((r) => r.id === state.selectedRoomId) || rooms.find((r) => r.kind === 'text') || rooms[0];
+  $('event-title').value = editEvent?.title ?? '';
+  $('event-create-title').textContent = editEvent ? 'Изменить событие' : 'Новое событие';
+  eventDraft = {
+    date: base,
+    time: `${pad2(base.getHours())}:${pad2(base.getMinutes())}`,
+    roomId: editEvent?.roomId ?? current?.id ?? null,
+    repeat: editEvent?.repeat ?? 'none',
+    remind: editEvent?.remind ?? 0,
+  };
+  syncEventPickers();
+  for (const pop of document.querySelectorAll('#event-create .picker-pop')) pop.classList.add('hidden');
+  const people = hub.members.filter((m) => m.id !== state.me.id);
+  const box = $('event-invitees');
+  const list = box.querySelector('.multi-list');
+  const toggle = box.querySelector('.multi-toggle');
+  list.replaceChildren(
+    ...people.map((m) =>
+      el(
+        'label',
+        { className: 'multi-option' },
+        Object.assign(document.createElement('input'), { type: 'checkbox', value: m.id }),
+        el('span', { textContent: m.nickname || m.displayName })
+      )
+    )
+  );
+  const updateToggle = () => {
+    const chosen = list.querySelectorAll('input:checked').length;
+    toggle.textContent = chosen ? `Выбрано: ${chosen}` : 'Никто не выбран';
+    toggle.classList.toggle('has-value', chosen > 0);
+  };
+  list.onchange = updateToggle;
+  toggle.onclick = (e) => {
+    e.stopPropagation();
+    list.classList.toggle('hidden');
+    toggle.classList.toggle('open', !list.classList.contains('hidden'));
+  };
+  list.classList.add('hidden');
+  updateToggle();
+
+  $('event-create').classList.remove('hidden');
+  setTimeout(() => $('event-title').focus(), 0);
+}
+
+const closeEventCreate = () => {
+  $('event-create').classList.add('hidden');
+  eventHubId = null;
+};
+
+// Выпадающие списки в стиле приложения: открываем нужный, остальные прячем
+function togglePicker(toggleId, popId, build) {
+  const pop = $(popId);
+  const opening = pop.classList.contains('hidden');
+  for (const other of document.querySelectorAll('#event-create .picker-pop')) other.classList.add('hidden');
+  if (!opening) return;
+  build();
+  pop.classList.remove('hidden', 'up');
+  $(toggleId).classList.add('open');
+  // Не влезает вниз — раскрываем вверх
+  if (pop.getBoundingClientRect().bottom > innerHeight - 8) pop.classList.add('up');
+}
+
+$('event-date-open').onclick = (e) => {
+  e.stopPropagation();
+  togglePicker('event-date-open', 'event-date-pop', buildEventCalendar);
+};
+$('event-time-open').onclick = (e) => {
+  e.stopPropagation();
+  togglePicker('event-time-open', 'event-time-pop', buildEventTimePicker);
+};
+$('event-room').onclick = (e) => {
+  e.stopPropagation();
+  togglePicker('event-room', 'event-room-pop', () => buildEventRoomPicker(roomsOfHub(eventHubId)));
+};
+$('event-repeat').onclick = (e) => {
+  e.stopPropagation();
+  togglePicker('event-repeat', 'event-repeat-pop', () =>
+    buildEventOptionPicker('event-repeat-pop', EVENT_REPEATS, eventDraft.repeat, (v) => (eventDraft.repeat = v))
+  );
+};
+$('event-remind').onclick = (e) => {
+  e.stopPropagation();
+  togglePicker('event-remind', 'event-remind-pop', () =>
+    buildEventOptionPicker('event-remind-pop', EVENT_REMIND, eventDraft.remind, (v) => (eventDraft.remind = v))
+  );
+};
+
+$('event-cancel').onclick = closeEventCreate;
+$('event-create').onclick = (e) => {
+  if (e.target === $('event-create')) closeEventCreate();
+};
+
+$('event-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const hub = hubById(eventHubId);
+  if (!hub) return;
+  const title = $('event-title').value.trim();
+  if (!title) return ($('event-error').textContent = 'Название события обязательно');
+  // Берём то, что вписано руками, иначе — выбранное в календаре
+  const date = parseDateText($('event-date').value) || eventDraft.date;
+  const time = parseTimeText($('event-time').value) || eventDraft.time;
+  if (!date) return ($('event-error').textContent = 'День: например, 12.11.2026');
+  if (!time) return ($('event-error').textContent = 'Время: например, 21:30');
+  if (!eventDraft.roomId) return ($('event-error').textContent = 'Выберите чат для публикации');
+  const [hours, minutes] = time.split(':').map(Number);
+  const startsAt = new Date(date);
+  startsAt.setHours(hours, minutes, 0, 0);
+  if (!Number.isFinite(startsAt.getTime())) return ($('event-error').textContent = 'Не получилось разобрать дату');
+
+  const roomId = eventDraft.roomId;
+  const invitees = [...$('event-invitees').querySelectorAll('input:checked')].map((i) => Number(i.value));
+  try {
+    // Правка существующего события: меняем на месте, участники и ответы остаются
+    if (editingEventId) {
+      applyRoomUpdate(
+        await Api.patch(`/events/${editingEventId}`, {
+          title,
+          startsAt: startsAt.getTime(),
+          repeat: eventDraft.repeat,
+          remind: eventDraft.remind,
+        })
+      );
+      closeEventCreate();
+      toast('Событие изменено');
+      return;
+    }
+    const room = await Api.post(`/rooms/${roomId}/events`, {
+      title,
+      startsAt: startsAt.getTime(),
+      invitees,
+      repeat: eventDraft.repeat,
+      remind: eventDraft.remind,
+    });
+    // Комната пришла уже с событием — обновляем её у себя, иначе карточка не найдёт событие
+    applyRoomUpdate(room);
+    // Публикуем событие сообщением в выбранный чат: внутри конверта только id
+    const event =
+      (room.createdEventId && (room.events || []).find((x) => x.id === room.createdEventId)) ||
+      [...(room.events || [])].reverse().find((x) => x.createdBy === state.me.id && x.title === title);
+    if (event) {
+      const { body, plain } = await encryptOutgoing(roomConvOf(roomId), { text: `Событие: ${title}`, eventId: event.id });
+      addRoomMessage({ ...(await Api.post(`/rooms/${roomId}/messages`, body)), plain });
+    }
+    closeEventCreate();
+    renderHubSettings();
+    toast('Событие создано');
+    if (state.selectedRoomId !== roomId) selectRoom(roomId);
+  } catch (err) {
+    $('event-error').textContent = err.message;
+  }
+};
+
+// ---------- Активные события в шапке комнаты ----------
+const activeRoomEvents = (room) => (room?.events || []).filter((e) => e.active !== false && !e.completed);
+let eventViewId = null;
+
+function renderRoomEventsBadge() {
+  const btn = $('room-events-btn');
+  if (!btn) return;
+  const room = roomById(state.selectedRoomId);
+  const list = activeRoomEvents(room);
+  btn.classList.toggle('hidden', !list.length);
+  $('room-events-count').textContent = String(list.length);
+  $('room-events-menu').classList.add('hidden');
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    const menu = $('room-events-menu');
+    if (!menu.classList.contains('hidden')) return menu.classList.add('hidden');
+    menu.replaceChildren(
+      ...list.map((ev) => {
+        const item = el(
+          'button',
+          { type: 'button', className: 'room-event-item' },
+          el('b', { textContent: ev.title }),
+          el('span', { className: 'muted small', textContent: `${formatDay(ev.startsAt)} · ${formatTime(ev.startsAt)}` })
+        );
+        item.onclick = () => {
+          menu.classList.add('hidden');
+          openEventView(ev.id);
+        };
+        return item;
+      })
+    );
+    menu.classList.remove('hidden');
+  };
+}
+
+function openEventView(eventId) {
+  const room = roomById(state.selectedRoomId);
+  const ev = (room?.events || []).find((x) => x.id === eventId);
+  if (!ev) return;
+  eventViewId = eventId;
+  $('ev-title').textContent = ev.title;
+  $('ev-when').textContent = `${formatDay(ev.startsAt)} · ${formatTime(ev.startsAt)}`;
+  const repeat = { daily: 'Каждый день', weekdays: 'По будням', weekly: 'Каждую неделю' }[ev.repeat] || 'Однократно';
+  $('ev-repeat').textContent = `${repeat}${ev.remind ? ` · напомним за ${ev.remind} мин` : ''}`;
+  const answers = (ev.responses || []).filter((r) => r.status !== 'invited');
+  const people = $('ev-people');
+  people.replaceChildren(
+    ...answers.map((r) => {
+      const member = room.members.find((m) => m.id === r.userId);
+      const name = member?.nickname || member?.displayName || userById(r.userId)?.displayName || '?';
+      const label =
+        { yes: 'буду', no: 'не смогу', maybe: `готов в ${r.readyAt ? formatTime(r.readyAt) : 'другое время'}` }[r.status] || '';
+      return el('span', { className: `event-chip ${r.status}`, textContent: `${name} - ${label}` });
+    })
+  );
+  if (!answers.length) people.replaceChildren(el('span', { className: 'muted small', textContent: 'Пока никто не ответил' }));
+  const canFinish = ev.createdBy === state.me.id || canManageHub(hubById(room.hubId));
+  $('ev-finish').classList.toggle('hidden', !canFinish || ev.completed);
+  $('ev-error').textContent = '';
+  $('event-view').classList.remove('hidden');
+}
+
+$('ev-edit').onclick = () => {
+  const room = roomById(state.selectedRoomId);
+  const ev = (room?.events || []).find((x) => x.id === eventViewId);
+  if (!ev) return;
+  $('event-view').classList.add('hidden');
+  openEventCreate(hubById(room.hubId), ev);
+};
+
+$('ev-close').onclick = () => $('event-view').classList.add('hidden');
+$('event-view').onclick = (e) => {
+  if (e.target === $('event-view')) $('event-view').classList.add('hidden');
+};
+$('ev-finish').onclick = async () => {
+  if (!eventViewId) return;
+  try {
+    const room = await Api.post(`/events/${eventViewId}/finish`, {});
+    applyRoomUpdate(room);
+    $('event-view').classList.add('hidden');
+    toast('Событие завершено');
+  } catch (err) {
+    $('ev-error').textContent = err.message;
+  }
+};
+
+// Список событий закрывается щелчком мимо
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.room-events-wrap')) return;
+  $('room-events-menu')?.classList.add('hidden');
+});
+
 function hubMembersPane(hub) {
   const out = [];
   const search = el('input', { className: 'friend-search', placeholder: 'Поиск участников', value: hubMemberQuery });
@@ -861,6 +1412,71 @@ $('hub-icon-input').onchange = async (e) => {
   } catch (err) {
     $('hs-error').textContent = err.message;
   }
+};
+
+// ---------- Имя участника в канале ----------
+
+let nickTarget = null; // { hubId, userId }
+
+/** Своё имя человека в текущем канале (или null, если его там не переименовывали) */
+function channelNickOf(userId) {
+  const room = state.selectedRoomId && roomById(state.selectedRoomId);
+  const member = room?.members?.find((m) => m.id === userId) || currentHub()?.members?.find((m) => m.id === userId);
+  return member?.nickname || null;
+}
+
+function openNicknameDialog(hub, user) {
+  const member = hub.members.find((m) => m.id === user.id);
+  nickTarget = { hubId: hub.id, userId: user.id };
+  $('nick-real').textContent = user.displayName || user.username;
+  $('nick-hub').textContent = hub.name;
+  $('nick-input').value = member?.nickname || user.displayName || user.username || '';
+  $('nick-error').textContent = '';
+  $('nick-modal').classList.remove('hidden');
+  setTimeout(() => {
+    $('nick-input').focus();
+    $('nick-input').select();
+  }, 0);
+}
+
+const closeNicknameDialog = () => {
+  $('nick-modal').classList.add('hidden');
+  nickTarget = null;
+};
+
+$('nick-form').onsubmit = async (e) => {
+  e.preventDefault();
+  if (!nickTarget) return;
+  const name = $('nick-input').value.trim();
+  if (!name) {
+    $('nick-error').textContent = 'Имя не может быть пустым';
+    return;
+  }
+  try {
+    applyHub(await Api.put(`/hubs/${nickTarget.hubId}/members/${nickTarget.userId}/nickname`, { name }));
+    closeNicknameDialog();
+    toast('Имя в канале изменено');
+    renderMembers();
+  } catch (err) {
+    $('nick-error').textContent = err.message;
+  }
+};
+
+$('nick-reset').onclick = async () => {
+  if (!nickTarget) return;
+  try {
+    applyHub(await Api.del(`/hubs/${nickTarget.hubId}/members/${nickTarget.userId}/nickname`));
+    closeNicknameDialog();
+    toast('Вернули настоящее имя');
+    renderMembers();
+  } catch (err) {
+    $('nick-error').textContent = err.message;
+  }
+};
+
+$('nick-cancel').onclick = closeNicknameDialog;
+$('nick-modal').onclick = (e) => {
+  if (e.target === $('nick-modal')) closeNicknameDialog();
 };
 
 // ---------- Пригласить друзей в канал ----------
@@ -989,3 +1605,17 @@ function handleHubEvent(msg) {
 }
 
 
+
+// Выпадающие списки (участники, календарь, время, чат) закрываются щелчком мимо
+document.addEventListener('click', (e) => {
+  // Кнопку могли перерисовать прямо во время клика — это не «щелчок мимо»
+  if (!e.target.isConnected) return;
+  if (!e.target.closest('.multi-select')) {
+    for (const list of document.querySelectorAll('.multi-select .multi-list')) list.classList.add('hidden');
+    for (const toggle of document.querySelectorAll('.multi-toggle')) toggle.classList.remove('open');
+  }
+  if (!e.target.closest('.picker')) {
+    for (const pop of document.querySelectorAll('.picker-pop')) pop.classList.add('hidden');
+    for (const toggle of document.querySelectorAll('.picker-toggle')) toggle.classList.remove('open');
+  }
+});

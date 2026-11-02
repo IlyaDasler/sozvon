@@ -1,0 +1,85 @@
+/* Выпадающие календарь, время и чат в стиле приложения */
+.picker { position: relative; }
+.picker-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg-2); color: var(--text); font: inherit; cursor: pointer; text-align: left;
+}
+.picker-toggle::after { content: '\25BE'; opacity: .6; }
+.picker-toggle:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.picker-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; min-width: 100%;
+  padding: 10px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg-2); box-shadow: 0 16px 36px rgba(0, 0, 0, .5);
+}
+.picker-pop.hidden { display: none; }
+
+/* Календарь */
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.cal-head b { font-size: 13px; text-transform: capitalize; }
+.cal-nav {
+  width: 26px; height: 26px; padding: 0; border: 0; border-radius: 6px;
+  background: var(--bg-3); color: var(--text); font-size: 15px; cursor: pointer;
+}
+.cal-nav:hover { background: var(--bg-4); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 30px); gap: 2px; }
+.cal-dow { font-size: 10px; color: var(--muted); text-align: center; text-transform: uppercase; padding-bottom: 4px; }
+.cal-empty { height: 28px; }
+.cal-day {
+  height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent;
+  color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.cal-day:hover { background: var(--bg-3); }
+.cal-day.today { box-shadow: inset 0 0 0 1px var(--accent); }
+.cal-day.selected { background: var(--accent); color: #fff; }
+.cal-foot { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+/* Время: две колонки с прокруткой */
+.time-cols { display: flex; gap: 6px; }
+.time-col {
+  display: flex; flex-direction: column; gap: 2px; max-height: 168px; overflow-y: auto;
+  scrollbar-width: thin; width: 52px;
+}
+.time-cell {
+  padding: 4px 0; border: 0; border-radius: 6px; background: transparent;
+  color: var(--text); font: inherit; font-size: 13px; cursor: pointer; text-align: center;
+}
+.time-cell:hover { background: var(--bg-3); }
+.time-cell.selected { background: var(--accent); color: #fff; }
+
+/* Список чатов */
+.picker-option {
+  display: block; width: 100%; padding: 7px 8px; border: 0; border-radius: 6px;
+  background: transparent; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; text-align: left;
+}
+.picker-option:hover { background: var(--bg-3); }
+.picker-option.selected { background: var(--accent); color: #fff; }
+
+/* Календарь выходит за карточку окна, не обрезаем его */
+#event-create .modal-card { overflow: visible; }
+
+.picker-pop.up { top: auto; bottom: calc(100% + 6px); }
+
+/* Поля даты и времени: можно печатать, рядом кнопка выбора */
+.picker-row { display: flex; align-items: stretch; gap: 6px; }
+.picker-input {
+  flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg-2); color: var(--text); font: inherit;
+}
+.picker-input:focus { outline: none; border-color: var(--accent); }
+.picker-open {
+  flex: none; width: 32px; padding: 0; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg-2); color: var(--text); font: inherit; cursor: pointer;
+}
+.picker-open:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+
+/* Время: сетка часов и минут без прокрутки */
+.time-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 6px 0 4px; }
+.time-title:first-child { margin-top: 0; }
+.time-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.time-grid .time-cell {
+  padding: 6px 0; border-radius: 6px; background: transparent; border: 0;
+  color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.time-grid .time-cell:hover { background: var(--bg-3); }
+.time-grid .time-cell.selected { background: var(--accent); color: #fff; }

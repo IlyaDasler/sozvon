@@ -1,4 +1,4 @@
-// Комнаты: голосовые (общий голосовой канал с видео и демонстрацией экрана + чат) и текстовые (только чат).
+﻿// Комнаты: голосовые (общий голосовой канал с видео и демонстрацией экрана + чат) и текстовые (только чат).
 // Каждая комната — в канале (hubs.js); в боковой панели видны комнаты открытого канала
 
 const ROOM_ERRORS = {
@@ -398,7 +398,12 @@ function roomItem(room) {
 function applyRoomUpdate(room) {
   state.rooms.set(room.id, room);
   renderRooms();
-  if (state.selectedRoomId === room.id) renderRoomView();
+  if (state.selectedRoomId === room.id) {
+    renderRoomView();
+    // Карточки событий живут в сообщениях — после смены готовности их нужно перерисовать
+    renderRoomMessages();
+    refreshEventCards();
+  }
   if (state.room?.roomId === room.id) applyRoomPerms();
   if (manageRoomId === room.id) renderRoomManage();
   if (inviteRoomId === room.id && !$('room-invite').classList.contains('hidden')) renderRoomInvite();
@@ -484,6 +489,7 @@ function renderRoomView() {
   $('room-title').textContent = room.name;
   const count = room.members.length;
   $('room-sub').textContent = `${room.kind === 'voice' ? 'Голосовая' : 'Текстовая'} комната · ${count} ${plural(count, 'участник', 'участника', 'участников')}`;
+  renderRoomEventsBadge();
 
   const isVoice = room.kind === 'voice';
   const here = state.room?.roomId === room.id;
@@ -573,7 +579,19 @@ function showNewRoomMessage(m) {
     const who = userById(m.fromId)?.displayName || '?';
     // Упомянули — так и говорим в заголовке
     const title = mentionsMe(m) ? `${who} упоминает вас в «${room?.name || 'комнате'}»` : room?.name || 'Комната';
-    notify(title, `${who}: ${messageSummary(m)}`, { kind: 'room', open: { room: m.roomId }, hub: room?.hubId });
+    // Сообщение-событие отмечаем отдельно: у него своя иконка и подсветка
+    const eventTitle = m.plain?.eventId
+      ? roomById(m.roomId)?.events?.find((e) => e.id === m.plain.eventId)?.title || 'новое событие'
+      : null;
+    if (eventTitle) {
+      notify(`Событие: ${eventTitle}`, `${who} в «${room?.name || 'комнате'}»`, {
+        kind: 'event',
+        open: { room: m.roomId },
+        hub: room?.hubId,
+      });
+    } else {
+      notify(title, `${who}: ${messageSummary(m)}`, { kind: 'room', open: { room: m.roomId }, hub: room?.hubId });
+    }
   }
 }
 
@@ -581,6 +599,17 @@ function showNewRoomMessage(m) {
 
 function handleRoomEvent(msg) {
   switch (msg.type) {
+    // Меня позвали на событие канала — отметить в колокольчике
+    case 'event:invite': {
+      const when = `${formatDay(msg.startsAt)} · ${formatTime(msg.startsAt)}`;
+      const who = msg.from?.displayName || 'Кто-то';
+      notify(msg.title, `${who} зовёт: ${when} · #${msg.roomName}`, {
+        kind: 'event',
+        open: { room: msg.roomId },
+        hub: msg.hubId,
+      });
+      break;
+    }
     case 'room:updated': {
       const room = msg.room;
       const old = roomById(room.id);

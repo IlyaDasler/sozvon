@@ -644,9 +644,11 @@ function qualityText(q) {
 // Звонок целиком: свои устройства плюс соединения со всеми собеседниками
 class MediaSession {
   // allowed(id) -> { speak, video }: что собеседнику разрешено в комнате; без права его не слышно и не видно
-  constructor({ settings, sendSignal, onChange, onSpeaking, onPeerState, onStats, volumeOf, allowed }) {
+  constructor({ settings, sendSignal, onChange, onSpeaking, onPeerState, onStats, volumeOf, screenVolumeOf, allowed }) {
     this.settings = settings;
     this.volumeOf = volumeOf;
+    // Громкость звука трансляции — своя, чтобы игру можно было прикрутить, не трогая голос
+    this.screenVolumeOf = screenVolumeOf;
     this.allowed = allowed;
     this.sendSignal = sendSignal;
     this.onChange = onChange;
@@ -658,6 +660,7 @@ class MediaSession {
     this.iceServers = [];
     this.deafened = false;
     this.volumes = {};
+    this.screenVolumes = {};
     this.sinkId = settings.speakerId || '';
     this.meter = null;
     this.closed = false;
@@ -814,10 +817,12 @@ class MediaSession {
   }
 
   applyPeerAudio(peer) {
-    const volume = this.volumes[peer.id] ?? this.volumeOf?.(peer.id) ?? 1;
+    const voice = this.volumes[peer.id] ?? this.volumeOf?.(peer.id) ?? 1;
+    const screen = this.screenVolumes[peer.id] ?? this.screenVolumeOf?.(peer.id) ?? 1;
     const allowed = this.allowed?.(peer.id) ?? { speak: true, video: true };
     for (const [slot, el] of Object.entries(peer.audio)) {
-      el.volume = volume;
+      // Звук экрана — отдельная громкость: игру можно прикрутить, не трогая голос
+      el.volume = slot === 'screenAudio' ? screen : voice;
       el.muted = this.deafened || !(slot === 'mic' ? allowed.speak : allowed.video) || (slot === 'screenAudio' && !this.watching.has(peer.id));
       if (el.setSinkId && el.sinkId !== this.sinkId) el.setSinkId(this.sinkId).catch(() => {});
     }
@@ -835,6 +840,13 @@ class MediaSession {
 
   setVolume(id, volume) {
     this.volumes[id] = volume;
+    const peer = this.peers.get(id);
+    if (peer) this.applyPeerAudio(peer);
+  }
+
+  /** Громкость звука трансляции этого человека — отдельно от его голоса */
+  setScreenVolume(id, volume) {
+    this.screenVolumes[id] = volume;
     const peer = this.peers.get(id);
     if (peer) this.applyPeerAudio(peer);
   }
