@@ -1,18 +1,18 @@
-// РЎРѕРґРµСЂР¶РёРјРѕРµ СЃРѕРѕР±С‰РµРЅРёСЏ: С‚РµРєСЃС‚ СЃ СЂР°Р·РјРµС‚РєРѕР№, РІР»РѕР¶РµРЅРёСЏ (РєР°СЂС‚РёРЅРєРё, РІРёРґРµРѕ, Р·РІСѓРє, С„Р°Р№Р»С‹) Рё РїСЂРµРІСЊСЋ СЃСЃС‹Р»РєРё.
-// РћР±С‰РµРµ РґР»СЏ С‡Р°С‚Р° СЃ РґСЂСѓРіРѕРј Рё РєРѕРјРЅР°С‚С‹.
+﻿// Содержимое сообщения: текст с разметкой, вложения (картинки, видео, звук, файлы) и превью ссылки.
+// Общее для чата с другом и комнаты.
 
-// РЎРѕРѕР±С‰РµРЅРёРµ С‚РѕР»СЊРєРѕ РёР· СЃРјР°Р№Р»РёРєРѕРІ (РґРѕ С‚СЂС‘С…) РїРѕРєР°Р·С‹РІР°РµС‚СЃСЏ РєСЂСѓРїРЅРѕ
-const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}(?:вЂЌ\p{Extended_Pictographic}|[пёЏ\u{1f3fb}-\u{1f3ff}])*\s*){1,3}$/u;
+// Сообщение только из смайликов (до трёх) показывается крупно
+const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}(?:‍\p{Extended_Pictographic}|[️\u{1f3fb}-\u{1f3ff}])*\s*){1,3}$/u;
 
 const fileUrl = (a) => `${Api.base}${a.url}`;
 
-/** РђРґСЂРµСЃ С„Р°Р№Р»Р° РІ СЌР»РµРјРµРЅС‚: РѕР±С‹С‡РЅС‹Р№ вЂ” СЃСЂР°Р·Сѓ, Р·Р°С€РёС„СЂРѕРІР°РЅРЅС‹Р№ вЂ” РєРѕРіРґР° СЂР°СЃС€РёС„СЂСѓРµС‚СЃСЏ */
+/** Адрес файла в элемент: обычный — сразу, зашифрованный — когда расшифруется */
 function setFileSrc(el, prop, a) {
   if (!a.key) return void (el[prop] = fileUrl(a));
   decryptedFileUrl(a).then((url) => (el[prop] = url), () => el.classList.add('file-broken'));
 }
 
-/** Р§С‚Рѕ РїРѕРєР°Р·С‹РІР°С‚СЊ: Сѓ Р·Р°С€РёС„СЂРѕРІР°РЅРЅРѕРіРѕ СЃРѕРѕР±С‰РµРЅРёСЏ вЂ” СЂР°СЃС€РёС„СЂРѕРІР°РЅРЅС‹Рµ С‚РµРєСЃС‚, С„Р°Р№Р»С‹ (СЃ Р°РґСЂРµСЃР°РјРё СЃ СЃРµСЂРІРµСЂР°) Рё РїСЂРµРІСЊСЋ */
+/** Что показывать: у зашифрованного сообщения — расшифрованные текст, файлы (с адресами с сервера) и превью */
 function messageView(m) {
   if (!m.enc) return m;
   if (!m.plain) return { ...m, text: '', attachments: [], preview: null };
@@ -21,29 +21,29 @@ function messageView(m) {
   return { ...m, text: m.plain.text || '', attachments, preview: m.plain.preview || null };
 }
 
-// РџРѕС‡РµРјСѓ Р·Р°С€РёС„СЂРѕРІР°РЅРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ РЅРµ РїРѕРєР°Р·Р°С‚СЊ
+// Почему зашифрованное сообщение не показать
 const LOCKED_REASONS = {
-  'no-identity': 'рџ”’ РќРµ РїСЂРѕС‡РёС‚Р°С‚СЊ РЅР° СЌС‚РѕРј СѓСЃС‚СЂРѕР№СЃС‚РІРµ вЂ” РїРµСЂРµРЅРµСЃРёС‚Рµ СЃСЋРґР° РєР»СЋС‡ С€РёС„СЂРѕРІР°РЅРёСЏ (РќР°СЃС‚СЂРѕР№РєРё в†’ РђРєРєР°СѓРЅС‚)',
-  'no-key': 'рџ”’ РќРµС‚ РєР»СЋС‡Р° Рє СЌС‚РѕРјСѓ СЃРѕРѕР±С‰РµРЅРёСЋ вЂ” РµРіРѕ РµС‰С‘ РЅРµ РїРµСЂРµРґР°Р»Рё СЌС‚РѕРјСѓ СѓСЃС‚СЂРѕР№СЃС‚РІСѓ',
-  broken: 'рџ”’ РЎРѕРѕР±С‰РµРЅРёРµ РїРѕРІСЂРµР¶РґРµРЅРѕ вЂ” СЂР°СЃС€РёС„СЂРѕРІР°С‚СЊ РЅРµ РїРѕР»СѓС‡РёР»РѕСЃСЊ',
+  'no-identity': '🔒 Не прочитать на этом устройстве — перенесите сюда ключ шифрования (Настройки → Аккаунт)',
+  'no-key': '🔒 Нет ключа к этому сообщению — его ещё не передали этому устройству',
+  broken: '🔒 Сообщение повреждено — расшифровать не получилось',
 };
 
-/** РљРѕСЂРѕС‚РєРѕ Рѕ СЃРѕРѕР±С‰РµРЅРёРё вЂ” РґР»СЏ СѓРІРµРґРѕРјР»РµРЅРёР№ */
+/** Коротко о сообщении — для уведомлений */
 function messageSummary(m) {
-  if (m.enc && !m.plain) return 'рџ”’ Р—Р°С€РёС„СЂРѕРІР°РЅРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ';
+  if (m.enc && !m.plain) return '🔒 Зашифрованное сообщение';
   m = messageView(m);
   if (m.text) return m.text;
   const n = m.attachments?.length || 0;
   const kinds = new Set((m.attachments || []).map((a) => a.kind));
-  if (kinds.size === 1 && kinds.has('image')) return n > 1 ? `рџ–ј ${n} РєР°СЂС‚РёРЅРєРё` : 'рџ–ј РљР°СЂС‚РёРЅРєР°';
-  if (kinds.size === 1 && kinds.has('video')) return 'рџЋ¬ Р’РёРґРµРѕ';
-  if (kinds.size === 1 && kinds.has('audio')) return 'рџЋµ РђСѓРґРёРѕ';
-  return n > 1 ? `рџ“Ћ ${n} ${plural(n, 'С„Р°Р№Р»', 'С„Р°Р№Р»Р°', 'С„Р°Р№Р»РѕРІ')}` : `рџ“Ћ ${m.attachments?.[0]?.name || 'Р¤Р°Р№Р»'}`;
+  if (kinds.size === 1 && kinds.has('image')) return n > 1 ? `🖼 ${n} картинки` : '🖼 Картинка';
+  if (kinds.size === 1 && kinds.has('video')) return '🎬 Видео';
+  if (kinds.size === 1 && kinds.has('audio')) return '🎵 Аудио';
+  return n > 1 ? `📎 ${n} ${plural(n, 'файл', 'файла', 'файлов')}` : `📎 ${m.attachments?.[0]?.name || 'Файл'}`;
 }
 
-const HUB_EMOJI_RE = /:([a-zР°-СЏС‘0-9_]{2,24}):/gi;
+const HUB_EMOJI_RE = /:([a-zа-яё0-9_]{2,24}):/gi;
 
-/** :РёРјСЏ: РІ С‚РµРєСЃС‚Рµ СЃРѕРѕР±С‰РµРЅРёСЏ в†’ РєР°СЂС‚РёРЅРєР° СЃРјР°Р№Р»РёРєР° РєР°РЅР°Р»Р°; РІ РєРѕРґРµ Рё СЃСЃС‹Р»РєР°С… С‚РµРєСЃС‚ РѕСЃС‚Р°С‘С‚СЃСЏ РєР°Рє РµСЃС‚СЊ */
+/** :имя: в тексте сообщения → картинка смайлика канала; в коде и ссылках текст остаётся как есть */
 function showHubEmojis(root, emojis) {
   if (!emojis?.length) return;
   const known = new Map(emojis.map((e) => [e.name, e]));
@@ -78,17 +78,17 @@ function messageContent(m) {
   if (m.enc && !m.plain) {
     const locked = document.createElement('div');
     locked.className = 'msg-locked';
-    locked.textContent = LOCKED_REASONS[m.locked] || 'Р Р°СЃС€РёС„СЂРѕРІРєР°вЂ¦';
+    locked.textContent = LOCKED_REASONS[m.locked] || 'Расшифровка…';
     box.append(locked);
     return box;
   }
   m = messageView(m);
-  // РЎРѕРѕР±С‰РµРЅРёРµ-СЃРѕР±С‹С‚РёРµ: РїРѕРєР°Р·С‹РІР°РµРј РєР°СЂС‚РѕС‡РєСѓ, СЃР°РјР° РєР°СЂС‚РѕС‡РєР° Р¶РёРІС‘С‚ РІ РґР°РЅРЅС‹С… РєРѕРјРЅР°С‚С‹
+  // Сообщение-событие: показываем карточку, сама карточка живёт в данных комнаты
   if (m.plain?.eventId) {
     const event = roomById(m.roomId)?.events?.find((e) => e.id === m.plain.eventId);
     box.append(event ? eventCard(event, m.roomId) : Object.assign(document.createElement('div'), {
       className: 'msg-locked',
-      textContent: 'РЎРѕР±С‹С‚РёРµ СѓРґР°Р»РµРЅРѕ',
+      textContent: 'Событие удалено',
     }));
     return box;
   }
@@ -110,13 +110,13 @@ function messageContent(m) {
       img.alt = a.name;
       img.attachment = a;
       img.loading = 'lazy';
-      img.title = `${a.name} вЂ” РЅР°Р¶РјРёС‚Рµ, С‡С‚РѕР±С‹ РѕС‚РєСЂС‹С‚СЊ`;
+      img.title = `${a.name} — нажмите, чтобы открыть`;
       img.onclick = () => openImageViewer(a);
-      // Р“РёС„РєСѓ РјРѕР¶РЅРѕ СЃРѕС…СЂР°РЅРёС‚СЊ СЃРµР±Рµ РІ В«РњРѕРё РіРёС„РєРёВ»
+      // Гифку можно сохранить себе в «Мои гифки»
       if (/gif|webp/.test(a.mime || a.name || '')) {
         const cell = document.createElement('div');
         cell.className = 'gif-cell';
-        const save = Object.assign(document.createElement('button'), { type: 'button', className: 'gif-save', title: 'Р’ РјРѕРё РіРёС„РєРё' });
+        const save = Object.assign(document.createElement('button'), { type: 'button', className: 'gif-save', title: 'В мои гифки' });
         save.innerHTML = '<svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.6 6.2.9-4.5 4.4 1 6.1L12 17.2 6.5 20l1-6.1L3 9.5l6.2-.9z"/></svg>';
         save.onclick = (e) => {
           e.stopPropagation();
@@ -146,7 +146,7 @@ function messageContent(m) {
       box.append(fileCard(a));
     }
   }
-  // РЎСЃС‹Р»РєР° РІ СЃРѕРѕР±С‰РµРЅРёРё: РїР»РµРµСЂ (YouTube, Vimeo, РїСЂСЏРјРѕР№ РІРёРґРµРѕС„Р°Р№Р») РёР»Рё РєР°СЂС‚РѕС‡РєР° РїСЂРµРІСЊСЋ
+  // Ссылка в сообщении: плеер (YouTube, Vimeo, прямой видеофайл) или карточка превью
   const link = (m.preview && m.preview.url) || findLinks(m.text || '')[0] || null;
   if (link) {
     const video = videoCard(link, m.preview);
@@ -159,7 +159,7 @@ function messageContent(m) {
   return box;
 }
 
-/** РџР»РµРµСЂ РґР»СЏ СЃСЃС‹Р»РєРё РЅР° РІРёРґРµРѕ: YouTube, Vimeo, Instagram, TikTok, С„Р°Р№Р» РёР· og:video вЂ” РёРЅР°С‡Рµ null */
+/** Плеер для ссылки на видео: YouTube, Vimeo, Instagram, TikTok, файл из og:video — иначе null */
 function videoCard(link, preview) {
   const yt = youtubeId(link);
   if (yt) return youtubeCard(yt, { ...(preview || {}), url: link });
@@ -187,13 +187,13 @@ function videoCard(link, preview) {
       frameClass: 'frame-tall',
     });
   }
-  // РЎР°Р№С‚ СЃР°Рј РѕС‚РґР°Р» СЃСЃС‹Р»РєСѓ РЅР° РІРёРґРµРѕС„Р°Р№Р» вЂ” РёРіСЂР°РµРј РµРіРѕ РїСЂСЏРјРѕ РІ Р»РµРЅС‚Рµ
+  // Сайт сам отдал ссылку на видеофайл — играем его прямо в ленте
   if (preview?.video) return fileVideo(preview.video, preview.image);
   if (directVideo(link)) return fileVideo(link, preview?.image);
   return null;
 }
 
-/** id СЂРѕР»РёРєР° YouTube РёР· СЃСЃС‹Р»РєРё (watch, youtu.be, shorts, embed, live) */
+/** id ролика YouTube из ссылки (watch, youtu.be, shorts, embed, live) */
 function youtubeId(url) {
   if (!url) return null;
   let u;
@@ -210,7 +210,7 @@ function youtubeId(url) {
   return m ? m[1] : null;
 }
 
-/** id СЂРѕР»РёРєР° Vimeo */
+/** id ролика Vimeo */
 function vimeoId(url) {
   if (!url) return null;
   let u;
@@ -225,7 +225,7 @@ function vimeoId(url) {
   return m ? m[1] : null;
 }
 
-/** РљР°СЂС‚РѕС‡РєР° СЃ РѕР±Р»РѕР¶РєРѕР№ Рё РєРЅРѕРїРєРѕР№: РїРѕ С‰РµР»С‡РєСѓ РІРјРµСЃС‚Рѕ РЅРµС‘ РІСЃС‚Р°С‘С‚ РІСЃС‚СЂРѕРµРЅРЅС‹Р№ РїР»РµРµСЂ */
+/** Карточка с обложкой и кнопкой: по щелчку вместо неё встаёт встроенный плеер */
 function socialCard({ label, title, thumb, embed, href, thumbClass = '', frameClass = '' }) {
   const card = document.createElement('div');
   card.className = 'link-card yt-card';
@@ -233,17 +233,17 @@ function socialCard({ label, title, thumb, embed, href, thumbClass = '', frameCl
   cover.type = 'button';
   cover.className = `yt-thumb${thumbClass ? ` ${thumbClass}` : ''}`;
   if (thumb) cover.style.backgroundImage = `url("${thumb}")`;
-  cover.title = 'РЎРјРѕС‚СЂРµС‚СЊ РІ С‡Р°С‚Рµ';
+  cover.title = 'Смотреть в чате';
   cover.innerHTML = '<span class="yt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>';
   const text = document.createElement('div');
   text.className = 'link-card-text';
-  text.append(siteLine(label), titleLink(title || 'РЎРјРѕС‚СЂРµС‚СЊ РІРёРґРµРѕ', href));
+  text.append(siteLine(label), titleLink(title || 'Смотреть видео', href));
   card.append(cover, text);
   cover.onclick = () => card.replaceChildren(embedFrame(embed, title || label, href, frameClass));
   return card;
 }
 
-/** РљР°СЂС‚РѕС‡РєР° YouTube: РѕР±Р»РѕР¶РєР° СЃ РєРЅРѕРїРєРѕР№, РїРѕ С‰РµР»С‡РєСѓ вЂ” РІСЃС‚СЂРѕРµРЅРЅС‹Р№ РїР»РµРµСЂ */
+/** Карточка YouTube: обложка с кнопкой, по щелчку — встроенный плеер */
 function youtubeCard(id, p) {
   const href = p.url || `https://www.youtube.com/watch?v=${id}`;
   return socialCard({
@@ -255,7 +255,7 @@ function youtubeCard(id, p) {
   });
 }
 
-/** РљР°СЂС‚РѕС‡РєР° Vimeo: РєРЅРѕРїРєР°, РїРѕ С‰РµР»С‡РєСѓ вЂ” РІСЃС‚СЂРѕРµРЅРЅС‹Р№ РїР»РµРµСЂ */
+/** Карточка Vimeo: кнопка, по щелчку — встроенный плеер */
 function vimeoCard(id, p) {
   const href = p.url || `https://vimeo.com/${id}`;
   return socialCard({
@@ -268,7 +268,7 @@ function vimeoCard(id, p) {
   });
 }
 
-/** РЎСЃС‹Р»РєР° РЅР° РїРѕСЃС‚ РёР»Рё СЂРёР»СЃ Instagram */
+/** Ссылка на пост или рилс Instagram */
 function instagramId(url) {
   if (!url) return null;
   let u;
@@ -282,7 +282,7 @@ function instagramId(url) {
   return m ? { type: m[1] === 'reels' ? 'reel' : m[1], code: m[2] } : null;
 }
 
-/** РЎСЃС‹Р»РєР° РЅР° РІРёРґРµРѕ TikTok */
+/** Ссылка на видео TikTok */
 function tiktokId(url) {
   if (!url) return null;
   let u;
@@ -292,13 +292,13 @@ function tiktokId(url) {
     return null;
   }
   const host = u.hostname.toLowerCase().replace(/^www\.|^m\./, '');
-  if (host === 'vm.tiktok.com' || host === 'vt.tiktok.com') return null; // РєРѕСЂРѕС‚РєРёРµ СЃСЃС‹Р»РєРё С‚СЂРµР±СѓСЋС‚ РїРµСЂРµР°РґСЂРµСЃР°С†РёРё
+  if (host === 'vm.tiktok.com' || host === 'vt.tiktok.com') return null; // короткие ссылки требуют переадресации
   if (host !== 'tiktok.com') return null;
   const m = /^\/(?:@[^/]+\/)?video\/(\d{6,})/.exec(u.pathname);
   return m ? m[1] : null;
 }
 
-/** РџСЂСЏРјР°СЏ СЃСЃС‹Р»РєР° РЅР° РІРёРґРµРѕС„Р°Р№Р» вЂ” РµРіРѕ РјРѕР¶РЅРѕ РїСЂРѕРёРіСЂС‹РІР°С‚СЊ СЃР°РјРёРј, Р±РµР· С‡СѓР¶РѕРіРѕ РїР»РµРµСЂР° */
+/** Прямая ссылка на видеофайл — его можно проигрывать самим, без чужого плеера */
 function directVideo(url) {
   try {
     return /\.(mp4|webm|ogv|ogg|m4v|mov|m3u8)$/i.test(new URL(url).pathname);
@@ -307,7 +307,7 @@ function directVideo(url) {
   }
 }
 
-/** РЎР°Рј РІРёРґРµРѕС„Р°Р№Р»: РёРіСЂР°РµРј РІ Р»РµРЅС‚Рµ, РїРѕСЃС‚РµСЂ вЂ” РєР°СЂС‚РёРЅРєР° РїСЂРµРІСЊСЋ, РµСЃР»Рё РѕРЅР° РµСЃС‚СЊ */
+/** Сам видеофайл: играем в ленте, постер — картинка превью, если она есть */
 function fileVideo(src, poster) {
   const video = document.createElement('video');
   video.className = 'video-card';
@@ -341,24 +341,24 @@ function embedFrame(src, title, href, frameClass = '') {
   const frame = document.createElement('iframe');
   frame.className = 'yt-frame';
   frame.src = src;
-  // Р§СѓР¶РѕР№ СЃС‚СЂР°РЅРёС†Рµ РЅРµС‡РµРіРѕ РґРµР»Р°С‚СЊ СЃ РЅР°С€РёРј РѕРєРЅРѕРј: С‚РѕР»СЊРєРѕ РµС‘ СЃРѕР±СЃС‚РІРµРЅРЅС‹Р№ СЃРєСЂРёРїС‚, РїРѕР»РЅРѕСЌРєСЂР°РЅРЅС‹Р№
-  // РїРѕРєР°Р· Рё РІСЃРїР»С‹РІР°СЋС‰РёРµ РѕРєРЅР° РїР»РµРµСЂР° вЂ” РЅРёС‡РµРіРѕ РёР· РІРѕР·РјРѕР¶РЅРѕСЃС‚РµР№ Electron
+  // Чужой странице нечего делать с нашим окном: только её собственный скрипт, полноэкранный
+  // показ и всплывающие окна плеера — ничего из возможностей Electron
   frame.sandbox = 'allow-scripts allow-same-origin allow-presentation allow-popups allow-forms';
   frame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
   frame.allowFullscreen = true;
   frame.title = title;
-  // Р•СЃР»Рё РІСЃС‚СЂРѕРµРЅРЅС‹Р№ РїР»РµРµСЂ РЅРµ РїРѕРґРЅРёРјРµС‚СЃСЏ вЂ” РѕСЃС‚Р°РЅРµС‚СЃСЏ СЃСЃС‹Р»РєР° В«РћС‚РєСЂС‹С‚СЊВ»
+  // Если встроенный плеер не поднимется — останется ссылка «Открыть»
   const open = document.createElement('a');
   open.className = 'yt-open small';
   open.href = href;
   open.target = '_blank';
   open.rel = 'noopener noreferrer';
-  open.textContent = 'РћС‚РєСЂС‹С‚СЊ РЅР° СЃР°Р№С‚Рµ';
+  open.textContent = 'Открыть на сайте';
   wrap.append(frame, open);
   return wrap;
 }
 
-/** РњРёРЅРё-РєР°СЂС‚РѕС‡РєР°, РєРѕРіРґР° СЃР°Р№С‚ Р·Р°РєСЂС‹С‚ РѕС‚ Р±РѕС‚РѕРІ Рё РїСЂРµРІСЊСЋ РЅРµ РїРѕР»СѓС‡РёС‚СЊ: РґРѕРјРµРЅ Рё РїСѓС‚СЊ */
+/** Мини-карточка, когда сайт закрыт от ботов и превью не получить: домен и путь */
 function bareLinkCard(url) {
   let host = url;
   let path = '';
@@ -384,7 +384,7 @@ const clock = (seconds) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
-/** РЎРІРѕР№ РїР»РµРµСЂ Р°СѓРґРёРѕ: РєРЅРѕРїРєР°, РїРѕР»РѕСЃР° РїРµСЂРµРјРѕС‚РєРё Рё РІСЂРµРјСЏ вЂ” РІ СЃС‚РёР»Рµ РїСЂРёР»РѕР¶РµРЅРёСЏ, Р±РµР· СЃРёСЃС‚РµРјРЅС‹С… РєРЅРѕРїРѕРє */
+/** Свой плеер аудио: кнопка, полоса перемотки и время — в стиле приложения, без системных кнопок */
 function audioPlayer(a) {
   const box = document.createElement('div');
   box.className = 'audio-player';
@@ -397,7 +397,7 @@ function audioPlayer(a) {
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'audio-btn';
-  toggle.title = 'РЎР»СѓС€Р°С‚СЊ';
+  toggle.title = 'Слушать';
   toggle.innerHTML = AUDIO_PLAY;
   const seek = document.createElement('input');
   seek.type = 'range';
@@ -405,7 +405,7 @@ function audioPlayer(a) {
   seek.min = '0';
   seek.max = '1000';
   seek.value = '0';
-  seek.setAttribute('aria-label', 'РџРµСЂРµРјРѕС‚РєР°');
+  seek.setAttribute('aria-label', 'Перемотка');
   const time = document.createElement('span');
   time.className = 'audio-time';
   time.textContent = '0:00 / 0:00';
@@ -416,13 +416,13 @@ function audioPlayer(a) {
     if (!seek.dataset.dragging) seek.value = String(audio.duration ? (audio.currentTime / audio.duration) * 1000 : 0);
     time.textContent = `${clock(audio.currentTime)} / ${clock(audio.duration)}`;
     toggle.innerHTML = audio.paused ? AUDIO_PLAY : AUDIO_PAUSE;
-    toggle.title = audio.paused ? 'РЎР»СѓС€Р°С‚СЊ' : 'РџР°СѓР·Р°';
+    toggle.title = audio.paused ? 'Слушать' : 'Пауза';
     seek.style.setProperty('--filled', `${seek.value / 10}%`);
   };
   audio.onloadedmetadata = refresh;
   audio.ontimeupdate = refresh;
   audio.onplay = () => {
-    // РћРґРЅРѕРІСЂРµРјРµРЅРЅРѕ Р·РІСѓС‡РёС‚ С‚РѕР»СЊРєРѕ РѕРґРЅРѕ СЃРѕРѕР±С‰РµРЅРёРµ
+    // Одновременно звучит только одно сообщение
     for (const other of document.querySelectorAll('audio')) if (other !== audio) other.pause();
     refresh();
   };
@@ -447,7 +447,7 @@ function audioPlayer(a) {
   return box;
 }
 
-/** РРєРѕРЅРєРё РїРѕ С‚РёРїСѓ С„Р°Р№Р»Р°: РІ РєР°СЂС‚РѕС‡РєРµ СЃСЂР°Р·Сѓ РІРёРґРЅРѕ, С‡С‚Рѕ СЌС‚Рѕ вЂ” РјСѓР·С‹РєР°, РІРёРґРµРѕ, Р°СЂС…РёРІ, РґРѕРєСѓРјРµРЅС‚ */
+/** Иконки по типу файла: в карточке сразу видно, что это — музыка, видео, архив, документ */
 const FILE_ICONS = {
   audio: '<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>',
   video: '<svg viewBox="0 0 24 24"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>',
@@ -462,7 +462,7 @@ const FILE_ICONS = {
   file: '<svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg>',
 };
 
-/** РўРёРї С„Р°Р№Р»Р°: СЃРЅР°С‡Р°Р»Р° РїРѕ РІРёРґСѓ РІР»РѕР¶РµРЅРёСЏ, РїРѕС‚РѕРј РїРѕ СЂР°СЃС€РёСЂРµРЅРёСЋ вЂ” РЅР° СЃР»СѓС‡Р°Р№ СЃС‚Р°СЂС‹С… СЃРѕРѕР±С‰РµРЅРёР№ */
+/** Тип файла: сначала по виду вложения, потом по расширению — на случай старых сообщений */
 function fileType(a) {
   if (a.kind === 'audio' || a.kind === 'video' || a.kind === 'image') return a.kind;
   const ext = String(a.name || '').toLowerCase().split('.').pop();
@@ -495,7 +495,7 @@ function fileCard(a) {
   setFileSrc(name, 'href', a);
   name.download = a.name;
   name.textContent = a.name;
-  name.title = 'РЎРєР°С‡Р°С‚СЊ';
+  name.title = 'Скачать';
   const size = document.createElement('span');
   size.className = 'muted small';
   size.textContent = formatSize(a.size);
@@ -504,14 +504,14 @@ function fileCard(a) {
   download.className = 'icon-btn';
   setFileSrc(download, 'href', a);
   download.download = a.name;
-  download.title = 'РЎРєР°С‡Р°С‚СЊ';
+  download.title = 'Скачать';
   download.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>';
   row.append(icon, info, download);
   card.append(row);
   return card;
 }
 
-/** РљР°СЂС‚РѕС‡РєР° РїСЂРµРІСЊСЋ СЃСЃС‹Р»РєРё: СЃР°Р№С‚, Р·Р°РіРѕР»РѕРІРѕРє-СЃСЃС‹Р»РєР°, РѕРїРёСЃР°РЅРёРµ Рё РєР°СЂС‚РёРЅРєР° */
+/** Карточка превью ссылки: сайт, заголовок-ссылка, описание и картинка */
 function linkCard(p) {
   const card = document.createElement('div');
   card.className = 'link-card';
@@ -547,16 +547,16 @@ function linkCard(p) {
   return card;
 }
 
-// ---------- РљР°СЂС‚РёРЅРєР°: СЃРєРѕРїРёСЂРѕРІР°С‚СЊ Рё СЃРєР°С‡Р°С‚СЊ ----------
+// ---------- Картинка: скопировать и скачать ----------
 
-/** РЎР°РјР° РєР°СЂС‚РёРЅРєР°: Р·Р°С€РёС„СЂРѕРІР°РЅРЅСѓСЋ РѕС‚РґР°С‘С‚ СЂР°СЃС€РёС„СЂРѕРІРєР°, СЃСЃС‹Р»РєР° РЅР° СЃРµСЂРІРµСЂ РґР°Р»Р° Р±С‹ С‚РѕР»СЊРєРѕ С€РёС„СЂ */
+/** Сама картинка: зашифрованную отдаёт расшифровка, ссылка на сервер дала бы только шифр */
 async function imageBlob(a) {
   const res = await fetch(a.key ? await decryptedFileUrl(a) : fileUrl(a));
-  if (!res.ok) throw new Error('Р¤Р°Р№Р» РЅРµ РЅР°Р№РґРµРЅ');
+  if (!res.ok) throw new Error('Файл не найден');
   return res.blob();
 }
 
-/** Р’ Р±СѓС„РµСЂ вЂ” PNG: РґСЂСѓРіРѕР№ С„РѕСЂРјР°С‚ РїСЂРѕРіСЂР°РјРјС‹ РЅРµ РІСЃС‚Р°РІСЏС‚. Р“РёС„РєР° РєРѕРїРёСЂСѓРµС‚СЃСЏ РїРµСЂРІС‹Рј РєР°РґСЂРѕРј */
+/** В буфер — PNG: другой формат программы не вставят. Гифка копируется первым кадром */
 async function copyImage(a) {
   try {
     const bitmap = await createImageBitmap(await imageBlob(a));
@@ -567,9 +567,9 @@ async function copyImage(a) {
       const png = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
     }
-    toast('РљР°СЂС‚РёРЅРєР° СЃРєРѕРїРёСЂРѕРІР°РЅР°', 1500);
+    toast('Картинка скопирована', 1500);
   } catch {
-    toast('РќРµ СѓРґР°Р»РѕСЃСЊ СЃРєРѕРїРёСЂРѕРІР°С‚СЊ РєР°СЂС‚РёРЅРєСѓ');
+    toast('Не удалось скопировать картинку');
   }
 }
 
@@ -579,11 +579,11 @@ async function downloadImage(a) {
     Object.assign(document.createElement('a'), { href: url, download: a.name }).click();
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   } catch {
-    toast('РќРµ СѓРґР°Р»РѕСЃСЊ СЃРєР°С‡Р°С‚СЊ РєР°СЂС‚РёРЅРєСѓ');
+    toast('Не удалось скачать картинку');
   }
 }
 
-// ---------- РџСЂРѕСЃРјРѕС‚СЂ РєР°СЂС‚РёРЅРєРё ----------
+// ---------- Просмотр картинки ----------
 
 function openImageViewer(a) {
   const viewer = $('image-viewer');
@@ -600,7 +600,7 @@ const closeImageViewer = () => {
   $('image-viewer-img').removeAttribute('src');
 };
 
-// РЎРєРѕРїРёСЂРѕРІР°С‚СЊ РѕС‚РєСЂС‹С‚СѓСЋ РєР°СЂС‚РёРЅРєСѓ вЂ” С‚Рѕ Р¶Рµ, С‡С‚Рѕ РєРѕРїРёСЂРѕРІР°РЅРёРµ РёР· С‡Р°С‚Р°: РІ Р±СѓС„РµСЂ РёРґС‘С‚ PNG
+// Скопировать открытую картинку — то же, что копирование из чата: в буфер идёт PNG
 $('image-viewer-copy').onclick = (e) => {
   e.stopPropagation();
   const a = $('image-viewer-img').attachment;
@@ -612,11 +612,11 @@ $('image-viewer').onclick = (e) => {
   closeImageViewer();
 };
 
-// ---------- РЎРѕР±С‹С‚РёРµ РєР°РЅР°Р»Р° РІ С‡Р°С‚Рµ ----------
-// РљР°СЂС‚РѕС‡РєР° СЃРѕР±РёСЂР°РµС‚СЃСЏ РёР· РґР°РЅРЅС‹С… РєРѕРјРЅР°С‚С‹ (room.events), РїРѕСЌС‚РѕРјСѓ РіРѕС‚РѕРІРЅРѕСЃС‚СЊ СѓС‡Р°СЃС‚РЅРёРєРѕРІ
-// РѕР±РЅРѕРІР»СЏРµС‚СЃСЏ Сѓ РІСЃРµС… СЃСЂР°Р·Сѓ: В«Р±СѓРґСѓВ», В«РЅРµ СЃРјРѕРіСѓВ», В«РіРѕС‚РѕРІ РІ РґСЂСѓРіРѕРµ РІСЂРµРјСЏВ»
+// ---------- Событие канала в чате ----------
+// Карточка собирается из данных комнаты (room.events), поэтому готовность участников
+// обновляется у всех сразу: «буду», «не смогу», «готов в другое время»
 
-const EVENT_STATUS_LABEL = { yes: 'Р±СѓРґСѓ', no: 'РЅРµ СЃРјРѕРіСѓ', maybe: 'РіРѕС‚РѕРІ РІ РґСЂСѓРіРѕРµ РІСЂРµРјСЏ' };
+const EVENT_STATUS_LABEL = { yes: 'буду', no: 'не смогу', maybe: 'готов в другое время' };
 
 function eventPersonName(room, userId) {
   const member = room?.members?.find((m) => m.id === userId);
@@ -635,7 +635,7 @@ function eventCard(event, roomId) {
   head.className = 'event-head';
   const badge = document.createElement('span');
   badge.className = 'event-badge';
-  badge.textContent = 'РЎРѕР±С‹С‚РёРµ';
+  badge.textContent = 'Событие';
   const title = document.createElement('b');
   title.className = 'event-title';
   title.textContent = event.title;
@@ -643,29 +643,29 @@ function eventCard(event, roomId) {
 
   const when = document.createElement('div');
   when.className = 'event-when';
-  when.textContent = `${formatDay(event.startsAt)} В· ${formatTime(event.startsAt)}`;
+  when.textContent = `${formatDay(event.startsAt)} · ${formatTime(event.startsAt)}`;
   card.append(head, when);
 
-  // РџРѕРІС‚РѕСЂ Рё РЅР°РїРѕРјРёРЅР°РЅРёРµ
-  const REPEAT_LABEL = { daily: 'РљР°Р¶РґС‹Р№ РґРµРЅСЊ', weekdays: 'РџРѕ Р±СѓРґРЅСЏРј', weekly: 'РљР°Р¶РґСѓСЋ РЅРµРґРµР»СЋ' };
+  // Повтор и напоминание
+  const REPEAT_LABEL = { daily: 'Каждый день', weekdays: 'По будням', weekly: 'Каждую неделю' };
   if (event.repeat && event.repeat !== 'none') {
     const repeat = document.createElement('div');
     repeat.className = 'event-repeat';
-    const remind = event.remind ? ` В· РЅР°РїРѕРјРЅРёРј Р·Р° ${event.remind} РјРёРЅ` : '';
+    const remind = event.remind ? ` · напомним за ${event.remind} мин` : '';
     repeat.textContent = `${REPEAT_LABEL[event.repeat] || ''}${remind}`;
     card.append(repeat);
   } else if (event.remind) {
     const repeat = document.createElement('div');
     repeat.className = 'event-repeat';
-    repeat.textContent = `РќР°РїРѕРјРЅРёРј Р·Р° ${event.remind} РјРёРЅ`;
+    repeat.textContent = `Напомним за ${event.remind} мин`;
     card.append(repeat);
   }
 
-  // РџСЂРѕС€РµРґС€РµРµ СЃРѕР±С‹С‚РёРµ: Р±РѕР»СЊС€Рµ РЅРµ РѕС‚РІРµС‡Р°РµРј
+  // Прошедшее событие: больше не отвечаем
   if (event.completed) {
     const done = document.createElement('div');
     done.className = 'event-done';
-    done.textContent = 'РЎРѕР±С‹С‚РёРµ Р·Р°РІРµСЂС€РµРЅРѕ';
+    done.textContent = 'Событие завершено';
     card.classList.add('completed');
     card.append(done);
     return card;
@@ -677,13 +677,13 @@ function eventCard(event, roomId) {
   for (const r of answers) {
     const chip = document.createElement('span');
     chip.className = `event-chip ${r.status}`;
-    const extra = r.status === 'maybe' && r.readyAt ? ` В· РІ ${formatTime(r.readyAt)}` : '';
+    const extra = r.status === 'maybe' && r.readyAt ? ` · в ${formatTime(r.readyAt)}` : '';
     chip.textContent = `${eventPersonName(room, r.userId)} - ${EVENT_STATUS_LABEL[r.status]}${extra}`;
     people.append(chip);
   }
   if (!answers.length) {
     people.className = 'event-people muted small';
-    people.textContent = 'РџРѕРєР° РЅРёРєС‚Рѕ РЅРµ РѕС‚РІРµС‚РёР»';
+    people.textContent = 'Пока никто не ответил';
   }
   card.append(people);
 
@@ -707,9 +707,9 @@ function eventCard(event, roomId) {
     b.onclick = () => answer(status);
     return b;
   };
-  actions.append(option('Р‘СѓРґСѓ', 'yes'), option('РќРµ СЃРјРѕРіСѓ', 'no'));
+  actions.append(option('Буду', 'yes'), option('Не смогу', 'no'));
 
-  // В«Р“РѕС‚РѕРІ РІ РґСЂСѓРіРѕРµ РІСЂРµРјСЏВ»: СЃРІРѕС‘ РѕРєРЅРѕ РІС‹Р±РѕСЂР° РІСЂРµРјРµРЅРё РІ СЃС‚РёР»Рµ РїСЂРёР»РѕР¶РµРЅРёСЏ
+  // «Готов в другое время»: своё окно выбора времени в стиле приложения
   const readyDate = mine?.status === 'maybe' && mine.readyAt ? new Date(mine.readyAt) : new Date(event.startsAt);
   const draft = { h: readyDate.getHours(), m: Math.floor(readyDate.getMinutes() / 5) * 5 };
 
@@ -722,7 +722,7 @@ function eventCard(event, roomId) {
   laterBtn.className = `btn small event-btn${mine?.status === 'maybe' ? ' active' : ''}`;
   const syncLater = () => {
     const hasTime = mine?.status === 'maybe' && mine.readyAt;
-    laterBtn.textContent = hasTime ? `Р“РѕС‚РѕРІ РІ ${pad2(draft.h)}:${pad2(draft.m)}` : 'Р“РѕС‚РѕРІ РІ РґСЂСѓРіРѕРµ РІСЂРµРјСЏ';
+    laterBtn.textContent = hasTime ? `Готов в ${pad2(draft.h)}:${pad2(draft.m)}` : 'Готов в другое время';
   };
   syncLater();
   const pop = document.createElement('div');
@@ -741,7 +741,7 @@ function eventCard(event, roomId) {
     const ok = document.createElement('button');
     ok.type = 'button';
     ok.className = 'btn small primary';
-    ok.textContent = 'ОК';
+    ok.textContent = '��';
     ok.onclick = () => {
       const at = new Date(event.startsAt);
       at.setHours(draft.h, draft.m, 0, 0);
@@ -765,7 +765,7 @@ function eventCard(event, roomId) {
   return card;
 }
 
-/** РћР±РЅРѕРІРёС‚СЊ РєР°СЂС‚РѕС‡РєРё СЃРѕР±С‹С‚РёР№ РЅР° РјРµСЃС‚Рµ: РѕС‚РІРµС‚С‹ РїСЂРёС…РѕРґСЏС‚ Рё РѕС‚ РґСЂСѓРіРёС… СѓС‡Р°СЃС‚РЅРёРєРѕРІ */
+/** Обновить карточки событий на месте: ответы приходят и от других участников */
 function refreshEventCards() {
   for (const card of document.querySelectorAll('.event-card')) {
     const roomId = Number(card.dataset.roomId);
@@ -773,7 +773,7 @@ function refreshEventCards() {
     const event = roomById(roomId)?.events?.find((e) => e.id === eventId);
     const fresh = event
       ? eventCard(event, roomId)
-      : Object.assign(document.createElement('div'), { className: 'msg-locked', textContent: 'РЎРѕР±С‹С‚РёРµ СѓРґР°Р»РµРЅРѕ' });
+      : Object.assign(document.createElement('div'), { className: 'msg-locked', textContent: 'Событие удалено' });
     card.replaceWith(fresh);
   }
 }
