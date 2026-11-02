@@ -1,0 +1,32 @@
+/* Дизайн-система: канонические токены. Подключается первым, темы переопределяют цвета */
+:root {
+  /* Типографика */
+  --fs-title: 19px;
+  --fs-section: 15px;
+  --fs-body: 14px;
+  --fs-caption: 12px;
+  --lh-body: 1.45;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-mono: 'Cascadia Mono', Consolas, 'JetBrains Mono', monospace;
+  --icon-stroke: 1.75;
+
+  /* Ритм */
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+  --dur-3: 240ms;
+  --dur-4: 320ms;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-spring: cubic-bezier(.22, 1.12, .36, 1);
+
+  /* Геометрия */
+  --head-h: 52px;
+  --head-pad-x: 16px;
+  --dock-h: 56px;
+  --rail-tile: 46px;
+
+  /* Стекло */
+  --lq-radius-btn: 12px;
+  --lq-radius-pop: 18px;
+  --lq-radius-panel: 22px;
+  --lq-shadow: 0 26px 64px rgba(2, 4, 12, .48);
+}
