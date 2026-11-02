@@ -1936,6 +1936,91 @@ async function fillDeviceSelect(select, kind, selected) {
 }
 
 /** Ряд кружков с цветами; null — «как у аватара» */
+/** #abc → #AABBCC, мусор → null */
+function normalizeHex(value) {
+  let v = String(value).trim().replace(/^#/, '');
+  if (/^[0-9a-f]{3}$/i.test(v)) v = v.split('').map((c) => c + c).join('');
+  if (!/^[0-9a-f]{6}$/i.test(v)) return null;
+  return `#${v.toUpperCase()}`;
+}
+
+/** Цвет текста на плашке: светлый на тёмном, тёмный на светлом */
+function readableText(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#11131a' : '#ffffff';
+}
+
+let colorResolve = null;
+function closeColor(value) {
+  $('color-modal').classList.add('hidden');
+  const done = colorResolve;
+  colorResolve = null;
+  done?.(value);
+}
+
+/** Окно «Свой цвет»: палитра, поле HEX и системный выбор. Возвращает цвет или null */
+function askColor(current) {
+  const start = normalizeHex(current) || normalizeHex(pickedColor) || '#7B6CFF';
+  const input = $('color-hex');
+  const native = $('color-native');
+  input.value = start;
+  native.value = start.toLowerCase();
+  $('color-error').textContent = '';
+  const preview = (hex) => {
+    const box = $('color-preview');
+    box.style.background = hex;
+    box.style.color = readableText(hex);
+    $('color-preview-hex').textContent = hex;
+  };
+  preview(start);
+  $('color-modal').classList.remove('hidden');
+  setTimeout(() => { input.focus(); input.select(); }, 30);
+  return new Promise((resolve) => {
+    colorResolve = resolve;
+    const onEscape = (e) => {
+      if (e.key !== 'Escape') return;
+      document.removeEventListener('keydown', onEscape, true);
+      closeColor(null);
+    };
+    document.addEventListener('keydown', onEscape, true);
+  });
+}
+
+// Поле HEX: принимаем и #abc, и abc, и с решёткой; пока ввод неверный — подсказываем
+$('color-hex').oninput = () => {
+  const hex = normalizeHex($('color-hex').value);
+  $('color-error').textContent = hex ? '' : 'Нужен код вида #7B6CFF';
+  if (!hex) return;
+  $('color-preview').style.background = hex;
+  $('color-preview').style.color = readableText(hex);
+  $('color-preview-hex').textContent = hex;
+  $('color-native').value = hex.toLowerCase();
+};
+$('color-hex').onkeydown = (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    $('color-ok').click();
+  }
+};
+$('color-native').oninput = () => {
+  const hex = normalizeHex($('color-native').value);
+  if (!hex) return;
+  $('color-hex').value = hex;
+  $('color-hex').oninput();
+};
+$('color-native-btn').onclick = () => $('color-native').click();
+$('color-cancel').onclick = () => closeColor(null);
+$('color-ok').onclick = () => {
+  const hex = normalizeHex($('color-hex').value);
+  if (!hex) {
+    $('color-error').textContent = 'Нужен код вида #7B6CFF';
+    $('color-hex').focus();
+    return;
+  }
+  closeColor(hex);
+};
+
 function colorChoices(box, colors, current, onPick) {
   box.replaceChildren();
   for (const color of colors) {
@@ -1948,6 +2033,18 @@ function colorChoices(box, colors, current, onPick) {
     b.onclick = () => onPick(color);
     box.append(b);
   }
+  // Свой цвет: если он уже выбран и не совпал с готовыми — кружок показывает его же
+  const own = current && !colors.includes(current) ? current : null;
+  const custom = document.createElement('button');
+  custom.type = 'button';
+  custom.className = `color custom${own ? ' selected' : ''}`;
+  custom.title = own ? `Свой цвет ${own}` : 'Свой цвет';
+  if (own) custom.style.background = own;
+  custom.onclick = async () => {
+    const hex = await askColor(own);
+    if (hex) onPick(hex);
+  };
+  box.append(custom);
 }
 
 function renderColorPicker() {

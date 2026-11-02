@@ -213,7 +213,16 @@ function roleEditor(hub, role, editable) {
   if (role) {
     nameInput = el('input', { value: role.name, maxLength: 64, disabled: !editable });
     nameInput.dataset.keep = `role-${role.id}`;
-    colorInput = el('input', { type: 'color', value: role.color, disabled: !editable, title: 'Цвет имени' });
+    // Свой цвет вместо системного окошка: та же палитра и поле HEX, что везде в приложении
+    colorInput = el('button', { type: 'button', className: 'color-swatch', disabled: !editable, title: 'Цвет имени' });
+    colorInput.dataset.color = role.color;
+    colorInput.style.background = role.color;
+    colorInput.onclick = async () => {
+      const hex = await askColor(colorInput.dataset.color);
+      if (!hex) return;
+      colorInput.dataset.color = hex;
+      colorInput.style.background = hex;
+    };
     form.append(
       el('div', { className: 'rs-row' },
         el('label', { className: 'field grow' }, el('span', { textContent: 'Название роли' }), nameInput),
@@ -275,7 +284,7 @@ function roleEditor(hub, role, editable) {
     e.preventDefault();
     let value = 0;
     for (const [key, cb] of Object.entries(boxes)) if (cb.checked) value |= PERMS[key];
-    const body = role ? { name: nameInput.value.trim(), color: colorInput.value, perms: value } : { defaultPerms: value };
+    const body = role ? { name: nameInput.value.trim(), color: colorInput.dataset.color, perms: value } : { defaultPerms: value };
     await hubAction(role ? Api.patch(`/hubs/${hub.id}/roles/${role.id}`, body) : Api.patch(`/hubs/${hub.id}`, body), 'Права сохранены');
   };
   return form;
