@@ -1864,6 +1864,23 @@ export function createApi() {
       // Что именно поменялось — по этому участники поймут, о чём речь
       const before = { title: event.title, startsAt: event.starts_at, repeat: event.repeat || 'none', remind: event.remind || 0 };
       events.update(event.id, title, startsAt, repeat, remind);
+      // Кого добавили при правке — приглашаем, остальным сообщаем об изменениях ниже
+      const invitees = Array.isArray(req.body.invitees) ? req.body.invitees.map(Number) : [];
+      const known = new Set(events.responses(event.id).map((r) => r.user_id));
+      for (const id of invitees) {
+        if (known.has(id) || id === req.user.id || !rooms.isMember(room.id, id)) continue;
+        events.respond(event.id, id, 'invited');
+        hub.send(id, {
+          type: 'event:invite',
+          eventId: event.id,
+          title,
+          startsAt,
+          roomId: room.id,
+          roomName: room.name,
+          hubId: room.hub_id,
+          from: toPublicUser(req.user),
+        });
+      }
       // Оповещаем всех, кто в событии: время, название или повтор изменились
       for (const r of events.responses(event.id)) {
         if (r.user_id === req.user.id) continue;

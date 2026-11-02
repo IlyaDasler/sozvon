@@ -313,7 +313,7 @@ body:has(#auth:not(.hidden)) .nav-btn { visibility: hidden; }
   box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 32%, transparent);
 }
 #auth .btn.primary.wide:hover { box-shadow: 0 14px 32px color-mix(in srgb, var(--accent) 40%, transparent); filter: brightness(1.04); }
-#auth .btn.primary.wide::after { content: "→"; font-size: 15px; line-height: 1; }
+#auth .btn.primary.wide::after { content: '\2192'; font-size: 15px; line-height: 1; }
 
 .auth-switch { margin: 13px 0 0; text-align: center; font-size: 12.5px; color: var(--muted); }
 .auth-switch a { margin-left: 4px; }
@@ -1410,9 +1410,9 @@ kbd {
 .rs-facts > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 8px; background: var(--bg-3); }
 .rs-my-perms { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 12px; font-size: 13px; }
 .rs-my-perms li::before { display: inline-block; width: 18px; font-weight: 700; }
-.rs-my-perms li.yes::before { content: '✓'; color: var(--ok); }
+.rs-my-perms li.yes::before { content: '\2714'; color: var(--ok); }
 .rs-my-perms li.no { color: var(--muted); }
-.rs-my-perms li.no::before { content: '✕'; color: var(--danger); }
+.rs-my-perms li.no::before { content: '\2716'; color: var(--danger); }
 
 .rs-roles { display: flex; gap: 16px; align-items: flex-start; margin-top: 12px; }
 .rs-role-list { width: 200px; flex: none; display: flex; flex-direction: column; gap: 2px; }
