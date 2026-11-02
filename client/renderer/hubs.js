@@ -1,4 +1,4 @@
-﻿// Каналы — свой «сервер» для своих: комнаты внутри, участники, приглашения друзей.
+// Каналы — свой «сервер» для своих: комнаты внутри, участники, приглашения друзей.
 // Здесь: столбец каналов слева (личный порядок и группы — rail-layout.js), шапка канала с меню,
 // список участников справа, окна «Создать канал», настройки, приглашения. Комнаты канала — в rooms.js
 
@@ -981,7 +981,29 @@ function buildTimeDrum(container, time, onChange) {
   );
   container.replaceChildren(wrap);
 
-  for (const { col, getValue } of columns) centerColumn(col, getValue());
+  // Прокрутка тоже выбирает: значение, ближайшее к центру, становится выбранным
+  for (const [index, { col, getValue }] of columns.entries()) {
+    centerColumn(col, getValue());
+    let lock = true;
+    let timer = null;
+    setTimeout(() => (lock = false), 320);
+    col.addEventListener('scroll', () => {
+      if (lock) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const center = col.scrollTop + col.clientHeight / 2;
+        let best = col.children[0];
+        for (const c of col.children) {
+          if (Math.abs(c.offsetTop + c.offsetHeight / 2 - center) < Math.abs(best.offsetTop + best.offsetHeight / 2 - center)) best = c;
+        }
+        const value = Number(best.dataset.value);
+        [...col.children].forEach((c) => c.classList.toggle('selected', c === best));
+        if (index === 0) h = value;
+        else m = value;
+        onChange(h, m);
+      }, 150);
+    });
+  }
 }
 function buildEventTimePicker() {
   const pop = $('event-time-pop');
