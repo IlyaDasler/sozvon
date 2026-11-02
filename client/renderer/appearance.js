@@ -28,9 +28,46 @@ function setTheme(id) {
   document.documentElement.dataset.theme = id;
   store.set('theme', id);
   syncTitleBar();
+  applyGlass();
   renderThemePicker();
 }
 
+// ---------- Настройки стекла: прозрачность и размытие ----------
+
+const glassAlpha = () => Number(store.get('glassAlpha', 7));
+const glassBlur = () => Number(store.get('glassBlur', 26));
+
+/** Прозрачность и размытие — в переменные темы; ползунки видны только для «Жидкого стекла» */
+function applyGlass() {
+  const root = document.documentElement;
+  const alpha = Math.min(30, Math.max(2, glassAlpha())) / 100;
+  const blur = Math.min(40, Math.max(0, glassBlur()));
+  root.style.setProperty('--glass-a', String(alpha));
+  root.style.setProperty('--glass-strong-a', String(Math.min(0.9, alpha * 1.9)));
+  root.style.setProperty('--glass-blur', `${blur}px`);
+  const tuning = $('glass-tuning');
+  if (tuning) tuning.classList.toggle('hidden', currentTheme() !== 'glass');
+  const alphaInput = $('glass-alpha');
+  const blurInput = $('glass-blur');
+  if (alphaInput) {
+    alphaInput.value = String(glassAlpha());
+    $('glass-alpha-value').textContent = `${glassAlpha()}%`;
+  }
+  if (blurInput) {
+    blurInput.value = String(glassBlur());
+    $('glass-blur-value').textContent = `${glassBlur()} px`;
+  }
+}
+
+$('glass-alpha').oninput = () => {
+  store.set('glassAlpha', Number($('glass-alpha').value));
+  applyGlass();
+};
+$('glass-blur').oninput = () => {
+  store.set('glassBlur', Number($('glass-blur').value));
+  applyGlass();
+};
+applyGlass();
 // Карточка темы — маленькая схема окна в цветах этой темы
 function renderThemePicker() {
   const grid = $('theme-grid');

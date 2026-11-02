@@ -140,8 +140,10 @@
   --glow: color-mix(in srgb, var(--accent) 40%, transparent);
   --shadow: 0 24px 60px rgba(5, 8, 20, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.09);
   --header-shadow: 0 1px 0 rgba(255, 255, 255, 0.10);
-  --glass: rgba(255, 255, 255, 0.07);
-  --glass-strong: rgba(255, 255, 255, 0.13);
+  --glass-a: 0.07;
+  --glass-strong-a: 0.13;
+  --glass: rgba(255, 255, 255, var(--glass-a));
+  --glass-strong: rgba(255, 255, 255, var(--glass-strong-a));
   --glass-blur: 26px;
   color-scheme: dark;
 }
@@ -190,3 +192,132 @@
 [data-gfx='low'][data-theme='glass'] .composer,
 [data-gfx='low'][data-theme='glass'] .modal-card,
 [data-gfx='low'][data-theme='glass'] .popover { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(20, 26, 48, 0.92); }
+/* ===== macOS-подобное оформление для темы «Жидкое стекло» =====
+   Задача темы — не «полупрозрачные панели», а другой интерфейс: плавающие скруглённые
+   панели с вибрацией, единый тулбар, аккуратные контролы и тонкие разделители. */
+
+[data-theme='glass'] body {
+  font-family: -apple-system, 'SF Pro Text', 'SF Pro Display', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: .005em;
+}
+
+/* Окно: панели стоят отдельными карточками с отступами, как в приложениях macOS */
+[data-theme='glass'] .main { gap: 10px; padding: 10px; }
+
+[data-theme='glass'] .sidebar {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 44px rgba(4, 8, 20, .35);
+}
+
+[data-theme='glass'] .content {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  box-shadow: 0 18px 44px rgba(4, 8, 20, .3);
+}
+
+/* Тулбар: тонкая полоса с вибрацией и волосяной разделитель */
+[data-theme='glass'] .chat-head {
+  background: rgba(255, 255, 255, calc(var(--glass-a) * .7));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border-bottom: 1px solid var(--line);
+}
+
+/* Сегментированный контрол вкладок, как в macOS */
+[data-theme='glass'] .friend-tabs {
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, calc(var(--glass-a) * .8));
+  border: 1px solid var(--line);
+}
+[data-theme='glass'] .friend-tabs button {
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+[data-theme='glass'] .friend-tabs button.active {
+  background: rgba(255, 255, 255, calc(var(--glass-a) * 2.4));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+}
+
+/* Поле ввода — плавающая «пилюля» */
+[data-theme='glass'] .composer {
+  margin: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, calc(var(--glass-a) * .75));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+}
+
+/* Контролы: мягкие скругления, волосяная рамка, лёгкая тень */
+[data-theme='glass'] .btn {
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, calc(var(--glass-a) + .03));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .18);
+  transition: background .15s ease, transform .1s ease;
+}
+[data-theme='glass'] .btn:hover { background: rgba(255, 255, 255, calc(var(--glass-a) + .08)); }
+[data-theme='glass'] .btn:active:not(:disabled) { transform: scale(.985); }
+[data-theme='glass'] .btn.primary {
+  border-color: transparent;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff), var(--accent));
+  box-shadow: 0 6px 16px var(--glow);
+}
+
+[data-theme='glass'] input,
+[data-theme='glass'] textarea,
+[data-theme='glass'] select {
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, calc(var(--glass-a) * .8));
+}
+[data-theme='glass'] input:focus,
+[data-theme='glass'] textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+  outline: none;
+}
+
+/* Переключатели — «таблетка» macOS */
+[data-theme='glass'] .switch {
+  border-radius: 999px;
+}
+
+/* Окна: плотнее вибрация и крупнее скругление */
+[data-theme='glass'] .modal-card {
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(24, 28, 48, calc(.5 + var(--glass-strong-a)));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 10px)) saturate(180%);
+  backdrop-filter: blur(calc(var(--glass-blur) + 10px)) saturate(180%);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .55);
+}
+
+/* Меню и всплывающие окна — тоже стекло */
+[data-theme='glass'] .popup,
+[data-theme='glass'] .chat-theme-pop,
+[data-theme='glass'] .popover {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(24, 28, 48, calc(.55 + var(--glass-strong-a)));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(180%);
+  backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(180%);
+}
+
+/* Полосы прокрутки — тонкие, как в macOS */
+[data-theme='glass'] ::-webkit-scrollbar { width: 9px; height: 9px; }
+[data-theme='glass'] ::-webkit-scrollbar-track { background: transparent; }
+[data-theme='glass'] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, calc(var(--glass-a) * 2.2));
+  border-radius: 9px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+[data-theme='glass'] ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .28); background-clip: padding-box; }
+
+/* Выделение текста — цветом системы */
+[data-theme='glass'] ::selection { background: color-mix(in srgb, var(--accent) 45%, transparent); }
