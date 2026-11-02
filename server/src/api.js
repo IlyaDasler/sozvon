@@ -1780,6 +1780,10 @@ export function createApi() {
       const invitees = Array.isArray(req.body.invitees) ? req.body.invitees.map(Number) : [];
       const repeat = EVENT_REPEATS.has(req.body.repeat) ? req.body.repeat : 'none';
       const remind = EVENT_REMIND.has(Number(req.body.remind)) ? Number(req.body.remind) : 0;
+      // Старое событие с таким же названием в этой комнате убираем — остаётся новое
+      for (const old of events.ofRoom(room.id)) {
+        if (old.title.trim().toLowerCase() === title.toLowerCase()) events.remove(old.id);
+      }
       const row = events.create(room.id, room.hub_id, title, startsAt, req.user.id, repeat, remind);
       // Автор сразу «буду», приглашённые — «приглашён»
       events.respond(row.id, req.user.id, 'yes');
@@ -1798,7 +1802,7 @@ export function createApi() {
           from: toPublicUser(req.user),
         });
       }
-      return notifyRoom(room.id);
+      return { ...notifyRoom(room.id), createdEventId: row.id };
     })
   );
 
