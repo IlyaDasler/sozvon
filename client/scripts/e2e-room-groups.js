@@ -69,11 +69,27 @@ runTest(async () => {
   if (await js(winA, `Boolean(document.querySelector('.ask-text-input'))`)) throw new Error('Спросили название при переезде в готовую группу');
   console.log('✔ бросок на комнату из группы переносит в неё без вопроса');
 
+  // Комнату можно вынуть из группы: бросок на заголовок раздела
+  const dropOnSection = (roomId) => `(() => {
+    const from = document.querySelector('#room-list [data-room="${roomId}"]').closest('li');
+    const head = document.querySelector('#room-list .room-section[data-section="voice"]');
+    const dt = new DataTransfer();
+    from.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    const r = head.getBoundingClientRect();
+    const at = { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.left + 10, clientY: r.top + r.height / 2 };
+    head.dispatchEvent(new DragEvent('dragover', at));
+    head.dispatchEvent(new DragEvent('drop', at));
+    return true;
+  })()`;
+  await js(winA, dropOnSection(room3.id));
+  await waitFor(winA, `!${roomRow(room3.id)}?.closest('li').dataset.inGroup`, 'комната вынута из группы', 4000);
+  console.log('✔ комнату можно вынуть из группы');
+
   // Плюс на группе создаёт комнату сразу в ней
   await js(winA, click('.room-group .icon-btn'));
   await waitFor(winA, `!document.getElementById('room-create').classList.contains('hidden')`, 'окно комнаты', 2000);
   await js(winA, `document.getElementById('room-name').value = 'Вторая игровая'; document.getElementById('room-create-form').requestSubmit(); true`);
-  await waitFor(winB, `[...document.querySelectorAll('#room-list li[data-in-group]')].length === 4`, 'новая комната в группе', 4000);
+  await waitFor(winB, `[...document.querySelectorAll('#room-list li[data-in-group]')].length === 3`, 'новая комната в группе', 4000);
   console.log('✔ комната создана сразу в группе');
 
   // Таймер: идёт у Бори, который не в голосе
