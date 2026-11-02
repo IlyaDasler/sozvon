@@ -1993,3 +1993,7 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 }
 
 .drum-col { position: relative; z-index: 2; }
+
+/* Наведение в барабане времени: значение подсвечивается и в карточке, и в окне события */
+.drum-col .time-cell:hover { background: var(--bg-4); color: var(--text); }
+.event-time-pop .drum-col .time-cell:hover { background: var(--bg-4); color: var(--text); }
