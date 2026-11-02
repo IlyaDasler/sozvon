@@ -398,6 +398,8 @@ function roomItem(room) {
   if (can(room, PERMS.invite)) tools.append(tool('invite', 'Пригласить друзей', () => openRoomInvite(room.id)));
   row.append(tools);
   row.insertAdjacentHTML('beforeend', `<span class="room-icon">${roomIcon(room)}</span>`);
+  // Приватная комната: видна только приглашённым — помечаем замком
+  if (room.private) row.insertAdjacentHTML('beforeend', '<span class="room-lock" title="Приватная комната">🔒</span>');
   const name = document.createElement('div');
   name.className = 'name ellipsis';
   name.textContent = room.name;
@@ -988,6 +990,7 @@ function openRoomCreate(kind = 'voice', hubId = state.view, groupId = null) {
   $('room-name').value = '';
   $('room-create-error').textContent = '';
   $('room-create-hint').textContent = `Комната появится в «${hub.name}» у всех участников канала.`;
+  $('room-private').checked = false;
   document.querySelector(`input[name="room-kind"][value="${kind}"]`).checked = true;
   $('room-create').classList.remove('hidden');
   $('room-name').focus();
@@ -1002,7 +1005,8 @@ $('room-create-form').onsubmit = async (e) => {
   const button = $('room-create-submit');
   button.disabled = true;
   try {
-    const room = await Api.post('/rooms', { hubId: createHubId, groupId: createGroupId, name, kind });
+    const isPrivate = $('room-private').checked;
+    const room = await Api.post('/rooms', { hubId: createHubId, groupId: createGroupId, name, kind, private: isPrivate });
     state.rooms.set(room.id, room);
     $('room-create').classList.add('hidden');
     selectRoom(room.id);

@@ -355,6 +355,7 @@ const toRoom = (row) => ({
   kind: row.kind,
   hubId: row.hub_id,
   groupId: row.group_id ?? null,
+  private: Boolean(row.private),
   // Порядок в списке канала: меняется перетаскиванием
   position: row.position ?? row.id,
   ownerId: row.owner_id,
@@ -1627,7 +1628,8 @@ export function createApi() {
       if (hubs.rooms(hubRow.id).length >= MAX_HUB_ROOMS)
         throw new HttpError(400, `В канале может быть не больше ${MAX_HUB_ROOMS} комнат`);
       const groupId = groupIdIn(hubRow.id, req.body.groupId);
-      const room = rooms.create(req.user.id, name, kind, hubRow.id, { everyone: !legacy });
+      const isPrivate = Boolean(req.body.private);
+      const room = rooms.create(req.user.id, name, kind, hubRow.id, { everyone: !legacy && !isPrivate, isPrivate });
       if (groupId) rooms.setGroup(room.id, groupId);
       addMembers(req, room, memberIds);
       // Канал мог только что появиться — новые версии на других устройствах должны о нём узнать
@@ -1647,6 +1649,7 @@ export function createApi() {
         validateRoomName(name);
         rooms.rename(room.id, name);
       }
+      if ('private' in req.body) rooms.setPrivate(room.id, Boolean(req.body.private));
       if ('defaultPerms' in req.body) {
         setDefaultPerms(req, hubs.byId(room.hub_id));
       }

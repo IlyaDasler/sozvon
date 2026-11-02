@@ -259,6 +259,8 @@ db.exec(`
   );
 `);
 if (!columnsOf('rooms').includes('group_id')) db.exec('ALTER TABLE rooms ADD COLUMN group_id INTEGER');
+  // Приватная комната: видна только приглашённым, а не всем участникам канала
+  if (!columnsOf('rooms').includes('private')) db.exec('ALTER TABLE rooms ADD COLUMN private INTEGER NOT NULL DEFAULT 0');
 
   // Треды: ответ в треде хранится отдельной строкой и ссылается на корневое сообщение.
   // В основной ленте такие ответы не показываются, их видно только внутри треда
@@ -464,7 +466,7 @@ const q = {
     ORDER BY id DESC LIMIT ?
   `),
 
-  insertRoom: db.prepare('INSERT INTO rooms (name, kind, owner_id, hub_id, created_at) VALUES (?, ?, ?, ?, ?)'),
+  insertRoom: db.prepare('INSERT INTO rooms (name, kind, owner_id, hub_id, private, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
   roomById: db.prepare('SELECT * FROM rooms WHERE id = ?'),
   roomsOf: db.prepare(`
     SELECT r.* FROM room_members m JOIN rooms r ON r.id = m.room_id
@@ -711,9 +713,9 @@ export const rooms = {
   setBackground: (id, background) => q.setRoomBackground.run(background, id),
   of: (userId) => q.roomsOf.all(userId),
   /** Комната в канале hubId. everyone — сразу позвать всех участников канала (старые версии зовут поимённо) */
-  create(ownerId, name, kind, hubId, { everyone = true } = {}) {
+  create(ownerId, name, kind, hubId, { everyone = true, isPrivate = false } = {}) {
     const now = Date.now();
-    const id = Number(q.insertRoom.run(name, kind, ownerId, hubId, now).lastInsertRowid);
+    const id = Number(q.insertRoom.run(name, kind, ownerId, hubId, isPrivate ? 1 : 0, now).lastInsertRowid);
     q.addRoomMember.run(id, ownerId, now);
     if (everyone) for (const m of q.hubMembers.all(hubId)) q.addRoomMember.run(id, m.id, now);
     // «Порядок» комнат: новая встаёт в конец списка канала
@@ -721,6 +723,7 @@ export const rooms = {
     return rooms.byId(id);
   },
   rename: (id, name) => q.renameRoom.run(name, id),
+  setPrivate: (id, value) => db.prepare('UPDATE rooms SET private = ? WHERE id = ?').run(value ? 1 : 0, id),
   setGroup: (id, groupId) => q.setRoomGroup.run(groupId, id),
   /** Порядок комнат в канале: ids — комнаты в нужном порядке */
   reorder(ids) {
