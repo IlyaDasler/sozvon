@@ -858,7 +858,7 @@ video.mirror { transform: scaleX(-1); }
 .msg-head b { font-weight: 600; }
 .msg-head time { font-size: 11px; color: var(--muted); }
 /* Р СћР ВµР С”РЎРѓРЎвЂљ РЎРѓР С•Р С•Р В±РЎвЂ°Р ВµР Р…Р С‘РЎРЏ РЎРѓ РЎР‚Р В°Р В·Р СР ВµРЎвЂљР С”Р С•Р в„– */
-.msg-text { overflow-wrap: anywhere; line-height: var(--lh-body); }
+.msg-text { overflow-wrap: anywhere; line-height: var(--lh-body); max-width: 78ch; }
 .msg-text p { margin: 0; white-space: pre-wrap; }
 .msg-text p + p, .msg-text p + *, .msg-text * + p { margin-top: 6px; }
 .msg-text a { color: var(--link); text-decoration: none; }
