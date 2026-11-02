@@ -24,7 +24,11 @@ contextBridge.exposeInMainWorld('desktop', {
   copy: (text) => ipcRenderer.invoke('clipboard:write', String(text)),
   paste: () => ipcRenderer.invoke('clipboard:read'),
   copyImage: (dataUrl) => ipcRenderer.invoke('clipboard:image', String(dataUrl)),
-  vault: {
+  // Цвета из системы: акцент и тёмная/светлая тема (приложение подстраивается под ОС)
+  system: {
+    theme: () => ipcRenderer.invoke('system:theme'),
+    onTheme: (callback) => ipcRenderer.on('system:theme', (_event, info) => callback(info)),
+  },  vault: {
     seal: (text) => ipcRenderer.sendSync('vault:seal', String(text)),
     open: (sealed) => ipcRenderer.sendSync('vault:open', String(sealed)),
   },
