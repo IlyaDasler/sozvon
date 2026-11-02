@@ -459,8 +459,6 @@
 }
 
 /* Списки, разделы и строки настроек — не «белые карточки», а тёмное стекло */
-[data-theme='glass'] .contact-list,
-[data-theme='glass'] .friends-body,
 [data-theme='glass'] .set-pane,
 [data-theme='glass'] .set-block,
 [data-theme='glass'] .rs-facts > div,

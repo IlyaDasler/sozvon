@@ -258,4 +258,22 @@ runTest(async () => {
   const misaligned = JSON.parse(icons);
   if (misaligned.length) throw new Error(`Иконки не по центру: ${misaligned.join(', ')}`);
   console.log('✔ иконки в кнопках отцентрованы');
+
+  // ---------- Списки не красят себя: фон даёт панель ----------
+  const tinted = await js(win, `(() => {
+    const bad = [];
+    for (const sel of ['.contact-list', '.friends-body', '#room-list', '.sidebar-scroll', '.messages', '.set-body']) {
+      for (const el of document.querySelectorAll(sel)) {
+        if (!el.getClientRects().length) continue;
+        const bg = getComputedStyle(el).backgroundColor;
+        const m = bg.match(/rgba?\\(([^)]+)\\)/);
+        const alpha = m ? Number(m[1].split(',')[3] ?? 1) : 1;
+        if (alpha > 0.02) bad.push(sel + '=' + bg);
+      }
+    }
+    return JSON.stringify(bad);
+  })()`);
+  const tintedLists = JSON.parse(tinted);
+  if (tintedLists.length) throw new Error(`У списков свой фон (полоса другого тона): ${tintedLists.join(', ')}`);
+  console.log('✔ списки не красят себя');
 });
