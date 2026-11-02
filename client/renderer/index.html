@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8">
@@ -354,6 +354,13 @@
             <div class="muted small ellipsis" id="room-sub"></div>
           </div>
           <div class="spacer"></div>
+          <div class="room-events-wrap">
+            <button type="button" class="room-events-btn hidden" id="room-events-btn" title="Активные события канала">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+              <span id="room-events-count">0</span>
+            </button>
+            <div class="room-events-menu hidden" id="room-events-menu"></div>
+          </div>
           <button class="icon-btn" id="room-manage-btn" title="Настройки комнаты">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
           </button>
@@ -787,6 +794,22 @@
   </div>
   <input type="file" id="hub-icon-input" accept="image/*" hidden>
   <input type="file" id="hub-emoji-input" accept="image/*" hidden>
+
+  <!-- Событие канала: просмотр и завершение -->
+  <div id="event-view" class="modal hidden">
+    <div class="modal-card event-view-card">
+      <h3 id="ev-title"></h3>
+      <p class="muted small" id="ev-when"></p>
+      <p class="muted small" id="ev-repeat"></p>
+      <div class="event-people" id="ev-people"></div>
+      <p class="error" id="ev-error"></p>
+      <div class="row">
+        <button type="button" class="btn danger" id="ev-finish">Завершить событие</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="ev-close">Закрыть</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Создать событие канала: день, время, чат для публикации и участники -->
   <div id="event-create" class="modal hidden">

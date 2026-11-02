@@ -2005,3 +2005,25 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
   color: #fff;
   font-weight: 600;
 }
+
+/* Плашка активных событий в шапке комнаты */
+.room-events-wrap { position: relative; display: flex; align-items: center; }
+.room-events-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--bg-3); color: var(--text);
+  font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.room-events-btn svg { width: 15px; height: 15px; }
+.room-events-btn:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+.room-events-btn.hidden { display: none; }
+.room-events-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; width: 260px;
+  padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-2);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, .5);
+}
+.room-events-menu.hidden { display: none; }
+.room-event-item {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 8px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer;
+}
+.room-event-item:hover { background: var(--bg-3); }

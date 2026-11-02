@@ -1201,6 +1201,90 @@ $('event-form').onsubmit = async (e) => {
   }
 };
 
+// ---------- Активные события в шапке комнаты ----------
+const activeRoomEvents = (room) => (room?.events || []).filter((e) => e.active !== false && !e.completed);
+let eventViewId = null;
+
+function renderRoomEventsBadge() {
+  const btn = $('room-events-btn');
+  if (!btn) return;
+  const room = roomById(state.selectedRoomId);
+  const list = activeRoomEvents(room);
+  btn.classList.toggle('hidden', !list.length);
+  $('room-events-count').textContent = String(list.length);
+  $('room-events-menu').classList.add('hidden');
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    const menu = $('room-events-menu');
+    if (!menu.classList.contains('hidden')) return menu.classList.add('hidden');
+    menu.replaceChildren(
+      ...list.map((ev) => {
+        const item = el(
+          'button',
+          { type: 'button', className: 'room-event-item' },
+          el('b', { textContent: ev.title }),
+          el('span', { className: 'muted small', textContent: `${formatDay(ev.startsAt)} · ${formatTime(ev.startsAt)}` })
+        );
+        item.onclick = () => {
+          menu.classList.add('hidden');
+          openEventView(ev.id);
+        };
+        return item;
+      })
+    );
+    menu.classList.remove('hidden');
+  };
+}
+
+function openEventView(eventId) {
+  const room = roomById(state.selectedRoomId);
+  const ev = (room?.events || []).find((x) => x.id === eventId);
+  if (!ev) return;
+  eventViewId = eventId;
+  $('ev-title').textContent = ev.title;
+  $('ev-when').textContent = `${formatDay(ev.startsAt)} · ${formatTime(ev.startsAt)}`;
+  const repeat = { daily: 'Каждый день', weekdays: 'По будням', weekly: 'Каждую неделю' }[ev.repeat] || 'Однократно';
+  $('ev-repeat').textContent = `${repeat}${ev.remind ? ` · напомним за ${ev.remind} мин` : ''}`;
+  const answers = (ev.responses || []).filter((r) => r.status !== 'invited');
+  const people = $('ev-people');
+  people.replaceChildren(
+    ...answers.map((r) => {
+      const member = room.members.find((m) => m.id === r.userId);
+      const name = member?.nickname || member?.displayName || userById(r.userId)?.displayName || '?';
+      const label =
+        { yes: 'буду', no: 'не смогу', maybe: `готов в ${r.readyAt ? formatTime(r.readyAt) : 'другое время'}` }[r.status] || '';
+      return el('span', { className: `event-chip ${r.status}`, textContent: `${name} - ${label}` });
+    })
+  );
+  if (!answers.length) people.replaceChildren(el('span', { className: 'muted small', textContent: 'Пока никто не ответил' }));
+  const canFinish = ev.createdBy === state.me.id || canManageHub(hubById(room.hubId));
+  $('ev-finish').classList.toggle('hidden', !canFinish || ev.completed);
+  $('ev-error').textContent = '';
+  $('event-view').classList.remove('hidden');
+}
+
+$('ev-close').onclick = () => $('event-view').classList.add('hidden');
+$('event-view').onclick = (e) => {
+  if (e.target === $('event-view')) $('event-view').classList.add('hidden');
+};
+$('ev-finish').onclick = async () => {
+  if (!eventViewId) return;
+  try {
+    const room = await Api.post(`/events/${eventViewId}/finish`, {});
+    applyRoomUpdate(room);
+    $('event-view').classList.add('hidden');
+    toast('Событие завершено');
+  } catch (err) {
+    $('ev-error').textContent = err.message;
+  }
+};
+
+// Список событий закрывается щелчком мимо
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.room-events-wrap')) return;
+  $('room-events-menu')?.classList.add('hidden');
+});
+
 function hubMembersPane(hub) {
   const out = [];
   const search = el('input', { className: 'friend-search', placeholder: 'Поиск участников', value: hubMemberQuery });

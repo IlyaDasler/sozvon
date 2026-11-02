@@ -394,9 +394,10 @@ function toEvent(row) {
     createdAt: row.created_at,
     repeat,
     remind: row.remind || 0,
-    nextAt: nextStart(row),
-    // Разовое событие через час после начала считаем прошедшим
-    completed: repeat === 'none' && Date.now() > row.starts_at + 3_600_000,
+    active: row.active !== 0,
+    nextAt: row.active !== 0 ? nextStart(row) : null,
+    // Завершённое вручную — сразу, разовое — через час после начала
+    completed: row.active === 0 || (repeat === 'none' && Date.now() > row.starts_at + 3_600_000),
     // Готовность: yes — буду, no — не смогу, maybe — готов в другое время (readyAt)
     responses: events.responses(row.id).map((r) => ({ userId: r.user_id, status: r.status, readyAt: r.ready_at })),
   };
@@ -1841,6 +1842,25 @@ export function createApi() {
   );
 
   api.post(
+    '/events/:eventId/finish',
+    handle((req) => {
+      const event = events.byId(Number(req.params.eventId));
+      if (!event) throw new HttpError(404, 'Событие не найдено');
+      const room = rooms.byId(event.room_id);
+      if (!room || !rooms.isMember(room.id, req.user.id)) throw new HttpError(404, 'Событие не найдено');
+      const hubRow = hubs.byId(room.hub_id);
+      const member = hubRow && hubs.members(hubRow.id).find((m) => m.id === req.user.id);
+      const role = member?.role_id ? roles.byId(member.role_id) : null;
+      const manages = Boolean(hubRow) && (hubs.rankOf(hubRow, req.user.id) >= 2 || ((role?.perms || 0) & PERMS.manage));
+      if (event.created_by !== req.user.id && !manages)
+        throw new HttpError(403, 'Завершить событие может его автор или управляющий каналом');
+      // Завершённое событие больше не напоминает о себе — планировщик его пропускает
+      events.finish(event.id);
+      return notifyRoom(room.id);
+    })
+  );
+
+  api.post(
     '/rooms/:id/messages',
     handle(async (req) => {
       const room = requireRoom(req);
@@ -2392,7 +2412,7 @@ const eventReminders = setInterval(() => {
     return;
   }
   for (const row of rows) {
-    if (!row.remind) continue;
+    if (!row.remind || row.active === 0) continue;
     const next = nextStart(row, now);
     if (!next) continue;
     if (now < next - row.remind * 60_000 || now > next) continue;
