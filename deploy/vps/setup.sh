@@ -270,7 +270,13 @@ RandomizedDelaySec=300
 WantedBy=timers.target
 EOF
 systemctl daemon-reload
-systemctl enable -q --now sozvon-offsite.timer
+# По умолчанию выгрузка выключена: без настроенного хранилища она всё равно ничего не делает.
+# Включается одной командой, когда в /root/.config/rclone/rclone.conf появятся ключи
+if [ -f /root/.config/rclone/rclone.conf ]; then
+  systemctl enable -q --now sozvon-offsite.timer
+else
+  log 'Выгрузка копий в S3 не настроена — таймер выключен (включить: systemctl enable --now sozvon-offsite.timer)'
+fi
 
 log "Настраиваю HTTPS для $DOMAIN (Caddy сам получит и будет продлевать сертификат Let's Encrypt)"
 cat > /etc/caddy/Caddyfile <<EOF
