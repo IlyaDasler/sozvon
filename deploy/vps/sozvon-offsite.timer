@@ -1,0 +1,11 @@
+[Unit]
+Description=Sozvon: ежедневная выгрузка резервной копии в объектное хранилище
+
+[Timer]
+# Через полчаса после локальной копии (она в 04:00)
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
