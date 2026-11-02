@@ -1072,6 +1072,26 @@
       </div>
     </div>
   </div>
+  <!-- Свой цвет: палитра, поле HEX и системный выбор цвета (app.js → askColor) -->
+  <div id="color-modal" class="modal hidden">
+    <div class="modal-card dialog-card color-card" role="dialog" aria-labelledby="color-title">
+      <h3 id="color-title">Свой цвет</h3>
+      <div class="color-preview" id="color-preview"><span id="color-preview-hex">#7B6CFF</span></div>
+      <label class="field">
+        <span>Код цвета</span>
+        <input id="color-hex" placeholder="#7B6CFF" maxlength="7" spellcheck="false" autocomplete="off">
+      </label>
+      <p class="hint-text error-text" id="color-error"></p>
+      <div class="row">
+        <button type="button" class="btn" id="color-native-btn" title="Открыть палитру системы">Обзор…</button>
+        <input type="color" id="color-native" class="color-native" value="#7b6cff">
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="color-cancel">Отмена</button>
+        <button type="button" class="btn primary" id="color-ok">Готово</button>
+      </div>
+    </div>
+  </div>
+
   <div id="dialog" class="modal hidden">
     <div class="modal-card dialog-card" role="alertdialog" aria-labelledby="dialog-title">
       <h3 id="dialog-title"></h3>
