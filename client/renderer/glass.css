@@ -1,0 +1,398 @@
+/* ============================================================================
+   Жидкое стекло 3.0 — единый слой оформления
+   Подключается последним и перекрывает базовые стили только для темы glass.
+   Правило системы: одна поверхность — один материал; один контрол — одно поведение.
+   Слои материала: 1) ровная тёмная подложка 2) верхний блик 3) блик за курсором
+   4) кромка-линза 5) мягкая тень. Движение: 140–360 мс, пружина.
+   ========================================================================== */
+
+[data-theme='glass'] {
+  --glass-a: 0.07;
+  --glass-strong-a: 0.13;
+  --glass-blur: 26px;
+  --glass-radius: 18px;
+  --glass-sheen: 1;
+  --glass-lens: 0.55;
+  --surface: rgba(18, 22, 38, 0.55);
+  --surface-2: rgba(255, 255, 255, 0.06);
+  --hairline: rgba(255, 255, 255, 0.10);
+  --spring: cubic-bezier(0.22, 1.25, 0.36, 1);
+  --fast: 140ms;
+  --mid: 220ms;
+  --slow: 340ms;
+}
+
+/* ---------- 1. Поверхности ---------- */
+
+/* Панели приложения */
+[data-theme='glass'] .sidebar,
+[data-theme='glass'] .content,
+[data-theme='glass'] .call-panel {
+  background:
+    radial-gradient(340px circle at var(--mx, 50%) var(--my, 0%),
+      rgba(255, 255, 255, calc(0.18 * var(--glass-sheen))), transparent 62%),
+    linear-gradient(180deg,
+      rgba(255, 255, 255, calc(0.10 * var(--glass-sheen))), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(var(--surface), var(--surface)),
+    rgba(255, 255, 255, var(--glass-a));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%) brightness(1.05);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%) brightness(1.05);
+  border: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+    inset 1px 0 0 rgba(255, 255, 255, 0.10),
+    inset -1px 0 0 rgba(255, 255, 255, 0.10),
+    0 24px 64px rgba(2, 4, 12, 0.45);
+}
+
+/* Окна: все виды карточек одним материалом */
+[data-theme='glass'] .modal-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 40%),
+    linear-gradient(rgba(16, 20, 36, 0.72), rgba(16, 20, 36, 0.72)),
+    rgba(255, 255, 255, var(--glass-strong-a));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 12px)) saturate(185%);
+  backdrop-filter: blur(calc(var(--glass-blur) + 12px)) saturate(185%);
+  border: 0;
+  border-radius: calc(var(--glass-radius) + 2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 34px 90px rgba(0, 0, 0, 0.55);
+}
+
+/* Меню, поповеры, подсказки */
+[data-theme='glass'] .popup,
+[data-theme='glass'] .popup-menu,
+[data-theme='glass'] .chat-theme-pop,
+[data-theme='glass'] .gif-popover,
+[data-theme='glass'] .profile-card,
+[data-theme='glass'] .notif-panel,
+[data-theme='glass'] .tip,
+[data-theme='glass'] .app-tip {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 45%),
+    linear-gradient(rgba(16, 20, 36, 0.80), rgba(16, 20, 36, 0.80));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(180%);
+  backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(180%);
+  border: 0;
+  border-radius: calc(var(--glass-radius) - 2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 22px 56px rgba(0, 0, 0, 0.5);
+}
+
+/* Кромка-линза: у всех крупных поверхностей */
+[data-theme='glass'] .sidebar::after,
+[data-theme='glass'] .content::after,
+[data-theme='glass'] .modal-card::after,
+[data-theme='glass'] .call-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: conic-gradient(from 200deg,
+    rgba(255, 255, 255, 0.55),
+    rgba(150, 200, 255, 0.20),
+    rgba(255, 255, 255, 0.05),
+    rgba(205, 160, 255, 0.22),
+    rgba(255, 255, 255, 0.55));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: calc(var(--glass-lens) * var(--glass-sheen));
+}
+
+/* ---------- 2. Каркас окна и рейл ---------- */
+
+[data-theme='glass'] .titlebar {
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--hairline);
+}
+[data-theme='glass'] .rail {
+  background: transparent;
+  border: 0;
+}
+[data-theme='glass'] .rail-item {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: background-color var(--fast) ease, transform var(--fast) var(--spring);
+}
+[data-theme='glass'] .rail-item:hover { background: rgba(255, 255, 255, 0.10); }
+[data-theme='glass'] .rail-item:active { transform: scale(0.96); }
+[data-theme='glass'] .rail-item.active {
+  background: color-mix(in srgb, var(--accent) 42%, rgba(255, 255, 255, 0.10));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* ---------- 3. Списки и строки ---------- */
+
+[data-theme='glass'] .sidebar-head {
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--hairline);
+}
+[data-theme='glass'] .list-title {
+  color: var(--muted);
+  border-bottom: 0;
+}
+[data-theme='glass'] .contact,
+[data-theme='glass'] .friend-row,
+[data-theme='glass'] .room-row,
+[data-theme='glass'] .msg,
+[data-theme='glass'] .member-row {
+  border-radius: 12px;
+  transition: background-color var(--fast) ease, transform var(--fast) var(--spring);
+}
+[data-theme='glass'] .contact:hover,
+[data-theme='glass'] .friend-row:hover,
+[data-theme='glass'] .room-row:hover,
+[data-theme='glass'] .member-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+[data-theme='glass'] .contact:active { transform: scale(0.995); }
+[data-theme='glass'] .contact.active,
+[data-theme='glass'] .room-row.active {
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+/* ---------- 4. Тулбар, вкладки, поиск ---------- */
+
+[data-theme='glass'] .chat-head {
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--hairline);
+}
+[data-theme='glass'] .friends-title,
+[data-theme='glass'] .chat-head h3 { font-weight: 700; }
+
+/* Вкладки: подложку рисует liquid-tabs.js, кнопки остаются прозрачными */
+[data-theme='glass'] .liquid-tabs > button,
+[data-theme='glass'] .liquid-tabs > button.active,
+[data-theme='glass'] .liquid-tabs > button:hover {
+  background: transparent !important;
+  border: 0;
+}
+[data-theme='glass'] .liquid-tabs .liquid-pill {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.06)),
+    rgba(255, 255, 255, 0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+    0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+[data-theme='glass'] .search,
+[data-theme='glass'] .friends-search,
+[data-theme='glass'] .friend-add-row input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+}
+
+/* ---------- 5. Композер ---------- */
+
+[data-theme='glass'] .composer-bar {
+  border-radius: calc(var(--glass-radius) - 2px);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02) 48%),
+    rgba(255, 255, 255, calc(var(--glass-a) * 0.9));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.30),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+[data-theme='glass'] .composer textarea:focus,
+[data-theme='glass'] .composer input:focus {
+  box-shadow: none;
+  border-color: transparent;
+}
+
+/* ---------- 6. Контролы ---------- */
+
+[data-theme='glass'] .btn,
+[data-theme='glass'] .icon-btn,
+[data-theme='glass'] .round-btn,
+[data-theme='glass'] .nav-btn {
+  background-image: none;
+  background-color: rgba(255, 255, 255, calc(var(--glass-a) + 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition:
+    background-color var(--fast) ease,
+    border-color var(--fast) ease,
+    transform var(--fast) var(--spring),
+    box-shadow var(--mid) ease;
+}
+[data-theme='glass'] .btn:hover,
+[data-theme='glass'] .icon-btn:hover,
+[data-theme='glass'] .round-btn:hover {
+  background-color: rgba(255, 255, 255, calc(var(--glass-a) + 0.09));
+  border-color: rgba(255, 255, 255, 0.20);
+}
+[data-theme='glass'] .btn:active:not(:disabled),
+[data-theme='glass'] .icon-btn:active:not(:disabled),
+[data-theme='glass'] .round-btn:active:not(:disabled) {
+  transform: scale(0.955);
+  background-color: rgba(255, 255, 255, calc(var(--glass-a) + 0.16));
+  transition-duration: 80ms;
+}
+[data-theme='glass'] .btn.primary {
+  background-color: color-mix(in srgb, var(--accent) 78%, transparent);
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+[data-theme='glass'] .btn.primary:hover { background-color: color-mix(in srgb, var(--accent) 90%, transparent); }
+[data-theme='glass'] .btn:focus-visible,
+[data-theme='glass'] .icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+/* Поля */
+[data-theme='glass'] input:not([type='checkbox']):not([type='range']),
+[data-theme='glass'] textarea,
+[data-theme='glass'] select {
+  background-color: rgba(255, 255, 255, calc(var(--glass-a) * 0.7));
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 11px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: border-color var(--fast) ease, box-shadow var(--mid) ease;
+}
+[data-theme='glass'] input:focus,
+[data-theme='glass'] textarea:focus,
+[data-theme='glass'] select:focus {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Свитчер: морозная капсула, морфинг бегунка */
+[data-theme='glass'] .switch {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03) 46%, rgba(0, 0, 0, 0.06)),
+    color-mix(in srgb, var(--text) 10%, transparent);
+}
+[data-theme='glass'] .switch::after {
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.55) 46%, rgba(255, 255, 255, 0.82)),
+    rgba(255, 255, 255, 0.5);
+}
+
+/* ---------- 7. Настройки и права ---------- */
+
+[data-theme='glass'] .settings-card { border-radius: 22px; }
+[data-theme='glass'] .set-nav {
+  background: rgba(10, 14, 28, 0.35);
+  border-right: 1px solid var(--hairline);
+  border-radius: 0;
+}
+[data-theme='glass'] .set-nav button { border-radius: 10px; }
+[data-theme='glass'] .set-nav button:hover { background: rgba(255, 255, 255, 0.06); }
+[data-theme='glass'] .set-block {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--hairline);
+  border-radius: calc(var(--glass-radius) - 2px);
+  padding: 16px;
+}
+[data-theme='glass'] .set-pane { background: transparent; }
+
+[data-theme='glass'] .rs-nav {
+  background: rgba(10, 14, 28, 0.35);
+  border-right: 1px solid var(--hairline);
+}
+[data-theme='glass'] .rs-nav button { border-radius: 10px; }
+[data-theme='glass'] .rs-nav button:hover { background: rgba(255, 255, 255, 0.06); }
+[data-theme='glass'] .rs-nav button.active { background: rgba(255, 255, 255, 0.12); }
+[data-theme='glass'] .rs-role-list,
+[data-theme='glass'] .rs-facts > div,
+[data-theme='glass'] .perm-item,
+[data-theme='glass'] .rs-body .field {
+  background: rgba(10, 14, 28, 0.30);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+}
+[data-theme='glass'] .perm-item { padding: 10px 12px; }
+
+/* ---------- 8. Звонок и трансляция ---------- */
+
+[data-theme='glass'] .call-panel {
+  border-radius: calc(var(--glass-radius) + 2px);
+}
+[data-theme='glass'] .stage,
+[data-theme='glass'] .tile {
+  border-radius: 14px;
+}
+[data-theme='glass'] .tile {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--hairline);
+}
+[data-theme='glass'] .round-btn {
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.10);
+}
+[data-theme='glass'] .round-btn.on {
+  background-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+[data-theme='glass'] .stream-card,
+[data-theme='glass'] .stream-float {
+  border-radius: 14px;
+  border: 1px solid var(--hairline);
+  background: rgba(10, 14, 28, 0.5);
+}
+
+/* ---------- 9. Мелочи: тосты, бейджи, скроллы, фокус ---------- */
+
+[data-theme='glass'] .toast {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 50%),
+    rgba(16, 20, 36, 0.86);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+}
+[data-theme='glass'] .badge,
+[data-theme='glass'] .notif-badge {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+[data-theme='glass'] ::-webkit-scrollbar { width: 9px; height: 9px; }
+[data-theme='glass'] ::-webkit-scrollbar-track { background: transparent; }
+[data-theme='glass'] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, calc(var(--glass-a) * 2.2));
+  border-radius: 9px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+[data-theme='glass'] ::selection { background: color-mix(in srgb, var(--accent) 42%, transparent); }
+
+/* ---------- 10. Экран входа ---------- */
+
+[data-theme='glass'] .auth-card,
+[data-theme='glass'] .auth-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0) 42%),
+    rgba(16, 20, 36, 0.62);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 10px)) saturate(180%);
+  backdrop-filter: blur(calc(var(--glass-blur) + 10px)) saturate(180%);
+  border: 1px solid var(--hairline);
+  border-radius: calc(var(--glass-radius) + 4px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+[data-theme='glass'] .auth-pill,
+[data-theme='glass'] .oauth-btn {
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ---------- 11. Скругление во всех темах ---------- */
+
+.sidebar,
+.content { border-radius: var(--panel-radius, 16px); }
