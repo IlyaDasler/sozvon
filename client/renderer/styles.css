@@ -1964,3 +1964,32 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
   position: static; width: auto; max-width: 280px; margin-top: 8px;
   box-shadow: none; background: var(--bg-3);
 }
+
+/* Колёса-барабаны для выбора времени */
+.time-drum-body { display: flex; justify-content: center; }
+.drum { position: relative; display: flex; gap: 4px; height: 168px; width: 168px; }
+.drum::before, .drum::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 45px; pointer-events: none; z-index: 2;
+}
+.drum::before { top: 0; background: linear-gradient(var(--bg-2), transparent); }
+.drum::after { bottom: 0; background: linear-gradient(transparent, var(--bg-2)); }
+.drum-col {
+  flex: 1; display: flex; flex-direction: column; overflow-y: auto;
+  scroll-snap-type: y mandatory; scrollbar-width: none; padding: 62px 0;
+}
+.drum-col::-webkit-scrollbar { display: none; }
+.drum-col .time-cell {
+  flex: none; height: 44px; display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 8px; background: transparent; color: var(--muted);
+  font: inherit; font-size: 15px; cursor: pointer; scroll-snap-align: center;
+}
+.drum-col .time-cell.selected { color: var(--text); font-weight: 600; }
+.drum::before, .drum::after { }
+/* Полоса выбранного по центру */
+.drum-band {
+  position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%);
+  border-radius: 8px; background: color-mix(in srgb, var(--accent) 16%, transparent);
+  pointer-events: none; z-index: 1;
+}
+
+.drum-col { position: relative; z-index: 2; }
