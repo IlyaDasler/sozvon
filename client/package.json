@@ -19,6 +19,7 @@
     "productName": "Sozvon",
     "copyright": "© IlyaDasler",
     "npmRebuild": false,
+    "afterPack": "scripts/after-pack.js",
     "files": [
       "*.js",
       "renderer/**/*",
