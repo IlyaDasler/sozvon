@@ -2,6 +2,7 @@
 // меняют права ролями, переходят между каналами и банят.
 // Запуск (сервер должен работать): npx electron scripts/e2e-room.js [адрес сервера]
 const { ACCEPT_DIALOGS, api, befriend, register, js, waitFor, sleep, openClient, received, tilePlaying, screenshot, runTest } = require('./e2e-lib');
+const { BrowserWindow } = require('electron');
 
 // Видна ли кнопка целиком и не перекрыта ли чем-то
 const reachable = (sel) => `(() => {
@@ -219,19 +220,42 @@ runTest(async () => {
     console.log('✔ трансляция разворачивается в приложении и на весь монитор, закрывается кнопкой');
   }
 
-  // Плавающее окно: кадр поверх переписки, размер переключается, закрывается
+  // Плавающее окно: в приложении это отдельное окно Windows, в браузере — карточка поверх страницы
   const pipBtn = `document.querySelector('.tile[data-key="u${b.user.id}:screen"] .tile-pip')`;
+  const pipWindows = () =>
+    BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed() && w.webContents.getURL().includes('pip.html'));
   if (await js(winA, `Boolean(${pipBtn})`)) {
     await js(winA, `${pipBtn}.click(); true`);
-    await waitFor(winA, `!document.getElementById('stream-float').classList.contains('hidden') && document.getElementById('stream-float-video').videoWidth > 0`, 'плавающее окно с кадром');
-    const sizes = `document.getElementById('stream-float').className`;
-    const small = await js(winA, `document.getElementById('stream-float').classList.contains('size-small')`);
-    await js(winA, `document.getElementById('stream-float-size').click(); true`);
-    const bigger = await js(winA, `!document.getElementById('stream-float').classList.contains('size-small')`);
-    if (!small || !bigger) throw new Error(`Плавающее окно не меняет размер: ${sizes}`);
-    await js(winA, `document.getElementById('stream-float-close').click(); true`);
-    await waitFor(winA, `document.getElementById('stream-float').classList.contains('hidden')`, 'плавающее окно закрыто');
-    console.log('✔ плавающее окно показывает трансляцию и закрывается');
+    await sleep(2000);
+    // Отдельное окно Windows открывается не всегда (в стенде нет главного процесса приложения) —
+    // тогда приложение обязано показать кадр внутри себя, и это тоже нужно проверить
+    let win = null;
+    for (let i = 0; i < 30 && !win; i++) {
+      win = pipWindows()[0] || null;
+      if (!win) await sleep(100);
+    }
+    if (win) {
+      let framed = false;
+      for (let i = 0; i < 50 && !framed; i++) {
+        framed = await win.webContents.executeJavaScript(`document.getElementById('pip-image').src.startsWith('data:image')`);
+        if (!framed) await sleep(200);
+      }
+      if (!framed) throw new Error('В отдельное окно не пришли кадры');
+      await win.webContents.executeJavaScript(`document.getElementById('pip-close').click(); true`);
+      for (let i = 0; i < 40 && pipWindows().length; i++) await sleep(100);
+      if (pipWindows().length) throw new Error('Отдельное окно трансляции не закрылось');
+      console.log('✔ плавающее окно трансляции — отдельное окно Windows, с кадром и закрытием');
+    } else {
+      await waitFor(winA, `!document.getElementById('stream-float').classList.contains('hidden') && document.getElementById('stream-float-video').videoWidth > 0`, 'плавающее окно с кадром');
+      const sizes = `document.getElementById('stream-float').className`;
+      const small = await js(winA, `document.getElementById('stream-float').classList.contains('size-small')`);
+      await js(winA, `document.getElementById('stream-float-size').click(); true`);
+      const bigger = await js(winA, `!document.getElementById('stream-float').classList.contains('size-small')`);
+      if (!small || !bigger) throw new Error(`Плавающее окно не меняет размер: ${sizes}`);
+      await js(winA, `document.getElementById('stream-float-close').click(); true`);
+      await waitFor(winA, `document.getElementById('stream-float').classList.contains('hidden')`, 'плавающее окно закрыто');
+      console.log('✔ плавающее окно показывает трансляцию и закрывается');
+    }
   }
 
   // «Перестать смотреть» — видео пропадает, Боря перестаёт слать Ане экран
@@ -251,7 +275,20 @@ runTest(async () => {
   await sleep(300);
   const short = await panelH();
   const share = await js(winA, `store.get('panelWidths', {}).call`);
-  if (!(short < tall - 80) || !(share > 0.2 && share < 0.75)) throw new Error(`Граница разговора и чата не тянется: ${tall} → ${short}, доля ${share}`);
+  if (short > tall) throw new Error(`Панель разговора стала выше после перетаскивания вверх: ${tall} → ${short}`);
+  if (!(share > 0.2 && share < 0.75)) throw new Error(`Доля разговора не запомнилась: ${share}`);
+  // Ниже минимума панель не уходит: иначе срезаются кнопки управления
+  if (short < 300) throw new Error(`Панель разговора сжалась ниже минимума: ${short}`);
+
+  // И она действительно тянется, а не застряла на минимуме: тянем обратно вниз
+  const grip2 = await js(winA, `(() => { const r = document.querySelector('#call-panel > .panel-resizer.bottom').getBoundingClientRect(); return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) }; })()`);
+  winA.webContents.sendInputEvent({ type: 'mouseMove', x: grip2.x, y: grip2.y });
+  winA.webContents.sendInputEvent({ type: 'mouseDown', x: grip2.x, y: grip2.y, button: 'left', clickCount: 1 });
+  for (let i = 1; i <= 4; i++) winA.webContents.sendInputEvent({ type: 'mouseMove', x: grip2.x, y: grip2.y + i * 30, button: 'left' });
+  winA.webContents.sendInputEvent({ type: 'mouseUp', x: grip2.x, y: grip2.y + 120, button: 'left', clickCount: 1 });
+  await sleep(300);
+  const grown = await panelH();
+  if (grown < short + 40) throw new Error(`Панель разговора не тянется вниз: ${short} → ${grown}`);
   await js(winA, `document.querySelector('#call-panel > .panel-resizer.bottom').dispatchEvent(new MouseEvent('dblclick')); true`);
   console.log('✔ границу между разговором и чатом тянут мышью, доля запоминается');
 

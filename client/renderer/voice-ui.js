@@ -346,6 +346,8 @@ function updateFullViewScreenButton() {
 // ---------- Плавающее окно ----------
 
 let floatView = null; // ключ плитки в плавающем окне
+// true — картинка ушла в отдельное окно Windows; иначе показываем её внутри приложения
+let pipActive = false;
 const FLOAT_SIZES = ['small', 'medium', 'large'];
 
 const floatBox = () => $('stream-float');
@@ -421,15 +423,29 @@ function stopPipFrames() {
   pipTimer = null;
 }
 
-function openFloating(key) {
+async function openFloating(key) {
   const t = voiceTiles().find((x) => x.key === key && x.video);
   if (!t) return;
   floatView = key;
+  pipActive = false;
   if (nativePip()) {
     // Размер и место отдельного окна запоминаем
-    window.desktop.pip.open({ title: `Экран: ${tileName(t)}`, bounds: store.get('pip:bounds', null) });
-    startPipFrames();
-    return;
+    try {
+      // Если главный процесс не ответил за секунду, не ждём: показываем окно внутри приложения
+      const res = await Promise.race([
+        window.desktop.pip.open({ title: `Экран: ${tileName(t)}`, bounds: store.get('pip:bounds', null) }).catch(() => null),
+        new Promise((resolve) => setTimeout(() => resolve(null), 1200)),
+      ]);
+      // Успех — только явное подтверждение главного процесса
+      if (res?.ok === true) {
+        pipActive = true;
+        startPipFrames();
+        return;
+      }
+    } catch {
+      // Отдельное окно не открылось (нет прав, сбой системы) — показываем внутри приложения
+    }
+    if (!floatView) return;
   }
   floatBox().classList.remove('hidden');
   placeFloating();
@@ -439,11 +455,10 @@ function openFloating(key) {
 function closeFloating() {
   if (!floatView) return;
   floatView = null;
+  const wasPip = pipActive;
+  pipActive = false;
   stopPipFrames();
-  if (nativePip()) {
-    window.desktop.pip.close();
-    return;
-  }
+  if (wasPip && nativePip()) window.desktop.pip.close();
   floatBox().classList.add('hidden');
   $('stream-float-video').srcObject = null;
 }
@@ -461,7 +476,7 @@ function updateFloating() {
   const t = voiceTiles().find((x) => x.key === floatView);
   if (!t?.video) return closeFloating();
   // В отдельном окне картинку собирает startPipFrames, страница для этого не нужна
-  if (nativePip()) return;
+  if (pipActive) return;
   const video = $('stream-float-video');
   if (video.srcObject?.getVideoTracks()[0] !== t.video) video.srcObject = new MediaStream([t.video]);
   if (video.paused) video.play().catch(() => {});

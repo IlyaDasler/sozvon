@@ -1,4 +1,4 @@
-﻿/* Р В Р В°Р В·Р СР ВµРЎР‚РЎвЂ№ Р С‘ Р Т‘Р Р†Р С‘Р В¶Р ВµР Р…Р С‘Р Вµ РІР‚вЂќ Р С•Р В±РЎвЂ°Р С‘Р Вµ Р Т‘Р В»РЎРЏ Р Р†РЎРѓР ВµРЎвЂ¦ РЎвЂљР ВµР С. --dock-h Р С‘ --dock-gap Р Т‘Р ВµРЎР‚Р В¶Р В°РЎвЂљ Р Р…Р В° Р С•Р Т‘Р Р…Р С•Р в„– Р В»Р С‘Р Р…Р С‘Р С‘
+/* Р В Р В°Р В·Р СР ВµРЎР‚РЎвЂ№ Р С‘ Р Т‘Р Р†Р С‘Р В¶Р ВµР Р…Р С‘Р Вµ РІР‚вЂќ Р С•Р В±РЎвЂ°Р С‘Р Вµ Р Т‘Р В»РЎРЏ Р Р†РЎРѓР ВµРЎвЂ¦ РЎвЂљР ВµР С. --dock-h Р С‘ --dock-gap Р Т‘Р ВµРЎР‚Р В¶Р В°РЎвЂљ Р Р…Р В° Р С•Р Т‘Р Р…Р С•Р в„– Р В»Р С‘Р Р…Р С‘Р С‘
    Р С”Р Р…Р С•Р С—Р С”РЎС“ Р’В«+Р’В» Р Р† РЎРѓРЎвЂљР С•Р В»Р В±РЎвЂ Р Вµ Р С”Р В°Р Р…Р В°Р В»Р С•Р Р†, РЎРѓР Р†Р С•РЎР‹ Р С—Р В°Р Р…Р ВµР В»РЎРЉ Р Р†Р Р…Р С‘Р В·РЎС“ РЎРѓР В»Р ВµР Р†Р В° Р С‘ Р С—Р С•Р В»Р Вµ Р Р†Р Р†Р С•Р Т‘Р В° */
 :root {
   --radius: 8px;
@@ -2033,3 +2033,15 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 .event-view-card #ev-people { margin-bottom: 4px; }
 
 .event-view-card .btn.danger { white-space: nowrap; }
+/* Низкое окно (минимальный размер приложения — 820×540): профили и кнопки ужимаются,
+   чтобы панель управления разговором не срезалась */
+@media (max-height: 640px) {
+  .call-panel { min-height: 300px; padding: 8px 12px; gap: 6px; }
+  .stage { min-height: 72px; }
+  .tile-strip { padding: 0 0 2px; }
+  .tile-strip .tile { width: 132px; height: 84px; }
+  .tile-strip .tile .avatar.big { width: 34px; height: 34px; font-size: 15px; }
+  .round-btn { width: 40px; height: 40px; }
+  .round-btn svg { width: 18px; height: 18px; }
+  .call-controls { gap: 8px; }
+}
