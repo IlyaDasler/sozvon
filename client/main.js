@@ -466,7 +466,9 @@ registerNativeScreen(() => screenChoice?.source);
 
 ipcMain.handle('screen:choose', (_event, id, audio) => {
   const source = screenSources.get(id);
-  screenChoice = source ? { source, audio: Boolean(audio) && process.platform === 'win32' } : null;
+  // Звук экрана умеют и Windows, и macOS 14.2+ (Chromium берёт его через CoreAudio Tap).
+  // На более старых macOS система просто не даст дорожке звука данных — тогда показываем без звука
+  screenChoice = source ? { source, audio: Boolean(audio) && (process.platform === 'win32' || process.platform === 'darwin') } : null;
   return Boolean(source);
 });
 

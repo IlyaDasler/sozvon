@@ -54,7 +54,8 @@
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Созвон использует микрофон, чтобы вы могли говорить.",
         "NSCameraUsageDescription": "Созвон использует камеру для видеозвонков.",
-        "NSScreenCaptureUsageDescription": "Созвон показывает ваш экран друзьям, когда вы включаете трансляцию."
+        "NSScreenCaptureUsageDescription": "Созвон показывает ваш экран друзьям, когда вы включаете трансляцию.",
+        "NSAudioCaptureUsageDescription": "Созвон передаёт звук с вашего экрана, чтобы друзья слышали видео и музыку при трансляции."
       },
       "hardenedRuntime": false,
       "gatekeeperAssess": false

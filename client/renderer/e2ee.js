@@ -28,25 +28,43 @@ const serverScope = () => {
 const scopedKey = (name, id = state.me.id) => `e2ee:${serverScope()}:${name}:${id}`;
 const legacyKey = (name, id = state.me.id) => `e2ee:${name}:${id}`;
 
+/** Ключ мог лечь в хранилище запечатанным под именем, которое store не считает секретным
+ *  (так было в 2.9.5) — тогда распечатываем сами и переписываем уже по правилам */
+function unseal(value) {
+  if (!value || typeof value !== 'object' || !value.vault) return value;
+  try {
+    const opened = JSON.parse(window.desktop?.vault?.open(value.vault));
+    return opened ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Читаем ключ сервера; если его нет — один раз переносим ключ прежнего формата.
  *  Значение переносим сырым: запечатанный ключ должен остаться запечатанным */
 function readScoped(name, fallback) {
-  const value = store.get(scopedKey(name), null);
-  if (value !== null && value !== undefined) return value;
+  const value = unseal(store.get(scopedKey(name), null));
+  if (value !== null && value !== undefined) {
+    store.set(scopedKey(name), value); // переписываем заново: так ключ снова запечатан
+    return value;
+  }
   const legacy = legacyKey(name);
   let raw = null;
   try {
     raw = localStorage.getItem(legacy);
   } catch {}
   if (raw === null) return fallback;
+  let moved = null;
   try {
     localStorage.setItem(scopedKey(name), raw);
     localStorage.removeItem(legacy);
+    moved = unseal(store.get(scopedKey(name), null));
   } catch {
     return fallback;
   }
-  const moved = store.get(scopedKey(name), null);
-  return moved === null || moved === undefined ? fallback : moved;
+  if (moved === null || moved === undefined) return fallback;
+  store.set(scopedKey(name), moved);
+  return moved;
 }
 
 const identityStoreKey = () => scopedKey('identity');
