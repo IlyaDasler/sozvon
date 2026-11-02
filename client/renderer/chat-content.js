@@ -1,4 +1,4 @@
-﻿// Содержимое сообщения: текст с разметкой, вложения (картинки, видео, звук, файлы) и превью ссылки.
+// Содержимое сообщения: текст с разметкой, вложения (картинки, видео, звук, файлы) и превью ссылки.
 // Общее для чата с другом и комнаты.
 
 // Сообщение только из смайликов (до трёх) показывается крупно
@@ -741,7 +741,7 @@ function eventCard(event, roomId) {
     const ok = document.createElement('button');
     ok.type = 'button';
     ok.className = 'btn small primary';
-    ok.textContent = '��';
+    ok.textContent = 'ОК';
     ok.onclick = () => {
       const at = new Date(event.startsAt);
       at.setHours(draft.h, draft.m, 0, 0);
