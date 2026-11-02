@@ -210,4 +210,32 @@ runTest(async () => {
     if (ph.bg !== true) throw new Error('У плитки канала пропала картинка');
   }
   console.log('✔ каналы с картинкой — скруглённый квадрат, фото не обрезано');
+
+  // ---------- Адаптив: 480 / 760 / 1280 ----------
+  for (const width of [480, 760, 1280]) {
+    win.setSize(width, 900);
+    await sleep(550);
+    const probe = await js(win, `(() => {
+      const out = { width: innerWidth, scroll: document.documentElement.scrollWidth, overflow: [] };
+      for (const sel of ['.composer-bar', '.chat-head', '.sidebar', '.content', '.call-panel']) {
+        const el = [...document.querySelectorAll(sel)].find((e) => e.getClientRects().length);
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        if (r.right > innerWidth + 1 || r.left < -1)
+          out.overflow.push(sel + ':' + Math.round(r.left) + '..' + Math.round(r.right));
+      }
+      const visible = (sel) => { const el = document.querySelector(sel); return Boolean(el && el.getClientRects().length); };
+      out.sidebarVisible = visible('.sidebar');
+      out.railVisible = visible('.rail');
+      return JSON.stringify(out);
+    })()`);
+    const row = JSON.parse(probe);
+    if (row.scroll > row.width + 2) throw new Error(`На ${width}px горизонтальный скролл ${row.scroll} > ${row.width}`);
+    if (row.overflow.length) throw new Error(`На ${width}px вылезают за экран: ${row.overflow.join(', ')}`);
+    if (width <= 760 && row.sidebarVisible) throw new Error(`На ${width}px сайдбар должен быть скрыт`);
+    if (width === 1280 && !row.sidebarVisible) throw new Error('На 1280px сайдбар должен быть виден');
+  }
+  win.setSize(1280, 900);
+  await sleep(400);
+  console.log('✔ адаптив 480 / 760 / 1280 без переполнений');
 });

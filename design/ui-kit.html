@@ -197,6 +197,16 @@
     font: inherit; padding: 6px 14px; border-radius: 9px; cursor: pointer; }
   .liquid-tabs .pill { position: absolute; left: 0; top: 0; z-index: 0; border-radius: 9px; pointer-events: none;
     background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.06)); box-shadow: inset 0 1px 0 rgba(255,255,255,.45); }
+  /* Роли, участники, профиль, трансляция */
+  .kv-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid var(--line); }
+  .kv-row + .kv-row { margin-top:6px; }
+  .kv-row .grow { flex:1; min-width:0; }
+  .role-dot { width:10px; height:10px; border-radius:50%; flex:none; }
+  .member-line { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px; }
+  .member-line:hover { background:rgba(255,255,255,.06); }
+  .banner { height:86px; border-radius:14px 14px 0 0; background:linear-gradient(120deg,#5b8cff,#9b6bff 60%,#33d1c0); }
+  .stream-card-k { border-radius:16px; overflow:hidden; border:1px solid var(--line); background:rgba(10,14,28,.55); }
+  .stream-head { display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line); }
   code.k { background: rgba(255,255,255,.08); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
   .tokens { display: grid; gap: 6px; font-size: 13px; }
   .tokens div { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,.08); padding: 4px 0; }
@@ -431,6 +441,45 @@
   <div style="width:220px; height:200px; border-radius:16px; background:
     radial-gradient(120% 90% at 30% 20%, rgba(122,167,255,.5), transparent 60%),
     rgba(255,255,255,.06); display:grid; place-items:center; font-size:44px">👾</div>
+</div>
+
+<h2>Роли и права</h2>
+<div class="glass">
+  <div class="kv-row"><span class="role-dot" style="background:#8b8fa3"></span><span class="grow">Все без роли</span><span class="muted small">0</span></div>
+  <div class="kv-row"><span class="role-dot" style="background:#ff6b8a"></span><span class="grow">Администратор</span><span class="muted small">8</span></div>
+  <div class="kv-row"><span class="role-dot" style="background:#5b8cff"></span><span class="grow">Полуадмин</span><span class="muted small">0</span></div>
+  <div class="row" style="margin:14px 0 8px"><b>Права</b></div>
+  <div class="kv-row"><span class="grow"><b>Заходить в голосовой канал</b><br><span class="muted small">Подключаться к общему разговору комнаты</span></span><input type="checkbox" class="switch" checked></div>
+  <div class="kv-row"><span class="grow"><b>Говорить</b><br><span class="muted small">Без этого права микрофон всегда выключен</span></span><input type="checkbox" class="switch" checked></div>
+  <div class="kv-row"><span class="grow"><b>Кикать и отключать</b><br><span class="muted small">Удаление из комнаты на время</span></span><input type="checkbox" class="switch"></div>
+</div>
+
+<h2>Участники канала</h2>
+<div class="glass">
+  <div class="member-line"><span class="avatar" style="width:34px;height:34px">А</span><span class="grow"><b>Аня</b><br><span class="muted small">Создатель канала</span></span><span class="small" style="color:#ffcf4a">♛</span></div>
+  <div class="member-line"><span class="avatar" style="width:34px;height:34px;background:#5b8cff">Б</span><span class="grow"><b>Боря</b><br><span class="muted small">В сети</span></span><span class="chip small">Гость</span></div>
+  <div class="member-line"><span class="avatar" style="width:34px;height:34px;background:#33d1c0">В</span><span class="grow"><b>Вася</b><br><span class="muted small">Не в сети</span></span></div>
+</div>
+
+<h2>Профиль участника</h2>
+<div class="glass" style="padding:0; overflow:hidden; max-width:340px">
+  <div class="banner"></div>
+  <div style="padding:14px 16px 18px">
+    <div class="row" style="align-items:flex-end; gap:12px; margin-top:-34px">
+      <span class="avatar" style="width:64px;height:64px;font-size:24px;box-shadow:0 0 0 4px rgba(10,14,28,.9)">А</span>
+      <div><b style="font-size:16px">Аня</b><br><span class="muted small">@anya</span></div>
+    </div>
+    <p class="small" style="margin:12px 0">Играю вечерами, зову в голос. Пишите, если нужен напарник.</p>
+    <div class="row" style="gap:8px"><button class="btn primary" style="flex:1">Написать</button><button class="btn" style="flex:1">Позвонить</button></div>
+  </div>
+</div>
+
+<h2>Трансляция</h2>
+<div class="stream-card-k">
+  <div class="stream-head"><span style="width:8px;height:8px;border-radius:50%;background:#e5484d"></span><b>Показ экрана</b><span class="muted small">1440p · 60 к/с</span><span style="flex:1"></span><button class="btn">Плавающее окно</button><button class="btn">Во весь экран</button></div>
+  <div style="height:150px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(91,140,255,.25),rgba(155,107,255,.18))">
+    <span class="muted small">Превью экрана</span>
+  </div>
 </div>
 
 <h2>Токены</h2>
