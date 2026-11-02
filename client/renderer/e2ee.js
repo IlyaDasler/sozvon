@@ -15,7 +15,41 @@ const e2ee = {
   files: new Map(), // id вложения -> Promise<адрес расшифрованного файла>
 };
 
-const identityStoreKey = () => `e2ee:identity:${state.me.id}`;
+// Ключи храним отдельно для каждого сервера: id пользователей уникальны только внутри сервера,
+// и на двух серверах под одним номером могут быть разные люди. Без привязки к серверу при его
+// смене подхватился бы чужой ключ
+const serverScope = () => {
+  const base = String(Api.base || '')
+    .replace(/^https?:\/\//i, '')
+    .replace(/[^a-z0-9.-]/gi, '_')
+    .toLowerCase();
+  return base || 'local';
+};
+const scopedKey = (name, id = state.me.id) => `e2ee:${serverScope()}:${name}:${id}`;
+const legacyKey = (name, id = state.me.id) => `e2ee:${name}:${id}`;
+
+/** Читаем ключ сервера; если его нет — один раз переносим ключ прежнего формата.
+ *  Значение переносим сырым: запечатанный ключ должен остаться запечатанным */
+function readScoped(name, fallback) {
+  const value = store.get(scopedKey(name), null);
+  if (value !== null && value !== undefined) return value;
+  const legacy = legacyKey(name);
+  let raw = null;
+  try {
+    raw = localStorage.getItem(legacy);
+  } catch {}
+  if (raw === null) return fallback;
+  try {
+    localStorage.setItem(scopedKey(name), raw);
+    localStorage.removeItem(legacy);
+  } catch {
+    return fallback;
+  }
+  const moved = store.get(scopedKey(name), null);
+  return moved === null || moved === undefined ? fallback : moved;
+}
+
+const identityStoreKey = () => scopedKey('identity');
 const dmConvOf = (peerId) => `dm:${Math.min(state.me.id, peerId)}-${Math.max(state.me.id, peerId)}`;
 const roomConvOf = (roomId) => `room:${roomId}`;
 const e2eeReady = () => Boolean(e2ee.privateKey);
@@ -46,7 +80,7 @@ async function publishIdentity(identity) {
 
 /** При входе: свой ключ есть и совпадает — работаем; нет нигде — создаём; на сервере другой — спрашиваем */
 async function setupE2EE() {
-  const local = store.get(identityStoreKey(), null);
+  const local = readScoped('identity', null);
   const server = state.me.publicKey;
   try {
     if (local && (!server || server === local.publicKey)) {
@@ -279,18 +313,18 @@ function decryptedFileUrl(a) {
 
 // ---------- Ключи собеседников: смена ключа и код проверки ----------
 
-const seenKeysStore = () => `e2ee:seen:${state.me.id}`;
-const changedKeysStore = () => `e2ee:changed:${state.me.id}`;
-const keyChanged = (userId) => store.get(changedKeysStore(), []).includes(userId);
+const seenKeysStore = () => scopedKey('seen');
+const changedKeysStore = () => scopedKey('changed');
+const keyChanged = (userId) => readScoped('changed', []).includes(userId);
 
 function setKeyChanged(userId, changed) {
-  const rest = store.get(changedKeysStore(), []).filter((id) => id !== userId);
+  const rest = readScoped('changed', []).filter((id) => id !== userId);
   store.set(changedKeysStore(), changed ? [...rest, userId] : rest);
 }
 
 /** Запоминаем ключи людей; ключ, отличный от виденного раньше, отмечаем — стоит сверить код. Возвращает сменившихся */
 function noteKeys(users) {
-  const seen = store.get(seenKeysStore(), {});
+  const seen = readScoped('seen', {});
   const changed = [];
   for (const u of users) {
     if (!u?.publicKey || u.id === state.me.id || seen[u.id] === u.publicKey) continue;

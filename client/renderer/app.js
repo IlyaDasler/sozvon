@@ -477,6 +477,8 @@ $('server-change-btn').onclick = async () => {
   store.set('session', null);
   Api.token = '';
   state.me = null;
+  // Ключ прежнего сервера в памяти не держим: на новом свои ключи и своя личность
+  resetE2EE();
   showScreen('auth');
   $('server-field').classList.remove('hidden');
   $('server-url').focus();
