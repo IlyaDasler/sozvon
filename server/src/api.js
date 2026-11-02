@@ -2192,7 +2192,19 @@ export function createApi() {
       validateGroupName(name);
       if (hubs.groups(hubRow.id).length >= MAX_HUB_GROUPS)
         throw new HttpError(400, `В канале может быть не больше ${MAX_HUB_GROUPS} групп`);
-      hubs.createGroup(hubRow.id, name);
+      const created = hubs.createGroup(hubRow.id, name);
+      // Комнаты можно положить в новую группу сразу — так группу собирают перетаскиванием
+      const groupId = Number(created?.lastInsertRowid ?? created);
+      const roomIds = Array.isArray(req.body.roomIds) ? req.body.roomIds.slice(0, 50) : [];
+      const moved = [];
+      for (const rawId of roomIds) {
+        const room = rooms.byId(Number(rawId));
+        if (!room || room.hub_id !== hubRow.id) continue;
+        rooms.setGroup(room.id, groupId);
+        moved.push(room.id);
+      }
+      // Каждой переложенной комнате говорим отдельно: иначе у людей не обновится группа
+      for (const id of moved) notifyRoom(id);
       return notifyHub(hubRow.id);
     })
   );
