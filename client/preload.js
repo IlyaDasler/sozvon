@@ -49,4 +49,13 @@ contextBridge.exposeInMainWorld('desktop', {
     download: () => ipcRenderer.send('update:download'),
     install: () => ipcRenderer.send('update:install'),
   },
+  // Плавающее окно трансляции: отдельное окно Windows, его можно унести на другой монитор
+  pip: {
+    open: (opts) => ipcRenderer.invoke('pip:open', opts || {}),
+    frame: (dataUrl) => ipcRenderer.send('pip:frame', String(dataUrl)),
+    close: () => ipcRenderer.send('pip:close'),
+    onClosed: (callback) => ipcRenderer.on('pip:closed', (_event, bounds) => callback(bounds)),
+    onFrame: (callback) => ipcRenderer.on('pip:frame', (_event, data) => callback(data)),
+    onTitle: (callback) => ipcRenderer.on('pip:title', (_event, title) => callback(title)),
+  },
 });

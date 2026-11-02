@@ -108,6 +108,7 @@ const NOTIF_ICONS = {
   'room-removed': '⛔',
   'hub-invite': '🏠',
   'hub-removed': '⛔',
+  event: '📅',
 };
 
 const notifKey = () => `notifications:${state.me?.id}`;
@@ -128,7 +129,7 @@ function renderNotifPanel() {
   for (const n of items) {
     const row = document.createElement('button');
     row.type = 'button';
-    row.className = `notif-item${n.read ? '' : ' unread'}`;
+    row.className = `notif-item${n.read ? '' : ' unread'}${n.kind === 'event' ? ' event' : ''}`;
     const icon = document.createElement('span');
     icon.className = 'notif-icon';
     icon.textContent = NOTIF_ICONS[n.kind] || '•';

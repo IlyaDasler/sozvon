@@ -19,6 +19,7 @@ import {
   messages,
   pins,
   reactions,
+  events,
   readState,
   relatedUserIds,
   roles,
@@ -345,9 +346,12 @@ const toRoom = (row) => ({
   members: rooms.members(row.id).map((m) => ({
     ...withOnline(m),
     roleId: m.role_id,
+    // Своё имя в канале — видно только в этом канале и его комнатах
+    nickname: row.hub_id ? hubs.nicknameOf(row.hub_id, m.id) : null,
     timeoutUntil: m.timeout_until > Date.now() ? m.timeout_until : null,
   })),
   bans: rooms.bans(row.id).map((b) => ({ ...toPublicUser(b), bannedAt: b.banned_at })),
+  events: events.ofRoom(row.id).map(toEvent),
   voice: voice.participants(row.id),
   voiceSince: voice.since(row.id),
   // Часы сервера: по ним приложение считает поправку, чтобы таймер разговора был одинаковым
@@ -360,6 +364,43 @@ function notifyRoom(roomId) {
   const room = toRoom(rooms.byId(roomId));
   for (const m of room.members) hub.send(m.id, { type: 'room:updated', room });
   return room;
+}
+
+const EVENT_REPEATS = new Set(['none', 'daily', 'weekdays', 'weekly']);
+const EVENT_REMIND = new Set([0, 5, 10, 15, 30, 60]);
+
+/** Ближайший запуск события: для повторяющихся считаем от «сейчас», для разового — само время */
+function nextStart(row, now = Date.now()) {
+  const base = row.starts_at;
+  const repeat = row.repeat || 'none';
+  if (repeat === 'none') return base > now ? base : null;
+  const b = new Date(base);
+  const d = new Date(now);
+  d.setHours(b.getHours(), b.getMinutes(), 0, 0);
+  if (d.getTime() <= now) d.setDate(d.getDate() + 1);
+  if (repeat === 'weekdays') while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  if (repeat === 'weekly') while (d.getDay() !== b.getDay()) d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+
+function toEvent(row) {
+  const repeat = row.repeat || 'none';
+  return {
+    id: row.id,
+    roomId: row.room_id,
+    title: row.title,
+    startsAt: row.starts_at,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    repeat,
+    remind: row.remind || 0,
+    active: row.active !== 0,
+    nextAt: row.active !== 0 ? nextStart(row) : null,
+    // Завершённое вручную — сразу, разовое — через час после начала
+    completed: row.active === 0 || (repeat === 'none' && Date.now() > row.starts_at + 3_600_000),
+    // Готовность: yes — буду, no — не смогу, maybe — готов в другое время (readyAt)
+    responses: events.responses(row.id).map((r) => ({ userId: r.user_id, status: r.status, readyAt: r.ready_at })),
+  };
 }
 
 function validateGroupName(name) {
@@ -392,7 +433,16 @@ const toHub = (row) => ({
   groups: hubs.groups(row.id),
   emojis: hubs.emojis(row.id).map((e) => ({ id: e.id, name: e.name, createdBy: e.created_by, url: `/api/avatars/${e.file}.webp` })),
   roles: rolesOf(row.id),
-  members: hubs.members(row.id).map((m) => ({ ...withOnline(m), manager: Boolean(m.manager), roleId: m.role_id, joinedAt: m.joined_at })),
+  members: (() => {
+    const nick = new Map(hubs.nicknames(row.id).map((n) => [n.user_id, n.name]));
+    return hubs.members(row.id).map((m) => ({
+      ...withOnline(m),
+      manager: Boolean(m.manager),
+      roleId: m.role_id,
+      nickname: nick.get(m.id) || null,
+      joinedAt: m.joined_at,
+    }));
+  })(),
   invited: hubs.invited(row.id),
   bans: hubs.bans(row.id).map((b) => ({ ...toPublicUser(b), bannedAt: b.banned_at })),
 });
@@ -1713,6 +1763,128 @@ export function createApi() {
     })
   );
 
+  // ---------- События канала ----------
+  // Событие публикуется сообщением в выбранную комнату, а готовность («буду», «не смогу»,
+  // «готов в 21:30») хранится на сервере и приходит всем участникам вместе с комнатой
+
+  api.post(
+    '/rooms/:id/events',
+    handle((req) => {
+      const room = requireRoom(req);
+      if (!room.hub_id) throw new HttpError(400, 'События бывают только в каналах');
+      requirePerm(req, room, PERMS.write, 'Вам нельзя писать в эту комнату');
+      const title = str(req.body.title).trim();
+      if (title.length < 1 || title.length > 80) throw new HttpError(400, 'Название события — от 1 до 80 символов');
+      const startsAt = Number(req.body.startsAt);
+      if (!Number.isFinite(startsAt) || startsAt < Date.now() - 86_400_000)
+        throw new HttpError(400, 'Укажите дату и время события');
+      const invitees = Array.isArray(req.body.invitees) ? req.body.invitees.map(Number) : [];
+      const repeat = EVENT_REPEATS.has(req.body.repeat) ? req.body.repeat : 'none';
+      const remind = EVENT_REMIND.has(Number(req.body.remind)) ? Number(req.body.remind) : 0;
+      // Старое событие с таким же названием в этой комнате убираем — остаётся новое
+      for (const old of events.ofRoom(room.id)) {
+        if (old.title.trim().toLowerCase() === title.toLowerCase()) events.remove(old.id);
+      }
+      const row = events.create(room.id, room.hub_id, title, startsAt, req.user.id, repeat, remind);
+      // Автор сразу «буду», приглашённые — «приглашён»
+      events.respond(row.id, req.user.id, 'yes');
+      for (const id of invitees) {
+        if (id === req.user.id || !rooms.isMember(room.id, id)) continue;
+        events.respond(row.id, id, 'invited');
+        // Приглашённому — отдельное уведомление в колокольчик, его выделяем среди прочих
+        hub.send(id, {
+          type: 'event:invite',
+          eventId: row.id,
+          title,
+          startsAt,
+          roomId: room.id,
+          roomName: room.name,
+          hubId: room.hub_id,
+          from: toPublicUser(req.user),
+        });
+      }
+      return { ...notifyRoom(room.id), createdEventId: row.id };
+    })
+  );
+
+  api.put(
+    '/events/:eventId/response',
+    handle((req) => {
+      const event = events.byId(Number(req.params.eventId));
+      if (!event) throw new HttpError(404, 'Событие не найдено');
+      const room = rooms.byId(event.room_id);
+      if (!room || !rooms.isMember(room.id, req.user.id)) throw new HttpError(404, 'Событие не найдено');
+      const status = ['yes', 'no', 'maybe'].includes(req.body.status) ? req.body.status : null;
+      if (!status) throw new HttpError(400, 'Неизвестный ответ');
+      const readyAt = status === 'maybe' ? Number(req.body.readyAt) : null;
+      if (status === 'maybe' && !Number.isFinite(readyAt)) throw new HttpError(400, 'Укажите время, когда сможете');
+      events.respond(event.id, req.user.id, status, readyAt);
+      return notifyRoom(room.id);
+    })
+  );
+
+  api.delete(
+    '/events/:eventId',
+    handle((req) => {
+      const event = events.byId(Number(req.params.eventId));
+      if (!event) throw new HttpError(404, 'Событие не найдено');
+      const room = rooms.byId(event.room_id);
+      if (!room || !rooms.isMember(room.id, req.user.id)) throw new HttpError(404, 'Событие не найдено');
+      const hubRow = hubs.byId(room.hub_id);
+      const member = hubRow && hubs.members(hubRow.id).find((m) => m.id === req.user.id);
+      const role = member?.role_id ? roles.byId(member.role_id) : null;
+      const manages = Boolean(hubRow) && (hubs.rankOf(hubRow, req.user.id) >= 2 || ((role?.perms || 0) & PERMS.manage));
+      if (event.created_by !== req.user.id && !manages)
+        throw new HttpError(403, 'Удалить событие может его автор или управляющий каналом');
+      events.remove(event.id);
+      return notifyRoom(room.id);
+    })
+  );
+
+  api.patch(
+    '/events/:eventId',
+    handle((req) => {
+      const event = events.byId(Number(req.params.eventId));
+      if (!event) throw new HttpError(404, 'Событие не найдено');
+      const room = rooms.byId(event.room_id);
+      if (!room || !rooms.isMember(room.id, req.user.id)) throw new HttpError(404, 'Событие не найдено');
+      const hubRow = hubs.byId(room.hub_id);
+      const member = hubRow && hubs.members(hubRow.id).find((m) => m.id === req.user.id);
+      const role = member?.role_id ? roles.byId(member.role_id) : null;
+      const manages = Boolean(hubRow) && (hubs.rankOf(hubRow, req.user.id) >= 2 || ((role?.perms || 0) & PERMS.manage));
+      if (event.created_by !== req.user.id && !manages)
+        throw new HttpError(403, 'Изменить событие может его автор или управляющий каналом');
+      const title = str(req.body.title).trim();
+      if (title.length < 1 || title.length > 80) throw new HttpError(400, 'Название события — от 1 до 80 символов');
+      const startsAt = Number(req.body.startsAt);
+      if (!Number.isFinite(startsAt) || startsAt < Date.now() - 86_400_000)
+        throw new HttpError(400, 'Укажите дату и время события');
+      const repeat = EVENT_REPEATS.has(req.body.repeat) ? req.body.repeat : 'none';
+      const remind = EVENT_REMIND.has(Number(req.body.remind)) ? Number(req.body.remind) : 0;
+      events.update(event.id, title, startsAt, repeat, remind);
+      return notifyRoom(room.id);
+    })
+  );
+
+  api.post(
+    '/events/:eventId/finish',
+    handle((req) => {
+      const event = events.byId(Number(req.params.eventId));
+      if (!event) throw new HttpError(404, 'Событие не найдено');
+      const room = rooms.byId(event.room_id);
+      if (!room || !rooms.isMember(room.id, req.user.id)) throw new HttpError(404, 'Событие не найдено');
+      const hubRow = hubs.byId(room.hub_id);
+      const member = hubRow && hubs.members(hubRow.id).find((m) => m.id === req.user.id);
+      const role = member?.role_id ? roles.byId(member.role_id) : null;
+      const manages = Boolean(hubRow) && (hubs.rankOf(hubRow, req.user.id) >= 2 || ((role?.perms || 0) & PERMS.manage));
+      if (event.created_by !== req.user.id && !manages)
+        throw new HttpError(403, 'Завершить событие может его автор или управляющий каналом');
+      // Завершённое событие больше не напоминает о себе — планировщик его пропускает
+      events.finish(event.id);
+      return notifyRoom(room.id);
+    })
+  );
+
   api.post(
     '/rooms/:id/messages',
     handle(async (req) => {
@@ -1852,6 +2024,48 @@ export function createApi() {
   api.patch('/hubs/:id/roles/:roleId', handle((req) => updateRole(req, requireHub(req))));
   api.delete('/hubs/:id/roles/:roleId', handle((req) => deleteRole(req, requireHub(req))));
   api.put('/hubs/:id/members/:userId/role', handle((req) => assignRole(req, requireHub(req))));
+
+  // ---------- Своё имя участника в канале ----------
+  // Видно только в этом канале: в других каналах человек остаётся со своим обычным именем
+
+  /** Менять имена может создатель канала, управляющий или роль с правом настройки */
+  function requireHubNickManager(req, hubRow) {
+    if (hubRow.owner_id === req.user.id) return;
+    const member = hubs.members(hubRow.id).find((m) => m.id === req.user.id);
+    const role = member?.role_id ? roles.byId(member.role_id) : null;
+    const perms = (role?.perms || 0) | (hubs.rankOf(hubRow, req.user.id) >= 2 ? PERMS.admin : 0);
+    if (!has(perms, PERMS.manage)) throw new HttpError(403, 'Нет права менять имена в канале');
+  }
+
+  /** Новое имя нужно всем: в данных канала и во всех его комнатах */
+  function notifyHubNicknames(hubId) {
+    for (const room of hubs.rooms(hubId)) notifyRoom(room.id);
+    return notifyHub(hubId);
+  }
+
+  api.put(
+    '/hubs/:id/members/:userId/nickname',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubNickManager(req, hubRow);
+      const userId = Number(req.params.userId);
+      if (!hubs.isMember(hubRow.id, userId)) throw new HttpError(404, 'Этого человека нет в канале');
+      const name = str(req.body.name).trim();
+      if (name.length < 1 || name.length > 32) throw new HttpError(400, 'Имя в канале — от 1 до 32 символов');
+      hubs.setNickname(hubRow.id, userId, name);
+      return notifyHubNicknames(hubRow.id);
+    })
+  );
+
+  api.delete(
+    '/hubs/:id/members/:userId/nickname',
+    handle((req) => {
+      const hubRow = requireHub(req);
+      requireHubNickManager(req, hubRow);
+      hubs.clearNickname(hubRow.id, Number(req.params.userId));
+      return notifyHubNicknames(hubRow.id);
+    })
+  );
 
   function requireHubOwner(req, hubRow) {
     if (hubRow.owner_id !== req.user.id) throw new HttpError(403, 'Это может только создатель канала');
@@ -2211,3 +2425,38 @@ export function createApi() {
 
   return api;
 }
+
+// Напоминания о событиях: раз в полминуты проверяем ближайшие запуски.
+// Если напоминание включено и время подошло — пишем всем участникам комнаты (кроме автора)
+const eventReminders = setInterval(() => {
+  const now = Date.now();
+  let rows = [];
+  try {
+    rows = events.all();
+  } catch {
+    return;
+  }
+  for (const row of rows) {
+    if (!row.remind || row.active === 0) continue;
+    const next = nextStart(row, now);
+    if (!next) continue;
+    if (now < next - row.remind * 60_000 || now > next) continue;
+    if (row.last_remind === next) continue;
+    events.markReminded(row.id, next);
+    const room = rooms.byId(row.room_id);
+    if (!room) continue;
+    for (const m of rooms.members(room.id)) {
+      hub.send(m.id, {
+        type: 'event:remind',
+        eventId: row.id,
+        title: row.title,
+        startsAt: next,
+        minutes: row.remind,
+        roomId: room.id,
+        roomName: room.name,
+        hubId: room.hub_id,
+      });
+    }
+  }
+}, 30_000);
+eventReminders.unref?.();

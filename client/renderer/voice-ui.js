@@ -32,6 +32,8 @@ function sessionOptions(sendSignal) {
       renderStage();
     },
     volumeOf: (id) => store.get(`volume:${id}`, 100) / 100,
+    // Звук трансляции — своя громкость у каждого человека
+    screenVolumeOf: (id) => store.get(`volume:screen:${id}`, 100) / 100,
     allowed: voiceAllowed,
   };
 }
@@ -105,6 +107,39 @@ function voiceTiles() {
   return tiles;
 }
 
+/** Ползунок громкости: значение хранится в store под своим ключом */
+function volumeSlider(title, key, onSet, icon = ICONS.volume) {
+  const label = document.createElement('label');
+  label.className = 'tile-volume';
+  label.title = title;
+  label.innerHTML = icon;
+  const range = document.createElement('input');
+  range.type = 'range';
+  range.min = 0;
+  range.max = 100;
+  range.value = store.get(key, 100);
+  range.oninput = () => {
+    store.set(key, Number(range.value));
+    onSet(range.value / 100);
+  };
+  range.onclick = (e) => e.stopPropagation();
+  label.append(range);
+  return label;
+}
+
+/** Громкость: у плитки экрана — звук трансляции, у плитки человека — его голос. Это разные ползунки */
+function tileVolumes(t) {
+  const box = document.createElement('div');
+  box.className = 'tile-volumes';
+  box.dataset.screen = String(Boolean(t.screen));
+  if (t.screen) {
+    box.append(volumeSlider('Громкость трансляции', `volume:screen:${t.id}`, (v) => activeSession()?.setScreenVolume(t.id, v), ICONS.screen));
+  } else {
+    box.append(volumeSlider('Громкость голоса', `volume:${t.id}`, (v) => activeSession()?.setVolume(t.id, v)));
+  }
+  return box;
+}
+
 function createTile(t) {
   const el = document.createElement('div');
   el.className = 'tile';
@@ -117,26 +152,8 @@ function createTile(t) {
     <div class="tile-tools"></div>`;
   const tools = el.querySelector('.tile-tools');
 
-  // Громкость человека (своя у каждого, запоминается). Для трансляции — та же громкость
-  // стримящего: звук экрана идёт вместе с его голосом
-  if (!t.isMe) {
-    const label = document.createElement('label');
-    label.className = 'tile-volume';
-    label.title = t.screen ? 'Громкость трансляции' : 'Громкость';
-    label.innerHTML = ICONS.volume;
-    const range = document.createElement('input');
-    range.type = 'range';
-    range.min = 0;
-    range.max = 100;
-    range.value = store.get(`volume:${t.id}`, 100);
-    range.oninput = () => {
-      store.set(`volume:${t.id}`, Number(range.value));
-      activeSession()?.setVolume(t.id, range.value / 100);
-    };
-    range.onclick = (e) => e.stopPropagation();
-    label.append(range);
-    tools.append(label);
-  }
+  // Громкость: голос и звук трансляции — раздельно, у каждого человека своя и запоминается
+  if (!t.isMe) tools.append(tileVolumes(t));
 
   // Чужая трансляция: «Смотреть» посередине и «Перестать смотреть» среди кнопок плитки
   if (t.screen && !t.isMe) {
@@ -198,12 +215,22 @@ function createTile(t) {
 }
 
 function tileName(t) {
-  const name = t.user.displayName || t.user.username || '';
+  const name = channelNickOf(t.id) || t.user.displayName || t.user.username || '';
   return t.isMe ? (t.screen ? 'Ваш экран' : 'Вы') : t.screen ? `Экран: ${name}` : name;
 }
 
 function updateTile(el, t, focused) {
   const video = el.querySelector('video');
+  // Начал или закончил показывать экран — добавляем или убираем ползунок звука трансляции
+  if (!t.isMe) {
+    const tools = el.querySelector('.tile-tools');
+    const box = tools.querySelector('.tile-volumes');
+    if (box && box.dataset.screen !== String(Boolean(t.screen))) {
+      const fresh = tileVolumes(t);
+      if (box) box.replaceWith(fresh);
+      else tools.prepend(fresh);
+    }
+  }
   el.classList.toggle('focused', focused);
   el.classList.toggle('screen', Boolean(t.screen));
   el.classList.toggle('speaking', Boolean(t.speaking) && !t.screen);
@@ -236,6 +263,7 @@ function updateTile(el, t, focused) {
 
 function renderStage() {
   const stage = $('stage');
+  const strip = $('tile-strip');
   const tiles = voiceTiles();
   if (focusedTile && !tiles.some((t) => t.key === focusedTile)) focusedTile = null;
   // Чужой экран, который смотрим, сам разворачивается на всю панель
@@ -243,16 +271,30 @@ function renderStage() {
   stage.classList.toggle('has-focus', Boolean(focus));
   stage.classList.toggle('has-video', tiles.some((t) => t.video));
 
+  // Пока смотрим экран, профили живут отдельной строкой с прокруткой: большой экран их не съедает
+  const stageTiles = focus ? tiles.filter((t) => t.key === focus) : tiles;
+  const stripTiles = focus ? tiles.filter((t) => t.key !== focus) : [];
+
   // Плитки двигаем, только если порядок поменялся: перенос элемента сбивает щелчок и выводит его из полноэкранного режима
-  const existing = new Map([...stage.children].map((el) => [el.dataset.key, el]));
-  tiles.forEach((t, i) => {
-    let el = existing.get(t.key);
-    existing.delete(t.key);
-    if (!el) el = createTile(t);
-    updateTile(el, t, t.key === focus);
-    if (stage.children[i] !== el) stage.insertBefore(el, stage.children[i] || null);
-  });
-  for (const el of existing.values()) el.remove();
+  const place = (container, list) => {
+    const existing = new Map([...container.children].map((el) => [el.dataset.key, el]));
+    list.forEach((t, i) => {
+      let el = existing.get(t.key);
+      if (el) existing.delete(t.key);
+      // Плитка могла переехать из другой строки — тогда берём существующий элемент, а не создаём новый
+      else el = $('call-panel').querySelector(`.tile[data-key="${t.key}"]`) || null;
+      if (!el) el = createTile(t);
+      updateTile(el, t, t.key === focus);
+      if (container.children[i] !== el) container.insertBefore(el, container.children[i] || null);
+    });
+    for (const el of existing.values()) el.remove();
+  };
+  place(stage, stageTiles);
+  place(strip, stripTiles);
+  // Плитки, которых больше нет в разговоре
+  for (const el of $('call-panel').querySelectorAll('.tile')) {
+    if (!tiles.some((t) => t.key === el.dataset.key)) el.remove();
+  }
   updateFullView();
   updateFloating();
 }
@@ -329,9 +371,66 @@ function placeFloating() {
   }
 }
 
+/** В приложении плавающее окно — отдельное окно Windows, в браузере — картинка внутри страницы */
+const nativePip = () => Boolean(window.desktop?.pip);
+
+let pipVideo = null;
+let pipTimer = null;
+let pipCanvas = null;
+
+/** Скрытое видео, из которого снимаем кадры для отдельного окна */
+function pipSource() {
+  if (!pipVideo) {
+    pipVideo = document.createElement('video');
+    pipVideo.autoplay = true;
+    pipVideo.muted = true;
+    pipVideo.playsInline = true;
+    // Не display:none — иначе браузер перестаёт рисовать кадры, и снимать нечего
+    pipVideo.style.cssText = 'position:fixed;left:-4px;top:-4px;width:2px;height:2px;opacity:0;pointer-events:none';
+    document.body.append(pipVideo);
+  }
+  return pipVideo;
+}
+
+function startPipFrames() {
+  stopPipFrames();
+  pipCanvas ??= document.createElement('canvas');
+  pipTimer = setInterval(() => {
+    const t = floatView && voiceTiles().find((x) => x.key === floatView);
+    if (!t?.video) return;
+    const v = pipSource();
+    if (v.srcObject?.getVideoTracks()[0] !== t.video) {
+      v.srcObject = new MediaStream([t.video]);
+      v.play().catch(() => {});
+    }
+    if (!v.videoWidth) return;
+    // 960 px по ширине и 20 кадров в секунду — картинка читаемая, а канал не забит
+    const w = Math.min(960, v.videoWidth);
+    const h = Math.round((v.videoHeight * w) / v.videoWidth);
+    if (pipCanvas.width !== w || pipCanvas.height !== h) {
+      pipCanvas.width = w;
+      pipCanvas.height = h;
+    }
+    pipCanvas.getContext('2d').drawImage(v, 0, 0, w, h);
+    window.desktop.pip.frame(pipCanvas.toDataURL('image/jpeg', 0.7));
+  }, 50);
+}
+
+function stopPipFrames() {
+  clearInterval(pipTimer);
+  pipTimer = null;
+}
+
 function openFloating(key) {
-  if (!voiceTiles().some((t) => t.key === key && t.video)) return;
+  const t = voiceTiles().find((x) => x.key === key && x.video);
+  if (!t) return;
   floatView = key;
+  if (nativePip()) {
+    // Размер и место отдельного окна запоминаем
+    window.desktop.pip.open({ title: `Экран: ${tileName(t)}`, bounds: store.get('pip:bounds', null) });
+    startPipFrames();
+    return;
+  }
   floatBox().classList.remove('hidden');
   placeFloating();
   updateFloating();
@@ -340,14 +439,29 @@ function openFloating(key) {
 function closeFloating() {
   if (!floatView) return;
   floatView = null;
+  stopPipFrames();
+  if (nativePip()) {
+    window.desktop.pip.close();
+    return;
+  }
   floatBox().classList.add('hidden');
   $('stream-float-video').srcObject = null;
 }
+
+// Окно закрыли крестиком или Alt+F4 — прекращаем снимать кадры и запоминаем его размер
+window.desktop?.pip?.onClosed?.((bounds) => {
+  if (bounds && Number.isFinite(bounds.width)) store.set('pip:bounds', bounds);
+  if (!floatView) return;
+  floatView = null;
+  stopPipFrames();
+});
 
 function updateFloating() {
   if (!floatView) return;
   const t = voiceTiles().find((x) => x.key === floatView);
   if (!t?.video) return closeFloating();
+  // В отдельном окне картинку собирает startPipFrames, страница для этого не нужна
+  if (nativePip()) return;
   const video = $('stream-float-video');
   if (video.srcObject?.getVideoTracks()[0] !== t.video) video.srcObject = new MediaStream([t.video]);
   if (video.paused) video.play().catch(() => {});
@@ -415,7 +529,7 @@ $('stream-float-restore').onclick = () => {
 function setSpeaking(who, isSpeaking) {
   speaking.set(who, isSpeaking);
   const key = who === 'me' ? 'me' : `u${who}`;
-  $('stage').querySelector(`.tile[data-key="${key}"]`)?.classList.toggle('speaking', isSpeaking);
+  $('call-panel').querySelector(`.tile[data-key="${key}"]`)?.classList.toggle('speaking', isSpeaking);
   const id = who === 'me' ? state.me?.id : who;
   for (const el of document.querySelectorAll(`[data-voice-user="${id}"]`)) el.classList.toggle('speaking', isSpeaking);
 }
@@ -447,6 +561,7 @@ function renderVoice() {
   if (!session) {
     closeFullView();
     $('stage').replaceChildren();
+    $('tile-strip').replaceChildren();
     speaking.clear();
     focusedTile = null;
   }
@@ -520,7 +635,7 @@ function renderVoiceStatus() {
 
   // Значки качества на плитках собеседников
   for (const p of session.peers.values()) {
-    const tile = $('stage').querySelector(`.tile[data-key="u${p.id}"]`);
+    const tile = $('call-panel').querySelector(`.tile[data-key="u${p.id}"]`);
     const bars = tile?.querySelector('.q-bars');
     if (bars && p.quality) {
       setQualityBars(bars, p.quality);

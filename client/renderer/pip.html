@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; img-src data:">
+  <title>Трансляция</title>
+  <style>
+    /* Окно целиком — за него можно тянуть: и за полосу, и за саму картинку */
+    html, body { margin: 0; height: 100%; background: #07080c; overflow: hidden; }
+    body { -webkit-app-region: drag; cursor: move; user-select: none; }
+    #pip-image {
+      width: 100%; height: 100%; object-fit: contain; display: block;
+      -webkit-user-drag: none; pointer-events: none; background: #000;
+    }
+    #pip-bar {
+      position: fixed; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 8px;
+      padding: 6px 8px; color: #fff; font: 600 12px/1.2 system-ui, sans-serif;
+      background: linear-gradient(rgba(0, 0, 0, .65), transparent);
+      opacity: 0; transition: opacity .15s;
+    }
+    body:hover #pip-bar { opacity: 1; }
+    #pip-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #pip-close {
+      -webkit-app-region: no-drag; flex: none; width: 24px; height: 24px; padding: 0;
+      border: 0; border-radius: 6px; background: rgba(0, 0, 0, .55); color: #fff;
+      font: inherit; font-size: 14px; line-height: 24px; cursor: pointer;
+    }
+    #pip-close:hover { background: #e5484d; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #e5484d; flex: none; }
+  </style>
+</head>
+<body>
+  <img id="pip-image" alt="">
+  <div id="pip-bar">
+    <span class="dot"></span>
+    <span id="pip-title">Трансляция</span>
+    <button type="button" id="pip-close" title="Закрыть (Esc)">✕</button>
+  </div>
+  <script src="pip.js"></script>
+</body>
+</html>

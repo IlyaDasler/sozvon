@@ -83,6 +83,15 @@ function messageContent(m) {
     return box;
   }
   m = messageView(m);
+  // Сообщение-событие: показываем карточку, сама карточка живёт в данных комнаты
+  if (m.plain?.eventId) {
+    const event = roomById(m.roomId)?.events?.find((e) => e.id === m.plain.eventId);
+    box.append(event ? eventCard(event, m.roomId) : Object.assign(document.createElement('div'), {
+      className: 'msg-locked',
+      textContent: 'Событие удалено',
+    }));
+    return box;
+  }
   if (m.text) {
     const text = document.createElement('div');
     text.className = `msg-text${EMOJI_ONLY.test(m.text.trim()) ? ' emoji-only' : ''}`;
@@ -602,3 +611,169 @@ $('image-viewer').onclick = (e) => {
   if (e.target.closest('a')) return;
   closeImageViewer();
 };
+
+// ---------- Событие канала в чате ----------
+// Карточка собирается из данных комнаты (room.events), поэтому готовность участников
+// обновляется у всех сразу: «буду», «не смогу», «готов в другое время»
+
+const EVENT_STATUS_LABEL = { yes: 'буду', no: 'не смогу', maybe: 'готов в другое время' };
+
+function eventPersonName(room, userId) {
+  const member = room?.members?.find((m) => m.id === userId);
+  const user = userById(userId);
+  return member?.nickname || member?.displayName || user?.displayName || user?.username || '?';
+}
+
+function eventCard(event, roomId) {
+  const room = roomById(roomId);
+  const card = document.createElement('div');
+  card.className = 'event-card';
+  card.dataset.eventId = event.id;
+  card.dataset.roomId = roomId;
+
+  const head = document.createElement('div');
+  head.className = 'event-head';
+  const badge = document.createElement('span');
+  badge.className = 'event-badge';
+  badge.textContent = 'Событие';
+  const title = document.createElement('b');
+  title.className = 'event-title';
+  title.textContent = event.title;
+  head.append(badge, title);
+
+  const when = document.createElement('div');
+  when.className = 'event-when';
+  when.textContent = `${formatDay(event.startsAt)} · ${formatTime(event.startsAt)}`;
+  card.append(head, when);
+
+  // Повтор и напоминание
+  const REPEAT_LABEL = { daily: 'Каждый день', weekdays: 'По будням', weekly: 'Каждую неделю' };
+  if (event.repeat && event.repeat !== 'none') {
+    const repeat = document.createElement('div');
+    repeat.className = 'event-repeat';
+    const remind = event.remind ? ` · напомним за ${event.remind} мин` : '';
+    repeat.textContent = `${REPEAT_LABEL[event.repeat] || ''}${remind}`;
+    card.append(repeat);
+  } else if (event.remind) {
+    const repeat = document.createElement('div');
+    repeat.className = 'event-repeat';
+    repeat.textContent = `Напомним за ${event.remind} мин`;
+    card.append(repeat);
+  }
+
+  // Прошедшее событие: больше не отвечаем
+  if (event.completed) {
+    const done = document.createElement('div');
+    done.className = 'event-done';
+    done.textContent = 'Событие завершено';
+    card.classList.add('completed');
+    card.append(done);
+    return card;
+  }
+
+  const people = document.createElement('div');
+  people.className = 'event-people';
+  const answers = (event.responses || []).filter((r) => r.status !== 'invited');
+  for (const r of answers) {
+    const chip = document.createElement('span');
+    chip.className = `event-chip ${r.status}`;
+    const extra = r.status === 'maybe' && r.readyAt ? ` · в ${formatTime(r.readyAt)}` : '';
+    chip.textContent = `${eventPersonName(room, r.userId)} - ${EVENT_STATUS_LABEL[r.status]}${extra}`;
+    people.append(chip);
+  }
+  if (!answers.length) {
+    people.className = 'event-people muted small';
+    people.textContent = 'Пока никто не ответил';
+  }
+  card.append(people);
+
+  const mine = (event.responses || []).find((r) => r.userId === state.me?.id);
+  const answer = async (status, readyAt) => {
+    try {
+      const room = await Api.put(`/events/${event.id}/response`, { status, readyAt });
+      applyRoomUpdate(room);
+      refreshEventCards();
+    } catch (err) {
+      toast(err.message);
+    }
+  };
+  const actions = document.createElement('div');
+  actions.className = 'event-actions';
+  const option = (label, status) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `btn small event-btn${mine?.status === status ? ' active' : ''}`;
+    b.textContent = label;
+    b.onclick = () => answer(status);
+    return b;
+  };
+  actions.append(option('Буду', 'yes'), option('Не смогу', 'no'));
+
+  // «Готов в другое время»: своё окно выбора времени в стиле приложения
+  const readyDate = mine?.status === 'maybe' && mine.readyAt ? new Date(mine.readyAt) : new Date(event.startsAt);
+  const draft = { h: readyDate.getHours(), m: Math.floor(readyDate.getMinutes() / 5) * 5 };
+
+  const later = document.createElement('div');
+  later.className = 'event-later';
+  const wrap = document.createElement('div');
+  wrap.className = 'event-time-wrap';
+  const laterBtn = document.createElement('button');
+  laterBtn.type = 'button';
+  laterBtn.className = `btn small event-btn${mine?.status === 'maybe' ? ' active' : ''}`;
+  const syncLater = () => {
+    const hasTime = mine?.status === 'maybe' && mine.readyAt;
+    laterBtn.textContent = hasTime ? `Готов в ${pad2(draft.h)}:${pad2(draft.m)}` : 'Готов в другое время';
+  };
+  syncLater();
+  const pop = document.createElement('div');
+  pop.className = 'event-time-pop hidden';
+
+  const drawPop = () => {
+    const body = document.createElement('div');
+    body.className = 'time-drum-body';
+    buildTimeDrum(body, `${pad2(draft.h)}:${pad2(draft.m)}`, (h, m) => {
+      draft.h = h;
+      draft.m = m;
+      syncLater();
+    });
+    const foot = document.createElement('div');
+    foot.className = 'time-foot';
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'btn small primary';
+    ok.textContent = 'ОК';
+    ok.onclick = () => {
+      const at = new Date(event.startsAt);
+      at.setHours(draft.h, draft.m, 0, 0);
+      pop.classList.add('hidden');
+      answer('maybe', at.getTime());
+    };
+    foot.append(ok);
+    pop.replaceChildren(body, foot);
+  };
+
+  laterBtn.onclick = (e) => {
+    e.stopPropagation();
+    const opening = pop.classList.contains('hidden');
+    drawPop();
+    pop.classList.toggle('hidden', !opening);
+  };
+  wrap.append(laterBtn, pop);
+  later.append(wrap);
+  actions.append(later);
+  card.append(actions);
+  return card;
+}
+
+/** Обновить карточки событий на месте: ответы приходят и от других участников */
+function refreshEventCards() {
+  for (const card of document.querySelectorAll('.event-card')) {
+    const roomId = Number(card.dataset.roomId);
+    const eventId = Number(card.dataset.eventId);
+    const event = roomById(roomId)?.events?.find((e) => e.id === eventId);
+    const fresh = event
+      ? eventCard(event, roomId)
+      : Object.assign(document.createElement('div'), { className: 'msg-locked', textContent: 'Событие удалено' });
+    card.replaceWith(fresh);
+  }
+}

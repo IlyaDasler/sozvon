@@ -1158,12 +1158,30 @@ watchReactionChips('room-messages', () => ({ kind: 'room', roomId: state.selecte
 /** Строка сообщения; shown — та же строка, уже показанная в ленте (вернётся она же, если ничего не поменялось) */
 function messageRow(m, prev, list, actions, shown, fresh) {
   const newDay = !prev || formatDay(prev.createdAt) !== formatDay(m.createdAt);
-  const author = userById(m.fromId) || { displayName: '?', avatarColor: '#555' };
+  const base = userById(m.fromId) || { displayName: '?', avatarColor: '#555' };
+  // В комнате у человека может быть своё имя в канале — показываем его
+  const nick = actions.chat?.kind === 'room' ? channelNickOf(m.fromId) : null;
+  const author = nick ? { ...base, displayName: nick } : base;
   const reply = replyOf(m, list);
   // У ответа своя дуга к аватарке, поэтому он всегда начинает новую группу
   const continued = !reply && !newDay && prev.fromId === m.fromId && m.createdAt - prev.createdAt < 5 * 60_000;
 
-  const look = JSON.stringify([continued, m.createdAt, m.editedAt, m.reactions, m.pinned, reply, mentionsMe(m), actions.canDelete(m), author.displayName, author.nameColor, author.avatarColor, author.avatarUrl]);
+  const look = JSON.stringify([
+    continued,
+    m.createdAt,
+    m.editedAt,
+    m.reactions,
+    m.pinned,
+    reply,
+    mentionsMe(m),
+    actions.canDelete(m),
+    author.displayName,
+    author.nameColor,
+    author.avatarColor,
+    author.avatarUrl,
+    // Событие в сообщении: ответы участников меняются — карточку нужно перерисовать
+    m.plain?.eventId ? JSON.stringify(roomById(m.roomId)?.events?.find((e) => e.id === m.plain.eventId)?.responses || null) : '',
+  ]);
   const text = JSON.stringify([m.text, m.plain, m.attachments, m.preview]);
   if (shown?.look === look && shown.text === text) {
     shown.row.message = m;
