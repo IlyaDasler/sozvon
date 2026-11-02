@@ -7,6 +7,7 @@ const THEMES = [
   { id: 'light', name: 'Светлая', hint: 'Для дня' },
   { id: 'forest', name: 'Лес', hint: 'Тёмно-зелёная' },
   { id: 'dusk', name: 'Сумерки', hint: 'Тёплая фиолетовая' },
+  { id: 'glass', name: 'Жидкое стекло', hint: 'Полупрозрачные панели с размытием, как в iOS и macOS' },
 ];
 
 const currentTheme = () => document.documentElement.dataset.theme || 'sozvon';
