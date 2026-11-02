@@ -462,3 +462,54 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.30),
     0 8px 22px color-mix(in srgb, var(--ok) 35%, transparent);
 }
+/* ---------- 13. Без скевоморфизма ----------
+   Глянцевые градиенты «сверху блеск, снизу тень» убраны: остаётся плоский тинт,
+   тонкая кромка-блик 1 px и мягкая тень. Материал читается как стекло, а не как
+   пластиковый колпачок. */
+[data-theme='glass'] .btn,
+[data-theme='glass'] .icon-btn,
+[data-theme='glass'] .round-btn,
+[data-theme='glass'] .nav-btn {
+  background: var(--lq-tint);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.20),
+    0 6px 18px rgba(2, 4, 12, 0.26);
+}
+[data-theme='glass'] .modal-card,
+[data-theme='glass'] .popup-menu,
+[data-theme='glass'] .popup,
+[data-theme='glass'] .chat-theme-pop,
+[data-theme='glass'] .gif-popover,
+[data-theme='glass'] .profile-card,
+[data-theme='glass'] .notif-panel,
+[data-theme='glass'] .toast,
+[data-theme='glass'] .incoming-card,
+[data-theme='glass'] .event-card,
+[data-theme='glass'] .app-tip,
+[data-theme='glass'] .day {
+  background: color-mix(in srgb, var(--lq-tint-deep) 94%, #0b1020);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 18px 44px rgba(2, 4, 12, 0.42);
+}
+[data-theme='glass'] .incoming-card {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(122, 167, 255, 0.14), transparent 60%),
+    color-mix(in srgb, var(--lq-tint-deep) 94%, #0b1020);
+}
+[data-theme='glass'] .switch {
+  background: var(--lq-control);
+  box-shadow: inset 0 0 0 1px var(--lq-control-rim);
+}
+[data-theme='glass'] .switch:checked {
+  background: var(--lq-accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--lq-accent) 28%, transparent);
+}
+[data-theme='glass'] .switch::after {
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+[data-theme='glass'] .liquid-tabs .liquid-pill {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
