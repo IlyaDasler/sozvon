@@ -27,45 +27,51 @@ $('dialog-ok').onclick = () => closeDialog(true);
 $('dialog-cancel').onclick = () => closeDialog(false);
 $('dialog').onclick = (e) => e.target === $('dialog') && closeDialog(false);
 
-// Вопрос с полем ввода: Promise<string|null> — текст или отмена
-function askText(title, value = '') {
+// Вопрос с полем ввода: Promise<string|null> — текст или отмена.
+// Ввод однострочный и в том же оформлении, что остальные окна приложения
+function askText(title, value = '', { hint = '', maxlength = 120 } = {}) {
   return new Promise((resolve) => {
     const wrap = document.createElement('div');
     wrap.className = 'modal';
     wrap.innerHTML = `
-      <div class="modal-card edit-card">
+      <div class="modal-card dialog-card ask-text-card" role="dialog">
         <h3></h3>
-        <textarea rows="4" maxlength="2000"></textarea>
+        <label class="field">
+          <span class="ask-text-label">Название</span>
+          <input class="ask-text-input" spellcheck="false" autocomplete="off">
+        </label>
+        <p class="hint-text ask-text-hint"></p>
         <div class="row">
-          <span class="muted small">Enter — сохранить, Shift+Enter — новая строка</span>
           <span class="spacer"></span>
           <button type="button" class="btn" data-cancel>Отмена</button>
           <button type="button" class="btn primary" data-ok>Сохранить</button>
         </div>
       </div>`;
     wrap.querySelector('h3').textContent = title;
-    const area = wrap.querySelector('textarea');
-    area.value = value;
+    const input = wrap.querySelector('.ask-text-input');
+    input.maxLength = maxlength;
+    input.value = value;
+    wrap.querySelector('.ask-text-hint').textContent = hint || 'Enter — сохранить, Esc — отмена';
     const finish = (result) => {
       wrap.remove();
       document.removeEventListener('keydown', onKey);
-      resolve(result);
+      resolve(result === null ? null : String(result).trim());
     };
     const onKey = (e) => {
       if (e.key === 'Escape') finish(null);
     };
-    wrap.querySelector('[data-ok]').onclick = () => finish(area.value);
+    wrap.querySelector('[data-ok]').onclick = () => finish(input.value);
     wrap.querySelector('[data-cancel]').onclick = () => finish(null);
     wrap.onclick = (e) => e.target === wrap && finish(null);
-    area.onkeydown = (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        finish(area.value);
+        finish(input.value);
       }
     };
     document.addEventListener('keydown', onKey);
     document.body.append(wrap);
-    area.focus();
-    area.setSelectionRange(area.value.length, area.value.length);
+    input.focus();
+    input.select();
   });
 }

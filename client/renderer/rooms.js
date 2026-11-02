@@ -105,10 +105,20 @@ let roomDragId = null;
 let roomDragBound = false;
 
 const clearRoomDropMarks = () => {
-  for (const node of document.querySelectorAll('#room-list .drop-before, #room-list .drop-after, #room-list .dragging'))
-    node.classList.remove('drop-before', 'drop-after', 'dragging');
+  for (const node of document.querySelectorAll('#room-list .drop-before, #room-list .drop-after, #room-list .dragging, #room-list .drop-into'))
+    node.classList.remove('drop-before', 'drop-after', 'dragging', 'drop-into');
 };
 
+/** Край комнаты — переставить, середина — собрать группу (или переложить в готовую) */
+function roomDropClass(e, hit) {
+  const r = hit.item.getBoundingClientRect();
+  if (!hit.canGroup) return e.clientY < r.top + r.height / 2 ? 'drop-before' : 'drop-after';
+  if (!hit.sameGroup) return 'drop-into';
+  const rel = (e.clientY - r.top) / r.height;
+  if (rel < 0.3) return 'drop-before';
+  if (rel > 0.7) return 'drop-after';
+  return 'drop-into';
+}
 /** Куда можно бросить: только комната того же типа и той же группы */
 function roomDropTarget(e) {
   const item = e.target.closest('#room-list .room-item[draggable="true"]');
@@ -117,8 +127,10 @@ function roomDropTarget(e) {
   const source = state.rooms.get(roomDragId);
   if (!target || !source || target.id === source.id) return null;
   if (target.kind !== source.kind) return null;
-  if ((target.groupId || null) !== (source.groupId || null)) return null;
-  return { item, room: target };
+  const sameGroup = (target.groupId || null) === (source.groupId || null);
+  // Собирать группу можно всегда, кроме случая, когда обе комнаты уже в одной готовой группе
+  const canGroup = !sameGroup || !target.groupId;
+  return { item, room: target, sameGroup, canGroup };
 }
 
 function ensureRoomDrag() {
@@ -148,8 +160,7 @@ function ensureRoomDrag() {
     if (!hit) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    const r = hit.item.getBoundingClientRect();
-    hit.item.classList.add(e.clientY < r.top + r.height / 2 ? 'drop-before' : 'drop-after');
+    hit.item.classList.add(roomDropClass(e, hit));
   });
 
   list.addEventListener('drop', (e) => {
@@ -158,8 +169,14 @@ function ensureRoomDrag() {
     if (!hit) return;
     e.preventDefault();
     const source = state.rooms.get(roomDragId);
-    const r = hit.item.getBoundingClientRect();
-    const after = e.clientY >= r.top + r.height / 2;
+    const zone = roomDropClass(e, hit);
+    // Бросок в середину комнаты — собираем группу или перекладываем в готовую
+    if (zone === 'drop-into') {
+      roomDragId = null;
+      clearRoomDropMarks();
+      return groupRoomByDrop(source, hit.room);
+    }
+    const after = zone === 'drop-after';
     const section = roomsOfHub(source.hubId).filter(
       (x) => x.kind === source.kind && (x.groupId || null) === (source.groupId || null)
     );
@@ -274,9 +291,17 @@ function renderRoomGroup(list, hub, group, rooms) {
   }
 }
 
-async function createRoomGroup(hub) {
-  const name = (await askText('Название группы'))?.trim();
-  if (name) await Api.post(`/hubs/${hub.id}/groups`, { name }).catch((err) => toast(err.message));
+/** Комнату бросили на комнату: в существующую группу или в новую, с названием */
+async function groupRoomByDrop(source, target) {
+  if (!source || !target) return;
+  if (target.groupId) return moveRoomToGroup(source, target.groupId);
+  const hub = hubById(source.hubId);
+  if (!hub) return;
+  const name = await askText('Название группы', '', { hint: 'Enter — сохранить, Esc — отмена' });
+  if (!name) return;
+  await Api.post(`/hubs/${hub.id}/groups`, { name, roomIds: [target.id, source.id] }).catch((err) =>
+    toast(err.message)
+  );
 }
 
 async function renameRoomGroup(hub, group) {
