@@ -2620,16 +2620,42 @@ function notesToText(html) {
   return text.replace(/\n{3,}/g, '\n\n').trim() || fallback;
 }
 
-/** latest — версия уже последняя: показываем, что нового в ней, без кнопок обновления */
-function openUpdateModal(latest = false) {
+/** mode: 'available' | 'latest' | 'error'.
+ *  latest — версия уже последняя: показываем, что нового в ней, без кнопок обновления.
+ *  error — проверка не удалась: объясняем, даём повторить и ссылку на релизы */
+function openUpdateModal(mode = 'available') {
   const s = updateStatus;
-  $('update-modal').classList.toggle('latest', latest);
-  $('update-title').textContent = latest ? `У вас последняя версия ${s.current}` : `Доступно обновление ${s.version}`;
-  $('update-current').textContent = latest ? 'Обновлений нет — вот что появилось в этой версии' : `Сейчас у вас версия ${s.current}`;
-  $('update-notes').textContent = notesToText(s.notes);
-  $('update-error').textContent = '';
+  const latest = mode === 'latest';
+  const failed = mode === 'error';
+  $('update-modal').classList.toggle('latest', latest || failed);
+  $('update-title').textContent = failed
+    ? 'Не удалось проверить обновления'
+    : latest
+      ? `У вас последняя версия ${s.current}`
+      : `Доступно обновление ${s.version}`;
+  $('update-current').textContent = failed
+    ? `Сейчас у вас версия ${s.current}. Проверьте интернет и попробуйте ещё раз — обновление выйдет, когда появится новая версия.`
+    : latest
+      ? 'Обновлений нет — вот что появилось в этой версии'
+      : `Сейчас у вас версия ${s.current}`;
+  $('update-notes').textContent = failed ? '' : notesToText(s.notes);
+  $('update-error').textContent = failed ? s.message || 'Проверьте интернет и попробуйте ещё раз' : '';
+  // Кнопки: при ошибке вместо «Пропустить» — повтор проверки и ссылка на релизы
+  $('update-skip').classList.toggle('hidden', failed);
+  $('update-releases').classList.toggle('hidden', !failed);
+  $('update-now').textContent = failed ? 'Повторить' : 'Обновить';
+  $('update-now').onclick = failed ? retryUpdateCheck : startUpdate;
   $('update-modal').classList.remove('hidden');
   renderUpdate();
+}
+
+/** Повторная проверка по кнопке из окна с ошибкой */
+function retryUpdateCheck() {
+  $('update-error').textContent = '';
+  manualCheck = true;
+  updateStatus = { ...updateStatus, state: 'checking' };
+  renderUpdate();
+  window.desktop.update.check();
 }
 
 function closeUpdateModal() {
@@ -2705,8 +2731,9 @@ function onUpdateStatus(s) {
   const { state: st, version } = updateStatus;
   // Окно «Что нового» само открывается только по кнопке; при запуске — плашка и точка (renderUpdate)
   if (st === 'available' && manualCheck) openUpdateModal();
-  if (manualCheck && st === 'latest') openUpdateModal(true);
-  if (manualCheck && st === 'error') toast('Не удалось проверить обновления. Проверьте интернет');
+  if (manualCheck && st === 'latest') openUpdateModal('latest');
+  // Не «проверьте интернет» всплывашкой, а окно с объяснением, кнопкой «Повторить» и ссылкой на релизы
+  if (manualCheck && st === 'error') openUpdateModal('error');
   if (manualCheck && st === 'unsupported') toast('Обновления работают только в установленной версии');
   if (['available', 'latest', 'error', 'unsupported'].includes(st)) manualCheck = false;
   if (st === 'ready' && updateRequested) installUpdate();
