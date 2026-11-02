@@ -1245,6 +1245,15 @@
       <label><input type="radio" name="chat-theme-scope" value="both"> У нас обоих</label>
     </div>
     <div class="chat-theme-grid"></div>
+    <div class="chat-wallpaper">
+      <b>Обои</b>
+      <div class="row">
+        <button type="button" class="btn" id="chat-wallpaper-upload">Картинка или GIF</button>
+        <button type="button" class="btn danger-outline hidden" id="chat-wallpaper-remove">Убрать</button>
+      </div>
+      <input type="file" id="chat-wallpaper-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+      <span class="muted small">Обои видны обоим в этом чате</span>
+    </div>
   </div>
 
   <div id="toast" class="toast hidden"></div>

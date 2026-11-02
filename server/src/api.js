@@ -186,6 +186,16 @@ function bannerExt(buf) {
   return null;
 }
 
+// Обои чата: картинка или GIF на пару друзей, отдаётся без токена
+const WALLPAPER_DIR = path.join(config.dataDir, 'wallpapers');
+const WALLPAPER_MAX_BYTES = 3 * 1024 * 1024;
+const WALLPAPER_FILE_RE = /^[a-f0-9]{32}\.(webp|gif|png|jpg)$/;
+fs.mkdirSync(WALLPAPER_DIR, { recursive: true });
+
+function removeWallpaperFile(name) {
+  if (!name) return;
+  fs.rm(path.join(WALLPAPER_DIR, name), { force: true }, () => {});
+}
 function removeBannerFile(name) {
   if (!name) return;
   fs.rm(path.join(BANNER_DIR, name), { force: true }, () => {});
@@ -824,6 +834,12 @@ export function createApi() {
       if (err && !res.headersSent) next(new HttpError(404, 'Не найдено'));
     });
   });
+  api.get('/wallpapers/:file', (req, res, next) => {
+    if (!WALLPAPER_FILE_RE.test(req.params.file)) return next(new HttpError(404, 'Не найдено'));
+    res.sendFile(req.params.file, { root: WALLPAPER_DIR, maxAge: '365d', immutable: true }, (err) => {
+      if (err && !res.headersSent) next(new HttpError(404, 'Не найдено'));
+    });
+  });
   api.use(requireAuth);
 
   // Предпросмотр ссылки для поля ввода: заголовок, описание, картинка. null — превью нет
@@ -1116,7 +1132,16 @@ export function createApi() {
     })
   );
 
-  api.get('/contacts', handle((req) => contacts.list(req.user.id).map((row) => ({ ...withOnline(row), chatTheme: row.chat_theme || null }))));
+  api.get(
+    '/contacts',
+    handle((req) =>
+      contacts.list(req.user.id).map((row) => ({
+        ...withOnline(row),
+        chatTheme: row.chat_theme || null,
+        wallpaperUrl: row.wallpaper ? `/api/wallpapers/${row.wallpaper}` : null,
+      }))
+    )
+  );
 
   // Тема личного чата «у обоих»: ставит любой из двоих друзей, оба видят сразу. null — по умолчанию
   api.put(
@@ -1133,6 +1158,40 @@ export function createApi() {
     })
   );
 
+  // Обои чата «у обоих»: картинка или GIF, общая для пары друзей
+  api.put(
+    '/contacts/:id/wallpaper',
+    express.raw({ type: ['image/webp', 'image/png', 'image/jpeg', 'image/gif'], limit: WALLPAPER_MAX_BYTES }),
+    handle((req) => {
+      const other = Number(req.params.id);
+      if (!contacts.has(req.user.id, other)) throw new HttpError(404, 'Этого человека нет в друзьях');
+      const ext = bannerExt(req.body);
+      if (!ext) throw new HttpError(400, 'Нужна картинка PNG, JPEG, WebP или GIF');
+      const id = crypto.randomBytes(16).toString('hex');
+      const name = `${id}.${ext}`;
+      fs.writeFileSync(path.join(WALLPAPER_DIR, name), req.body);
+      removeWallpaperFile(contacts.wallpaperOf(req.user.id, other));
+      contacts.setWallpaper(req.user.id, other, name);
+      const payload = { type: 'chat:wallpaper', userId: req.user.id, peerId: other, url: `/api/wallpapers/${name}`, by: req.user.id };
+      hub.send(other, payload);
+      hub.send(req.user.id, { ...payload, userId: other, peerId: req.user.id });
+      return { url: `/api/wallpapers/${name}` };
+    })
+  );
+
+  api.delete(
+    '/contacts/:id/wallpaper',
+    handle((req) => {
+      const other = Number(req.params.id);
+      if (!contacts.has(req.user.id, other)) throw new HttpError(404, 'Этого человека нет в друзьях');
+      removeWallpaperFile(contacts.wallpaperOf(req.user.id, other));
+      contacts.setWallpaper(req.user.id, other, null);
+      const payload = { type: 'chat:wallpaper', userId: req.user.id, peerId: other, url: null, by: req.user.id };
+      hub.send(other, payload);
+      hub.send(req.user.id, { ...payload, userId: other, peerId: req.user.id });
+      return { url: null };
+    })
+  );
   const toRequest = (row) => ({ ...toPublicUser(row), requestedAt: row.requested_at });
 
   // Добавить в друзья — значит отправить заявку. Если он уже звал вас, вы сразу друзья

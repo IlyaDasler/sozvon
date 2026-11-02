@@ -24,6 +24,64 @@ function applyChatTheme() {
   const theme = state.selectedId ? chatThemeOf(state.selectedId) : 'default';
   if (theme === 'default') delete $('chat').dataset.chatTheme;
   else $('chat').dataset.chatTheme = theme;
+  applyChatWallpaper();
+}
+
+/** Обои чата: картинка или GIF, общая для пары друзей */
+function applyChatWallpaper() {
+  const chat = $('chat');
+  const peerId = state.selectedId;
+  const url = peerId ? state.contacts.get(peerId)?.wallpaperUrl : null;
+  if (url) {
+    chat.dataset.chatWallpaper = '1';
+    chat.style.setProperty('--chat-wallpaper', `url("${Api.base}${url}")`);
+  } else {
+    delete chat.dataset.chatWallpaper;
+    chat.style.removeProperty('--chat-wallpaper');
+  }
+  const remove = $('chat-wallpaper-remove');
+  if (remove) remove.classList.toggle('hidden', !url);
+}
+
+async function uploadChatWallpaper(file) {
+  const peerId = state.selectedId;
+  if (!peerId) return;
+  if (file.size > 3 * 1024 * 1024) return toast('Обои — не больше 3 МБ');
+  const btn = $('chat-wallpaper-upload');
+  btn.disabled = true;
+  try {
+    const saved = await Api.upload('PUT', `/contacts/${peerId}/wallpaper`, file);
+    const contact = state.contacts.get(peerId);
+    if (contact) contact.wallpaperUrl = saved.url;
+    applyChatWallpaper();
+    toast('Обои чата обновлены');
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function clearChatWallpaper() {
+  const peerId = state.selectedId;
+  if (!peerId) return;
+  try {
+    await Api.del(`/contacts/${peerId}/wallpaper`);
+    const contact = state.contacts.get(peerId);
+    if (contact) contact.wallpaperUrl = null;
+    applyChatWallpaper();
+    toast('Обои убраны');
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+/** Собеседник сменил обои — применяем сразу */
+function onChatWallpaper({ userId, peerId, url, by }) {
+  const other = by === state.me.id ? peerId : userId;
+  const contact = state.contacts.get(other);
+  if (contact) contact.wallpaperUrl = url || null;
+  if (state.selectedId === other) applyChatWallpaper();
 }
 
 async function pickChatTheme(theme, scope) {
@@ -92,3 +150,11 @@ $('chat-theme-btn').onclick = (e) => {
 };
 $('chat-theme-pop').onclick = (e) => e.stopPropagation();
 document.addEventListener('click', () => $('chat-theme-pop').classList.add('hidden'));
+// Загрузка и удаление обоев из поповера темы чата
+$('chat-wallpaper-upload').onclick = () => $('chat-wallpaper-input').click();
+$('chat-wallpaper-input').onchange = (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (file) uploadChatWallpaper(file);
+};
+$('chat-wallpaper-remove').onclick = () => clearChatWallpaper();
