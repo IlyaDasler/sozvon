@@ -578,7 +578,19 @@ function showNewRoomMessage(m) {
     const who = userById(m.fromId)?.displayName || '?';
     // Упомянули — так и говорим в заголовке
     const title = mentionsMe(m) ? `${who} упоминает вас в «${room?.name || 'комнате'}»` : room?.name || 'Комната';
-    notify(title, `${who}: ${messageSummary(m)}`, { kind: 'room', open: { room: m.roomId }, hub: room?.hubId });
+    // Сообщение-событие отмечаем отдельно: у него своя иконка и подсветка
+    const eventTitle = m.plain?.eventId
+      ? roomById(m.roomId)?.events?.find((e) => e.id === m.plain.eventId)?.title || 'новое событие'
+      : null;
+    if (eventTitle) {
+      notify(`Событие: ${eventTitle}`, `${who} в «${room?.name || 'комнате'}»`, {
+        kind: 'event',
+        open: { room: m.roomId },
+        hub: room?.hubId,
+      });
+    } else {
+      notify(title, `${who}: ${messageSummary(m)}`, { kind: 'room', open: { room: m.roomId }, hub: room?.hubId });
+    }
   }
 }
 

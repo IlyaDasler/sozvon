@@ -824,14 +824,31 @@ function hubEventsPane(hub) {
 }
 
 // Выбранное в окне события: день, время и чат
-let eventDraft = { date: null, time: '00:00', roomId: null };
+let eventDraft = { date: null, time: '00:00', roomId: null, repeat: 'none', remind: 0 };
 const pad2 = (n) => String(n).padStart(2, '0');
+
+const EVENT_REPEATS = [
+  ['none', 'Однократно'],
+  ['daily', 'Каждый день'],
+  ['weekdays', 'По будням'],
+  ['weekly', 'Каждую неделю в этот день'],
+];
+const EVENT_REMIND = [
+  [0, 'Без напоминания'],
+  [5, 'За 5 минут'],
+  [10, 'За 10 минут'],
+  [15, 'За 15 минут'],
+  [30, 'За 30 минут'],
+  [60, 'За час'],
+];
 
 function syncEventPickers() {
   $('event-date').value = eventDraft.date ? eventDraft.date.toLocaleDateString('ru-RU') : '';
   $('event-time').value = eventDraft.time;
   const room = roomById(eventDraft.roomId);
   $('event-room').textContent = room ? `# ${room.name}` : 'Выберите чат';
+  $('event-repeat').textContent = EVENT_REPEATS.find(([id]) => id === eventDraft.repeat)?.[1] || 'Однократно';
+  $('event-remind').textContent = EVENT_REMIND.find(([id]) => id === eventDraft.remind)?.[1] || 'Без напоминания';
 }
 
 /** Дата, вписанная руками: 12.11.2026, 12.11 или 12.11.26 */
@@ -955,6 +972,27 @@ function buildEventTimePicker() {
 }
 
 // Список чатов канала
+// Список вариантов: повтор и напоминание
+function buildEventOptionPicker(popId, options, current, onPick) {
+  const pop = $(popId);
+  pop.replaceChildren(
+    ...options.map(([value, label]) => {
+      const b = el('button', {
+        type: 'button',
+        className: `picker-option${value === current ? ' selected' : ''}`,
+        textContent: label,
+      });
+      b.onclick = () => {
+        onPick(value);
+        syncEventPickers();
+        pop.classList.add('hidden');
+      };
+      return b;
+    })
+  );
+}
+
+// Список чатов канала
 function buildEventRoomPicker(rooms) {
   const pop = $('event-room-pop');
   pop.replaceChildren(
@@ -984,7 +1022,7 @@ function openEventCreate(hub) {
   soon.setMinutes(0, 0, 0);
   const rooms = roomsOfHub(hub.id);
   const current = rooms.find((r) => r.id === state.selectedRoomId) || rooms.find((r) => r.kind === 'text') || rooms[0];
-  eventDraft = { date: soon, time: `${pad2(soon.getHours())}:00`, roomId: current?.id ?? null };
+  eventDraft = { date: soon, time: `${pad2(soon.getHours())}:00`, roomId: current?.id ?? null, repeat: 'none', remind: 0 };
   syncEventPickers();
   for (const pop of document.querySelectorAll('#event-create .picker-pop')) pop.classList.add('hidden');
 
@@ -1050,6 +1088,18 @@ $('event-room').onclick = (e) => {
   e.stopPropagation();
   togglePicker('event-room', 'event-room-pop', () => buildEventRoomPicker(roomsOfHub(eventHubId)));
 };
+$('event-repeat').onclick = (e) => {
+  e.stopPropagation();
+  togglePicker('event-repeat', 'event-repeat-pop', () =>
+    buildEventOptionPicker('event-repeat-pop', EVENT_REPEATS, eventDraft.repeat, (v) => (eventDraft.repeat = v))
+  );
+};
+$('event-remind').onclick = (e) => {
+  e.stopPropagation();
+  togglePicker('event-remind', 'event-remind-pop', () =>
+    buildEventOptionPicker('event-remind-pop', EVENT_REMIND, eventDraft.remind, (v) => (eventDraft.remind = v))
+  );
+};
 
 $('event-cancel').onclick = closeEventCreate;
 $('event-create').onclick = (e) => {
@@ -1076,7 +1126,13 @@ $('event-form').onsubmit = async (e) => {
   const roomId = eventDraft.roomId;
   const invitees = [...$('event-invitees').querySelectorAll('input:checked')].map((i) => Number(i.value));
   try {
-    const room = await Api.post(`/rooms/${roomId}/events`, { title, startsAt: startsAt.getTime(), invitees });
+    const room = await Api.post(`/rooms/${roomId}/events`, {
+      title,
+      startsAt: startsAt.getTime(),
+      invitees,
+      repeat: eventDraft.repeat,
+      remind: eventDraft.remind,
+    });
     // Комната пришла уже с событием — обновляем её у себя, иначе карточка не найдёт событие
     applyRoomUpdate(room);
     // Публикуем событие сообщением в выбранный чат: внутри конверта только id

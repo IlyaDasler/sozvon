@@ -1925,3 +1925,35 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 }
 .notif-item.event .notif-icon { background: color-mix(in srgb, var(--accent) 26%, transparent); }
 .notif-item.event b { color: var(--accent); }
+
+/* Событие: кнопки столбцом, своё окно времени, завершённое событие */
+.event-actions { flex-direction: column; align-items: flex-start; }
+.event-repeat { font-size: 12px; color: var(--muted); }
+.event-time-wrap { position: relative; }
+.event-time-pop {
+  position: absolute; left: 0; top: calc(100% + 6px); z-index: 40; width: 244px;
+  padding: 10px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg-2); box-shadow: 0 16px 36px rgba(0, 0, 0, .5);
+}
+.event-time-pop.hidden { display: none; }
+.event-time-pop .time-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.event-time-pop .time-cell { padding: 6px 0; border: 0; border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; }
+.event-time-pop .time-cell:hover { background: var(--bg-3); }
+.event-time-pop .time-cell.selected { background: var(--accent); color: #fff; }
+.event-time-pop .time-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 6px 0 4px; }
+.event-time-pop .time-title:first-child { margin-top: 0; }
+.time-foot { display: flex; justify-content: flex-end; margin-top: 8px; }
+.event-card.completed { opacity: .75; }
+.event-done {
+  padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  background: color-mix(in srgb, var(--muted) 20%, transparent); color: var(--muted);
+}
+
+/* Уведомления не слипаются, событие заметно выделено */
+.notif-list { gap: 8px; }
+.notif-item.event {
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.notif-item.event .notif-icon { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+.notif-item.event b { color: var(--accent); }
