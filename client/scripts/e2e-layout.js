@@ -107,4 +107,36 @@ runTest(async () => {
   const f = JSON.parse(fullview);
   if (f.isWin && f.padRight < 120) throw new Error(`Панель трансляции налезет на кнопки окна: отступ ${f.padRight}px`);
   console.log('✔ панель трансляции не пересекается с кнопками окна');
+
+  // ---------- Жидкий индикатор вкладок: перетекает под активную кнопку ----------
+  await js(win, `document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); showScreen('main'); true`);
+  await sleep(600);
+  const pill = await js(win, `(async () => {
+    const root = document.getElementById('friend-tabs');
+    const pill = root?.querySelector('.liquid-pill');
+    if (!pill) return JSON.stringify({ error: 'нет индикатора' });
+    const second = root.querySelectorAll('button')[1];
+    second.click();
+    await new Promise((r) => setTimeout(r, 550));
+    const box = root.getBoundingClientRect();
+    const active = root.querySelector('button.active');
+    const r = active.getBoundingClientRect();
+    const pr = pill.getBoundingClientRect();
+    return JSON.stringify({
+      pillLeft: Math.round(pr.left - box.left),
+      activeLeft: Math.round(r.left - box.left),
+      pillW: Math.round(pr.width),
+      activeW: Math.round(r.width),
+      activeBg: getComputedStyle(active).backgroundColor,
+    });
+  })()`);
+  const tab = JSON.parse(pill);
+  if (tab.error) throw new Error(`Вкладки: ${tab.error}`);
+  if (Math.abs(tab.pillLeft - tab.activeLeft) > 2)
+    throw new Error(`Индикатор вкладки не совпал: ${tab.pillLeft} против ${tab.activeLeft}`);
+  if (Math.abs(tab.pillW - tab.activeW) > 3)
+    throw new Error(`Индикатор вкладки не по ширине: ${tab.pillW} против ${tab.activeW}`);
+  if (tab.activeBg !== 'rgba(0, 0, 0, 0)' && tab.activeBg !== 'transparent')
+    throw new Error(`У активной вкладки свой фон поверх индикатора: ${tab.activeBg}`);
+  console.log('✔ жидкий индикатор вкладок на месте');
 });
