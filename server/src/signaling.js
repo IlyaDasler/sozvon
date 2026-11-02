@@ -21,7 +21,9 @@ const calls = new Map();
 
 const inCall = (uid) => [...calls.values()].some((c) => c.members.has(uid) || c.ringing.has(uid));
 // Занят: в звонке или сидит в голосовой комнате
-const isBusy = (uid) => inCall(uid) || voice.roomOf(uid) !== null;
+// Занят — только тот, кто уже в звонке. Человек в голосовом канале может принять звонок:
+// приложение предложит ему выйти из канала, и он присоединится к разговору
+const isBusy = (uid) => inCall(uid);
 
 function memberBySocket(call, ws) {
   for (const [uid, m] of call.members) if (m.ws === ws) return uid;
