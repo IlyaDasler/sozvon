@@ -232,17 +232,16 @@ function checkForUpdates() {
     setUpdateStatus({ state: 'unsupported' });
     return;
   }
-  // На macOS автообновление ставится только для подписанного приложения (Squirrel.Mac проверяет
-  // подпись). Пока сборка без сертификата Apple — обновляемся вручную с GitHub Releases
-  if (process.platform === 'darwin') {
-    setUpdateStatus({ state: 'unsupported' });
-    return;
-  }
   // Пока качаем или уже скачали, повторно не проверяем
   if (updateStatus.state === 'downloading' || updateStatus.state === 'ready') return;
   lastUpdateCheck = Date.now();
   autoUpdater.checkForUpdates().catch(() => {}); // ошибка придёт через событие 'error'
 }
+
+// На macOS автообновление ставится только подписанному приложению (Squirrel.Mac сверяет подпись).
+// Пока сертификата Apple нет — проверку делаем, а вместо установки открываем страницу релиза
+const MAC_RELEASE_URL = 'https://github.com/IlyaDasler/sozvon/releases/latest';
+const manualUpdate = () => process.platform === 'darwin';
 
 // Описание релиза с GitHub приходит строкой HTML или списком по версиям
 function releaseNotes(info) {
@@ -257,7 +256,17 @@ function setupUpdater({ checkNow = true } = {}) {
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.on('checking-for-update', () => setUpdateStatus({ state: 'checking', message: '' }));
   autoUpdater.on('update-available', (info) =>
-    setUpdateStatus({ state: 'available', version: info.version, notes: releaseNotes(info), percent: 0, checkedAt: Date.now() })
+    setUpdateStatus({
+      state: 'available',
+      version: info.version,
+      // На macOS установить сами не можем — сразу говорим, что делать
+      notes: manualUpdate()
+        ? `${releaseNotes(info)}\n\nНа macOS обновление ставится вручную: нажмите «Скачать», откроется страница с новой версией.`
+        : releaseNotes(info),
+      percent: 0,
+      checkedAt: Date.now(),
+      manual: manualUpdate(),
+    })
   );
   autoUpdater.on('download-progress', (p) => setUpdateStatus({ state: 'downloading', percent: Math.round(p.percent) }));
   // Последняя версия — вместе с её описанием: в окне проверки видно, что нового
@@ -313,6 +322,11 @@ async function startWithSplash() {
 ipcMain.handle('update:status', () => ({ ...updateStatus, current: app.getVersion() }));
 ipcMain.on('update:check', checkForUpdates);
 ipcMain.on('update:download', () => {
+  // macOS без сертификата Apple: качаем не мы, а человек — открываем страницу релиза
+  if (manualUpdate()) {
+    shell.openExternal(MAC_RELEASE_URL);
+    return;
+  }
   if (updateStatus.state !== 'available' && updateStatus.state !== 'error') return;
   setUpdateStatus({ state: 'downloading', percent: 0 });
   autoUpdater.downloadUpdate().catch(() => {}); // ошибка придёт через событие 'error'
