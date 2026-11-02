@@ -1635,6 +1635,10 @@ kbd {
   font-weight: 700; font-size: 15px; letter-spacing: .02em;
   transition: border-radius var(--mid) var(--ease), background var(--mid), box-shadow var(--mid) var(--ease), transform var(--fast) var(--ease);
 }
+/* Каналы с картинкой — скруглённый квадрат: круг обрезал фото по краям.
+   Буквенные каналы остаются круглыми, как в референсе */
+.rail-tile.has-image,
+.rail-tile.rail-home { border-radius: 15px; }
 .rail-tile:hover, .rail-item.active .rail-tile { border-radius: 15px; }
 .rail-tile:active { transform: scale(.94); }
 .rail-item.active .rail-tile { box-shadow: 0 6px 16px color-mix(in srgb, var(--hub-color, var(--accent)) 35%, transparent); }
