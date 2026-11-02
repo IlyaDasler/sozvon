@@ -35,6 +35,22 @@
       if (status === 'now') now = title;
     }
     if (current) current.textContent = now ? 'Сейчас: ' + now : 'Готово';
+
+    // Плавающий индикатор на экране: этап виден, не открывая настройки
+    const done = PLAN.filter(([, s]) => s === 'done').length;
+    let chip = document.getElementById('plan-chip');
+    if (!chip) {
+      chip = document.createElement('button');
+      chip.type = 'button';
+      chip.id = 'plan-chip';
+      chip.className = 'plan-chip';
+      chip.addEventListener('click', () => {
+        if (typeof openSettings === 'function') openSettings('plan');
+      });
+      document.body.appendChild(chip);
+    }
+    chip.textContent = '3.0 · этап ' + done + '/' + PLAN.length + (now ? ' · ' + now : '');
+    chip.title = now ? 'В работе: ' + now + '. Открыть план' : 'План 3.0';
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
   else render();
