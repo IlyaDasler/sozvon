@@ -1,4 +1,4 @@
-// Комнаты: голосовые (общий голосовой канал с видео и демонстрацией экрана + чат) и текстовые (только чат).
+﻿// Комнаты: голосовые (общий голосовой канал с видео и демонстрацией экрана + чат) и текстовые (только чат).
 // Каждая комната — в канале (hubs.js); в боковой панели видны комнаты открытого канала
 
 const ROOM_ERRORS = {
@@ -489,6 +489,7 @@ function renderRoomView() {
   $('room-title').textContent = room.name;
   const count = room.members.length;
   $('room-sub').textContent = `${room.kind === 'voice' ? 'Голосовая' : 'Текстовая'} комната · ${count} ${plural(count, 'участник', 'участника', 'участников')}`;
+  renderRoomEventsBadge();
 
   const isVoice = room.kind === 'voice';
   const here = state.room?.roomId === room.id;

@@ -236,6 +236,7 @@ for (const [name, sql] of [
   ['repeat', "ALTER TABLE events ADD COLUMN repeat TEXT NOT NULL DEFAULT 'none'"],
   ['remind', 'ALTER TABLE events ADD COLUMN remind INTEGER NOT NULL DEFAULT 0'],
   ['last_remind', 'ALTER TABLE events ADD COLUMN last_remind INTEGER'],
+  ['active', 'ALTER TABLE events ADD COLUMN active INTEGER NOT NULL DEFAULT 1'],
 ]) {
   if (!columnsOf('events').includes(name)) db.exec(sql);
 }
@@ -534,6 +535,7 @@ const q = {
   // События канала
   insertEvent: db.prepare('INSERT INTO events (room_id, hub_id, title, starts_at, created_by, created_at, repeat, remind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
   setEventReminded: db.prepare('UPDATE events SET last_remind = ? WHERE id = ?'),
+  finishEvent: db.prepare('UPDATE events SET active = 0 WHERE id = ?'),
   eventById: db.prepare('SELECT * FROM events WHERE id = ?'),
   eventsOfRoom: db.prepare('SELECT * FROM events WHERE room_id = ? ORDER BY starts_at, id'),
   allEvents: db.prepare('SELECT * FROM events'),
@@ -863,6 +865,7 @@ export const events = {
   respond: (eventId, userId, status, readyAt = null) => q.setEventResponse.run(eventId, userId, status, readyAt, Date.now()),
   clearResponse: (eventId, userId) => q.clearEventResponse.run(eventId, userId),
   markReminded: (id, at) => q.setEventReminded.run(at, id),
+  finish: (id) => q.finishEvent.run(id),
   all: () => q.allEvents.all(),
 };
 
