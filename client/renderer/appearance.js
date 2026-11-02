@@ -196,3 +196,26 @@ $('ui-density').onchange = () => {
 };
 
 applyDensity();
+// ---------- Шрифт интерфейса ----------
+
+const FONT_STACKS = {
+  system: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif",
+  inter: "'Inter', 'Segoe UI', system-ui, sans-serif",
+  segoe: "'Segoe UI', system-ui, sans-serif",
+  grotesk: "Arial, 'Helvetica Neue', sans-serif",
+  mono: "'Cascadia Mono', Consolas, 'JetBrains Mono', monospace",
+};
+
+function applyFont() {
+  const choice = FONT_STACKS[store.get('uiFont', 'system')] ? store.get('uiFont', 'system') : 'system';
+  document.documentElement.style.setProperty('--font-ui', FONT_STACKS[choice]);
+  const select = $('ui-font');
+  if (select) select.value = choice;
+}
+
+$('ui-font').onchange = () => {
+  store.set('uiFont', $('ui-font').value);
+  applyFont();
+};
+
+applyFont();

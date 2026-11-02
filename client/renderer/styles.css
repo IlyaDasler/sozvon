@@ -2418,3 +2418,27 @@ input[type='range'] {
 .sidebar-head .icon-btn,
 .chat-head .icon-btn,
 .msg-tools .icon-btn { padding: 0; }
+/* ---------- Шрифт интерфейса ----------
+   Выбор в настройках: системный, Inter, Segoe UI, гротеск, моноширинный.
+   Меняется одна переменная — перестраивается весь текст */
+:root {
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-mono: 'Cascadia Mono', Consolas, 'JetBrains Mono', monospace;
+}
+html, body, button, input, select, textarea { font-family: var(--font-ui); }
+code, pre, .msg-text code, .e2ee-card input { font-family: var(--font-mono); }
+/* Значок провайдера входа: ровный круг, буква по центру */
+.provider-badge {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+.oauth-btn[data-provider='yandex'] .provider-badge { background: #fc3f1d; color: #fff; }
