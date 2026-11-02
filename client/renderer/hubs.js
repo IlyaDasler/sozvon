@@ -842,16 +842,33 @@ function openEventCreate(hub) {
   if (current) select.value = current.id;
 
   const people = hub.members.filter((m) => m.id !== state.me.id);
-  $('event-invitees').replaceChildren(
+  const box = $('event-invitees');
+  const list = box.querySelector('.multi-list');
+  const toggle = box.querySelector('.multi-toggle');
+  list.replaceChildren(
     ...people.map((m) =>
       el(
         'label',
-        { className: 'event-invite' },
+        { className: 'multi-option' },
         Object.assign(document.createElement('input'), { type: 'checkbox', value: m.id }),
         el('span', { textContent: m.nickname || m.displayName })
       )
     )
   );
+  const updateToggle = () => {
+    const chosen = list.querySelectorAll('input:checked').length;
+    toggle.textContent = chosen ? `Выбрано: ${chosen}` : 'Никто не выбран';
+    toggle.classList.toggle('has-value', chosen > 0);
+  };
+  list.onchange = updateToggle;
+  toggle.onclick = (e) => {
+    e.stopPropagation();
+    list.classList.toggle('hidden');
+    toggle.classList.toggle('open', !list.classList.contains('hidden'));
+  };
+  list.classList.add('hidden');
+  updateToggle();
+
   $('event-create').classList.remove('hidden');
   setTimeout(() => $('event-title').focus(), 0);
 }
@@ -1188,3 +1205,10 @@ function handleHubEvent(msg) {
 }
 
 
+
+// Выпадающий список участников закрывается щелчком мимо
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.multi-select')) return;
+  for (const list of document.querySelectorAll('.multi-select .multi-list')) list.classList.add('hidden');
+  for (const toggle of document.querySelectorAll('.multi-toggle')) toggle.classList.remove('open');
+});

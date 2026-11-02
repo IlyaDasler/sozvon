@@ -793,7 +793,7 @@
       <h3>Новое событие</h3>
       <label class="field">
         <span>Название</span>
-        <input id="event-title" maxlength="80" placeholder="Например: Broken Arrow" autocomplete="off">
+        <input id="event-title" maxlength="80" placeholder="Например: Вечерняя игра" autocomplete="off">
       </label>
       <div class="field-row">
         <label class="field">
@@ -811,7 +811,10 @@
       </label>
       <div class="field">
         <span>Позвать участников</span>
-        <div class="event-invitees" id="event-invitees"></div>
+        <div class="multi-select" id="event-invitees">
+          <button type="button" class="multi-toggle">Никто не выбран</button>
+          <div class="multi-list hidden"></div>
+        </div>
       </div>
       <p class="error" id="event-error"></p>
       <div class="row">
