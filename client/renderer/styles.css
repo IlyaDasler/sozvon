@@ -2294,3 +2294,18 @@ input[type='radio']:disabled { opacity: .45; cursor: default; }
 [data-density='compact'] .set-block { padding: 12px; }
 [data-density='compact'] .rs-nav button,
 [data-density='compact'] .set-nav button { padding: 5px 9px; }
+/* ---------- Разделитель дня в ленте ---------- */
+.day {
+  align-self: center;
+  width: fit-content;
+  margin: 14px auto 6px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.msg.cont { padding-top: 1px; }
