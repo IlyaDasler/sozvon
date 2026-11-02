@@ -125,9 +125,9 @@
   --bg-deep: #0b0e1c;
   --bg: #121629;
   --bg-2: #0e1222;
-  --bg-3: rgba(255, 255, 255, 0.07);
-  --bg-4: rgba(255, 255, 255, 0.12);
-  --bg-5: rgba(255, 255, 255, 0.18);
+  --bg-3: rgba(10, 14, 30, 0.42);
+  --bg-4: rgba(255, 255, 255, 0.10);
+  --bg-5: rgba(255, 255, 255, 0.17);
   --line: rgba(255, 255, 255, 0.10);
   --line-strong: rgba(255, 255, 255, 0.22);
   --text: #f4f6ff;
@@ -396,28 +396,198 @@
     0 20px 50px rgba(3, 6, 18, 0.45);
 }
 
-/* Композер и тулбар — тоже стекло, чтобы не выбивались из материала */
+/* Композер: внешний контейнер не трогаем — стеклянной делаем саму полосу ввода,
+   иначе «плюс» и поле уезжают из пилюли */
+[data-theme='glass'] .composer-bar {
+  border-radius: calc(var(--glass-radius) - 6px);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.01) 50%),
+    rgba(255, 255, 255, calc(var(--glass-a) * 0.9));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.30),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* Кнопки: плоские стеклянные капсулы без «объёма», с пружинкой нажатия */
+[data-theme='glass'] .btn,
+[data-theme='glass'] .icon-btn,
+[data-theme='glass'] .round-btn,
+[data-theme='glass'] .nav-btn {
+  background-image: none;
+  background-color: rgba(255, 255, 255, calc(var(--glass-a) + 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+  transition:
+    background-color .18s ease,
+    border-color .18s ease,
+    transform .16s cubic-bezier(.2, .9, .25, 1.3),
+    color .18s ease;
+}
+[data-theme='glass'] .btn:hover,
+[data-theme='glass'] .icon-btn:hover,
+[data-theme='glass'] .round-btn:hover {
+  background-color: rgba(255, 255, 255, calc(var(--glass-a) + 0.09));
+  border-color: rgba(255, 255, 255, 0.20);
+}
+[data-theme='glass'] .btn:active:not(:disabled),
+[data-theme='glass'] .icon-btn:active:not(:disabled),
+[data-theme='glass'] .round-btn:active:not(:disabled) {
+  transform: scale(.955);
+  background-color: rgba(255, 255, 255, calc(var(--glass-a) + 0.16));
+  transition-duration: .08s;
+}
+[data-theme='glass'] .btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+[data-theme='glass'] .btn.primary {
+  background-color: color-mix(in srgb, var(--accent) 78%, transparent);
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+[data-theme='glass'] .btn.primary:hover { background-color: color-mix(in srgb, var(--accent) 90%, transparent); }
+/* ===== Доводка «жидкого стекла»: весь интерфейс в одном материале ===== */
+
+/* Тулбар канала */
 [data-theme='glass'] .chat-head {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0) 60%),
     rgba(255, 255, 255, calc(var(--glass-a) * 0.8));
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
-[data-theme='glass'] .composer {
-  border-radius: calc(var(--glass-radius) - 6px);
-  border: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.01) 50%),
-    rgba(255, 255, 255, calc(var(--glass-a) * 0.85));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+
+/* Списки, разделы и строки настроек — не «белые карточки», а тёмное стекло */
+[data-theme='glass'] .contact-list,
+[data-theme='glass'] .friends-body,
+[data-theme='glass'] .set-pane,
+[data-theme='glass'] .set-block,
+[data-theme='glass'] .rs-facts > div,
+[data-theme='glass'] .rs-role-list,
+[data-theme='glass'] .perm-item,
+[data-theme='glass'] .theme-preview {
+  background-color: rgba(10, 14, 30, 0.38);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme='glass'] .set-block {
+  border-radius: var(--glass-radius);
+  padding: 14px;
 }
 
-/* Кнопки-«капсулы»: мягкий верхний блик и тень, как у стеклянных контролов */
-[data-theme='glass'] .btn,
-[data-theme='glass'] .round-btn,
-[data-theme='glass'] .icon-btn {
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.02));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 6px rgba(0, 0, 0, 0.22);
+/* Навигация настроек — сегмент с подсветкой активного пункта */
+[data-theme='glass'] .set-nav {
+  background-color: rgba(10, 14, 30, 0.32);
+  border-radius: calc(var(--glass-radius) - 4px);
+}
+[data-theme='glass'] .set-nav button.active,
+[data-theme='glass'] .set-nav [aria-selected='true'] {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+}
+
+/* Поля и выпадающие списки — та же «линза», что у панелей */
+[data-theme='glass'] input,
+[data-theme='glass'] textarea,
+[data-theme='glass'] select {
+  background-color: rgba(255, 255, 255, calc(var(--glass-a) * 0.7));
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+[data-theme='glass'] input:focus,
+[data-theme='glass'] textarea:focus,
+[data-theme='glass'] select:focus {
+  border-color: color-mix(in srgb, var(--accent) 62%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+/* Пункты меню: подсветка — мягкое стекло, без резкой заливки */
+[data-theme='glass'] .popup-item:hover,
+[data-theme='glass'] .popup-item:focus-visible {
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+}
+
+/* ===== Переключатели: как в macOS, а не «зелёная пилюля» ===== */
+.switch {
+  appearance: none;
+  width: 40px;
+  height: 24px;
+  flex: none;
+  margin: 0;
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--muted) 38%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent);
+  transition: background-color .2s ease, box-shadow .2s ease;
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform .24s cubic-bezier(.22, 1.2, .36, 1);
+}
+.switch:checked {
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.switch:checked::after { transform: translateX(16px); }
+.switch:disabled { opacity: .45; cursor: default; }
+
+/* ===== Ползунки: тонкая дорожка и стеклянный бегунок ===== */
+input[type='range'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 24px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 22%, transparent);
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  transition: transform .15s cubic-bezier(.22, 1.2, .36, 1);
+}
+input[type='range']:active::-webkit-slider-thumb { transform: scale(1.12); }
+input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* ===== Фон стекла медленно «дышит» — материал кажется жидким ===== */
+@keyframes glass-breathe {
+  0%   { background-position: 0% 0%, 100% 0%, 50% 100%, 0 0; }
+  50%  { background-position: 12% 8%, 88% 6%, 44% 94%, 0 0; }
+  100% { background-position: 0% 0%, 100% 0%, 50% 100%, 0 0; }
+}
+[data-theme='glass']:not([data-gfx='low']) {
+  background-size: 140% 140%, 140% 140%, 140% 140%, auto;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-theme='glass']:not([data-gfx='low']) {
+    animation: glass-breathe 42s ease-in-out infinite;
+  }
+}
+/* Композер: кольцо фокуса рисует сама полоса ввода, поле внутри — без него */
+[data-theme='glass'] .composer textarea:focus,
+[data-theme='glass'] .composer input:focus {
+  box-shadow: none;
+  border-color: transparent;
 }

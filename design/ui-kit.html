@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Созвон — UI-кит 3.0</title>
+<style>
+  /* ===== Токены дизайна: те же имена, что в приложении ===== */
+  :root {
+    --bg-deep: #0b0e1c;
+    --bg: #121629;
+    --bg-2: #0e1222;
+    --bg-3: rgba(10, 14, 30, .42);
+    --bg-4: rgba(255, 255, 255, .10);
+    --bg-5: rgba(255, 255, 255, .17);
+    --line: rgba(255, 255, 255, .10);
+    --line-strong: rgba(255, 255, 255, .22);
+    --text: #f4f6ff;
+    --text-2: #d5daf0;
+    --muted: #9aa2c4;
+    --accent: #7aa7ff;
+    --accent-2: #c58bff;
+    --ok: #2bc46f;
+    --warn: #f0b232;
+    --danger: #f2484d;
+    --r-s: 6px; --r-m: 12px; --r-l: 16px; --r-xl: 20px;
+    --glass-a: .07;
+    --glass-blur: 26px;
+    --glass-radius: 18px;
+    --gap: 8px;
+    font-family: -apple-system, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 40px;
+    color: var(--text);
+    background:
+      radial-gradient(38% 38% at 18% 12%, rgba(122, 167, 255, .50), transparent 70%),
+      radial-gradient(34% 34% at 82% 18%, rgba(197, 139, 255, .40), transparent 72%),
+      radial-gradient(42% 42% at 62% 88%, rgba(0, 210, 255, .28), transparent 72%),
+      var(--bg-deep);
+    background-attachment: fixed;
+  }
+  h1 { font-size: 34px; letter-spacing: -.02em; margin: 0 0 6px; }
+  h2 { font-size: 20px; letter-spacing: -.01em; margin: 40px 0 14px; }
+  h3 { font-size: 15px; margin: 22px 0 10px; color: var(--text-2); }
+  p.lead { color: var(--muted); margin: 0 0 28px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12.5px; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace; }
+
+  /* ===== Стеклянная панель: тот же материал, что в приложении ===== */
+  .glass {
+    position: relative;
+    border-radius: var(--glass-radius);
+    padding: 20px;
+    background:
+      radial-gradient(340px circle at var(--mx, 50%) var(--my, 0%), rgba(255,255,255,.20), transparent 62%),
+      linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.015) 22%, rgba(255,255,255,0) 46%),
+      rgba(255, 255, 255, var(--glass-a));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(185%) brightness(1.06);
+    backdrop-filter: blur(var(--glass-blur)) saturate(185%) brightness(1.06);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.45),
+      inset 0 -1px 0 rgba(255,255,255,.09),
+      inset 1px 0 0 rgba(255,255,255,.12),
+      inset -1px 0 0 rgba(255,255,255,.12),
+      0 26px 64px rgba(3, 6, 18, .42);
+  }
+  .glass::after {
+    content: '';
+    position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+    background: conic-gradient(from 200deg, rgba(255,255,255,.60), rgba(150,200,255,.22), rgba(255,255,255,.06), rgba(205,160,255,.26), rgba(255,255,255,.60));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  /* ===== Сетка витрины ===== */
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+  .section { margin-bottom: 8px; }
+
+  /* ===== Цвета ===== */
+  .swatch { border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+  .swatch i { display: block; height: 64px; }
+  .swatch span { display: block; padding: 8px 10px; font-size: 12px; color: var(--text-2); background: rgba(10,14,30,.35); }
+
+  /* ===== Кнопки: плоские капсулы, без скевоморфизма ===== */
+  .btn {
+    height: 36px; padding: 0 16px; border-radius: var(--r-m);
+    display: inline-flex; align-items: center; gap: 8px;
+    font: inherit; font-weight: 600; color: var(--text); cursor: pointer;
+    background-color: rgba(255,255,255, calc(var(--glass-a) + .03));
+    border: 1px solid rgba(255,255,255,.12);
+    transition: background-color .18s ease, border-color .18s ease, transform .16s cubic-bezier(.2,.9,.25,1.3);
+  }
+  .btn:hover { background-color: rgba(255,255,255, calc(var(--glass-a) + .09)); border-color: rgba(255,255,255,.20); }
+  .btn:active { transform: scale(.955); background-color: rgba(255,255,255, calc(var(--glass-a) + .16)); transition-duration: .08s; }
+  .btn.primary { background-color: color-mix(in srgb, var(--accent) 78%, transparent); border-color: transparent; box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
+  .btn.primary:hover { background-color: color-mix(in srgb, var(--accent) 90%, transparent); }
+  .btn.danger { background-color: color-mix(in srgb, var(--danger) 72%, transparent); border-color: transparent; }
+  .btn.ghost { background: transparent; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.icon { width: 36px; padding: 0; justify-content: center; }
+
+  /* ===== Поля ===== */
+  .field { display: grid; gap: 6px; margin-bottom: 14px; }
+  .field > span { font-size: 12px; color: var(--muted); }
+  input[type='text'], input[type='password'], textarea, select {
+    width: 100%; height: 38px; padding: 0 12px;
+    border-radius: var(--r-m); color: var(--text); font: inherit;
+    background-color: rgba(255,255,255, calc(var(--glass-a) * .7));
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.14);
+    outline: none;
+    transition: border-color .18s ease, box-shadow .18s ease;
+  }
+  textarea { height: auto; min-height: 84px; padding: 10px 12px; resize: vertical; }
+  input:focus, textarea:focus, select:focus {
+    border-color: color-mix(in srgb, var(--accent) 62%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
+  }
+
+  /* ===== Переключатели macOS ===== */
+  .switch { appearance: none; width: 40px; height: 24px; border-radius: 999px; position: relative; cursor: pointer;
+    background: color-mix(in srgb, var(--muted) 38%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent);
+    transition: background-color .2s ease; }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35);
+    transition: transform .24s cubic-bezier(.22,1.2,.36,1); }
+  .switch:checked { background: var(--accent); }
+  .switch:checked::after { transform: translateX(16px); }
+
+  /* ===== Ползунки ===== */
+  input[type='range'] { appearance: none; -webkit-appearance: none; width: 100%; height: 24px; background: transparent; }
+  input[type='range']::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: color-mix(in srgb, var(--text) 22%, transparent); }
+  input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -7px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+
+  /* ===== Сегментированный контрол ===== */
+  .segmented { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px;
+    background: rgba(255,255,255, calc(var(--glass-a) * .8)); border: 1px solid var(--line); }
+  .segmented button { border: 0; background: transparent; color: var(--text-2); font: inherit; padding: 5px 12px; border-radius: 8px; cursor: pointer; }
+  .segmented button.active { background: rgba(255,255,255, .24); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+
+  /* ===== Сообщение в чате (плоский стиль приложения) ===== */
+  .msg { display: flex; gap: 12px; padding: 6px 0; }
+  .avatar { width: 38px; height: 38px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 700;
+    background: linear-gradient(180deg, #ff8bd0, #d6409f); }
+  .msg b { font-size: 13.5px; }
+  .msg time { margin-left: 8px; color: var(--muted); font-size: 11.5px; }
+  .msg p { margin: 2px 0 0; }
+
+  /* ===== Окно ===== */
+  .modal { border-radius: 18px; padding: 22px; max-width: 420px; }
+
+  code.k { background: rgba(255,255,255,.08); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
+  .tokens { display: grid; gap: 6px; font-size: 13px; }
+  .tokens div { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,.08); padding: 4px 0; }
+</style>
+</head>
+<body>
+
+<h1>Созвон 3.0 — UI-кит</h1>
+<p class="lead">Жидкое стекло: слои, блик за курсором, радужная кромка. Плоские контролы, крупные скругления, тёмные полупрозрачные поверхности. Токены совпадают с приложением — можно переносить в Figma один в один.</p>
+
+<div class="glass" id="hero" style="margin-bottom: 30px;">
+  <h3 style="margin-top:0">Как читать витрину</h3>
+  <p class="small" style="margin:0">Компоненты слева направо показывают состояния: обычное, наведение, нажатие, выключено. Все размеры кратны 4: <code class="k">4 / 8 / 12 / 16 / 20</code>. Радиусы: <code class="k">6 / 12 / 16 / 20</code>.</p>
+</div>
+
+<h2>Цвета</h2>
+<div class="grid">
+  <div class="swatch"><i style="background: var(--bg-deep)"></i><span>bg-deep · #0B0E1C</span></div>
+  <div class="swatch"><i style="background: var(--bg)"></i><span>bg · #121629</span></div>
+  <div class="swatch"><i style="background: var(--accent)"></i><span>accent · #7AA7FF</span></div>
+  <div class="swatch"><i style="background: var(--accent-2)"></i><span>accent-2 · #C58BFF</span></div>
+  <div class="swatch"><i style="background: var(--ok)"></i><span>ok · #2BC46F</span></div>
+  <div class="swatch"><i style="background: var(--warn)"></i><span>warn · #F0B232</span></div>
+  <div class="swatch"><i style="background: var(--danger)"></i><span>danger · #F2484D</span></div>
+  <div class="swatch"><i style="background: var(--muted)"></i><span>muted · #9AA2C4</span></div>
+</div>
+
+<h2>Типографика</h2>
+<div class="glass">
+  <div style="font-size: 30px; font-weight: 800; letter-spacing: -.02em;">Заголовок экрана</div>
+  <div style="font-size: 20px; font-weight: 700; margin-top: 10px;">Заголовок раздела</div>
+  <div style="font-size: 15px; font-weight: 600; margin-top: 10px;">Подзаголовок</div>
+  <p style="margin: 12px 0 0;">Основной текст: 14 px, межстрочный 1.45. Так выглядит сообщение в чате и описания в настройках.</p>
+  <p class="small muted" style="margin: 8px 0 0;">Мелкий текст 12.5 px — подсказки, время, второстепенное.</p>
+  <p class="mono small" style="margin: 8px 0 0;">mono: код и терминал — JetBrains Mono</p>
+</div>
+
+<h2>Кнопки</h2>
+<div class="glass">
+  <div class="row">
+    <button class="btn">Обычная</button>
+    <button class="btn primary">Главная</button>
+    <button class="btn danger">Опасная</button>
+    <button class="btn ghost">Прозрачная</button>
+    <button class="btn icon" title="Иконка">＋</button>
+    <button class="btn" disabled>Выключена</button>
+  </div>
+  <p class="small muted" style="margin:12px 0 0">Нажатие: масштаб 0.955 и светлее фон. Наведения: фон +9 % белого. Никаких градиентов и «объёма».</p>
+</div>
+
+<h2>Поля ввода</h2>
+<div class="glass">
+  <label class="field"><span>Почта или логин</span><input type="text" placeholder="name@yandex.ru"></label>
+  <label class="field"><span>Сообщение</span><textarea placeholder="Написать сообщение"></textarea></label>
+  <label class="field"><span>Шумоподавление</span>
+    <select><option>Мягкое</option><option selected>Среднее</option><option>Сильное</option></select>
+  </label>
+</div>
+
+<h2>Переключатели и ползунки</h2>
+<div class="glass">
+  <div class="row" style="gap: 24px;">
+    <label class="row"><input class="switch" type="checkbox" checked> <span>Включено</span></label>
+    <label class="row"><input class="switch" type="checkbox"> <span>Выключено</span></label>
+    <label class="row"><input class="switch" type="checkbox" disabled checked> <span>Недоступно</span></label>
+  </div>
+  <div style="max-width: 360px; margin-top: 18px;">
+    <div class="small muted">Прозрачность панелей · 18 %</div>
+    <input type="range" min="2" max="30" value="18">
+  </div>
+</div>
+
+<h2>Сегментированный контрол</h2>
+<div class="glass">
+  <div class="segmented">
+    <button class="active">В сети</button>
+    <button>Все</button>
+    <button>Входящие</button>
+  </div>
+</div>
+
+<h2>Сообщение</h2>
+<div class="glass">
+  <div class="msg">
+    <div class="avatar">А</div>
+    <div><b>Аня</b><time>20:16</time><p>Привет! Пробую новое стекло — как тебе блик на панели?</p></div>
+  </div>
+  <div class="msg">
+    <div class="avatar" style="background: linear-gradient(180deg,#7ee787,#1d7a55)">Б</div>
+    <div><b>Боря</b><time>20:17</time><p>Выглядит живым, особенно когда курсор двигаешь.</p></div>
+  </div>
+</div>
+
+<h2>Окно</h2>
+<div class="glass modal">
+  <h3 style="margin-top:0">Название группы</h3>
+  <label class="field"><span>Название</span><input type="text" placeholder="Игровые комнаты"></label>
+  <p class="small muted">Enter — сохранить, Esc — отмена</p>
+  <div class="row" style="justify-content: flex-end; margin-top: 10px;">
+    <button class="btn">Отмена</button>
+    <button class="btn primary">Сохранить</button>
+  </div>
+</div>
+
+<h2>Токены</h2>
+<div class="glass">
+  <div class="tokens">
+    <div><span>Радиусы</span><span class="mono">--r-s 6 · --r-m 12 · --r-l 16 · --r-xl 20</span></div>
+    <div><span>Стекло</span><span class="mono">--glass-a .07 · --glass-blur 26px · --glass-radius 18px</span></div>
+    <div><span>Отступы</span><span class="mono">4 / 8 / 12 / 16 / 20</span></div>
+    <div><span>Шрифты</span><span class="mono">system-ui · JetBrains Mono</span></div>
+    <div><span>Анимации</span><span class="mono">120–220 ms · cubic-bezier(.2,.9,.25,1.3)</span></div>
+  </div>
+</div>
+
+<script>
+  // Блик следует за курсором — живое стекло, как в приложении
+  document.addEventListener('pointermove', (e) => {
+    const panel = e.target.closest('.glass');
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    panel.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    panel.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  }, { passive: true });
+</script>
+</body>
+</html>
