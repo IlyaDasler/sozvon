@@ -57,7 +57,7 @@ sudo DOMAIN=chat.example.com INVITE_CODE=моя-семья bash deploy/vps/setup
 ## Резервные копии
 
 Локально: `/var/backups/sozvon`, ежедневно в 04:00 (systemd-таймер `sozvon-backup.timer`).
-Выгрузка в объектное хранилище: таймер `sozvon-offsite.timer` в 04:30.
+Выгрузка в объектное хранилище — по желанию: таймер `sozvon-offsite.timer` в 04:30. По умолчанию он **выключен**: пока не настроено хранилище, ему нечего делать. Включается командой `systemctl enable --now sozvon-offsite.timer` после заполнения конфига ниже.
 
 ### Как включить выгрузку в Selectel
 
