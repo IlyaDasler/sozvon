@@ -181,3 +181,18 @@ $('os-accent').onchange = () => {
   store.set('osAccent', $('os-accent').checked);
   window.desktop?.system?.theme?.().then(applySystemColors).catch(() => {});
 };
+// ---------- Плотность интерфейса ----------
+
+function applyDensity() {
+  const compact = Boolean(store.get('density', false));
+  document.documentElement.dataset.density = compact ? 'compact' : 'normal';
+  const box = $('ui-density');
+  if (box) box.checked = compact;
+}
+
+$('ui-density').onchange = () => {
+  store.set('density', $('ui-density').checked);
+  applyDensity();
+};
+
+applyDensity();
