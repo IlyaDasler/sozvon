@@ -111,6 +111,13 @@ runTest(async () => {
 
   // Ширина боковых панелей: тянем край мышью (настоящие события ввода), двойной щелчок — как было
   const width = (sel) => js(win, `Math.round(document.querySelector('${sel}').getBoundingClientRect().width)`);
+  // Ручка стоит внутри панели, поэтому ожидаемую ширину считаем по фактической точке захвата
+  const expectedWidth = (sel, dx, edge) => js(win, `(() => {
+    const p = document.querySelector('${sel}').getBoundingClientRect();
+    const b = document.querySelector('${sel} > .panel-resizer').getBoundingClientRect();
+    const center = b.left + b.width / 2;
+    return Math.round('${edge}' === 'right' ? (center + ${dx}) - p.left : p.right - (center + ${dx}));
+  })()`);
   const drag = async (sel, dx) => {
     const r = await js(win, `(() => { const b = document.querySelector('${sel} > .panel-resizer').getBoundingClientRect(); return { x: Math.round(b.left + b.width / 2), y: Math.round(b.top + 200) }; })()`);
     const wc = win.webContents;
@@ -120,13 +127,17 @@ runTest(async () => {
     await sleep(300);
   };
   const sidebarBefore = await width('.sidebar');
+  const sidebarExpected = await expectedWidth('.sidebar', 80, 'right');
   await drag('.sidebar', 80);
   const sidebarAfter = await width('.sidebar');
-  if (Math.abs(sidebarAfter - sidebarBefore - 80) > 3) throw new Error(`Левая панель: было ${sidebarBefore}, стало ${sidebarAfter}`);
+  if (Math.abs(sidebarAfter - sidebarExpected) > 4)
+    throw new Error(`Левая панель: ждали ${sidebarExpected}, стало ${sidebarAfter}`);
   const membersBefore = await width('#members-panel');
+  const membersExpected = await expectedWidth('#members-panel', -60, 'left');
   await drag('#members-panel', -60);
   const membersAfter = await width('#members-panel');
-  if (Math.abs(membersAfter - membersBefore - 60) > 3) throw new Error(`Участники: было ${membersBefore}, стало ${membersAfter}`);
+  if (Math.abs(membersAfter - membersExpected) > 4)
+    throw new Error(`Участники: ждали ${membersExpected}, стало ${membersAfter}`);
   await shot('1280-resized');
   if ((await js(win, `store.get('panelWidths').sidebar`)) !== sidebarAfter) throw new Error('Ширина не запомнилась');
   await js(win, `document.querySelector('.sidebar > .panel-resizer').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); true`);
