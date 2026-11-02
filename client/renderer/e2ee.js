@@ -359,7 +359,52 @@ $('e2ee-transfer-btn').onclick = async () => {
 };
 
 $('e2ee-later-btn').onclick = () => $('e2ee-setup').classList.add('hidden');
-$('e2ee-code').onkeydown = (e) => e.key === 'Enter' && $('e2ee-transfer-btn').click();
+
+// Поле кода: буквы-цифры, регистр не важен, автоматом ставим дефисы по 4 символа.
+// Так видно, что ввод доходит, и вставленный код сразу выглядит как на другом устройстве
+const CODE_CHARS = 16;
+function formatTransferCode(raw) {
+  const clean = String(raw).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_CHARS);
+  return clean.match(/.{1,4}/g)?.join('-') ?? '';
+}
+const codeInput = $('e2ee-code');
+codeInput.oninput = () => {
+  const caretAtEnd = codeInput.selectionStart === codeInput.value.length;
+  const next = formatTransferCode(codeInput.value);
+  if (next !== codeInput.value) {
+    codeInput.value = next;
+    if (caretAtEnd) codeInput.setSelectionRange(next.length, next.length);
+  }
+};
+// На macOS клик по полю иногда не отдаёт фокус (окно без рамки) — фокусируем явно
+codeInput.onmousedown = (e) => {
+  e.preventDefault();
+  codeInput.focus();
+  codeInput.select();
+};
+
+$('e2ee-paste-btn').onclick = async () => {
+  let text = '';
+  try {
+    text = (await window.desktop?.paste?.()) ?? '';
+  } catch {}
+  // Запасной путь для веб-версии: обычное чтение буфера браузером
+  if (!text) {
+    try {
+      text = await navigator.clipboard.readText();
+    } catch {}
+  }
+  if (!text.trim()) {
+    $('e2ee-setup-error').textContent = 'В буфере нет кода — скопируйте его на другом устройстве';
+    return;
+  }
+  codeInput.value = text.trim();
+  codeInput.oninput();
+  $('e2ee-setup-error').textContent = '';
+  codeInput.focus();
+};
+
+codeInput.onkeydown = (e) => e.key === 'Enter' && $('e2ee-transfer-btn').click();
 
 // Настройки → Аккаунт: показать код для нового устройства (или ввести код, если ключа здесь ещё нет)
 $('e2ee-share-btn').onclick = async () => {

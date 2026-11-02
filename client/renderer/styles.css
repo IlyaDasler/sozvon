@@ -1476,6 +1476,11 @@ kbd {
 .e2ee-card p { margin-bottom: 8px; }
 .e2ee-steps { margin: 0 0 14px; padding-left: 20px; line-height: 1.5; }
 .e2ee-card input { width: 100%; font-family: ui-monospace, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+/* Окно переноса ключа: выше остальных слоёв, карточка не тянет окно, текст в поле выделяется.
+   На macOS окно без рамки, и клик по полю иногда уходил в перетаскивание */
+#e2ee-setup { z-index: 45; }
+.e2ee-card { -webkit-app-region: no-drag; }
+.e2ee-card input { -webkit-user-select: text; user-select: text; }
 .e2ee-card .error { margin: 6px 0 4px; }
 .e2ee-share-code { font: 600 16px ui-monospace, Consolas, monospace; letter-spacing: .1em; padding: 6px 10px; border-radius: var(--r-s); background: var(--bg-3); user-select: all; }
 .msg-locked { color: var(--muted); font-style: italic; }
