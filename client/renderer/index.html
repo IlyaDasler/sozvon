@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="glass-system.css">
   <script src="theme-boot.js"></script>
   <script src="liquid-tabs.js" defer></script>
+  <script src="threads.js" defer></script>
   <script src="refactor-status.js" defer></script>
   <script src="tooltips.js"></script>
 </head>
@@ -408,6 +409,18 @@
     </aside>
   </section>
 
+  <!-- Тред: обсуждение одного сообщения, чтобы не спамить в общий чат -->
+  <aside id="thread-panel" class="thread-panel hidden" aria-label="Тред">
+    <header class="thread-head">
+      <b id="thread-title">Тред</b>
+      <button type="button" class="icon-btn" id="thread-close" title="Закрыть (Esc)"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </header>
+    <div class="thread-list" id="thread-list"></div>
+    <form class="thread-form" id="thread-form">
+      <textarea id="thread-input" rows="1" placeholder="Ответить в треде"></textarea>
+      <button type="submit" class="btn primary" id="thread-send">Ответить</button>
+    </form>
+  </aside>
   <!-- Входящий звонок -->
   <div id="incoming" class="modal hidden">
     <div class="modal-card incoming-card">

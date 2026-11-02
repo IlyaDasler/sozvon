@@ -1272,6 +1272,17 @@ function messageRow(m, prev, list, actions, shown, fresh) {
   const chips = reactionsView(m);
   if (chips) body.append(chips);
   row.append(body);
+  if (actions?.chat?.kind === 'room' && Number(m.replies || 0) > 0) {
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.className = 'msg-thread-link';
+    link.textContent = 'Обсуждение · ' + m.replies;
+    link.onclick = (e) => {
+      e.stopPropagation();
+      openThread(m, actions.chat);
+    };
+    body.append(link);
+  }
   if (actions?.chat) {
     const tools = document.createElement('div');
     tools.className = 'msg-tools';
@@ -1288,6 +1299,11 @@ function messageRow(m, prev, list, actions, shown, fresh) {
       e.stopPropagation();
       startReply(row.message, actions.chat);
     });
+    if (actions.chat.kind === 'room')
+      tool('В треде', '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>', (e) => {
+        e.stopPropagation();
+        openThread(row.message, actions.chat);
+      });
     tool('Переслать', '<svg viewBox="0 0 24 24"><path d="M15 14 20 9l-5-5"/><path d="M20 9h-9a7 7 0 0 0-7 7v3"/></svg>', (e) => {
       e.stopPropagation();
       forwardMessage(row.message);

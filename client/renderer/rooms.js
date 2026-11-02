@@ -615,6 +615,12 @@ function renderRoomMessages() {
     }
   );
   refreshPinned({ kind: 'room', roomId: id });
+  state.roomActions = {
+    chat: { kind: 'room', roomId: id },
+    canDelete: (m) => m.fromId === state.me.id || (can(room, PERMS.manage) && outranks(room, m.fromId)),
+    remove: (m) => Api.del(`/rooms/${id}/messages/${m.id}`),
+    older: () => loadOlder(roomHistory(id)),
+  };
 }
 
 function addRoomMessage(m) {
@@ -734,6 +740,9 @@ function handleRoomEvent(msg) {
       return;
     }
     case 'room:message':
+    case 'room:thread:new':
+      bumpThreadReplies(msg.rootId, msg.roomId);
+      return;
       return addRoomMessage(msg.message);
     case 'room:message:deleted':
       if (dropMessage(state.roomHistory, msg.roomId, msg.id) && msg.roomId === state.selectedRoomId) renderRoomMessages();
