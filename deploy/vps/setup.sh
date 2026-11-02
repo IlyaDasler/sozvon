@@ -233,6 +233,35 @@ EOF
 systemctl daemon-reload
 systemctl enable -q --now sozvon-backup.timer
 
+log 'Настраиваю выгрузку копий в объектное хранилище'
+# rclone нужен для S3-совместимого хранилища; его настройки (ключи) лежат в /root/.config/rclone/rclone.conf
+# и в репозиторий не попадают. Пока файла нет, служба просто пишет в журнал, что выгрузка не настроена
+if ! command -v rclone >/dev/null 2>&1; then
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rclone >/dev/null 2>&1 || log 'rclone поставить не удалось — выгрузка будет недоступна'
+fi
+chmod +x "$APP_DIR/deploy/vps/backup-offsite.sh" 2>/dev/null || true
+cat > /etc/systemd/system/sozvon-offsite.service <<EOF
+[Unit]
+Description=Sozvon: выгрузка резервной копии в объектное хранилище
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=$APP_DIR/deploy/vps/backup-offsite.sh
+Nice=10
+EOF
+cat > /etc/systemd/system/sozvon-offsite.timer <<EOF
+[Unit]
+Description=Sozvon: ежедневная выгрузка копии в объектное хранилище
+[Timer]
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+RandomizedDelaySec=300
+[Install]
+WantedBy=timers.target
+EOF
+systemctl daemon-reload
+systemctl enable -q --now sozvon-offsite.timer
+
 log "Настраиваю HTTPS для $DOMAIN (Caddy сам получит и будет продлевать сертификат Let's Encrypt)"
 cat > /etc/caddy/Caddyfile <<EOF
 $DOMAIN {

@@ -1,0 +1,9 @@
+[Unit]
+Description=Sozvon: выгрузка резервной копии базы в объектное хранилище
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/sozvon/deploy/vps/backup-offsite.sh
+Nice=10
+IOSchedulingClass=idle
