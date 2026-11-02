@@ -8,6 +8,7 @@
   <title>Созвон</title>
   <link rel="stylesheet" href="themes.css">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="pickers.css">
   <script src="theme-boot.js"></script>
   <script src="tooltips.js"></script>
 </head>
@@ -796,19 +797,28 @@
         <input id="event-title" maxlength="80" placeholder="Например: Вечерняя игра" autocomplete="off">
       </label>
       <div class="field-row">
-        <label class="field">
+        <div class="field">
           <span>День</span>
-          <input id="event-date" type="date">
-        </label>
-        <label class="field">
+          <div class="picker">
+            <button type="button" class="picker-toggle" id="event-date">Выберите день</button>
+            <div class="picker-pop hidden" id="event-date-pop"></div>
+          </div>
+        </div>
+        <div class="field">
           <span>Время</span>
-          <input id="event-time" type="time">
-        </label>
+          <div class="picker">
+            <button type="button" class="picker-toggle" id="event-time">05:00</button>
+            <div class="picker-pop hidden" id="event-time-pop"></div>
+          </div>
+        </div>
       </div>
-      <label class="field">
+      <div class="field">
         <span>Чат для публикации</span>
-        <select id="event-room"></select>
-      </label>
+        <div class="picker">
+          <button type="button" class="picker-toggle" id="event-room">Выберите чат</button>
+          <div class="picker-pop hidden" id="event-room-pop"></div>
+        </div>
+      </div>
       <div class="field">
         <span>Позвать участников</span>
         <div class="multi-select" id="event-invitees">

@@ -823,6 +823,122 @@ function hubEventsPane(hub) {
   return [box];
 }
 
+// Выбранное в окне события: день, время и чат
+let eventDraft = { date: null, time: '00:00', roomId: null };
+const pad2 = (n) => String(n).padStart(2, '0');
+
+function syncEventPickers() {
+  $('event-date').textContent = eventDraft.date ? eventDraft.date.toLocaleDateString('ru-RU') : 'Выберите день';
+  $('event-time').textContent = eventDraft.time;
+  const room = roomById(eventDraft.roomId);
+  $('event-room').textContent = room ? `# ${room.name}` : 'Выберите чат';
+}
+
+// Календарь в стиле приложения
+function buildEventCalendar() {
+  const pop = $('event-date-pop');
+  const start = eventDraft.date ? new Date(eventDraft.date) : new Date();
+  let view = new Date(start.getFullYear(), start.getMonth(), 1);
+
+  const draw = () => {
+    const head = el('div', { className: 'cal-head' });
+    const prev = el('button', { type: 'button', className: 'cal-nav', textContent: '‹' });
+    const next = el('button', { type: 'button', className: 'cal-nav', textContent: '›' });
+    const title = el('b', { textContent: view.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }) });
+    head.append(prev, title, next);
+
+    const grid = el('div', { className: 'cal-grid' });
+    for (const w of ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']) grid.append(el('span', { className: 'cal-dow', textContent: w }));
+    const first = new Date(view.getFullYear(), view.getMonth(), 1);
+    const shift = (first.getDay() + 6) % 7;
+    const days = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+    for (let i = 0; i < shift; i++) grid.append(el('span', { className: 'cal-empty' }));
+    for (let d = 1; d <= days; d++) {
+      const date = new Date(view.getFullYear(), view.getMonth(), d);
+      const cell = el('button', { type: 'button', className: 'cal-day', textContent: String(d) });
+      if (eventDraft.date && date.toDateString() === eventDraft.date.toDateString()) cell.classList.add('selected');
+      if (date.toDateString() === new Date().toDateString()) cell.classList.add('today');
+      cell.onclick = () => {
+        eventDraft.date = date;
+        syncEventPickers();
+        pop.classList.add('hidden');
+      };
+      grid.append(cell);
+    }
+
+    const foot = el('div', { className: 'cal-foot' });
+    const today = el('button', { type: 'button', className: 'btn small', textContent: 'Сегодня' });
+    today.onclick = () => {
+      eventDraft.date = new Date();
+      syncEventPickers();
+      pop.classList.add('hidden');
+    };
+    foot.append(today);
+
+    prev.onclick = () => {
+      view = new Date(view.getFullYear(), view.getMonth() - 1, 1);
+      draw();
+    };
+    next.onclick = () => {
+      view = new Date(view.getFullYear(), view.getMonth() + 1, 1);
+      draw();
+    };
+    pop.replaceChildren(head, grid, foot);
+  };
+  draw();
+}
+
+// Время: часы и минуты двумя колонками
+function buildEventTimePicker() {
+  const pop = $('event-time-pop');
+  const [hours, minutes] = eventDraft.time.split(':').map(Number);
+  const wrap = el('div', { className: 'time-cols' });
+  const hourCol = el('div', { className: 'time-col' });
+  const minCol = el('div', { className: 'time-col' });
+
+  for (let h = 0; h < 24; h++) {
+    const b = el('button', { type: 'button', className: `time-cell${h === hours ? ' selected' : ''}`, textContent: pad2(h) });
+    b.onclick = () => {
+      eventDraft.time = `${pad2(h)}:${pad2(minutes)}`;
+      syncEventPickers();
+      buildEventTimePicker();
+    };
+    hourCol.append(b);
+  }
+  for (let m = 0; m < 60; m += 5) {
+    const b = el('button', { type: 'button', className: `time-cell${m === minutes ? ' selected' : ''}`, textContent: pad2(m) });
+    b.onclick = () => {
+      eventDraft.time = `${pad2(hours)}:${pad2(m)}`;
+      syncEventPickers();
+      pop.classList.add('hidden');
+    };
+    minCol.append(b);
+  }
+  wrap.append(hourCol, minCol);
+  pop.replaceChildren(wrap);
+  hourCol.querySelector('.selected')?.scrollIntoView({ block: 'center' });
+}
+
+// Список чатов канала
+function buildEventRoomPicker(rooms) {
+  const pop = $('event-room-pop');
+  pop.replaceChildren(
+    ...rooms.map((room) => {
+      const b = el('button', {
+        type: 'button',
+        className: `picker-option${room.id === eventDraft.roomId ? ' selected' : ''}`,
+        textContent: `# ${room.name}`,
+      });
+      b.onclick = () => {
+        eventDraft.roomId = room.id;
+        syncEventPickers();
+        pop.classList.add('hidden');
+      };
+      return b;
+    })
+  );
+}
+
 function openEventCreate(hub) {
   eventHubId = hub.id;
   $('event-title').value = '';
@@ -831,15 +947,11 @@ function openEventCreate(hub) {
   // По умолчанию — сегодня, через час
   const soon = new Date(Date.now() + 60 * 60_000);
   soon.setMinutes(0, 0, 0);
-  $('event-date').value = soon.toISOString().slice(0, 10);
-  $('event-time').value = `${String(soon.getHours()).padStart(2, '0')}:00`;
-
   const rooms = roomsOfHub(hub.id);
-  const select = $('event-room');
-  select.replaceChildren(...rooms.map((room) => el('option', { value: room.id, textContent: `# ${room.name}` })));
-  // По умолчанию — комната, открытая сейчас, иначе первая текстовая
   const current = rooms.find((r) => r.id === state.selectedRoomId) || rooms.find((r) => r.kind === 'text') || rooms[0];
-  if (current) select.value = current.id;
+  eventDraft = { date: soon, time: `${pad2(soon.getHours())}:00`, roomId: current?.id ?? null };
+  syncEventPickers();
+  for (const pop of document.querySelectorAll('#event-create .picker-pop')) pop.classList.add('hidden');
 
   const people = hub.members.filter((m) => m.id !== state.me.id);
   const box = $('event-invitees');
@@ -878,6 +990,32 @@ const closeEventCreate = () => {
   eventHubId = null;
 };
 
+// Выпадающие списки в стиле приложения: открываем нужный, остальные прячем
+function togglePicker(toggleId, popId, build) {
+  const pop = $(popId);
+  const opening = pop.classList.contains('hidden');
+  for (const other of document.querySelectorAll('#event-create .picker-pop')) other.classList.add('hidden');
+  if (!opening) return;
+  build();
+  pop.classList.remove('hidden', 'up');
+  $(toggleId).classList.add('open');
+  // Не влезает вниз — раскрываем вверх
+  if (pop.getBoundingClientRect().bottom > innerHeight - 8) pop.classList.add('up');
+}
+
+$('event-date').onclick = (e) => {
+  e.stopPropagation();
+  togglePicker('event-date', 'event-date-pop', buildEventCalendar);
+};
+$('event-time').onclick = (e) => {
+  e.stopPropagation();
+  togglePicker('event-time', 'event-time-pop', buildEventTimePicker);
+};
+$('event-room').onclick = (e) => {
+  e.stopPropagation();
+  togglePicker('event-room', 'event-room-pop', () => buildEventRoomPicker(roomsOfHub(eventHubId)));
+};
+
 $('event-cancel').onclick = closeEventCreate;
 $('event-create').onclick = (e) => {
   if (e.target === $('event-create')) closeEventCreate();
@@ -888,17 +1026,18 @@ $('event-form').onsubmit = async (e) => {
   const hub = hubById(eventHubId);
   if (!hub) return;
   const title = $('event-title').value.trim();
-  const date = $('event-date').value;
-  const time = $('event-time').value;
   if (!title) return ($('event-error').textContent = 'Название события обязательно');
-  if (!date || !time) return ($('event-error').textContent = 'Выберите день и время');
-  const startsAt = new Date(`${date}T${time}`).getTime();
-  if (!Number.isFinite(startsAt)) return ($('event-error').textContent = 'Не получилось разобрать дату');
+  if (!eventDraft.date) return ($('event-error').textContent = 'Выберите день');
+  if (!eventDraft.roomId) return ($('event-error').textContent = 'Выберите чат для публикации');
+  const [hours, minutes] = eventDraft.time.split(':').map(Number);
+  const startsAt = new Date(eventDraft.date);
+  startsAt.setHours(hours, minutes, 0, 0);
+  if (!Number.isFinite(startsAt.getTime())) return ($('event-error').textContent = 'Не получилось разобрать дату');
 
-  const roomId = Number($('event-room').value);
+  const roomId = eventDraft.roomId;
   const invitees = [...$('event-invitees').querySelectorAll('input:checked')].map((i) => Number(i.value));
   try {
-    const room = await Api.post(`/rooms/${roomId}/events`, { title, startsAt, invitees });
+    const room = await Api.post(`/rooms/${roomId}/events`, { title, startsAt: startsAt.getTime(), invitees });
     // Комната пришла уже с событием — обновляем её у себя, иначе карточка не найдёт событие
     applyRoomUpdate(room);
     // Публикуем событие сообщением в выбранный чат: внутри конверта только id
@@ -1206,9 +1345,14 @@ function handleHubEvent(msg) {
 
 
 
-// Выпадающий список участников закрывается щелчком мимо
+// Выпадающие списки (участники, календарь, время, чат) закрываются щелчком мимо
 document.addEventListener('click', (e) => {
-  if (e.target.closest('.multi-select')) return;
-  for (const list of document.querySelectorAll('.multi-select .multi-list')) list.classList.add('hidden');
-  for (const toggle of document.querySelectorAll('.multi-toggle')) toggle.classList.remove('open');
+  if (!e.target.closest('.multi-select')) {
+    for (const list of document.querySelectorAll('.multi-select .multi-list')) list.classList.add('hidden');
+    for (const toggle of document.querySelectorAll('.multi-toggle')) toggle.classList.remove('open');
+  }
+  if (!e.target.closest('.picker')) {
+    for (const pop of document.querySelectorAll('.picker-pop')) pop.classList.add('hidden');
+    for (const toggle of document.querySelectorAll('.picker-toggle')) toggle.classList.remove('open');
+  }
 });
