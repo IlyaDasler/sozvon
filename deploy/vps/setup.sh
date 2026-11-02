@@ -236,8 +236,18 @@ systemctl enable -q --now sozvon-backup.timer
 log 'Настраиваю выгрузку копий в объектное хранилище'
 # rclone нужен для S3-совместимого хранилища; его настройки (ключи) лежат в /root/.config/rclone/rclone.conf
 # и в репозиторий не попадают. Пока файла нет, служба просто пишет в журнал, что выгрузка не настроена
-if ! command -v rclone >/dev/null 2>&1; then
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rclone >/dev/null 2>&1 || log 'rclone поставить не удалось — выгрузка будет недоступна'
+# Selectel требует rclone 1.69+, а в репозиториях Ubuntu лежит старее — ставим свежий с сайта rclone
+rclone_ok() {
+  local have
+  have=$(rclone version 2>/dev/null | awk '/^rclone v/{print $2; exit}')
+  [ -n "$have" ] && [ "$(printf '%s\n%s\n' 1.69 "$have" | sort -V | head -1)" = "1.69" ]
+}
+if ! rclone_ok; then
+  if curl -fsSL -o /tmp/rclone.deb https://downloads.rclone.org/rclone-current-linux-amd64.deb; then
+    dpkg -i /tmp/rclone.deb >/dev/null 2>&1 || { apt-get -f install -y -qq >/dev/null 2>&1; dpkg -i /tmp/rclone.deb >/dev/null 2>&1; }
+    rm -f /tmp/rclone.deb
+  fi
+  rclone_ok || log 'rclone 1.69+ поставить не удалось — выгрузка в S3 будет недоступна'
 fi
 chmod +x "$APP_DIR/deploy/vps/backup-offsite.sh" 2>/dev/null || true
 cat > /etc/systemd/system/sozvon-offsite.service <<EOF
