@@ -1,0 +1,196 @@
+/* ============================================================================
+   Система стекла 3.0 — по референсу liqui.design
+   Материал: тинт-градиент + блик верхней кромки + контр-блик снизу + тень.
+   Правило референса: стекло — для того, через что действуют (кнопки, меню, окна,
+   тосты). Плоская заливка — для того, что несёт значение (поля, чекбоксы, радио).
+   Акцентные и опасные кнопки — плоские: цвет и есть сообщение.
+   ========================================================================== */
+
+[data-theme='glass'] {
+  --lq-text: var(--text);
+  --lq-text-dim: var(--muted);
+  --lq-tint: rgba(20, 25, 42, 0.46);
+  --lq-tint-deep: rgba(9, 12, 22, 0.68);
+  --lq-rim-hi: rgba(255, 255, 255, 0.52);
+  --lq-rim-lo: rgba(255, 255, 255, 0.10);
+  --lq-shadow: 0 26px 64px rgba(2, 4, 12, 0.48);
+  --lq-highlight: rgba(255, 255, 255, 0.10);
+  --lq-control: rgba(255, 255, 255, 0.07);
+  --lq-control-rim: rgba(255, 255, 255, 0.15);
+  --lq-accent: var(--accent);
+  --lq-danger: var(--danger);
+  --lq-danger-text: #ff9a9d;
+  --lq-scrim: rgba(4, 6, 14, 0.58);
+  --lq-radius-btn: 12px;
+  --lq-radius-pop: 18px;
+  --lq-radius-panel: 22px;
+  --lq-blur: 26px;
+  --lq-ease: cubic-bezier(0.22, 1.15, 0.36, 1);
+}
+
+/* ---------- 1. Кнопки: стекло, через которое действуют ---------- */
+
+[data-theme='glass'] .btn,
+[data-theme='glass'] .icon-btn,
+[data-theme='glass'] .round-btn,
+[data-theme='glass'] .nav-btn {
+  border-radius: var(--lq-radius-btn);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 54%),
+    var(--lq-tint);
+  border: 1px solid var(--lq-control-rim);
+  box-shadow:
+    inset 0 1px 0 var(--lq-rim-hi),
+    inset 0 -1px 0 var(--lq-rim-lo),
+    0 8px 22px rgba(2, 4, 12, 0.32);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms var(--lq-ease),
+    box-shadow 200ms ease;
+}
+[data-theme='glass'] .btn:hover,
+[data-theme='glass'] .icon-btn:hover,
+[data-theme='glass'] .round-btn:hover {
+  background-color: var(--lq-highlight);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+[data-theme='glass'] .btn:active:not(:disabled),
+[data-theme='glass'] .icon-btn:active:not(:disabled),
+[data-theme='glass'] .round-btn:active:not(:disabled) {
+  transform: scale(0.955);
+  transition-duration: 90ms;
+}
+[data-theme='glass'] .round-btn { border-radius: 50%; }
+
+/* Акцент и опасность — сплошные: цвет не разбавляем прозрачностью */
+[data-theme='glass'] .btn.primary {
+  background: var(--lq-accent);
+  color: var(--on-accent, #0b1020);
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+[data-theme='glass'] .btn.primary:hover { background: color-mix(in srgb, var(--lq-accent) 88%, #fff); }
+[data-theme='glass'] .btn.danger,
+[data-theme='glass'] .btn.danger-outline:hover {
+  background: var(--lq-danger);
+  color: #fff;
+  border-color: transparent;
+}
+[data-theme='glass'] .btn.danger-outline {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--lq-danger) 55%, transparent);
+  color: var(--lq-danger-text);
+  box-shadow: none;
+}
+
+/* ---------- 2. Поля и контролы со значением — плоские ---------- */
+
+[data-theme='glass'] input:not([type='checkbox']):not([type='radio']):not([type='range']),
+[data-theme='glass'] textarea,
+[data-theme='glass'] select {
+  background: var(--lq-control);
+  border: 1px solid var(--lq-control-rim);
+  border-radius: 11px;
+  box-shadow: none;
+}
+[data-theme='glass'] input:focus,
+[data-theme='glass'] textarea:focus,
+[data-theme='glass'] select:focus {
+  border-color: color-mix(in srgb, var(--lq-accent) 65%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lq-accent) 22%, transparent);
+}
+[data-theme='glass'] input[type='radio'] { border-color: var(--lq-control-rim); }
+[data-theme='glass'] input[type='radio']:checked { background: var(--lq-accent); border-color: var(--lq-accent); }
+
+/* Свитчер: по просьбе — стеклянный, но в тех же токенах */
+[data-theme='glass'] .switch {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04) 48%),
+    var(--lq-control);
+  border-color: var(--lq-control-rim);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+[data-theme='glass'] .switch:checked {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.05) 50%),
+    var(--lq-accent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.40),
+    0 4px 14px color-mix(in srgb, var(--lq-accent) 32%, transparent);
+}
+
+/* ---------- 3. Окна и меню: широкий безель, глубокая тень ---------- */
+
+[data-theme='glass'] .modal-card {
+  border-radius: var(--lq-radius-panel);
+  box-shadow:
+    inset 0 1px 0 var(--lq-rim-hi),
+    inset 0 -1px 0 var(--lq-rim-lo),
+    var(--lq-shadow);
+}
+[data-theme='glass'] .popup,
+[data-theme='glass'] .chat-theme-pop,
+[data-theme='glass'] .gif-popover,
+[data-theme='glass'] .profile-card,
+[data-theme='glass'] .notif-panel {
+  border-radius: var(--lq-radius-pop);
+  box-shadow:
+    inset 0 1px 0 var(--lq-rim-hi),
+    inset 0 -1px 0 var(--lq-rim-lo),
+    var(--lq-shadow);
+}
+[data-theme='glass'] .toast {
+  border-radius: var(--lq-radius-pop);
+  box-shadow:
+    inset 0 1px 0 var(--lq-rim-hi),
+    var(--lq-shadow);
+}
+
+/* ---------- 4. Скролл и фокус ---------- */
+
+[data-theme='glass'] ::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.16);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+[data-theme='glass'] :focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lq-accent) 38%, transparent);
+}
+
+/* ---------- 5. Доступность и деградация ---------- */
+
+/* Без прозрачности: сплошной тинт, читаемость важнее эффекта */
+@media (prefers-reduced-transparency: reduce) {
+  [data-theme='glass'] .btn,
+  [data-theme='glass'] .icon-btn,
+  [data-theme='glass'] .round-btn,
+  [data-theme='glass'] .modal-card,
+  [data-theme='glass'] .popup,
+  [data-theme='glass'] .chat-theme-pop,
+  [data-theme='glass'] .toast,
+  [data-theme='glass'] .switch,
+  [data-theme='glass'] input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  [data-theme='glass'] textarea,
+  [data-theme='glass'] select {
+    background: #171c2e;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Без анимаций: только смена состояния */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme='glass'] .btn,
+  [data-theme='glass'] .icon-btn,
+  [data-theme='glass'] .round-btn,
+  [data-theme='glass'] .switch,
+  [data-theme='glass'] .switch::after,
+  [data-theme='glass'] .tile {
+    transition: none;
+  }
+}
