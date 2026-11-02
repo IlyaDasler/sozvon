@@ -855,25 +855,66 @@ async function startScreenShare() {
 
 // ---------- Шумоподавление ----------
 
+// Уровни: 0 — выкл, 1 — мягкое, 2 — среднее, 3 — сильное. Интенсивность — доля очищенного
+// звука в миксе (см. denoiseTrack в call.js), поэтому «мягкое» сохраняет дыхание комнаты
+const NOISE_LEVELS = [
+  { value: 0, name: 'Выключено' },
+  { value: 1, name: 'Мягкое' },
+  { value: 2, name: 'Среднее' },
+  { value: 3, name: 'Сильное' },
+];
+let lastNoiseLevel = 2; // что включить, если человек выключил и снова нажал
+
 function renderNoiseButton() {
-  const on = state.settings.noiseSuppression;
+  const level = noiseLevelOf();
+  const on = level > 0;
+  const name = NOISE_LEVELS.find((l) => l.value === level)?.name ?? '';
   $('call-ns').innerHTML = on ? ICONS.noise : ICONS.noiseOff;
   $('call-ns').classList.toggle('on', on);
-  $('call-ns').title = on ? 'Шумоподавление включено — нажмите, чтобы выключить' : 'Шумоподавление выключено — нажмите, чтобы включить';
+  $('call-ns').title = on
+    ? `Шумоподавление: ${name.toLowerCase()} — нажмите, чтобы выключить, или правой кнопкой для уровня`
+    : 'Шумоподавление выключено — нажмите, чтобы включить';
 }
 
-/** Включает или выключает шумоподавление сразу, без переподключения к разговору */
-async function setNoiseSuppression(on) {
-  state.settings = { ...state.settings, noiseSuppression: on };
+/** Уровень шумоподавления применяется сразу, без переподключения к разговору */
+async function setNoiseLevel(level) {
+  const value = Math.min(3, Math.max(0, Number(level) || 0));
+  if (value > 0) lastNoiseLevel = value;
+  state.settings = { ...state.settings, noiseLevel: value };
   store.set('audio', state.settings);
   renderNoiseButton();
-  if ($('set-ns')) $('set-ns').checked = on;
+  if ($('set-ns-level')) $('set-ns-level').value = String(value);
   const session = activeSession();
   if (session) await session.switchMic(state.settings).catch((err) => toast(mediaErrorText(err)));
-  toast(on ? 'Шумоподавление включено' : 'Шумоподавление выключено');
+  const name = NOISE_LEVELS.find((l) => l.value === value)?.name ?? '';
+  toast(value ? `Шумоподавление: ${name.toLowerCase()}` : 'Шумоподавление выключено');
 }
 
-$('call-ns').onclick = () => setNoiseSuppression(!state.settings.noiseSuppression);
+/** Меню уровней: одно и то же в звонке, голосовом канале и по правой кнопке на кнопке микрофона */
+function openNoiseMenu(x, y) {
+  const level = noiseLevelOf();
+  showMenu(
+    x,
+    y,
+    NOISE_LEVELS.map((l) => ({
+      label: `${l.value === level ? '✓ ' : ''}${l.name}`,
+      onclick: () => setNoiseLevel(l.value),
+    }))
+  );
+}
+
+$('call-ns').onclick = () => setNoiseLevel(noiseLevelOf() > 0 ? 0 : lastNoiseLevel);
+// Правая кнопка в звонке и в голосовом канале — выбор интенсивности
+$('call-ns').oncontextmenu = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  openNoiseMenu(e.clientX, e.clientY);
+};
+$('call-panel').oncontextmenu = (e) => {
+  if (e.target.closest('input, textarea, select, a')) return;
+  e.preventDefault();
+  openNoiseMenu(e.clientX, e.clientY);
+};
 $('call-cam').onclick = toggleCamera;
 $('voice-cam').onclick = toggleCamera;
 $('call-screen').onclick = toggleScreen;

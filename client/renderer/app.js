@@ -56,6 +56,18 @@ const store = {
   },
 };
 
+/** Старые настройки звука: галочка noiseSuppression превращается в уровень 2 (или 0, если была выключена) */
+function migratedAudioSettings() {
+  const saved = store.get('audio', {}) || {};
+  if ('noiseLevel' in saved) return saved;
+  const { noiseSuppression, ...rest } = saved;
+  return { ...rest, noiseLevel: noiseSuppression === false ? 0 : 2 };
+}
+
+/** Текущий уровень шумоподавления: 0…3 */
+function noiseLevelOf() {
+  return Math.min(3, Math.max(0, Number(state.settings?.noiseLevel ?? 0)));
+}
 const state = {
   me: null,
   contacts: new Map(),
@@ -78,8 +90,9 @@ const state = {
   room: null, // голосовой канал комнаты: { session, roomId, joined, connectedAt }
   muted: store.get('muted', false),
   deafened: store.get('deafened', false),
-  settings: { micId: '', speakerId: '', camId: '', noiseSuppression: true, ...store.get('audio', {}) },
-  registerMode: false,
+  // noiseLevel: 0 — выкл, 1 — мягкое, 2 — среднее, 3 — сильное. Старая галочка noiseSuppression
+  // превращается в «среднее», чтобы у людей не поменялось поведение после обновления
+  settings: { micId: '', speakerId: '', camId: '', noiseLevel: 2, ...migratedAudioSettings() },  registerMode: false,
   providers: [], // способы входа, включённые на сервере: [{ id, name }]
   inviteRequired: true, // требует ли сервер код приглашения при регистрации
   pendingSignup: null, // { ticket } — аккаунт сервиса подтверждён, ждём код приглашения
@@ -2367,7 +2380,7 @@ async function openSettings(tab) {
   pickedName = state.me.nameColor || null;
   $('set-bio').value = state.me.bio || '';
   renderColorPicker();
-  $('set-ns').checked = state.settings.noiseSuppression;
+  $('set-ns-level').value = String(noiseLevelOf());
   $('mic-test-btn').textContent = 'Проверить микрофон';
   $('mic-test-btn').disabled = false;
   $('set-cur-pass').value = '';
@@ -2395,7 +2408,7 @@ function closeSettings() {
 // ---------- Проверка микрофона, динамиков и камеры ----------
 
 const settingsOpen = () => !$('settings').classList.contains('hidden');
-const formAudioSettings = () => ({ micId: $('set-mic').value, noiseSuppression: $('set-ns').checked });
+const formAudioSettings = () => ({ micId: $('set-mic').value, noiseLevel: Number($('set-ns-level').value) });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let micTest = null; // { stream, meter } — живая полоска громкости в настройках
@@ -2523,8 +2536,8 @@ function stopCamPreview() {
 
 $('set-mic').onchange = startMicMeter;
 // Шумоподавление переключается сразу — и в разговоре тоже
-$('set-ns').onchange = () => {
-  setNoiseSuppression($('set-ns').checked);
+$('set-ns-level').onchange = () => {
+  setNoiseLevel(Number($('set-ns-level').value));
   startMicMeter();
 };
 $('set-speaker').onchange = () => micMonitor && startMicMonitor();
@@ -2575,14 +2588,14 @@ $('settings-form').onsubmit = async (e) => {
     micId: $('set-mic').value,
     speakerId: $('set-speaker').value,
     camId: $('set-cam').value,
-    noiseSuppression: $('set-ns').checked,
+    noiseLevel: Number($('set-ns-level').value),
     ptt: document.querySelector('input[name="mic-mode"]:checked')?.value === 'ptt' && Boolean(pickedPtt),
     pttBinding: pickedPtt,
   };
   store.set('audio', state.settings);
   applyPtt();
   applySpeaker();
-  const micChanged = prev.micId !== state.settings.micId || prev.noiseSuppression !== state.settings.noiseSuppression;
+  const micChanged = prev.micId !== state.settings.micId || prev.noiseLevel !== state.settings.noiseLevel;
   const session = activeSession();
   if (session) session.settings = state.settings;
   if (micChanged && session) session.switchMic(state.settings).catch((err) => toast(mediaErrorText(err)));
