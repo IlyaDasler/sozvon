@@ -1185,7 +1185,9 @@ $('event-form').onsubmit = async (e) => {
     // Комната пришла уже с событием — обновляем её у себя, иначе карточка не найдёт событие
     applyRoomUpdate(room);
     // Публикуем событие сообщением в выбранный чат: внутри конверта только id
-    const event = [...(room.events || [])].reverse().find((x) => x.createdBy === state.me.id && x.title === title);
+    const event =
+      (room.createdEventId && (room.events || []).find((x) => x.id === room.createdEventId)) ||
+      [...(room.events || [])].reverse().find((x) => x.createdBy === state.me.id && x.title === title);
     if (event) {
       const { body, plain } = await encryptOutgoing(roomConvOf(roomId), { text: `Событие: ${title}`, eventId: event.id });
       addRoomMessage({ ...(await Api.post(`/rooms/${roomId}/messages`, body)), plain });
