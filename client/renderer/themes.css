@@ -119,3 +119,76 @@
   --on-accent: #ffffff;
   --link: #8fc9ff;
 }
+/* ---------- Жидкое стекло: полупрозрачные панели поверх мягкого фона, как в iOS и macOS ---------- */
+/* Размытие делает GPU; на слабых машинах его отключает настройка «меньше эффектов» (см. data-gfx) */
+[data-theme='glass'] {
+  --bg-deep: #0b0e1c;
+  --bg: #121629;
+  --bg-2: #0e1222;
+  --bg-3: rgba(255, 255, 255, 0.07);
+  --bg-4: rgba(255, 255, 255, 0.12);
+  --bg-5: rgba(255, 255, 255, 0.18);
+  --line: rgba(255, 255, 255, 0.10);
+  --line-strong: rgba(255, 255, 255, 0.22);
+  --text: #f4f6ff;
+  --text-2: #d5daf0;
+  --muted: #9aa2c4;
+  --accent: #7aa7ff;
+  --accent-2: #c58bff;
+  --accent-hover: #6898ff;
+  --link: #9ec3ff;
+  --glow: color-mix(in srgb, var(--accent) 40%, transparent);
+  --shadow: 0 24px 60px rgba(5, 8, 20, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.09);
+  --header-shadow: 0 1px 0 rgba(255, 255, 255, 0.10);
+  --glass: rgba(255, 255, 255, 0.07);
+  --glass-strong: rgba(255, 255, 255, 0.13);
+  --glass-blur: 26px;
+  color-scheme: dark;
+}
+
+/* Мягкие цветные пятна на фоне окна: без них прозрачность выглядит просто серой */
+[data-theme='glass'] {
+  background:
+    radial-gradient(38% 38% at 18% 12%, rgba(122, 167, 255, 0.50), transparent 70%),
+    radial-gradient(34% 34% at 82% 18%, rgba(197, 139, 255, 0.40), transparent 72%),
+    radial-gradient(42% 42% at 62% 88%, rgba(0, 210, 255, 0.28), transparent 72%),
+    var(--bg-deep);
+  background-attachment: fixed;
+}
+[data-theme='glass'] .titlebar { background: rgba(255, 255, 255, 0.05); }
+/* html и body красят фон сами (styles.css) — для стекла отдаём его градиенту окна */
+[data-theme='glass'] body,
+[data-theme='glass'] .content,
+[data-theme='glass'] .main { background: transparent; }
+
+/* Панели: полупрозрачное стекло с размытием того, что под ними */
+[data-theme='glass'] .sidebar,
+[data-theme='glass'] .chat-head,
+[data-theme='glass'] .composer,
+[data-theme='glass'] .modal-card,
+[data-theme='glass'] .popover,
+[data-theme='glass'] .chat-theme-pop {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border-color: var(--line);
+}
+[data-theme='glass'] #chat,
+[data-theme='glass'] #room-view { background: rgba(10, 14, 30, 0.35); }
+
+/* Пузыри сообщений — тоже стекло, но плотнее, чтобы текст читался */
+[data-theme='glass'] .msg-text { background: var(--glass-strong); }
+[data-theme='glass'] .msg.mine .msg-text { background: color-mix(in srgb, var(--accent) 38%, transparent); }
+
+/* Кнопки и поля — лёгкая стеклянная кромка */
+[data-theme='glass'] .btn,
+[data-theme='glass'] .input,
+[data-theme='glass'] input,
+[data-theme='glass'] textarea { background: var(--glass); border-color: var(--line); }
+
+/* Слабое железо: размытие выключается целиком, полупрозрачность остаётся */
+[data-gfx='low'][data-theme='glass'] .sidebar,
+[data-gfx='low'][data-theme='glass'] .chat-head,
+[data-gfx='low'][data-theme='glass'] .composer,
+[data-gfx='low'][data-theme='glass'] .modal-card,
+[data-gfx='low'][data-theme='glass'] .popover { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(20, 26, 48, 0.92); }
