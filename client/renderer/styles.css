@@ -2088,3 +2088,9 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
   border-radius: 6px; cursor: pointer;
 }
 .color-swatch:disabled { cursor: default; opacity: .5; }
+/* Бросок комнаты на заголовок раздела — вынуть её из группы */
+.room-section.drop-into {
+  color: var(--text);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  border-radius: var(--r-m);
+}

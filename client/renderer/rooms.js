@@ -119,8 +119,13 @@ function roomDropClass(e, hit) {
   if (rel > 0.7) return 'drop-after';
   return 'drop-into';
 }
-/** Куда можно бросить: только комната того же типа и той же группы */
+/** Куда можно бросить: комната того же типа, либо заголовок раздела — чтобы вынуть из группы */
 function roomDropTarget(e) {
+  const section = e.target.closest('#room-list .room-section[data-section]');
+  if (section && roomDragId != null) {
+    const source = state.rooms.get(roomDragId);
+    if (source?.groupId) return { section, ungroup: true };
+  }
   const item = e.target.closest('#room-list .room-item[draggable="true"]');
   if (!item || roomDragId == null) return null;
   const target = state.rooms.get(Number(item.dataset.roomId));
@@ -160,6 +165,10 @@ function ensureRoomDrag() {
     if (!hit) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    if (hit.ungroup) {
+      hit.section.classList.add('drop-into');
+      return;
+    }
     hit.item.classList.add(roomDropClass(e, hit));
   });
 
@@ -169,6 +178,12 @@ function ensureRoomDrag() {
     if (!hit) return;
     e.preventDefault();
     const source = state.rooms.get(roomDragId);
+    // Бросок на заголовок раздела — вынимаем комнату из группы
+    if (hit.ungroup) {
+      roomDragId = null;
+      clearRoomDropMarks();
+      return ungroupRoomByDrop(source);
+    }
     const zone = roomDropClass(e, hit);
     // Бросок в середину комнаты — собираем группу или перекладываем в готовую
     if (zone === 'drop-into') {
@@ -291,7 +306,9 @@ function renderRoomGroup(list, hub, group, rooms) {
   }
 }
 
-/** Комнату бросили на комнату: в существующую группу или в новую, с названием */
+/** Комнату бросили на комнату: в существующую группу или в новую, с названием.
+ *  Раскладку комнат делаем сами через PATCH: так работает и со старым сервером,
+ *  который ещё не знает про roomIds при создании группы */
 async function groupRoomByDrop(source, target) {
   if (!source || !target) return;
   if (target.groupId) return moveRoomToGroup(source, target.groupId);
@@ -299,9 +316,29 @@ async function groupRoomByDrop(source, target) {
   if (!hub) return;
   const name = await askText('Название группы', '', { hint: 'Enter — сохранить, Esc — отмена' });
   if (!name) return;
-  await Api.post(`/hubs/${hub.id}/groups`, { name, roomIds: [target.id, source.id] }).catch((err) =>
-    toast(err.message)
-  );
+  let created = null;
+  try {
+    const res = await Api.post(`/hubs/${hub.id}/groups`, { name, roomIds: [target.id, source.id] });
+    const groups = res?.groups || [];
+    created = groups.find((g) => g.name === name) || groups[groups.length - 1] || null;
+  } catch (err) {
+    return toast(err.message);
+  }
+  // Сервер мог уже разложить комнаты (новый код) — тогда просто ждём обновления.
+  // Если нет — перекладываем сами, иначе группа останется пустой
+  const pending = [target.id, source.id].filter((id) => !roomById(id)?.groupId);
+  for (const id of pending) {
+    if (created?.id) await Api.patch(`/rooms/${id}`, { groupId: created.id }).catch(() => {});
+    else await Api.patch(`/rooms/${id}`, { groupId: created?.id ?? null }).catch(() => {});
+  }
+  // На всякий случай перечитаем список: у старых серверов нет события о смене группы
+  if (pending.length) setTimeout(() => refreshRooms().catch(() => {}), 300);
+}
+
+/** Убрать комнату из группы: бросок на заголовок раздела («Голосовые», «Текстовые») */
+async function ungroupRoomByDrop(room) {
+  if (!room?.groupId) return;
+  await Api.patch(`/rooms/${room.id}`, { groupId: null }).catch((err) => toast(err.message));
 }
 
 async function renameRoomGroup(hub, group) {
