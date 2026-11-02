@@ -1061,20 +1061,29 @@ function buildEventRoomPicker(rooms) {
   );
 }
 
-function openEventCreate(hub) {
+let editingEventId = null;
+function openEventCreate(hub, editEvent = null) {
   eventHubId = hub.id;
-  $('event-title').value = '';
   $('event-error').textContent = '';
+  editingEventId = editEvent?.id ?? null;
 
-  // По умолчанию — сегодня, через час
+  // По умолчанию — сегодня, через час; при правке — как в событии
   const soon = new Date(Date.now() + 60 * 60_000);
   soon.setMinutes(0, 0, 0);
+  const base = editEvent ? new Date(editEvent.startsAt) : soon;
   const rooms = roomsOfHub(hub.id);
   const current = rooms.find((r) => r.id === state.selectedRoomId) || rooms.find((r) => r.kind === 'text') || rooms[0];
-  eventDraft = { date: soon, time: `${pad2(soon.getHours())}:00`, roomId: current?.id ?? null, repeat: 'none', remind: 0 };
+  $('event-title').value = editEvent?.title ?? '';
+  $('event-create-title').textContent = editEvent ? 'Изменить событие' : 'Новое событие';
+  eventDraft = {
+    date: base,
+    time: `${pad2(base.getHours())}:${pad2(base.getMinutes())}`,
+    roomId: editEvent?.roomId ?? current?.id ?? null,
+    repeat: editEvent?.repeat ?? 'none',
+    remind: editEvent?.remind ?? 0,
+  };
   syncEventPickers();
   for (const pop of document.querySelectorAll('#event-create .picker-pop')) pop.classList.add('hidden');
-
   const people = hub.members.filter((m) => m.id !== state.me.id);
   const box = $('event-invitees');
   const list = box.querySelector('.multi-list');
@@ -1175,6 +1184,20 @@ $('event-form').onsubmit = async (e) => {
   const roomId = eventDraft.roomId;
   const invitees = [...$('event-invitees').querySelectorAll('input:checked')].map((i) => Number(i.value));
   try {
+    // Правка существующего события: меняем на месте, участники и ответы остаются
+    if (editingEventId) {
+      applyRoomUpdate(
+        await Api.patch(`/events/${editingEventId}`, {
+          title,
+          startsAt: startsAt.getTime(),
+          repeat: eventDraft.repeat,
+          remind: eventDraft.remind,
+        })
+      );
+      closeEventCreate();
+      toast('Событие изменено');
+      return;
+    }
     const room = await Api.post(`/rooms/${roomId}/events`, {
       title,
       startsAt: startsAt.getTime(),
@@ -1262,6 +1285,14 @@ function openEventView(eventId) {
   $('ev-error').textContent = '';
   $('event-view').classList.remove('hidden');
 }
+
+$('ev-edit').onclick = () => {
+  const room = roomById(state.selectedRoomId);
+  const ev = (room?.events || []).find((x) => x.id === eventViewId);
+  if (!ev) return;
+  $('event-view').classList.add('hidden');
+  openEventCreate(hubById(room.hubId), ev);
+};
 
 $('ev-close').onclick = () => $('event-view').classList.add('hidden');
 $('event-view').onclick = (e) => {

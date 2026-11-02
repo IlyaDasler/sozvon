@@ -804,6 +804,7 @@
       <div class="event-people" id="ev-people"></div>
       <p class="error" id="ev-error"></p>
       <div class="row">
+        <button type="button" class="btn" id="ev-edit">Изменить</button>
         <button type="button" class="btn danger" id="ev-finish">Завершить событие</button>
         <div class="spacer"></div>
         <button type="button" class="btn" id="ev-close">Закрыть</button>
@@ -814,7 +815,7 @@
   <!-- Создать событие канала: день, время, чат для публикации и участники -->
   <div id="event-create" class="modal hidden">
     <form class="modal-card event-form" id="event-form">
-      <h3>Новое событие</h3>
+      <h3 id="event-create-title">Новое событие</h3>
       <label class="field">
         <span>Название</span>
         <input id="event-title" maxlength="80" placeholder="Например: Вечерняя игра" autocomplete="off">

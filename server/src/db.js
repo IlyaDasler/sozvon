@@ -536,6 +536,7 @@ const q = {
   insertEvent: db.prepare('INSERT INTO events (room_id, hub_id, title, starts_at, created_by, created_at, repeat, remind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
   setEventReminded: db.prepare('UPDATE events SET last_remind = ? WHERE id = ?'),
   finishEvent: db.prepare('UPDATE events SET active = 0 WHERE id = ?'),
+  updateEvent: db.prepare('UPDATE events SET title = ?, starts_at = ?, repeat = ?, remind = ? WHERE id = ?'),
   eventById: db.prepare('SELECT * FROM events WHERE id = ?'),
   eventsOfRoom: db.prepare('SELECT * FROM events WHERE room_id = ? ORDER BY starts_at, id'),
   allEvents: db.prepare('SELECT * FROM events'),
@@ -866,6 +867,7 @@ export const events = {
   clearResponse: (eventId, userId) => q.clearEventResponse.run(eventId, userId),
   markReminded: (id, at) => q.setEventReminded.run(at, id),
   finish: (id) => q.finishEvent.run(id),
+  update: (id, title, startsAt, repeat, remind) => q.updateEvent.run(title, startsAt, repeat, remind, id),
   all: () => q.allEvents.all(),
 };
 
