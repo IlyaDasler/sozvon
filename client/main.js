@@ -73,6 +73,8 @@ function createWindow({ show = true } = {}) {
   trackWindow(win, stateFile);
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   ipcMain.on('window:titlebar', (_e, { color, symbolColor }) => {
+    // setTitleBarOverlay есть только в Windows: на macOS заголовок рисует сама система
+    if (process.platform !== 'win32') return;
     if (/^#[0-9a-f]{6}$/i.test(color) && /^#[0-9a-f]{6}$/i.test(symbolColor)) win.setTitleBarOverlay({ color, symbolColor, height: TITLEBAR_H });
   });
   win.on('focus', () => win.flashFrame(false));
@@ -227,6 +229,12 @@ function setUpdateStatus(status) {
 
 function checkForUpdates() {
   if (!app.isPackaged) {
+    setUpdateStatus({ state: 'unsupported' });
+    return;
+  }
+  // На macOS автообновление ставится только для подписанного приложения (Squirrel.Mac проверяет
+  // подпись). Пока сборка без сертификата Apple — обновляемся вручную с GitHub Releases
+  if (process.platform === 'darwin') {
     setUpdateStatus({ state: 'unsupported' });
     return;
   }
