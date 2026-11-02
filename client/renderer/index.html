@@ -800,14 +800,20 @@
         <div class="field">
           <span>День</span>
           <div class="picker">
-            <button type="button" class="picker-toggle" id="event-date">Выберите день</button>
+            <div class="picker-row">
+              <input class="picker-input" id="event-date" placeholder="дд.мм.гггг" inputmode="numeric" autocomplete="off">
+              <button type="button" class="picker-open" id="event-date-open" title="Выбрать в календаре">▾</button>
+            </div>
             <div class="picker-pop hidden" id="event-date-pop"></div>
           </div>
         </div>
         <div class="field">
           <span>Время</span>
           <div class="picker">
-            <button type="button" class="picker-toggle" id="event-time">05:00</button>
+            <div class="picker-row">
+              <input class="picker-input" id="event-time" placeholder="чч:мм" inputmode="numeric" autocomplete="off">
+              <button type="button" class="picker-open" id="event-time-open" title="Выбрать время">▾</button>
+            </div>
             <div class="picker-pop hidden" id="event-time-pop"></div>
           </div>
         </div>

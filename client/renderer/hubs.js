@@ -828,11 +828,46 @@ let eventDraft = { date: null, time: '00:00', roomId: null };
 const pad2 = (n) => String(n).padStart(2, '0');
 
 function syncEventPickers() {
-  $('event-date').textContent = eventDraft.date ? eventDraft.date.toLocaleDateString('ru-RU') : 'Выберите день';
-  $('event-time').textContent = eventDraft.time;
+  $('event-date').value = eventDraft.date ? eventDraft.date.toLocaleDateString('ru-RU') : '';
+  $('event-time').value = eventDraft.time;
   const room = roomById(eventDraft.roomId);
   $('event-room').textContent = room ? `# ${room.name}` : 'Выберите чат';
 }
+
+/** Дата, вписанная руками: 12.11.2026, 12.11 или 12.11.26 */
+function parseDateText(text) {
+  const m = String(text).trim().match(/^(\d{1,2})\s*[.\/,:\s-]\s*(\d{1,2})(?:\s*[.\/,:\s-]\s*(\d{2,4}))?$/);
+  if (!m) return null;
+  const day = Number(m[1]);
+  const month = Number(m[2]) - 1;
+  let year = m[3] ? Number(m[3]) : new Date().getFullYear();
+  if (year < 100) year += 2000;
+  const date = new Date(year, month, day);
+  return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day ? date : null;
+}
+
+/** Время, вписанное руками: 21:30, 21.30, 2130 или просто 21 → 21:00 */
+function parseTimeText(text) {
+  const raw = String(text).trim();
+  const m = raw.match(/^(\d{1,2})\s*[:.,\s]\s*(\d{2})$/) || raw.match(/^(\d{1,2})(\d{2})$/);
+  const single = raw.match(/^(\d{1,2})$/);
+  const h = single ? Number(single[1]) : m ? Number(m[1]) : NaN;
+  const min = single ? 0 : m ? Number(m[2]) : NaN;
+  if (!Number.isInteger(h) || !Number.isInteger(min) || h > 23 || min > 59) return null;
+  return `${pad2(h)}:${pad2(min)}`;
+}
+
+// Вписал руками — сразу подхватываем
+$('event-date').onchange = () => {
+  const date = parseDateText($('event-date').value);
+  if (date) eventDraft.date = date;
+  $('event-date').value = eventDraft.date ? eventDraft.date.toLocaleDateString('ru-RU') : '';
+};
+$('event-time').onchange = () => {
+  const time = parseTimeText($('event-time').value);
+  if (time) eventDraft.time = time;
+  $('event-time').value = eventDraft.time;
+};
 
 // Календарь в стиле приложения
 function buildEventCalendar() {
@@ -892,10 +927,9 @@ function buildEventCalendar() {
 function buildEventTimePicker() {
   const pop = $('event-time-pop');
   const [hours, minutes] = eventDraft.time.split(':').map(Number);
-  const wrap = el('div', { className: 'time-cols' });
-  const hourCol = el('div', { className: 'time-col' });
-  const minCol = el('div', { className: 'time-col' });
 
+  const labelHours = el('div', { className: 'time-title', textContent: 'Часы' });
+  const hourGrid = el('div', { className: 'time-grid' });
   for (let h = 0; h < 24; h++) {
     const b = el('button', { type: 'button', className: `time-cell${h === hours ? ' selected' : ''}`, textContent: pad2(h) });
     b.onclick = () => {
@@ -903,8 +937,11 @@ function buildEventTimePicker() {
       syncEventPickers();
       buildEventTimePicker();
     };
-    hourCol.append(b);
+    hourGrid.append(b);
   }
+
+  const labelMinutes = el('div', { className: 'time-title', textContent: 'Минуты' });
+  const minGrid = el('div', { className: 'time-grid' });
   for (let m = 0; m < 60; m += 5) {
     const b = el('button', { type: 'button', className: `time-cell${m === minutes ? ' selected' : ''}`, textContent: pad2(m) });
     b.onclick = () => {
@@ -912,11 +949,9 @@ function buildEventTimePicker() {
       syncEventPickers();
       pop.classList.add('hidden');
     };
-    minCol.append(b);
+    minGrid.append(b);
   }
-  wrap.append(hourCol, minCol);
-  pop.replaceChildren(wrap);
-  hourCol.querySelector('.selected')?.scrollIntoView({ block: 'center' });
+  pop.replaceChildren(labelHours, hourGrid, labelMinutes, minGrid);
 }
 
 // Список чатов канала
@@ -1003,13 +1038,13 @@ function togglePicker(toggleId, popId, build) {
   if (pop.getBoundingClientRect().bottom > innerHeight - 8) pop.classList.add('up');
 }
 
-$('event-date').onclick = (e) => {
+$('event-date-open').onclick = (e) => {
   e.stopPropagation();
-  togglePicker('event-date', 'event-date-pop', buildEventCalendar);
+  togglePicker('event-date-open', 'event-date-pop', buildEventCalendar);
 };
-$('event-time').onclick = (e) => {
+$('event-time-open').onclick = (e) => {
   e.stopPropagation();
-  togglePicker('event-time', 'event-time-pop', buildEventTimePicker);
+  togglePicker('event-time-open', 'event-time-pop', buildEventTimePicker);
 };
 $('event-room').onclick = (e) => {
   e.stopPropagation();
@@ -1027,10 +1062,14 @@ $('event-form').onsubmit = async (e) => {
   if (!hub) return;
   const title = $('event-title').value.trim();
   if (!title) return ($('event-error').textContent = 'Название события обязательно');
-  if (!eventDraft.date) return ($('event-error').textContent = 'Выберите день');
+  // Берём то, что вписано руками, иначе — выбранное в календаре
+  const date = parseDateText($('event-date').value) || eventDraft.date;
+  const time = parseTimeText($('event-time').value) || eventDraft.time;
+  if (!date) return ($('event-error').textContent = 'День: например, 12.11.2026');
+  if (!time) return ($('event-error').textContent = 'Время: например, 21:30');
   if (!eventDraft.roomId) return ($('event-error').textContent = 'Выберите чат для публикации');
-  const [hours, minutes] = eventDraft.time.split(':').map(Number);
-  const startsAt = new Date(eventDraft.date);
+  const [hours, minutes] = time.split(':').map(Number);
+  const startsAt = new Date(date);
   startsAt.setHours(hours, minutes, 0, 0);
   if (!Number.isFinite(startsAt.getTime())) return ($('event-error').textContent = 'Не получилось разобрать дату');
 

@@ -59,3 +59,27 @@
 #event-create .modal-card { overflow: visible; }
 
 .picker-pop.up { top: auto; bottom: calc(100% + 6px); }
+
+/* Поля даты и времени: можно печатать, рядом кнопка выбора */
+.picker-row { display: flex; align-items: stretch; gap: 6px; }
+.picker-input {
+  flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg-2); color: var(--text); font: inherit;
+}
+.picker-input:focus { outline: none; border-color: var(--accent); }
+.picker-open {
+  flex: none; width: 32px; padding: 0; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg-2); color: var(--text); font: inherit; cursor: pointer;
+}
+.picker-open:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+
+/* Время: сетка часов и минут без прокрутки */
+.time-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 6px 0 4px; }
+.time-title:first-child { margin-top: 0; }
+.time-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.time-grid .time-cell {
+  padding: 6px 0; border-radius: 6px; background: transparent; border: 0;
+  color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.time-grid .time-cell:hover { background: var(--bg-3); }
+.time-grid .time-cell.selected { background: var(--accent); color: #fff; }
