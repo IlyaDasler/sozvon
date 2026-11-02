@@ -1235,6 +1235,7 @@ function messageRow(m, prev, list, actions, shown, fresh) {
   row.className = `msg${continued ? ' cont' : ''}${fresh ? ' msg-new' : ''}`;
   row.dataset.msgId = m.id;
   if (mentionsMe(m)) row.classList.add('mentions-me');
+  if (m.mentionAll) row.classList.add('mentions-all');
   // Для меню по правой кнопке: само сообщение и что с ним можно сделать в этой ленте
   row.message = m;
   row.actions = actions;

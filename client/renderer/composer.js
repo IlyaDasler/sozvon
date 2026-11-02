@@ -665,6 +665,8 @@ const roomComposer = new Composer($('room-message-form'), $('room-message-input'
   if (!roomId) return;
   const reply = replyDraft && replyChat?.kind === 'room' ? replyDraft : null;
   const { body, plain } = await encryptOutgoing(roomConvOf(roomId), { ...payload, reply });
+  // @all: текст зашифрован, поэтому серверу передаём отдельный флаг
+  if (/@all\b/i.test(payload.text || '')) body.mentionAll = true;
   addRoomMessage({ ...(await Api.post(`/rooms/${roomId}/messages`, body)), plain });
   if (reply) clearReply();
 }, { mentionCandidates: () => (roomById(state.selectedRoomId)?.members || []).filter((m) => m.id !== state.me.id) });
