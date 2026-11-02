@@ -11,6 +11,7 @@
     "icon": "electron scripts/make-icon.js",
     "native": "cd native/capture && npm ci --ignore-scripts && npx node-gyp rebuild",
     "dist": "electron-builder --win --x64 --publish never && node scripts/check-package.js",
+    "dist:mac": "electron-builder --mac --publish never && node scripts/check-package-mac.js",
     "test": "node --test test/*.test.js"
   },
   "build": {
@@ -40,6 +41,22 @@
     "win": {
       "target": "nsis",
       "icon": "build/icon.png"
+    },
+    "mac": {
+      "category": "public.app-category.social-networking",
+      "icon": "build/icon.png",
+      "artifactName": "Sozvon-${version}-${arch}.${ext}",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Созвон использует микрофон, чтобы вы могли говорить.",
+        "NSCameraUsageDescription": "Созвон использует камеру для видеозвонков.",
+        "NSScreenCaptureUsageDescription": "Созвон показывает ваш экран друзьям, когда вы включаете трансляцию."
+      },
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     },
     "nsis": {
       "oneClick": true,
