@@ -372,3 +372,93 @@
   margin: 12px 0;
   background: var(--lq-control-rim);
 }
+/* ---------- 11. Входящий звонок: как в Calab ---------- */
+
+[data-theme='glass'] .incoming-card {
+  width: min(360px, 92vw);
+  padding: 26px 22px 20px;
+  text-align: center;
+  border-radius: 26px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(122, 167, 255, 0.18), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 48%),
+    var(--lq-tint-deep);
+  -webkit-backdrop-filter: blur(30px) saturate(185%);
+  backdrop-filter: blur(30px) saturate(185%);
+  box-shadow:
+    inset 0 1px 0 var(--lq-rim-hi),
+    inset 0 -1px 0 var(--lq-rim-lo),
+    0 40px 100px rgba(0, 0, 0, 0.55);
+}
+[data-theme='glass'] .incoming-card .avatar.huge {
+  margin: 0 auto 14px;
+  box-shadow:
+    0 0 0 6px rgba(255, 255, 255, 0.06),
+    0 18px 40px rgba(0, 0, 0, 0.45);
+}
+[data-theme='glass'] .incoming-card h3 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+[data-theme='glass'] .incoming-card .muted {
+  margin: 0 0 18px;
+  font-size: 13px;
+}
+[data-theme='glass'] .incoming-card .row.center {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+[data-theme='glass'] .incoming-card .row.center .btn {
+  width: 100%;
+  height: 42px;
+  justify-content: center;
+  border-radius: 13px;
+}
+[data-theme='glass'] .incoming-card .btn.danger {
+  background: color-mix(in srgb, var(--lq-danger) 88%, transparent);
+  color: #fff;
+}
+[data-theme='glass'] .incoming-card .btn.success {
+  background: color-mix(in srgb, var(--ok) 92%, transparent);
+  color: #06210f;
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+/* ---------- 12. Новый образ: карточки событий, полоса плиток, индикатор голоса ---------- */
+
+[data-theme='glass'] .event-card {
+  max-width: 540px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--lq-control-rim);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.01) 46%),
+    var(--lq-tint);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  backdrop-filter: blur(16px) saturate(170%);
+  box-shadow:
+    inset 0 1px 0 var(--lq-rim-hi),
+    0 12px 32px rgba(2, 4, 12, 0.30);
+}
+[data-theme='glass'] .event-done {
+  border-radius: 999px;
+  background: var(--lq-control);
+  box-shadow: inset 0 0 0 1px var(--lq-control-rim);
+}
+[data-theme='glass'] .event-card .btn { border-radius: 10px; }
+
+[data-theme='glass'] .tile-strip { gap: 8px; padding: 2px 2px 8px; }
+[data-theme='glass'] .tile-strip .tile { border-radius: 14px; }
+
+[data-theme='glass'] .rail-voice {
+  box-shadow:
+    0 0 0 3px rgba(10, 13, 24, 0.9),
+    0 0 14px color-mix(in srgb, var(--ok) 45%, transparent);
+}
+[data-theme='glass'] .rail-call .rail-tile {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.30),
+    0 8px 22px color-mix(in srgb, var(--ok) 35%, transparent);
+}
