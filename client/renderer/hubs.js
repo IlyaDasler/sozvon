@@ -1,15 +1,15 @@
-﻿// РљР°РЅР°Р»С‹ вЂ” СЃРІРѕР№ В«СЃРµСЂРІРµСЂВ» РґР»СЏ СЃРІРѕРёС…: РєРѕРјРЅР°С‚С‹ РІРЅСѓС‚СЂРё, СѓС‡Р°СЃС‚РЅРёРєРё, РїСЂРёРіР»Р°С€РµРЅРёСЏ РґСЂСѓР·РµР№.
-// Р—РґРµСЃСЊ: СЃС‚РѕР»Р±РµС† РєР°РЅР°Р»РѕРІ СЃР»РµРІР° (Р»РёС‡РЅС‹Р№ РїРѕСЂСЏРґРѕРє Рё РіСЂСѓРїРїС‹ вЂ” rail-layout.js), С€Р°РїРєР° РєР°РЅР°Р»Р° СЃ РјРµРЅСЋ,
-// СЃРїРёСЃРѕРє СѓС‡Р°СЃС‚РЅРёРєРѕРІ СЃРїСЂР°РІР°, РѕРєРЅР° В«РЎРѕР·РґР°С‚СЊ РєР°РЅР°Р»В», РЅР°СЃС‚СЂРѕР№РєРё, РїСЂРёРіР»Р°С€РµРЅРёСЏ. РљРѕРјРЅР°С‚С‹ РєР°РЅР°Р»Р° вЂ” РІ rooms.js
+﻿// Каналы — свой «сервер» для своих: комнаты внутри, участники, приглашения друзей.
+// Здесь: столбец каналов слева (личный порядок и группы — rail-layout.js), шапка канала с меню,
+// список участников справа, окна «Создать канал», настройки, приглашения. Комнаты канала — в rooms.js
 
 const HUB_MODALS = ['hub-create', 'hub-settings', 'hub-invite', 'hub-join', 'folder-edit'];
-const lastRoomOf = new Map(); // id РєР°РЅР°Р»Р° -> РїРѕСЃР»РµРґРЅСЏСЏ РѕС‚РєСЂС‹С‚Р°СЏ РІ РЅС‘Рј РєРѕРјРЅР°С‚Р°
+const lastRoomOf = new Map(); // id канала -> последняя открытая в нём комната
 
 const hubById = (id) => state.hubs.get(id);
 const currentHub = () => (state.view === 'home' ? null : hubById(state.view) || null);
 const roomsOfHub = (hubId) => [...state.rooms.values()].filter((r) => r.hubId === hubId);
 
-/** РЎС‚Р°СЂС€РёРЅСЃС‚РІРѕ РІ РєР°РЅР°Р»Рµ, РєР°Рє РЅР° СЃРµСЂРІРµСЂРµ: СЃРѕР·РґР°С‚РµР»СЊ 3, СѓРїСЂР°РІР»СЏСЋС‰РёР№ 2, СѓС‡Р°СЃС‚РЅРёРє 1 */
+/** Старшинство в канале, как на сервере: создатель 3, управляющий 2, участник 1 */
 function hubRank(hub, userId = state.me.id) {
   if (hub.ownerId === userId) return 3;
   const member = hub.members.find((m) => m.id === userId);
@@ -19,7 +19,7 @@ function hubRank(hub, userId = state.me.id) {
 }
 const canManageHub = (hub) => Boolean(hub) && hubRank(hub) >= 2;
 
-// В«РќР°С€ РґРІРѕСЂВ» -> В«РќР”В»
+// «Наш двор» -> «НД»
 const hubInitials = (name) =>
   name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
 
@@ -32,7 +32,7 @@ function fillHubIcon(tile, hub) {
   tile.textContent = hasImage ? '' : hubInitials(hub.name);
 }
 
-// ---------- Р”Р°РЅРЅС‹Рµ ----------
+// ---------- Данные ----------
 
 async function refreshHubs() {
   try {
@@ -48,7 +48,7 @@ async function refreshHubs() {
   }
 }
 
-/** РЎРІРµР¶РёРµ РґР°РЅРЅС‹Рµ РєР°РЅР°Р»Р°: СЃС‚РѕР»Р±РµС†, С€Р°РїРєР°, РїСЂР°РІР° РІ РµРіРѕ РєРѕРјРЅР°С‚Р°С… Рё РѕС‚РєСЂС‹С‚С‹Рµ РѕРєРЅР° */
+/** Свежие данные канала: столбец, шапка, права в его комнатах и открытые окна */
 function applyHub(hub) {
   state.hubs.set(hub.id, hub);
   state.hubInvites = state.hubInvites.filter((i) => i.hub.id !== hub.id);
@@ -60,7 +60,7 @@ function applyHub(hub) {
   if (inviteHubId === hub.id) renderHubInvite();
 }
 
-/** РљР°РЅР°Р»Р° Р±РѕР»СЊС€Рµ РЅРµС‚ (РІС‹С€Р»Рё, РІС‹РіРЅР°Р»Рё, СѓРґР°Р»РёР»Рё) */
+/** Канала больше нет (вышли, выгнали, удалили) */
 function forgetHub(id) {
   state.hubs.delete(id);
   for (const room of roomsOfHub(id)) forgetRoom(room.id);
@@ -71,9 +71,9 @@ function forgetHub(id) {
   renderRail();
 }
 
-// ---------- Р§С‚Рѕ РѕС‚РєСЂС‹С‚Рѕ: РґРѕРј РёР»Рё РєР°РЅР°Р» ----------
+// ---------- Что открыто: дом или канал ----------
 
-/** РћС‚РєСЂС‹С‚СЊ РєР°РЅР°Р»: РµРіРѕ РїРѕСЃР»РµРґРЅСЋСЋ РєРѕРјРЅР°С‚Сѓ, РёРЅР°С‡Рµ РїРµСЂРІСѓСЋ С‚РµРєСЃС‚РѕРІСѓСЋ, РёРЅР°С‡Рµ Р»СЋР±СѓСЋ; РєРѕРјРЅР°С‚ РЅРµС‚ вЂ” В«РўСѓС‚ РїРѕРєР° РїСѓСЃС‚РѕВ» */
+/** Открыть канал: его последнюю комнату, иначе первую текстовую, иначе любую; комнат нет — «Тут пока пусто» */
 function openHub(id) {
   if (!hubById(id)) return;
   readNotifsOf({ hub: id });
@@ -90,10 +90,10 @@ function openHub(id) {
   renderVoice();
 }
 
-/** РћС‚РєСЂС‹С‚Р°СЏ РєРѕРјРЅР°С‚Р° РїСЂРѕРїР°Р»Р°: РІ РєР°РЅР°Р»Рµ вЂ” РґСЂСѓРіР°СЏ РµРіРѕ РєРѕРјРЅР°С‚Р°, РґРѕРјР° вЂ” СЂР°Р·РґРµР» В«Р”СЂСѓР·СЊСЏВ» */
+/** Открытая комната пропала: в канале — другая его комната, дома — раздел «Друзья» */
 const leaveSelectedRoom = () => (currentHub() ? openHub(state.view) : selectRoom(null));
 
-/** Р‘РѕРєРѕРІР°СЏ РїР°РЅРµР»СЊ Рё С†РµРЅС‚СЂ РїРѕРґ С‚Рѕ, С‡С‚Рѕ РѕС‚РєСЂС‹С‚Рѕ: РґРѕРј (РґСЂСѓР·СЊСЏ Рё Р»РёС‡РЅС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ) РёР»Рё РєР°РЅР°Р» */
+/** Боковая панель и центр под то, что открыто: дом (друзья и личные сообщения) или канал */
 function renderHubChrome() {
   const hub = currentHub();
   $('home-nav').classList.toggle('hidden', Boolean(hub));
@@ -113,22 +113,22 @@ function renderHubEmpty(hub) {
   if (!$('hub-empty-mascot').firstChild) $('hub-empty-mascot').innerHTML = SOVON_SVG;
   const manager = canManageHub(hub);
   $('hub-empty-text').textContent = manager
-    ? 'РЎРѕР·РґР°Р№С‚Рµ РїРµСЂРІСѓСЋ РєРѕРјРЅР°С‚Сѓ: РіРѕР»РѕСЃРѕРІСѓСЋ вЂ” С‡С‚РѕР±С‹ СЂР°Р·РіРѕРІР°СЂРёРІР°С‚СЊ, С‚РµРєСЃС‚РѕРІСѓСЋ вЂ” С‡С‚РѕР±С‹ РїРµСЂРµРїРёСЃС‹РІР°С‚СЊСЃСЏ.'
-    : 'РљРѕРјРЅР°С‚ РїРѕРєР° РЅРµС‚ вЂ” РёС… СЃРѕР·РґР°С‘С‚ С‚РѕС‚, РєС‚Рѕ СѓРїСЂР°РІР»СЏРµС‚ РєР°РЅР°Р»РѕРј.';
+    ? 'Создайте первую комнату: голосовую — чтобы разговаривать, текстовую — чтобы переписываться.'
+    : 'Комнат пока нет — их создаёт тот, кто управляет каналом.';
   const actions = $('hub-empty-actions');
   actions.replaceChildren();
   if (manager)
     actions.append(
-      smallButton('РЎРѕР·РґР°С‚СЊ РєРѕРјРЅР°С‚Сѓ', 'primary', () => openRoomCreate('voice')),
-      smallButton('РџСЂРёРіР»Р°СЃРёС‚СЊ РґСЂСѓР·РµР№', '', () => openHubInvite(hub.id))
+      smallButton('Создать комнату', 'primary', () => openRoomCreate('voice')),
+      smallButton('Пригласить друзей', '', () => openHubInvite(hub.id))
     );
 }
 
-// ---------- РЎС‚РѕР»Р±РµС† РєР°РЅР°Р»РѕРІ ----------
+// ---------- Столбец каналов ----------
 
 const layoutKey = () => `rail:${state.me.id}`;
 
-/** РЎРІРѕСЏ СЂР°СЃРєР»Р°РґРєР°, РїРѕС‡РёРЅРµРЅРЅР°СЏ РїРѕРґ РЅС‹РЅРµС€РЅРёР№ СЃРїРёСЃРѕРє РєР°РЅР°Р»РѕРІ */
+/** Своя раскладка, починенная под нынешний список каналов */
 const currentLayout = () => normalizeLayout(store.get(layoutKey(), null), [...state.hubs.keys()]);
 
 function saveLayout(layout) {
@@ -136,7 +136,7 @@ function saveLayout(layout) {
   renderRail();
 }
 
-let dragKey = null; // С‡С‚Рѕ С‚Р°С‰РёРј: id РєР°РЅР°Р»Р° (С‡РёСЃР»Рѕ) РёР»Рё id РіСЂСѓРїРїС‹ (СЃС‚СЂРѕРєР°)
+let dragKey = null; // что тащим: id канала (число) или id группы (строка)
 let railDirty = false;
 
 const hubUnread = (hubId) => roomsOfHub(hubId).some((r) => state.roomUnread.get(r.id));
@@ -144,7 +144,7 @@ const hubInVoice = (hubId) => Boolean(state.room) && roomById(state.room.roomId)
 
 function renderRail() {
   if (!state.me) return;
-  // РџРѕРєР° С‚Р°С‰РёРј, РЅРµ РїРµСЂРµСЃС‚СЂР°РёРІР°РµРј вЂ” РёРЅР°С‡Рµ РїРµСЂРµС‚Р°СЃРєРёРІР°РЅРёРµ РѕР±РѕСЂРІС‘С‚СЃСЏ
+  // Пока тащим, не перестраиваем — иначе перетаскивание оборвётся
   if (dragKey !== null) return (railDirty = true);
   railDirty = false;
 
@@ -162,12 +162,12 @@ function renderRail() {
   for (const invite of state.hubInvites) list.append(inviteItem(invite));
   if (!state.hubsLoaded) return;
   const layout = currentLayout();
-  // Р‘РёС‚С‹Рµ РёР»Рё СѓСЃС‚Р°СЂРµРІС€РёРµ СЃРѕС…СЂР°РЅС‘РЅРЅС‹Рµ РґР°РЅРЅС‹Рµ С‡РёРЅРёРј СЃСЂР°Р·Сѓ
+  // Битые или устаревшие сохранённые данные чиним сразу
   if (JSON.stringify(layout) !== JSON.stringify(store.get(layoutKey(), null))) store.set(layoutKey(), layout);
   for (const item of layout.items) list.append(typeof item === 'number' ? hubItem(hubById(item)) : folderItem(item));
 }
 
-/** Р—РЅР°С‡РѕРє РёРґСѓС‰РµРіРѕ Р»РёС‡РЅРѕРіРѕ Р·РІРѕРЅРєР°: Р°РІР°С‚Р°СЂРєР° СЃРѕР±РµСЃРµРґРЅРёРєР° (РёР»Рё В«+NВ» РґР»СЏ РіСЂСѓРїРїС‹) Рё Р·РµР»С‘РЅР°СЏ РїСѓР»СЊСЃР°С†РёСЏ */
+/** Значок идущего личного звонка: аватарка собеседника (или «+N» для группы) и зелёная пульсация */
 function renderRailCall() {
   const call = state.call;
   const item = $('rail-call-item');
@@ -204,13 +204,13 @@ function hubItem(hub) {
   item.oncontextmenu = (e) => {
     e.preventDefault();
     showMenu(e.clientX, e.clientY, [
-      { label: 'РћС‚РєСЂС‹С‚СЊ', onclick: () => openHub(hub.id) },
-      hubUnread(hub.id) && { label: 'РћС‚РјРµС‚РёС‚СЊ РїСЂРѕС‡РёС‚Р°РЅРЅС‹Рј', onclick: () => markHubRead(hub.id) },
+      { label: 'Открыть', onclick: () => openHub(hub.id) },
+      hubUnread(hub.id) && { label: 'Отметить прочитанным', onclick: () => markHubRead(hub.id) },
       'sep',
       ...hubMenuItems(hub),
     ]);
   };
-  if (hubInVoice(hub.id)) item.insertAdjacentHTML('beforeend', `<span class="rail-voice" title="Р’С‹ РІ РіРѕР»РѕСЃРµ">${ICONS.volume}</span>`);
+  if (hubInVoice(hub.id)) item.insertAdjacentHTML('beforeend', `<span class="rail-voice" title="Вы в голосе">${ICONS.volume}</span>`);
   return item;
 }
 
@@ -225,7 +225,7 @@ function folderItem(folder) {
   tile.className = 'rail-tile folder-tile';
   tile.dataset.tip = folder.name || hubs.map((h) => h.name).join(', ');
   if (folder.collapsed) {
-    // РЎРІС‘СЂРЅСѓС‚Р°СЏ РіСЂСѓРїРїР° вЂ” РјРѕР·Р°РёРєР° РёР· РїРµСЂРІС‹С… С‡РµС‚С‹СЂС‘С… РєР°РЅР°Р»РѕРІ
+    // Свёрнутая группа — мозаика из первых четырёх каналов
     for (const hub of hubs.slice(0, 4)) {
       const mini = document.createElement('span');
       fillHubIcon(mini, hub);
@@ -246,11 +246,11 @@ function folderItem(folder) {
   head.oncontextmenu = (e) => {
     e.preventDefault();
     showMenu(e.clientX, e.clientY, [
-      { label: 'РќР°Р·РІР°РЅРёРµ Рё С†РІРµС‚вЂ¦', onclick: () => openFolderEdit(folder) },
-      { label: folder.collapsed ? 'Р Р°Р·РІРµСЂРЅСѓС‚СЊ' : 'РЎРІРµСЂРЅСѓС‚СЊ', onclick: () => tile.click() },
-      folder.hubs.some(hubUnread) && { label: 'РћС‚РјРµС‚РёС‚СЊ РїСЂРѕС‡РёС‚Р°РЅРЅС‹Рј', onclick: () => folder.hubs.forEach(markHubRead) },
+      { label: 'Название и цвет…', onclick: () => openFolderEdit(folder) },
+      { label: folder.collapsed ? 'Развернуть' : 'Свернуть', onclick: () => tile.click() },
+      folder.hubs.some(hubUnread) && { label: 'Отметить прочитанным', onclick: () => folder.hubs.forEach(markHubRead) },
       'sep',
-      { label: 'Р Р°Р·РіСЂСѓРїРїРёСЂРѕРІР°С‚СЊ', onclick: () => saveLayout(ungroup(currentLayout(), folder.folder)) },
+      { label: 'Разгруппировать', onclick: () => saveLayout(ungroup(currentLayout(), folder.folder)) },
     ]);
   };
   box.append(head);
@@ -258,12 +258,12 @@ function folderItem(folder) {
   return box;
 }
 
-// РџСЂРёРіР»Р°С€РµРЅРёРµ вЂ” РєР°РЅР°Р» СЃ РїСѓРЅРєС‚РёСЂРЅРѕР№ СЂР°РјРєРѕР№ РІ РЅР°С‡Р°Р»Рµ СЃС‚РѕР»Р±С†Р°: С‰РµР»С‡РѕРє РѕС‚РєСЂС‹РІР°РµС‚ В«Р’СЃС‚СѓРїРёС‚СЊ / РћС‚РєР°Р·Р°С‚СЊСЃСЏВ»
+// Приглашение — канал с пунктирной рамкой в начале столбца: щелчок открывает «Вступить / Отказаться»
 function inviteItem(invite) {
   const tile = document.createElement('button');
   tile.type = 'button';
   tile.className = 'rail-tile';
-  tile.dataset.tip = `РџСЂРёРіР»Р°С€РµРЅРёРµ: ${invite.hub.name}`;
+  tile.dataset.tip = `Приглашение: ${invite.hub.name}`;
   fillHubIcon(tile, invite.hub);
   tile.onclick = () => openHubJoin(invite.hub.id);
   const item = railItem(tile, { unread: true });
@@ -277,13 +277,13 @@ function markHubRead(hubId) {
   renderRooms();
 }
 
-// ---------- РџРµСЂРµС‚Р°СЃРєРёРІР°РЅРёРµ: РїРѕСЂСЏРґРѕРє Рё РіСЂСѓРїРїС‹ ----------
+// ---------- Перетаскивание: порядок и группы ----------
 
 const keyOf = (item) => (item.dataset.hub ? Number(item.dataset.hub) : item.dataset.folder);
 const newFolderId = () => `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
-/** РљСѓРґР° Р±СЂРѕСЃСЏС‚: РІ РІРµСЂС…РЅСЋСЋ С‚СЂРµС‚СЊ вЂ” РїРµСЂРµРґ СЌР»РµРјРµРЅС‚РѕРј, РЅР° СЃРµСЂРµРґРёРЅСѓ РєР°РЅР°Р»Р° вЂ” РІ РіСЂСѓРїРїСѓ СЃ РЅРёРј, РЅР° РіСЂСѓРїРїСѓ вЂ” РІРЅСѓС‚СЂСЊ.
- *  Р“СЂСѓРїРїСѓ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ РїРµСЂРµСЃС‚Р°РІРёС‚СЊ. РњРёРјРѕ СЌР»РµРјРµРЅС‚РѕРІ вЂ” РІ РєРѕРЅРµС† */
+/** Куда бросят: в верхнюю треть — перед элементом, на середину канала — в группу с ним, на группу — внутрь.
+ *  Группу можно только переставить. Мимо элементов — в конец */
 function dropTarget(e) {
   const item = e.target.closest('#rail-list .rail-item[draggable="true"]');
   if (!item) return { zone: 'end' };
@@ -340,7 +340,7 @@ $('rail-list').addEventListener('dragend', () => {
   if (railDirty) renderRail();
 });
 
-// ---------- РџРѕРґСЃРєР°Р·РєР° СЃ РЅР°Р·РІР°РЅРёРµРј Сѓ СЃС‚РѕР»Р±С†Р° ----------
+// ---------- Подсказка с названием у столбца ----------
 
 function hideRailTip() {
   $('rail-tip').classList.add('hidden');
@@ -358,7 +358,7 @@ $('rail').addEventListener('mouseover', (e) => {
 });
 $('rail').addEventListener('mouseleave', hideRailTip);
 
-// ---------- Р“СЂСѓРїРїР°: РЅР°Р·РІР°РЅРёРµ Рё С†РІРµС‚ ----------
+// ---------- Группа: название и цвет ----------
 
 let editFolderId = null;
 let folderColor = null;
@@ -386,9 +386,9 @@ $('folder-form').onsubmit = (e) => {
 };
 $('folder-cancel').onclick = () => $('folder-edit').classList.add('hidden');
 
-// ---------- Р’СЃРїР»С‹РІР°СЋС‰РµРµ РјРµРЅСЋ ----------
+// ---------- Всплывающее меню ----------
 
-/** items: { label, icon, onclick, danger } РёР»Рё 'sep'; РїСѓСЃС‚С‹Рµ (false) РїСЂРѕРїСѓСЃРєР°СЋС‚СЃСЏ */
+/** items: { label, icon, onclick, danger } или 'sep'; пустые (false) пропускаются */
 function showMenu(x, y, items) {
   const menu = $('popup-menu');
   menu.replaceChildren();
@@ -432,24 +432,24 @@ document.addEventListener(
   true
 );
 
-// ---------- РњРµРЅСЋ РєР°РЅР°Р»Р° ----------
+// ---------- Меню канала ----------
 
-// Р—РЅР°С‡РєРё РґР»СЏ РїСѓРЅРєС‚Р° РјРµРЅСЋ Рё РѕС‚РјРµС‚РєРё РІ С€Р°РїРєРµ
+// Значки для пункта меню и отметки в шапке
 const BELL_ON = '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
 const BELL_OFF =
   '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-9.3-5.2M6 9v-1a6 6 0 0 0-.9 3c0 7-3 9-3 9h14"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M3 3l18 18"/></svg>';
-// РљР°Р»РµРЅРґР°СЂСЊ СЃ РїР»СЋСЃРѕРј вЂ” СЃРѕР±С‹С‚РёРµ РєР°РЅР°Р»Р°
+// Календарь с плюсом — событие канала
 const EVENT_ICON =
   '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M12 14v5M9.5 16.5h5"/></svg>';
 
 const hubMuteKey = (id) => `hub:mute:${id}`;
 const hubMuted = (id) => Boolean(store.get(hubMuteKey(id), false));
 
-/** Р’С‹РєР»СЋС‡РёС‚СЊ РёР»Рё РІРєР»СЋС‡РёС‚СЊ Р·РІСѓРє СѓРІРµРґРѕРјР»РµРЅРёР№ РєР°РЅР°Р»Р° (РІС‹Р±РѕСЂ С…СЂР°РЅРёС‚СЃСЏ РЅР° СЌС‚РѕРј СѓСЃС‚СЂРѕР№СЃС‚РІРµ) */
+/** Выключить или включить звук уведомлений канала (выбор хранится на этом устройстве) */
 function toggleHubMute(hub) {
   const off = !hubMuted(hub.id);
   store.set(hubMuteKey(hub.id), off);
-  toast(off ? `Р—РІСѓРє СѓРІРµРґРѕРјР»РµРЅРёР№ В«${hub.name}В» РІС‹РєР»СЋС‡РµРЅ` : `Р—РІСѓРє СѓРІРµРґРѕРјР»РµРЅРёР№ В«${hub.name}В» РІРєР»СЋС‡С‘РЅ`);
+  toast(off ? `Звук уведомлений «${hub.name}» выключен` : `Звук уведомлений «${hub.name}» включён`);
   renderHubChrome();
 }
 
@@ -457,16 +457,16 @@ function hubMenuItems(hub) {
   const manager = canManageHub(hub);
   const muted = hubMuted(hub.id);
   return [
-    manager && { label: 'РџСЂРёРіР»Р°СЃРёС‚СЊ РґСЂСѓР·РµР№', onclick: () => openHubInvite(hub.id) },
-    manager && { label: 'РЎРѕР·РґР°С‚СЊ РєРѕРјРЅР°С‚Сѓ', onclick: () => openRoomCreate('voice', hub.id) },
-    manager && { label: 'РЎРѕР·РґР°С‚СЊ СЃРѕР±С‹С‚РёРµ', icon: EVENT_ICON, onclick: () => openEventCreate(hub) },
-    manager && { label: 'РЎРѕР·РґР°С‚СЊ РіСЂСѓРїРїСѓ РєРѕРјРЅР°С‚', onclick: () => createRoomGroup(hub) },
-    { label: muted ? 'Р’РєР»СЋС‡РёС‚СЊ СѓРІРµРґРѕРјР»РµРЅРёСЏ' : 'Р’С‹РєР»СЋС‡РёС‚СЊ СѓРІРµРґРѕРјР»РµРЅРёСЏ', icon: muted ? BELL_OFF : BELL_ON, onclick: () => toggleHubMute(hub) },
-    { label: manager ? 'РќР°СЃС‚СЂРѕР№РєРё РєР°РЅР°Р»Р°' : 'РЈС‡Р°СЃС‚РЅРёРєРё РєР°РЅР°Р»Р°', onclick: () => openHubSettings(hub.id, manager ? 'overview' : 'members') },
+    manager && { label: 'Пригласить друзей', onclick: () => openHubInvite(hub.id) },
+    manager && { label: 'Создать комнату', onclick: () => openRoomCreate('voice', hub.id) },
+    manager && { label: 'Создать событие', icon: EVENT_ICON, onclick: () => openEventCreate(hub) },
+    manager && { label: 'Создать группу комнат', onclick: () => createRoomGroup(hub) },
+    { label: muted ? 'Включить уведомления' : 'Выключить уведомления', icon: muted ? BELL_OFF : BELL_ON, onclick: () => toggleHubMute(hub) },
+    { label: manager ? 'Настройки канала' : 'Участники канала', onclick: () => openHubSettings(hub.id, manager ? 'overview' : 'members') },
     'sep',
     hub.ownerId === state.me.id
-      ? { label: 'РЈРґР°Р»РёС‚СЊ РєР°РЅР°Р»', danger: true, onclick: () => deleteHub(hub) }
-      : { label: 'Р’С‹Р№С‚Рё РёР· РєР°РЅР°Р»Р°', danger: true, onclick: () => leaveHub(hub) },
+      ? { label: 'Удалить канал', danger: true, onclick: () => deleteHub(hub) }
+      : { label: 'Выйти из канала', danger: true, onclick: () => leaveHub(hub) },
   ];
 }
 
@@ -479,18 +479,18 @@ $('hub-menu-btn').onclick = () => {
 };
 
 async function deleteHub(hub) {
-  if (!(await ask(`РљР°РЅР°Р» В«${hub.name}В» СѓРґР°Р»РёС‚СЃСЏ РІРјРµСЃС‚Рµ СЃРѕ РІСЃРµРјРё РєРѕРјРЅР°С‚Р°РјРё Рё РїРµСЂРµРїРёСЃРєРѕР№. Р­С‚Рѕ РЅРµР»СЊР·СЏ РѕС‚РјРµРЅРёС‚СЊ.`, { title: 'РЈРґР°Р»РёС‚СЊ РєР°РЅР°Р»?', ok: 'РЈРґР°Р»РёС‚СЊ', danger: true }))) return;
+  if (!(await ask(`Канал «${hub.name}» удалится вместе со всеми комнатами и перепиской. Это нельзя отменить.`, { title: 'Удалить канал?', ok: 'Удалить', danger: true }))) return;
   try {
     await Api.del(`/hubs/${hub.id}`);
     forgetHub(hub.id);
-    toast(`РљР°РЅР°Р» В«${hub.name}В» СѓРґР°Р»С‘РЅ`);
+    toast(`Канал «${hub.name}» удалён`);
   } catch (err) {
     toast(err.message);
   }
 }
 
 async function leaveHub(hub) {
-  if (!(await ask(`Р’РµСЂРЅСѓС‚СЊСЃСЏ РІ В«${hub.name}В» РјРѕР¶РЅРѕ Р±СѓРґРµС‚ С‚РѕР»СЊРєРѕ РїРѕ РЅРѕРІРѕРјСѓ РїСЂРёРіР»Р°С€РµРЅРёСЋ.`, { title: 'Р’С‹Р№С‚Рё РёР· РєР°РЅР°Р»Р°?', ok: 'Р’С‹Р№С‚Рё', danger: true }))) return;
+  if (!(await ask(`Вернуться в «${hub.name}» можно будет только по новому приглашению.`, { title: 'Выйти из канала?', ok: 'Выйти', danger: true }))) return;
   try {
     await Api.del(`/hubs/${hub.id}/members/${state.me.id}`);
     forgetHub(hub.id);
@@ -499,10 +499,10 @@ async function leaveHub(hub) {
   }
 }
 
-// ---------- РЈС‡Р°СЃС‚РЅРёРєРё СЃРїСЂР°РІР° ----------
+// ---------- Участники справа ----------
 
 const membersHidden = () => store.get('membersHidden', false);
-// РЎРµР±СЏ РїРѕРєР°Р·С‹РІР°РµРј РїРѕ СЃРІРѕРµРјСѓ СЃС‚Р°С‚СѓСЃСѓ: РЅРµРІРёРґРёРјС‹Р№ РґР»СЏ СЃРµР±СЏ вЂ” В«РЅРµ РІ СЃРµС‚РёВ», РєР°Рє РµРіРѕ РІРёРґСЏС‚ РґСЂСѓРіРёРµ
+// Себя показываем по своему статусу: невидимый для себя — «не в сети», как его видят другие
 const presenceIn = (m) => (m.id === state.me.id ? (myStatus() === 'invisible' ? 'offline' : myStatus()) : presenceOf(m));
 
 function renderMembers() {
@@ -511,18 +511,18 @@ function renderMembers() {
   $('members-panel').classList.toggle('hidden', !show);
   for (const b of document.querySelectorAll('.members-toggle')) {
     b.classList.toggle('on', show);
-    b.title = show ? 'РЎРєСЂС‹С‚СЊ СѓС‡Р°СЃС‚РЅРёРєРѕРІ' : 'РџРѕРєР°Р·Р°С‚СЊ СѓС‡Р°СЃС‚РЅРёРєРѕРІ';
+    b.title = show ? 'Скрыть участников' : 'Показать участников';
   }
   if (!show) return;
 
-  // РћС‚РєСЂС‹С‚Р° РєРѕРјРЅР°С‚Р° вЂ” РµС‘ СѓС‡Р°СЃС‚РЅРёРєРё РїРѕ РµС‘ СЂРѕР»СЏРј; РёРЅР°С‡Рµ вЂ” РІРµСЃСЊ РєР°РЅР°Р»
+  // Открыта комната — её участники по её ролям; иначе — весь канал
   const room = roomById(state.selectedRoomId);
   const people = room ? room.members : hub.members;
   const inVoice = new Set((room?.voice || []).map((p) => p.userId));
   const byName = (a, b) => a.displayName.localeCompare(b.displayName, 'ru');
   const groups = (room?.roles || []).map((r) => ({ role: r, title: r.name, people: [] }));
-  const online = { title: 'Р’ СЃРµС‚Рё', people: [] };
-  const offline = { title: 'РќРµ РІ СЃРµС‚Рё', people: [], offline: true };
+  const online = { title: 'В сети', people: [] };
+  const offline = { title: 'Не в сети', people: [], offline: true };
   for (const m of people) {
     if (presenceIn(m) === 'offline') offline.people.push(m);
     else (groups.find((g) => g.role.id === roleOf(room, m.id)?.id) || online).people.push(m);
@@ -532,26 +532,26 @@ function renderMembers() {
   box.replaceChildren();
   box.append(
     el('div', { className: 'members-head' },
-      el('b', { textContent: 'РЈС‡Р°СЃС‚РЅРёРєРё' }),
-      el('span', { className: 'muted small ellipsis', textContent: room ? `В· ${room.name}` : `В· РІРµСЃСЊ РєР°РЅР°Р»` }))
+      el('b', { textContent: 'Участники' }),
+      el('span', { className: 'muted small ellipsis', textContent: room ? `· ${room.name}` : `· весь канал` }))
   );
   for (const g of [...groups, online, offline]) {
     if (!g.people.length) continue;
-    const groupTitle = `${g.title} вЂ” ${g.people.length}`;
+    const groupTitle = `${g.title} — ${g.people.length}`;
     box.append(el('div', { className: 'members-group', textContent: groupTitle, title: groupTitle }));
     for (const m of g.people.sort(byName)) {
       const hubMember = hub.members.find((x) => x.id === m.id);
       const name = el('div', { className: 'member-nick ellipsis', textContent: m.nickname || m.displayName });
       if (g.role || m.nameColor) name.style.color = g.role?.color || m.nameColor;
-      const sub = inVoice.has(m.id) ? 'Р’ РіРѕР»РѕСЃРµ'
-        : m.id === hub.ownerId ? 'РЎРѕР·РґР°С‚РµР»СЊ РєР°РЅР°Р»Р°'
-        : hubMember?.manager ? 'РЈРїСЂР°РІР»СЏРµС‚ РєР°РЅР°Р»РѕРј'
+      const sub = inVoice.has(m.id) ? 'В голосе'
+        : m.id === hub.ownerId ? 'Создатель канала'
+        : hubMember?.manager ? 'Управляет каналом'
         : presenceIn(m) === 'idle' || presenceIn(m) === 'dnd' ? STATUS[presenceIn(m)].label : '';
       const row = el('div', { className: `member-item${g.offline ? ' offline' : ''}` },
         makeAvatar(m, presenceIn(m), 'small'),
         el('div', { className: 'member-text' }, name, sub && el('div', { className: 'muted small ellipsis', textContent: sub })));
       if (m.id === hub.ownerId)
-        row.insertAdjacentHTML('beforeend', '<svg class="crown" viewBox="0 0 24 24"><title>РЎРѕР·РґР°С‚РµР»СЊ РєР°РЅР°Р»Р°</title><path d="m3 7 4.5 4L12 4l4.5 7L21 7l-2 12H5z"/></svg>');
+        row.insertAdjacentHTML('beforeend', '<svg class="crown" viewBox="0 0 24 24"><title>Создатель канала</title><path d="m3 7 4.5 4L12 4l4.5 7L21 7l-2 12H5z"/></svg>');
       row.dataset.profile = m.id;
       box.append(row);
     }
@@ -564,14 +564,14 @@ for (const b of document.querySelectorAll('.members-toggle'))
     renderMembers();
   };
 
-// ---------- РЎРѕР·РґР°С‚СЊ РєР°РЅР°Р» ----------
+// ---------- Создать канал ----------
 
 let newHubColor = COLORS[0];
 
 function openHubCreate() {
   newHubColor = COLORS[Math.floor(Math.random() * COLORS.length)];
   $('hub-name').value = '';
-  $('hub-name').placeholder = `РљР°РЅР°Р» ${state.me.displayName}`.slice(0, 40);
+  $('hub-name').placeholder = `Канал ${state.me.displayName}`.slice(0, 40);
   $('hub-create-error').textContent = '';
   renderHubCreate();
   $('hub-create').classList.remove('hidden');
@@ -597,7 +597,7 @@ $('hub-create-form').onsubmit = async (e) => {
   try {
     const hub = await Api.post('/hubs', { name: $('hub-name').value.trim() || $('hub-name').placeholder, iconColor: newHubColor });
     applyHub(hub);
-    // РљРѕРјРЅР°С‚С‹ РЅРѕРІРѕРіРѕ РєР°РЅР°Р»Р° РїСЂРёС…РѕРґСЏС‚ РѕС‚РґРµР»СЊРЅРѕ вЂ” РґРѕР¶РґС‘РјСЃСЏ РёС…, С‡С‚РѕР±С‹ СЃСЂР°Р·Сѓ РѕС‚РєСЂС‹С‚СЊ
+    // Комнаты нового канала приходят отдельно — дождёмся их, чтобы сразу открыть
     await refreshRooms();
     $('hub-create').classList.add('hidden');
     openHub(hub.id);
@@ -610,13 +610,13 @@ $('hub-create-form').onsubmit = async (e) => {
 
 $('rail-home').onclick = () => selectContact(null);
 
-// ---------- РќР°СЃС‚СЂРѕР№РєРё РєР°РЅР°Р»Р° ----------
+// ---------- Настройки канала ----------
 
 let settingsHubId = null;
-const HUB_MEMBER_TABS = ['members', 'emojis']; // С‡С‚Рѕ РІРёРґРЅРѕ СѓС‡Р°СЃС‚РЅРёРєСѓ Р±РµР· СѓРїСЂР°РІР»РµРЅРёСЏ РєР°РЅР°Р»РѕРј
+const HUB_MEMBER_TABS = ['members', 'emojis']; // что видно участнику без управления каналом
 let settingsTab = 'overview';
 let hubMemberQuery = '';
-const HUB_TABS = { overview: 'РћР±Р·РѕСЂ', events: 'РЎРѕР±С‹С‚РёСЏ', roles: 'Р РѕР»Рё Рё РїСЂР°РІР°', emojis: 'РЎРјР°Р№Р»РёРєРё', members: 'РЈС‡Р°СЃС‚РЅРёРєРё', bans: 'Р‘Р°РЅС‹' };
+const HUB_TABS = { overview: 'Обзор', events: 'События', roles: 'Роли и права', emojis: 'Смайлики', members: 'Участники', bans: 'Баны' };
 
 function openHubSettings(id, tab = 'overview') {
   if (!hubById(id)) return;
@@ -646,7 +646,7 @@ function renderHubSettings() {
     t.classList.toggle('active', t.dataset.tab === settingsTab);
     t.classList.toggle('hidden', !manager && !HUB_MEMBER_TABS.includes(t.dataset.tab));
   }
-  $('hs-leave').textContent = hub.ownerId === state.me.id ? 'РЈРґР°Р»РёС‚СЊ РєР°РЅР°Р»' : 'Р’С‹Р№С‚Рё РёР· РєР°РЅР°Р»Р°';
+  $('hs-leave').textContent = hub.ownerId === state.me.id ? 'Удалить канал' : 'Выйти из канала';
 
   const body = $('hs-body');
   const focused = document.activeElement?.dataset?.keep;
@@ -693,54 +693,54 @@ function hubOverviewPane(hub) {
     el('div', { className: 'hs-icon-row' }, icon,
       el('div', { className: 'hs-icon-actions' },
         el('div', { className: 'row' },
-          smallButton('Р—Р°РіСЂСѓР·РёС‚СЊ РєР°СЂС‚РёРЅРєСѓ', 'primary', () => $('hub-icon-input').click()),
-          hub.iconUrl && smallButton('РЈР±СЂР°С‚СЊ', '', () => hubAction(Api.del(`/hubs/${hub.id}/icon`), 'РљР°СЂС‚РёРЅРєР° СѓР±СЂР°РЅР°'))),
-        el('p', { className: 'muted small', textContent: 'Р—Р°РіСЂСѓР·РёС‚Рµ РєР°СЂС‚РёРЅРєСѓ, С‡С‚РѕР±С‹ РєР°РЅР°Р» РѕС‚Р»РёС‡Р°Р»СЃСЏ РЅРµ С‚РѕР»СЊРєРѕ РЅР°Р·РІР°РЅРёРµРј.' }))),
-    el('label', { className: 'field' }, el('span', { textContent: 'РќР°Р·РІР°РЅРёРµ' }), name),
-    el('div', { className: 'field' }, el('span', { textContent: 'Р¦РІРµС‚' }), colors),
-    el('label', { className: 'check' }, reactionsBox, el('span', { textContent: 'РџРѕРєР°Р·С‹РІР°С‚СЊ, РєС‚Рѕ РїРѕСЃС‚Р°РІРёР» СЂРµР°РєС†РёСЋ' })),
-    el('div', { className: 'row' }, el('div', { className: 'spacer' }), el('button', { className: 'btn primary', textContent: 'РЎРѕС…СЂР°РЅРёС‚СЊ' })));
+          smallButton('Загрузить картинку', 'primary', () => $('hub-icon-input').click()),
+          hub.iconUrl && smallButton('Убрать', '', () => hubAction(Api.del(`/hubs/${hub.id}/icon`), 'Картинка убрана'))),
+        el('p', { className: 'muted small', textContent: 'Загрузите картинку, чтобы канал отличался не только названием.' }))),
+    el('label', { className: 'field' }, el('span', { textContent: 'Название' }), name),
+    el('div', { className: 'field' }, el('span', { textContent: 'Цвет' }), colors),
+    el('label', { className: 'check' }, reactionsBox, el('span', { textContent: 'Показывать, кто поставил реакцию' })),
+    el('div', { className: 'row' }, el('div', { className: 'spacer' }), el('button', { className: 'btn primary', textContent: 'Сохранить' })));
   form.onsubmit = (e) => {
     e.preventDefault();
-    hubAction(Api.patch(`/hubs/${hub.id}`, { name: name.value.trim(), iconColor: color, reactionsVisible: reactionsBox.checked }), 'РЎРѕС…СЂР°РЅРµРЅРѕ');
+    hubAction(Api.patch(`/hubs/${hub.id}`, { name: name.value.trim(), iconColor: color, reactionsVisible: reactionsBox.checked }), 'Сохранено');
   };
   const owner = hub.members.find((m) => m.id === hub.ownerId);
   const facts = el('div', { className: 'rs-facts' },
-    el('div', {}, el('span', { className: 'muted small', textContent: 'РЎРѕР·РґР°С‚РµР»СЊ' }), el('b', { textContent: owner?.displayName || 'вЂ”' })),
-    el('div', {}, el('span', { className: 'muted small', textContent: 'РЈС‡Р°СЃС‚РЅРёРєРѕРІ' }), el('b', { textContent: hub.members.length })),
-    el('div', {}, el('span', { className: 'muted small', textContent: 'РљРѕРјРЅР°С‚' }), el('b', { textContent: roomsOfHub(hub.id).length })),
-    el('div', {}, el('span', { className: 'muted small', textContent: 'РЎРѕР·РґР°РЅ' }), el('b', { textContent: formatDay(hub.createdAt) })));
+    el('div', {}, el('span', { className: 'muted small', textContent: 'Создатель' }), el('b', { textContent: owner?.displayName || '—' })),
+    el('div', {}, el('span', { className: 'muted small', textContent: 'Участников' }), el('b', { textContent: hub.members.length })),
+    el('div', {}, el('span', { className: 'muted small', textContent: 'Комнат' }), el('b', { textContent: roomsOfHub(hub.id).length })),
+    el('div', {}, el('span', { className: 'muted small', textContent: 'Создан' }), el('b', { textContent: formatDay(hub.createdAt) })));
   return [form, facts];
 }
 
 let emojiDraftName = '';
 
-/** РЎРјР°Р№Р»РёРєРё РєР°РЅР°Р»Р°: РґРѕР±Р°РІР»СЏРµС‚ Р»СЋР±РѕР№ СѓС‡Р°СЃС‚РЅРёРє, СѓРґР°Р»СЏРµС‚ Р°РІС‚РѕСЂ РёР»Рё СѓРїСЂР°РІР»СЏСЋС‰РёР№ */
+/** Смайлики канала: добавляет любой участник, удаляет автор или управляющий */
 function hubEmojisPane(hub) {
-  const name = el('input', { id: 'hs-emoji-name', placeholder: 'РРјСЏ, РЅР°РїСЂРёРјРµСЂ РєРѕС‚', maxLength: 24, value: emojiDraftName });
+  const name = el('input', { id: 'hs-emoji-name', placeholder: 'Имя, например кот', maxLength: 24, value: emojiDraftName });
   name.dataset.keep = 'emoji-name';
   name.oninput = () => (emojiDraftName = name.value);
-  const add = el('div', { className: 'rs-row' }, name, smallButton('Р’С‹Р±СЂР°С‚СЊ РєР°СЂС‚РёРЅРєСѓ', 'primary', () => {
-    if (!name.value.trim()) return ($('hs-error').textContent = 'РЎРЅР°С‡Р°Р»Р° РїСЂРёРґСѓРјР°Р№С‚Рµ РёРјСЏ');
+  const add = el('div', { className: 'rs-row' }, name, smallButton('Выбрать картинку', 'primary', () => {
+    if (!name.value.trim()) return ($('hs-error').textContent = 'Сначала придумайте имя');
     $('hub-emoji-input').click();
   }));
-  const hint = el('p', { className: 'muted small', textContent: `Р’ СЃРѕРѕР±С‰РµРЅРёСЏС… РєРѕРјРЅР°С‚ СЌС‚РѕРіРѕ РєР°РЅР°Р»Р°: :РёРјСЏ:. Р‘СѓРєРІС‹, С†РёС„СЂС‹ Рё _, РґРѕ 50 СЃРјР°Р№Р»РёРєРѕРІ РЅР° РєР°РЅР°Р». РЎРµР№С‡Р°СЃ: ${hub.emojis.length}.` });
+  const hint = el('p', { className: 'muted small', textContent: `В сообщениях комнат этого канала: :имя:. Буквы, цифры и _, до 50 смайликов на канал. Сейчас: ${hub.emojis.length}.` });
   const list = el('div', { className: 'hs-emojis' });
   for (const e of hub.emojis) {
     const row = el('div', { className: 'hs-emoji' },
       el('img', { src: `${Api.base}${e.url}`, alt: e.name }),
       el('b', { className: 'grow ellipsis', textContent: `:${e.name}:` }),
       (e.createdBy === state.me.id || canManageHub(hub)) &&
-        smallButton('РЈРґР°Р»РёС‚СЊ', '', () => hubAction(Api.del(`/hubs/${hub.id}/emojis/${e.id}`), 'РЎРјР°Р№Р»РёРє СѓРґР°Р»С‘РЅ')));
+        smallButton('Удалить', '', () => hubAction(Api.del(`/hubs/${hub.id}/emojis/${e.id}`), 'Смайлик удалён')));
     list.append(row);
   }
   return [add, hint, list];
 }
 
-/** РљР°СЂС‚РёРЅРєР° СЃРјР°Р№Р»РёРєР°: РІРїРёСЃС‹РІР°РµРј РІ РєРІР°РґСЂР°С‚ 128Г—128, РїСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ СЃРѕС…СЂР°РЅСЏРµРј */
+/** Картинка смайлика: вписываем в квадрат 128×128, прозрачность сохраняем */
 async function emojiBlob(file) {
   const bitmap = await createImageBitmap(file).catch(() => {
-    throw new Error('РќРµ РїРѕР»СѓС‡РёР»РѕСЃСЊ РѕС‚РєСЂС‹С‚СЊ РєР°СЂС‚РёРЅРєСѓ');
+    throw new Error('Не получилось открыть картинку');
   });
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 128;
@@ -755,7 +755,7 @@ async function addHubEmoji(file) {
   try {
     const blob = await emojiBlob(file);
     const name = encodeURIComponent(emojiDraftName.trim());
-    await hubAction(Api.upload('PUT', `/hubs/${settingsHubId}/emojis/${name}`, blob), 'РЎРјР°Р№Р»РёРє РґРѕР±Р°РІР»РµРЅ');
+    await hubAction(Api.upload('PUT', `/hubs/${settingsHubId}/emojis/${name}`, blob), 'Смайлик добавлен');
     if (!$('hs-error').textContent) emojiDraftName = '';
     renderHubSettings();
   } catch (err) {
@@ -769,11 +769,11 @@ $('hub-emoji-input').onchange = (e) => {
   if (file && settingsHubId) addHubEmoji(file);
 };
 
-// ---------- РЎРѕР±С‹С‚РёСЏ РєР°РЅР°Р»Р° ----------
+// ---------- События канала ----------
 
 let eventHubId = null;
 
-/** Р’СЃРµ СЃРѕР±С‹С‚РёСЏ РєР°РЅР°Р»Р°: Р»РµР¶Р°С‚ РІ РєРѕРјРЅР°С‚Р°С…, РєСѓРґР° РёС… РѕРїСѓР±Р»РёРєРѕРІР°Р»Рё */
+/** Все события канала: лежат в комнатах, куда их опубликовали */
 function hubEvents(hub) {
   return roomsOfHub(hub.id)
     .flatMap((room) => (room.events || []).map((ev) => ({ ev, room })))
@@ -787,16 +787,16 @@ function hubEventsPane(hub) {
     el('p', {
       className: 'muted small',
       textContent:
-        'РЎРѕР±С‹С‚РёРµ РїРѕСЏРІРёС‚СЃСЏ РІ РІС‹Р±СЂР°РЅРЅРѕРј С‡Р°С‚Рµ: СѓС‡Р°СЃС‚РЅРёРєРё РѕС‚РјРµС‚СЏС‚ РіРѕС‚РѕРІРЅРѕСЃС‚СЊ вЂ” В«Р±СѓРґСѓВ», В«РЅРµ СЃРјРѕРіСѓВ» РёР»Рё В«РіРѕС‚РѕРІ РІ РґСЂСѓРіРѕРµ РІСЂРµРјСЏВ».',
+        'Событие появится в выбранном чате: участники отметят готовность — «буду», «не смогу» или «готов в другое время».',
     })
   );
-  const create = el('button', { className: 'btn primary', type: 'button', textContent: 'РЎРѕР·РґР°С‚СЊ СЃРѕР±С‹С‚РёРµ' });
+  const create = el('button', { className: 'btn primary', type: 'button', textContent: 'Создать событие' });
   create.onclick = () => openEventCreate(hub);
   box.append(el('div', { className: 'row' }, create));
 
   const list = hubEvents(hub);
   if (!list.length) {
-    box.append(el('p', { className: 'muted small', textContent: 'РџРѕРєР° СЃРѕР±С‹С‚РёР№ РЅРµС‚' }));
+    box.append(el('p', { className: 'muted small', textContent: 'Пока событий нет' }));
     return [box];
   }
   for (const { ev, room } of list) {
@@ -810,48 +810,48 @@ function hubEventsPane(hub) {
         el('b', { textContent: ev.title }),
         el('span', {
           className: 'muted small',
-          textContent: `${formatDay(ev.startsAt)} В· ${formatTime(ev.startsAt)} В· #${room.name}`,
+          textContent: `${formatDay(ev.startsAt)} · ${formatTime(ev.startsAt)} · #${room.name}`,
         })
       ),
-      el('span', { className: 'muted small', textContent: `Р‘СѓРґСѓС‚: ${going}` })
+      el('span', { className: 'muted small', textContent: `Будут: ${going}` })
     );
-    const del = el('button', { className: 'btn small', type: 'button', textContent: 'РЈРґР°Р»РёС‚СЊ' });
-    del.onclick = () => hubAction(Api.del(`/events/${ev.id}`), 'РЎРѕР±С‹С‚РёРµ СѓРґР°Р»РµРЅРѕ');
+    const del = el('button', { className: 'btn small', type: 'button', textContent: 'Удалить' });
+    del.onclick = () => hubAction(Api.del(`/events/${ev.id}`), 'Событие удалено');
     row.append(del);
     box.append(row);
   }
   return [box];
 }
 
-// Р’С‹Р±СЂР°РЅРЅРѕРµ РІ РѕРєРЅРµ СЃРѕР±С‹С‚РёСЏ: РґРµРЅСЊ, РІСЂРµРјСЏ Рё С‡Р°С‚
+// Выбранное в окне события: день, время и чат
 let eventDraft = { date: null, time: '00:00', roomId: null, repeat: 'none', remind: 0 };
 const pad2 = (n) => String(n).padStart(2, '0');
 
 const EVENT_REPEATS = [
-  ['none', 'РћРґРЅРѕРєСЂР°С‚РЅРѕ'],
-  ['daily', 'РљР°Р¶РґС‹Р№ РґРµРЅСЊ'],
-  ['weekdays', 'РџРѕ Р±СѓРґРЅСЏРј'],
-  ['weekly', 'РљР°Р¶РґСѓСЋ РЅРµРґРµР»СЋ РІ СЌС‚РѕС‚ РґРµРЅСЊ'],
+  ['none', 'Однократно'],
+  ['daily', 'Каждый день'],
+  ['weekdays', 'По будням'],
+  ['weekly', 'Каждую неделю в этот день'],
 ];
 const EVENT_REMIND = [
-  [0, 'Р‘РµР· РЅР°РїРѕРјРёРЅР°РЅРёСЏ'],
-  [5, 'Р—Р° 5 РјРёРЅСѓС‚'],
-  [10, 'Р—Р° 10 РјРёРЅСѓС‚'],
-  [15, 'Р—Р° 15 РјРёРЅСѓС‚'],
-  [30, 'Р—Р° 30 РјРёРЅСѓС‚'],
-  [60, 'Р—Р° С‡Р°СЃ'],
+  [0, 'Без напоминания'],
+  [5, 'За 5 минут'],
+  [10, 'За 10 минут'],
+  [15, 'За 15 минут'],
+  [30, 'За 30 минут'],
+  [60, 'За час'],
 ];
 
 function syncEventPickers() {
   $('event-date').value = eventDraft.date ? eventDraft.date.toLocaleDateString('ru-RU') : '';
   $('event-time').value = eventDraft.time;
   const room = roomById(eventDraft.roomId);
-  $('event-room').textContent = room ? `# ${room.name}` : 'Р’С‹Р±РµСЂРёС‚Рµ С‡Р°С‚';
-  $('event-repeat').textContent = EVENT_REPEATS.find(([id]) => id === eventDraft.repeat)?.[1] || 'РћРґРЅРѕРєСЂР°С‚РЅРѕ';
-  $('event-remind').textContent = EVENT_REMIND.find(([id]) => id === eventDraft.remind)?.[1] || 'Р‘РµР· РЅР°РїРѕРјРёРЅР°РЅРёСЏ';
+  $('event-room').textContent = room ? `# ${room.name}` : 'Выберите чат';
+  $('event-repeat').textContent = EVENT_REPEATS.find(([id]) => id === eventDraft.repeat)?.[1] || 'Однократно';
+  $('event-remind').textContent = EVENT_REMIND.find(([id]) => id === eventDraft.remind)?.[1] || 'Без напоминания';
 }
 
-/** Р”Р°С‚Р°, РІРїРёСЃР°РЅРЅР°СЏ СЂСѓРєР°РјРё: 12.11.2026, 12.11 РёР»Рё 12.11.26 */
+/** Дата, вписанная руками: 12.11.2026, 12.11 или 12.11.26 */
 function parseDateText(text) {
   const m = String(text).trim().match(/^(\d{1,2})\s*[.\/,:\s-]\s*(\d{1,2})(?:\s*[.\/,:\s-]\s*(\d{2,4}))?$/);
   if (!m) return null;
@@ -863,7 +863,7 @@ function parseDateText(text) {
   return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day ? date : null;
 }
 
-/** Р’СЂРµРјСЏ, РІРїРёСЃР°РЅРЅРѕРµ СЂСѓРєР°РјРё: 21:30, 21.30, 2130 РёР»Рё РїСЂРѕСЃС‚Рѕ 21 в†’ 21:00 */
+/** Время, вписанное руками: 21:30, 21.30, 2130 или просто 21 → 21:00 */
 function parseTimeText(text) {
   const raw = String(text).trim();
   const m = raw.match(/^(\d{1,2})\s*[:.,\s]\s*(\d{2})$/) || raw.match(/^(\d{1,2})(\d{2})$/);
@@ -874,7 +874,7 @@ function parseTimeText(text) {
   return `${pad2(h)}:${pad2(min)}`;
 }
 
-// Р’РїРёСЃР°Р» СЂСѓРєР°РјРё вЂ” СЃСЂР°Р·Сѓ РїРѕРґС…РІР°С‚С‹РІР°РµРј
+// Вписал руками — сразу подхватываем
 $('event-date').onchange = () => {
   const date = parseDateText($('event-date').value);
   if (date) eventDraft.date = date;
@@ -886,7 +886,7 @@ $('event-time').onchange = () => {
   $('event-time').value = eventDraft.time;
 };
 
-// РљР°Р»РµРЅРґР°СЂСЊ РІ СЃС‚РёР»Рµ РїСЂРёР»РѕР¶РµРЅРёСЏ
+// Календарь в стиле приложения
 function buildEventCalendar() {
   const pop = $('event-date-pop');
   const start = eventDraft.date ? new Date(eventDraft.date) : new Date();
@@ -894,13 +894,13 @@ function buildEventCalendar() {
 
   const draw = () => {
     const head = el('div', { className: 'cal-head' });
-    const prev = el('button', { type: 'button', className: 'cal-nav', textContent: 'вЂ№' });
-    const next = el('button', { type: 'button', className: 'cal-nav', textContent: 'вЂє' });
+    const prev = el('button', { type: 'button', className: 'cal-nav', textContent: '‹' });
+    const next = el('button', { type: 'button', className: 'cal-nav', textContent: '›' });
     const title = el('b', { textContent: view.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }) });
     head.append(prev, title, next);
 
     const grid = el('div', { className: 'cal-grid' });
-    for (const w of ['РџРЅ', 'Р’С‚', 'РЎСЂ', 'Р§С‚', 'РџС‚', 'РЎР±', 'Р’СЃ']) grid.append(el('span', { className: 'cal-dow', textContent: w }));
+    for (const w of ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']) grid.append(el('span', { className: 'cal-dow', textContent: w }));
     const first = new Date(view.getFullYear(), view.getMonth(), 1);
     const shift = (first.getDay() + 6) % 7;
     const days = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
@@ -919,7 +919,7 @@ function buildEventCalendar() {
     }
 
     const foot = el('div', { className: 'cal-foot' });
-    const today = el('button', { type: 'button', className: 'btn small', textContent: 'РЎРµРіРѕРґРЅСЏ' });
+    const today = el('button', { type: 'button', className: 'btn small', textContent: 'Сегодня' });
     today.onclick = () => {
       eventDraft.date = new Date();
       syncEventPickers();
@@ -940,8 +940,8 @@ function buildEventCalendar() {
   draw();
 }
 
-// Р’СЂРµРјСЏ: С‡Р°СЃС‹ Рё РјРёРЅСѓС‚С‹ СЃРµС‚РєРѕР№, РїРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ вЂ” В«РћРљВ»
-/** РљРѕР»С‘СЃР°-Р±Р°СЂР°Р±Р°РЅС‹: С‡Р°СЃС‹ Рё РјРёРЅСѓС‚С‹ РїСЂРѕРєСЂСѓС‡РёРІР°СЋС‚СЃСЏ Рё В«РїСЂРёР»РёРїР°СЋС‚В» Рє РІС‹Р±СЂР°РЅРЅРѕРјСѓ Р·РЅР°С‡РµРЅРёСЋ */
+// Время: часы и минуты сеткой, подтверждение — «ОК»
+/** Колёса-барабаны: часы и минуты прокручиваются и «прилипают» к выбранному значению */
 function buildTimeDrum(container, time, onChange) {
   let [h, m] = String(time).split(':').map(Number);
   if (!Number.isFinite(h)) h = 0;
@@ -987,7 +987,7 @@ function buildTimeDrum(container, time, onChange) {
     col.addEventListener('scroll', () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        // Р‘Р»РёР¶Р°Р№С€РµРµ Рє С†РµРЅС‚СЂСѓ Р·РЅР°С‡РµРЅРёРµ вЂ” РІС‹Р±СЂР°РЅРЅРѕРµ
+        // Ближайшее к центру значение — выбранное
         const center = col.scrollTop + col.clientHeight / 2;
         let best = col.children[0];
         for (const c of col.children) {
@@ -1012,14 +1012,14 @@ function buildEventTimePicker() {
   });
 
   const foot = el('div', { className: 'time-foot' });
-  const ok = el('button', { type: 'button', className: 'btn small primary', textContent: 'РћРљ' });
+  const ok = el('button', { type: 'button', className: 'btn small primary', textContent: 'ОК' });
   ok.onclick = () => pop.classList.add('hidden');
   foot.append(ok);
   pop.replaceChildren(body, foot);
 }
 
-// РЎРїРёСЃРѕРє С‡Р°С‚РѕРІ РєР°РЅР°Р»Р°
-// РЎРїРёСЃРѕРє РІР°СЂРёР°РЅС‚РѕРІ: РїРѕРІС‚РѕСЂ Рё РЅР°РїРѕРјРёРЅР°РЅРёРµ
+// Список чатов канала
+// Список вариантов: повтор и напоминание
 function buildEventOptionPicker(popId, options, current, onPick) {
   const pop = $(popId);
   pop.replaceChildren(
@@ -1039,7 +1039,7 @@ function buildEventOptionPicker(popId, options, current, onPick) {
   );
 }
 
-// РЎРїРёСЃРѕРє С‡Р°С‚РѕРІ РєР°РЅР°Р»Р°
+// Список чатов канала
 function buildEventRoomPicker(rooms) {
   const pop = $('event-room-pop');
   pop.replaceChildren(
@@ -1064,7 +1064,7 @@ function openEventCreate(hub) {
   $('event-title').value = '';
   $('event-error').textContent = '';
 
-  // РџРѕ СѓРјРѕР»С‡Р°РЅРёСЋ вЂ” СЃРµРіРѕРґРЅСЏ, С‡РµСЂРµР· С‡Р°СЃ
+  // По умолчанию — сегодня, через час
   const soon = new Date(Date.now() + 60 * 60_000);
   soon.setMinutes(0, 0, 0);
   const rooms = roomsOfHub(hub.id);
@@ -1089,7 +1089,7 @@ function openEventCreate(hub) {
   );
   const updateToggle = () => {
     const chosen = list.querySelectorAll('input:checked').length;
-    toggle.textContent = chosen ? `Р’С‹Р±СЂР°РЅРѕ: ${chosen}` : 'РќРёРєС‚Рѕ РЅРµ РІС‹Р±СЂР°РЅ';
+    toggle.textContent = chosen ? `Выбрано: ${chosen}` : 'Никто не выбран';
     toggle.classList.toggle('has-value', chosen > 0);
   };
   list.onchange = updateToggle;
@@ -1110,7 +1110,7 @@ const closeEventCreate = () => {
   eventHubId = null;
 };
 
-// Р’С‹РїР°РґР°СЋС‰РёРµ СЃРїРёСЃРєРё РІ СЃС‚РёР»Рµ РїСЂРёР»РѕР¶РµРЅРёСЏ: РѕС‚РєСЂС‹РІР°РµРј РЅСѓР¶РЅС‹Р№, РѕСЃС‚Р°Р»СЊРЅС‹Рµ РїСЂСЏС‡РµРј
+// Выпадающие списки в стиле приложения: открываем нужный, остальные прячем
 function togglePicker(toggleId, popId, build) {
   const pop = $(popId);
   const opening = pop.classList.contains('hidden');
@@ -1119,7 +1119,7 @@ function togglePicker(toggleId, popId, build) {
   build();
   pop.classList.remove('hidden', 'up');
   $(toggleId).classList.add('open');
-  // РќРµ РІР»РµР·Р°РµС‚ РІРЅРёР· вЂ” СЂР°СЃРєСЂС‹РІР°РµРј РІРІРµСЂС…
+  // Не влезает вниз — раскрываем вверх
   if (pop.getBoundingClientRect().bottom > innerHeight - 8) pop.classList.add('up');
 }
 
@@ -1158,17 +1158,17 @@ $('event-form').onsubmit = async (e) => {
   const hub = hubById(eventHubId);
   if (!hub) return;
   const title = $('event-title').value.trim();
-  if (!title) return ($('event-error').textContent = 'РќР°Р·РІР°РЅРёРµ СЃРѕР±С‹С‚РёСЏ РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ');
-  // Р‘РµСЂС‘Рј С‚Рѕ, С‡С‚Рѕ РІРїРёСЃР°РЅРѕ СЂСѓРєР°РјРё, РёРЅР°С‡Рµ вЂ” РІС‹Р±СЂР°РЅРЅРѕРµ РІ РєР°Р»РµРЅРґР°СЂРµ
+  if (!title) return ($('event-error').textContent = 'Название события обязательно');
+  // Берём то, что вписано руками, иначе — выбранное в календаре
   const date = parseDateText($('event-date').value) || eventDraft.date;
   const time = parseTimeText($('event-time').value) || eventDraft.time;
-  if (!date) return ($('event-error').textContent = 'Р”РµРЅСЊ: РЅР°РїСЂРёРјРµСЂ, 12.11.2026');
-  if (!time) return ($('event-error').textContent = 'Р’СЂРµРјСЏ: РЅР°РїСЂРёРјРµСЂ, 21:30');
-  if (!eventDraft.roomId) return ($('event-error').textContent = 'Р’С‹Р±РµСЂРёС‚Рµ С‡Р°С‚ РґР»СЏ РїСѓР±Р»РёРєР°С†РёРё');
+  if (!date) return ($('event-error').textContent = 'День: например, 12.11.2026');
+  if (!time) return ($('event-error').textContent = 'Время: например, 21:30');
+  if (!eventDraft.roomId) return ($('event-error').textContent = 'Выберите чат для публикации');
   const [hours, minutes] = time.split(':').map(Number);
   const startsAt = new Date(date);
   startsAt.setHours(hours, minutes, 0, 0);
-  if (!Number.isFinite(startsAt.getTime())) return ($('event-error').textContent = 'РќРµ РїРѕР»СѓС‡РёР»РѕСЃСЊ СЂР°Р·РѕР±СЂР°С‚СЊ РґР°С‚Сѓ');
+  if (!Number.isFinite(startsAt.getTime())) return ($('event-error').textContent = 'Не получилось разобрать дату');
 
   const roomId = eventDraft.roomId;
   const invitees = [...$('event-invitees').querySelectorAll('input:checked')].map((i) => Number(i.value));
@@ -1180,17 +1180,17 @@ $('event-form').onsubmit = async (e) => {
       repeat: eventDraft.repeat,
       remind: eventDraft.remind,
     });
-    // РљРѕРјРЅР°С‚Р° РїСЂРёС€Р»Р° СѓР¶Рµ СЃ СЃРѕР±С‹С‚РёРµРј вЂ” РѕР±РЅРѕРІР»СЏРµРј РµС‘ Сѓ СЃРµР±СЏ, РёРЅР°С‡Рµ РєР°СЂС‚РѕС‡РєР° РЅРµ РЅР°Р№РґС‘С‚ СЃРѕР±С‹С‚РёРµ
+    // Комната пришла уже с событием — обновляем её у себя, иначе карточка не найдёт событие
     applyRoomUpdate(room);
-    // РџСѓР±Р»РёРєСѓРµРј СЃРѕР±С‹С‚РёРµ СЃРѕРѕР±С‰РµРЅРёРµРј РІ РІС‹Р±СЂР°РЅРЅС‹Р№ С‡Р°С‚: РІРЅСѓС‚СЂРё РєРѕРЅРІРµСЂС‚Р° С‚РѕР»СЊРєРѕ id
+    // Публикуем событие сообщением в выбранный чат: внутри конверта только id
     const event = [...(room.events || [])].reverse().find((x) => x.createdBy === state.me.id && x.title === title);
     if (event) {
-      const { body, plain } = await encryptOutgoing(roomConvOf(roomId), { text: `РЎРѕР±С‹С‚РёРµ: ${title}`, eventId: event.id });
+      const { body, plain } = await encryptOutgoing(roomConvOf(roomId), { text: `Событие: ${title}`, eventId: event.id });
       addRoomMessage({ ...(await Api.post(`/rooms/${roomId}/messages`, body)), plain });
     }
     closeEventCreate();
     renderHubSettings();
-    toast('РЎРѕР±С‹С‚РёРµ СЃРѕР·РґР°РЅРѕ');
+    toast('Событие создано');
     if (state.selectedRoomId !== roomId) selectRoom(roomId);
   } catch (err) {
     $('event-error').textContent = err.message;
@@ -1199,37 +1199,37 @@ $('event-form').onsubmit = async (e) => {
 
 function hubMembersPane(hub) {
   const out = [];
-  const search = el('input', { className: 'friend-search', placeholder: 'РџРѕРёСЃРє СѓС‡Р°СЃС‚РЅРёРєРѕРІ', value: hubMemberQuery });
+  const search = el('input', { className: 'friend-search', placeholder: 'Поиск участников', value: hubMemberQuery });
   search.dataset.keep = 'hub-member-search';
   search.oninput = () => {
     hubMemberQuery = search.value;
     renderHubSettings();
   };
   const top = el('div', { className: 'rs-row' }, search);
-  if (canManageHub(hub)) top.append(smallButton('РџСЂРёРіР»Р°СЃРёС‚СЊ РґСЂСѓР·РµР№', 'primary', () => openHubInvite(hub.id)));
+  if (canManageHub(hub)) top.append(smallButton('Пригласить друзей', 'primary', () => openHubInvite(hub.id)));
   out.push(top);
 
   const q = hubMemberQuery.trim().toLowerCase();
   const members = hub.members.filter((m) => !q || `${m.displayName} ${m.username}`.toLowerCase().includes(q));
-  out.push(el('div', { className: 'list-title', textContent: `РЈС‡Р°СЃС‚РЅРёРєРё вЂ” ${members.length}` }));
+  out.push(el('div', { className: 'list-title', textContent: `Участники — ${members.length}` }));
   const list = el('div', { className: 'member-list', id: 'hs-members' });
   const myRank = hubRank(hub);
   for (const m of members) {
     const mine = m.id === state.me.id;
     const tags = el('div', { className: 'member-tags' }, el('span', { className: 'muted small', textContent: `@${m.username}` }));
-    if (m.id === hub.ownerId) tags.append(el('span', { className: 'tag owner', textContent: 'РЎРѕР·РґР°С‚РµР»СЊ' }));
-    else if (m.manager) tags.append(el('span', { className: 'tag', textContent: 'РЈРїСЂР°РІР»СЏРµС‚' }));
+    if (m.id === hub.ownerId) tags.append(el('span', { className: 'tag owner', textContent: 'Создатель' }));
+    else if (m.manager) tags.append(el('span', { className: 'tag', textContent: 'Управляет' }));
     const role = hub.roles?.find((x) => x.id === m.roleId);
     if (role) tags.append(el('span', { className: 'tag', textContent: role.name }));
     const info = el('div', { className: 'grow member-info' },
-      el('div', { className: 'ellipsis member-name', textContent: mine ? `${m.displayName} (РІС‹)` : m.displayName }), tags);
+      el('div', { className: 'ellipsis member-name', textContent: mine ? `${m.displayName} (вы)` : m.displayName }), tags);
     info.dataset.profile = m.id;
     const avatar = makeAvatar(m, presenceIn(m));
     avatar.dataset.profile = m.id;
     const actions = el('div', { className: 'member-actions' });
-    // Р РѕР»СЊ РЅР° РІРµСЃСЊ РєР°РЅР°Р» РЅР°Р·РЅР°С‡Р°РµС‚ С‚РѕС‚, РєС‚Рѕ РЅР°СЃС‚СЂР°РёРІР°РµС‚ СЂРѕР»Рё, Рё С‚РѕР»СЊРєРѕ С‚РµРј, РєС‚Рѕ РјР»Р°РґС€Рµ (СЃРµР±Рµ вЂ” С‚РѕР¶Рµ РјРѕР¶РЅРѕ)
+    // Роль на весь канал назначает тот, кто настраивает роли, и только тем, кто младше (себе — тоже можно)
     if (myRank >= 2 && m.id !== hub.ownerId && (mine || myRank > hubRank(hub, m.id))) {
-      const select = el('select', { className: 'role-select', title: 'Р РѕР»СЊ РІ РєР°РЅР°Р»Рµ' }, new Option('Р‘РµР· СЂРѕР»Рё', ''));
+      const select = el('select', { className: 'role-select', title: 'Роль в канале' }, new Option('Без роли', ''));
       for (const r of hub.roles || []) {
         const opt = new Option(r.name, r.id);
         opt.disabled = Boolean(r.perms & PERMS.admin) && hub.ownerId !== state.me.id;
@@ -1239,21 +1239,21 @@ function hubMembersPane(hub) {
       select.onchange = () => setHubRole(hub, m.id, select.value ? Number(select.value) : null);
       actions.append(select);
     }
-    // РџСЂР°РІРѕ СѓРїСЂР°РІР»СЏС‚СЊ СЂР°Р·РґР°С‘С‚ СЃРѕР·РґР°С‚РµР»СЊ; РІС‹РіРЅР°С‚СЊ Рё Р·Р°Р±Р°РЅРёС‚СЊ вЂ” С‚РѕР»СЊРєРѕ С‚РµС…, РєС‚Рѕ РјР»Р°РґС€Рµ
+    // Право управлять раздаёт создатель; выгнать и забанить — только тех, кто младше
     if (hub.ownerId === state.me.id && !mine) {
-      const sw = el('input', { type: 'checkbox', className: 'switch', checked: Boolean(m.manager), title: 'РњРѕР¶РµС‚ СѓРїСЂР°РІР»СЏС‚СЊ РєР°РЅР°Р»РѕРј' });
+      const sw = el('input', { type: 'checkbox', className: 'switch', checked: Boolean(m.manager), title: 'Может управлять каналом' });
       sw.onchange = () => hubAction(Api.put(`/hubs/${hub.id}/members/${m.id}/manager`, { manager: sw.checked }));
-      actions.append(el('label', { className: 'manager-switch' }, el('span', { className: 'small', textContent: 'РЈРїСЂР°РІР»СЏРµС‚' }), sw));
+      actions.append(el('label', { className: 'manager-switch' }, el('span', { className: 'small', textContent: 'Управляет' }), sw));
     }
     if (!mine && myRank >= 2 && myRank > hubRank(hub, m.id)) {
       actions.append(
-        smallButton('Р’С‹РіРЅР°С‚СЊ', 'warn-outline', async () => {
-          if (await ask(`РџСЂРёРіР»Р°СЃРёС‚СЊ ${m.displayName} СЃРЅРѕРІР° РјРѕР¶РЅРѕ Р±СѓРґРµС‚ РІ Р»СЋР±РѕР№ РјРѕРјРµРЅС‚.`, { title: 'Р’С‹РіРЅР°С‚СЊ РёР· РєР°РЅР°Р»Р°?', ok: 'Р’С‹РіРЅР°С‚СЊ', danger: true }))
-            hubAction(Api.del(`/hubs/${hub.id}/members/${m.id}`), `${m.displayName} Р±РѕР»СЊС€Рµ РЅРµ РІ РєР°РЅР°Р»Рµ`);
+        smallButton('Выгнать', 'warn-outline', async () => {
+          if (await ask(`Пригласить ${m.displayName} снова можно будет в любой момент.`, { title: 'Выгнать из канала?', ok: 'Выгнать', danger: true }))
+            hubAction(Api.del(`/hubs/${hub.id}/members/${m.id}`), `${m.displayName} больше не в канале`);
         }),
-        smallButton('Р—Р°Р±Р°РЅРёС‚СЊ', 'danger', async () => {
-          if (await ask(`${m.displayName} РїСЂРѕРїР°РґС‘С‚ РёР· РєР°РЅР°Р»Р° Рё РІСЃРµС… РµРіРѕ РєРѕРјРЅР°С‚, РїРѕР·РІР°С‚СЊ РµРіРѕ Р±СѓРґРµС‚ РЅРµР»СЊР·СЏ, РїРѕРєР° РЅРµ СЃРЅРёРјРµС‚Рµ Р±Р°РЅ.`, { title: 'Р—Р°Р±Р°РЅРёС‚СЊ?', ok: 'Р—Р°Р±Р°РЅРёС‚СЊ', danger: true }))
-            hubAction(Api.post(`/hubs/${hub.id}/bans`, { userId: m.id }), `${m.displayName} Р·Р°Р±Р°РЅРµРЅ`);
+        smallButton('Забанить', 'danger', async () => {
+          if (await ask(`${m.displayName} пропадёт из канала и всех его комнат, позвать его будет нельзя, пока не снимете бан.`, { title: 'Забанить?', ok: 'Забанить', danger: true }))
+            hubAction(Api.post(`/hubs/${hub.id}/bans`, { userId: m.id }), `${m.displayName} забанен`);
         })
       );
     }
@@ -1264,12 +1264,12 @@ function hubMembersPane(hub) {
 }
 
 function hubBansPane(hub) {
-  if (!hub.bans.length) return [el('p', { className: 'muted', textContent: 'Р‘Р°РЅРѕРІ РЅРµС‚. Р—Р°Р±Р°РЅРµРЅРЅС‹Р№ РїСЂРѕРїР°РґР°РµС‚ РёР· РєР°РЅР°Р»Р° Рё РІСЃРµС… РµРіРѕ РєРѕРјРЅР°С‚, Рё РїРѕР·РІР°С‚СЊ РµРіРѕ РЅРµР»СЊР·СЏ, РїРѕРєР° Р±Р°РЅ РЅРµ СЃРЅРёРјСѓС‚.' })];
+  if (!hub.bans.length) return [el('p', { className: 'muted', textContent: 'Банов нет. Забаненный пропадает из канала и всех его комнат, и позвать его нельзя, пока бан не снимут.' })];
   const list = el('div', { className: 'member-list' });
   for (const b of hub.bans)
     list.append(el('div', { className: 'member-row' }, makeAvatar(b, undefined, 'small'),
-      el('div', { className: 'grow ellipsis' }, el('div', { className: 'ellipsis', textContent: b.displayName }), el('div', { className: 'muted small', textContent: `@${b.username} В· СЃ ${formatDay(b.bannedAt)}` })),
-      smallButton('РЎРЅСЏС‚СЊ Р±Р°РЅ', '', () => hubAction(Api.del(`/hubs/${hub.id}/bans/${b.id}`), `Р‘Р°РЅ СЃРЅСЏС‚: ${b.displayName}`))));
+      el('div', { className: 'grow ellipsis' }, el('div', { className: 'ellipsis', textContent: b.displayName }), el('div', { className: 'muted small', textContent: `@${b.username} · с ${formatDay(b.bannedAt)}` })),
+      smallButton('Снять бан', '', () => hubAction(Api.del(`/hubs/${hub.id}/bans/${b.id}`), `Бан снят: ${b.displayName}`))));
   return [list];
 }
 
@@ -1288,18 +1288,18 @@ $('hub-icon-input').onchange = async (e) => {
   e.target.value = '';
   if (!file || !settingsHubId) return;
   try {
-    const blob = await makeAvatarBlob(file, { title: 'РљР°СЂС‚РёРЅРєР° РєР°РЅР°Р»Р°', round: false });
-    if (blob) await hubAction(Api.upload('PUT', `/hubs/${settingsHubId}/icon`, blob), 'РљР°СЂС‚РёРЅРєР° РєР°РЅР°Р»Р° РѕР±РЅРѕРІР»РµРЅР°');
+    const blob = await makeAvatarBlob(file, { title: 'Картинка канала', round: false });
+    if (blob) await hubAction(Api.upload('PUT', `/hubs/${settingsHubId}/icon`, blob), 'Картинка канала обновлена');
   } catch (err) {
     $('hs-error').textContent = err.message;
   }
 };
 
-// ---------- РРјСЏ СѓС‡Р°СЃС‚РЅРёРєР° РІ РєР°РЅР°Р»Рµ ----------
+// ---------- Имя участника в канале ----------
 
 let nickTarget = null; // { hubId, userId }
 
-/** РЎРІРѕС‘ РёРјСЏ С‡РµР»РѕРІРµРєР° РІ С‚РµРєСѓС‰РµРј РєР°РЅР°Р»Рµ (РёР»Рё null, РµСЃР»Рё РµРіРѕ С‚Р°Рј РЅРµ РїРµСЂРµРёРјРµРЅРѕРІС‹РІР°Р»Рё) */
+/** Своё имя человека в текущем канале (или null, если его там не переименовывали) */
 function channelNickOf(userId) {
   const room = state.selectedRoomId && roomById(state.selectedRoomId);
   const member = room?.members?.find((m) => m.id === userId) || currentHub()?.members?.find((m) => m.id === userId);
@@ -1330,13 +1330,13 @@ $('nick-form').onsubmit = async (e) => {
   if (!nickTarget) return;
   const name = $('nick-input').value.trim();
   if (!name) {
-    $('nick-error').textContent = 'РРјСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј';
+    $('nick-error').textContent = 'Имя не может быть пустым';
     return;
   }
   try {
     applyHub(await Api.put(`/hubs/${nickTarget.hubId}/members/${nickTarget.userId}/nickname`, { name }));
     closeNicknameDialog();
-    toast('РРјСЏ РІ РєР°РЅР°Р»Рµ РёР·РјРµРЅРµРЅРѕ');
+    toast('Имя в канале изменено');
     renderMembers();
   } catch (err) {
     $('nick-error').textContent = err.message;
@@ -1348,7 +1348,7 @@ $('nick-reset').onclick = async () => {
   try {
     applyHub(await Api.del(`/hubs/${nickTarget.hubId}/members/${nickTarget.userId}/nickname`));
     closeNicknameDialog();
-    toast('Р’РµСЂРЅСѓР»Рё РЅР°СЃС‚РѕСЏС‰РµРµ РёРјСЏ');
+    toast('Вернули настоящее имя');
     renderMembers();
   } catch (err) {
     $('nick-error').textContent = err.message;
@@ -1360,7 +1360,7 @@ $('nick-modal').onclick = (e) => {
   if (e.target === $('nick-modal')) closeNicknameDialog();
 };
 
-// ---------- РџСЂРёРіР»Р°СЃРёС‚СЊ РґСЂСѓР·РµР№ РІ РєР°РЅР°Р» ----------
+// ---------- Пригласить друзей в канал ----------
 
 let inviteHubId = null;
 
@@ -1377,7 +1377,7 @@ function openHubInvite(id) {
 function renderHubInvite() {
   const hub = hubById(inviteHubId);
   if (!hub) return $('hub-invite').classList.add('hidden');
-  $('hi-title').textContent = `РџСЂРёРіР»Р°СЃРёС‚СЊ РґСЂСѓР·РµР№ РІ В«${hub.name}В»`;
+  $('hi-title').textContent = `Пригласить друзей в «${hub.name}»`;
   const q = $('hi-search').value.trim().toLowerCase();
   const inHub = new Set(hub.members.map((m) => m.id));
   const invited = new Set(hub.invited);
@@ -1387,20 +1387,20 @@ function renderHubInvite() {
     .sort((a, b) => inHub.has(a.id) - inHub.has(b.id) || a.displayName.localeCompare(b.displayName, 'ru'));
   const list = $('hi-list');
   list.replaceChildren();
-  if (!state.contacts.size) list.append(el('p', { className: 'muted', textContent: 'РџСЂРёРіР»Р°СЃРёС‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ РґСЂСѓР·РµР№, Р° РёС… РїРѕРєР° РЅРµС‚. Р”РѕР±Р°РІСЊС‚Рµ РёС… РІ СЂР°Р·РґРµР»Рµ В«Р”СЂСѓР·СЊСЏВ».' }));
-  else if (!friends.length) list.append(el('p', { className: 'muted', textContent: 'РќРёРєРѕРіРѕ РЅРµ РЅР°С€Р»Рё' }));
+  if (!state.contacts.size) list.append(el('p', { className: 'muted', textContent: 'Пригласить можно только друзей, а их пока нет. Добавьте их в разделе «Друзья».' }));
+  else if (!friends.length) list.append(el('p', { className: 'muted', textContent: 'Никого не нашли' }));
   for (const f of friends) {
     const info = el('div', { className: 'grow ellipsis' }, el('div', { className: 'ellipsis', textContent: f.displayName }), el('div', { className: 'muted small', textContent: `@${f.username}` }));
     let action;
-    if (inHub.has(f.id)) action = el('span', { className: 'muted small', textContent: 'РЈР¶Рµ РІ РєР°РЅР°Р»Рµ' });
-    else if (banned.has(f.id)) action = el('span', { className: 'small error-text', textContent: 'Р—Р°Р±Р°РЅРµРЅ' });
-    else if (invited.has(f.id)) action = el('span', { className: 'muted small', textContent: 'РџРѕР·РІР°Р»Рё' });
+    if (inHub.has(f.id)) action = el('span', { className: 'muted small', textContent: 'Уже в канале' });
+    else if (banned.has(f.id)) action = el('span', { className: 'small error-text', textContent: 'Забанен' });
+    else if (invited.has(f.id)) action = el('span', { className: 'muted small', textContent: 'Позвали' });
     else
-      action = smallButton('РџСЂРёРіР»Р°СЃРёС‚СЊ', 'primary', async () => {
+      action = smallButton('Пригласить', 'primary', async () => {
         $('hi-error').textContent = '';
         try {
           applyHub(await Api.post(`/hubs/${hub.id}/invites`, { userIds: [f.id] }));
-          toast(`${f.displayName} РїРѕР»СѓС‡РёС‚ РїСЂРёРіР»Р°С€РµРЅРёРµ РІ В«${hub.name}В»`);
+          toast(`${f.displayName} получит приглашение в «${hub.name}»`);
         } catch (err) {
           $('hi-error').textContent = err.message;
         }
@@ -1412,11 +1412,11 @@ function renderHubInvite() {
 $('hi-search').oninput = renderHubInvite;
 $('hi-close').onclick = () => $('hub-invite').classList.add('hidden');
 
-// ---------- РџСЂРёРіР»Р°С€РµРЅРёРµ РјРЅРµ: РІСЃС‚СѓРїРёС‚СЊ РёР»Рё РѕС‚РєР°Р·Р°С‚СЊСЃСЏ ----------
+// ---------- Приглашение мне: вступить или отказаться ----------
 
 let joinHubId = null;
 
-/** Р©РµР»С‡РѕРє РїРѕ РїСЂРёРіР»Р°С€РµРЅРёСЋ (РІ СЃС‚РѕР»Р±С†Рµ РёР»Рё РІ СѓРІРµРґРѕРјР»РµРЅРёРё); РµСЃР»Рё СѓР¶Рµ РІ РєР°РЅР°Р»Рµ вЂ” РїСЂРѕСЃС‚Рѕ РѕС‚РєСЂС‹С‚СЊ РµРіРѕ */
+/** Щелчок по приглашению (в столбце или в уведомлении); если уже в канале — просто открыть его */
 function openHubJoin(hubId) {
   if (state.hubs.has(hubId)) return openHub(hubId);
   const invite = state.hubInvites.find((i) => i.hub.id === hubId);
@@ -1425,7 +1425,7 @@ function openHubJoin(hubId) {
   fillHubIcon($('hj-icon'), invite.hub);
   $('hj-name').textContent = invite.hub.name;
   const n = invite.hub.memberCount;
-  $('hj-text').textContent = `${invite.from.displayName} Р·РѕРІС‘С‚ РІР°СЃ РІ РєР°РЅР°Р». РўР°Рј СѓР¶Рµ ${n} ${plural(n, 'СѓС‡Р°СЃС‚РЅРёРє', 'СѓС‡Р°СЃС‚РЅРёРєР°', 'СѓС‡Р°СЃС‚РЅРёРєРѕРІ')}.`;
+  $('hj-text').textContent = `${invite.from.displayName} зовёт вас в канал. Там уже ${n} ${plural(n, 'участник', 'участника', 'участников')}.`;
   $('hj-error').textContent = '';
   $('hub-join').classList.remove('hidden');
 }
@@ -1438,7 +1438,7 @@ $('hj-accept').onclick = async () => {
     await refreshRooms();
     $('hub-join').classList.add('hidden');
     openHub(id);
-    toast(`Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ РІ В«${hub.name}В»`);
+    toast(`Добро пожаловать в «${hub.name}»`);
   } catch (err) {
     $('hj-error').textContent = err.message;
   }
@@ -1454,7 +1454,7 @@ $('hj-decline').onclick = async () => {
   renderRail();
 };
 
-// ---------- РЎРѕР±С‹С‚РёСЏ СЃ СЃРµСЂРІРµСЂР° ----------
+// ---------- События с сервера ----------
 
 function handleHubEvent(msg) {
   switch (msg.type) {
@@ -1465,31 +1465,31 @@ function handleHubEvent(msg) {
       forgetHub(msg.hubId);
       if (!hub || msg.reason === 'left') return;
       const text =
-        msg.reason === 'banned' ? `Р’Р°СЃ Р·Р°Р±Р°РЅРёР»Рё РІ РєР°РЅР°Р»Рµ В«${hub.name}В»`
-        : msg.reason === 'kicked' ? `Р’Р°СЃ РІС‹РіРЅР°Р»Рё РёР· РєР°РЅР°Р»Р° В«${hub.name}В»`
-        : hub.ownerId !== state.me.id ? `РљР°РЅР°Р» В«${hub.name}В» СЂР°СЃРїСѓСЃС‚РёР»Рё`
+        msg.reason === 'banned' ? `Вас забанили в канале «${hub.name}»`
+        : msg.reason === 'kicked' ? `Вас выгнали из канала «${hub.name}»`
+        : hub.ownerId !== state.me.id ? `Канал «${hub.name}» распустили`
         : '';
       if (!text) return;
       toast(text);
-      notify('РљР°РЅР°Р»', text, { kind: 'hub-removed' });
+      notify('Канал', text, { kind: 'hub-removed' });
       return;
     }
     case 'hub:invite': {
       const { invite } = msg;
       state.hubInvites = [invite, ...state.hubInvites.filter((i) => i.hub.id !== invite.hub.id)];
       renderRail();
-      const text = `${invite.from.displayName} Р·РѕРІС‘С‚ РІР°СЃ РІ РєР°РЅР°Р» В«${invite.hub.name}В»`;
+      const text = `${invite.from.displayName} зовёт вас в канал «${invite.hub.name}»`;
       toast(text);
-      notify('РџСЂРёРіР»Р°С€РµРЅРёРµ РІ РєР°РЅР°Р»', text, { kind: 'hub-invite', open: { hub: invite.hub.id } });
+      notify('Приглашение в канал', text, { kind: 'hub-invite', open: { hub: invite.hub.id } });
     }
   }
 }
 
 
 
-// Р’С‹РїР°РґР°СЋС‰РёРµ СЃРїРёСЃРєРё (СѓС‡Р°СЃС‚РЅРёРєРё, РєР°Р»РµРЅРґР°СЂСЊ, РІСЂРµРјСЏ, С‡Р°С‚) Р·Р°РєСЂС‹РІР°СЋС‚СЃСЏ С‰РµР»С‡РєРѕРј РјРёРјРѕ
+// Выпадающие списки (участники, календарь, время, чат) закрываются щелчком мимо
 document.addEventListener('click', (e) => {
-  // РљРЅРѕРїРєСѓ РјРѕРіР»Рё РїРµСЂРµСЂРёСЃРѕРІР°С‚СЊ РїСЂСЏРјРѕ РІРѕ РІСЂРµРјСЏ РєР»РёРєР° вЂ” СЌС‚Рѕ РЅРµ В«С‰РµР»С‡РѕРє РјРёРјРѕВ»
+  // Кнопку могли перерисовать прямо во время клика — это не «щелчок мимо»
   if (!e.target.isConnected) return;
   if (!e.target.closest('.multi-select')) {
     for (const list of document.querySelectorAll('.multi-select .multi-list')) list.classList.add('hidden');
