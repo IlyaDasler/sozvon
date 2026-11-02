@@ -1,3 +1,4 @@
+const { execFile } = require('node:child_process');
 const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, nativeTheme, powerMonitor, screen, session, shell, systemPreferences } = require('electron');
 // Бета живёт в отдельном профиле и не мешает установленной версии: их можно держать открытыми
 // одновременно, настройки и сессии не пересекаются
@@ -470,6 +471,65 @@ function broadcastSystemTheme() {
   for (const window of BrowserWindow.getAllWindows()) window.webContents.send('system:theme', info);
 }
 
+
+// ---------- Запущенные игры ----------
+// Каталог процессов популярных игр: имя процесса → как показывать в профиле
+const GAME_PROCESSES = {
+  'cs2.exe': 'Counter-Strike 2',
+  'csgo.exe': 'CS:GO',
+  'valorant.exe': 'VALORANT',
+  'valorant-win64-shipping.exe': 'VALORANT',
+  'dota2.exe': 'Dota 2',
+  'league of legends.exe': 'League of Legends',
+  'gta5.exe': 'GTA V',
+  'gta5_enhanced.exe': 'GTA V',
+  'rdr2.exe': 'Red Dead Redemption 2',
+  'minecraft.exe': 'Minecraft',
+  'javaw.exe': 'Minecraft',
+  'fortniteclient-win64-shipping.exe': 'Fortnite',
+  'r5apex.exe': 'Apex Legends',
+  'rustclient.exe': 'Rust',
+  'escapefromtarkov.exe': 'Escape from Tarkov',
+  'tslgame.exe': 'PUBG',
+  'cod.exe': 'Call of Duty',
+  'warzone.exe': 'Warzone',
+  'cyberpunk2077.exe': 'Cyberpunk 2077',
+  'witcher3.exe': 'The Witcher 3',
+  'eldenring.exe': 'Elden Ring',
+  'bg3.exe': "Baldur's Gate 3",
+  'overwatch.exe': 'Overwatch 2',
+  'rocketleague.exe': 'Rocket League',
+  'destiny2.exe': 'Destiny 2',
+  'rainbowsix.exe': 'Rainbow Six Siege',
+  'rainbowsix_dx11.exe': 'Rainbow Six Siege',
+  'payday3.exe': 'Payday 3',
+  'helldivers2.exe': 'Helldivers 2',
+  'starfield.exe': 'Starfield',
+  'palworld.exe': 'Palworld',
+};
+
+/** Список запущенных игр: читаем список процессов Windows и сопоставляем с каталогом */
+function detectGames() {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') return resolve([]);
+    execFile(
+      'tasklist',
+      ['/FO', 'CSV', '/NH'],
+      { windowsHide: true, timeout: 4000, maxBuffer: 8 * 1024 * 1024 },
+      (error, stdout) => {
+        if (error || !stdout) return resolve([]);
+        const found = new Set();
+        for (const line of String(stdout).split(/\r?\n/)) {
+          const name = line.split('","')[0]?.replace(/^"/, '').trim().toLowerCase();
+          if (name && GAME_PROCESSES[name]) found.add(GAME_PROCESSES[name]);
+        }
+        resolve([...found]);
+      }
+    );
+  });
+}
+
+ipcMain.handle('games:running', () => detectGames());
 ipcMain.handle('system:theme', () => systemThemeInfo());
 nativeTheme.on('updated', broadcastSystemTheme);
 // На macOS смена акцента приходит отдельным уведомлением, на Windows — опрос раз в 20 секунд

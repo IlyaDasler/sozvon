@@ -418,6 +418,16 @@ function roomItem(room) {
     timer.textContent = formatVoiceTime(serverNow() - room.voiceSince);
     row.append(timer);
   }
+  // Активность: свежие сообщения или разговор — зелёная точка, в подсказке сколько прошло
+  const lastActive = Number(room.lastActivity || 0);
+  const idle = lastActive ? serverNow() - lastActive : Infinity;
+  if (idle < 10 * 60_000 && !unread) {
+    const dot = document.createElement('span');
+    dot.className = 'room-activity';
+    const minutes = Math.max(0, Math.round(idle / 60_000));
+    dot.title = minutes < 1 ? 'Активность только что' : `Активность ${minutes} мин назад`;
+    row.append(dot);
+  }
   // Голосовая комната: щелчок сразу переносит в её голосовой канал (из другого — тоже)
   row.onclick = () => openRoom(room.id);
   if (room.kind === 'voice')
@@ -627,6 +637,12 @@ function renderRoomMessages() {
 
 function addRoomMessage(m) {
   stopTyping(`room:${m.roomId}`, m.fromId);
+  // Комната снова активна: обновляем время и перерисовываем список
+  const room = roomById(m.roomId);
+  if (room) {
+    room.lastActivity = Math.max(Number(room.lastActivity || 0), Number(m.createdAt || 0));
+    renderRooms();
+  }
   const list = state.roomHistory.get(m.roomId);
   const known = list?.find((x) => x.id === m.id);
   if (known) {

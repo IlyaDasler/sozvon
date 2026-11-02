@@ -375,6 +375,8 @@ const toRoom = (row) => ({
   events: events.ofRoom(row.id).map(toEvent),
   voice: voice.participants(row.id),
   voiceSince: voice.since(row.id),
+  // Активность: последнее сообщение или начало разговора — что позже
+  lastActivity: Math.max(roomMessages.lastAt(row.id), voice.since(row.id) || 0),
   // Часы сервера: по ним приложение считает поправку, чтобы таймер разговора был одинаковым
   // у всех — у каждого компьютера свои часы
   now: Date.now(),
@@ -1003,6 +1005,18 @@ export function createApi() {
     })
   );
   // Свой статус: активен, неактивен, не беспокоить, невидимый. Другие устройства узнают о нём сразу
+  // Запущенная игра: клиент присылает название из детекта процессов или null
+  api.put(
+    '/me/game',
+    handle((req) => {
+      const game = req.body.game == null ? null : str(req.body.game).slice(0, 60) || null;
+      users.setGame(req.user.id, game);
+      const row = users.byId(req.user.id);
+      notifyProfile(row);
+      broadcastPresence(req.user.id);
+      return toSelf(row);
+    })
+  );
   api.put(
     '/me/status',
     handle((req) => {

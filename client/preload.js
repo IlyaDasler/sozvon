@@ -34,6 +34,8 @@ contextBridge.exposeInMainWorld('desktop', {
   },
   // Превью ссылки: { url, title, description, image, siteName } или null
   preview: (url) => ipcRenderer.invoke('preview:fetch', String(url)),
+  // Запущенные игры: список названий, определённых по процессам Windows
+  games: { running: () => ipcRenderer.invoke('games:running') },
   edit: (command) => ipcRenderer.send('edit', command),
   screen: {
     sources: () => ipcRenderer.invoke('screen:sources'),

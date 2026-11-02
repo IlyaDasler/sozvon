@@ -295,6 +295,8 @@ if (!columnsOf('users').includes('bio')) db.exec("ALTER TABLE users ADD COLUMN b
 if (!columnsOf('users').includes('banner_color')) db.exec('ALTER TABLE users ADD COLUMN banner_color TEXT');
 // Баннер картинкой или гифкой: имя файла в data/banners, пусто — только цвет
 if (!columnsOf('users').includes('banner')) db.exec('ALTER TABLE users ADD COLUMN banner TEXT');
+  // Запущенная игра: приходит из приложения (детект процессов) и показывается в профиле
+  if (!columnsOf('users').includes('game')) db.exec('ALTER TABLE users ADD COLUMN game TEXT');
 // Цвет ника в чате, голосе и участниках; пусто — как цвет аватара
 if (!columnsOf('users').includes('name_color')) db.exec('ALTER TABLE users ADD COLUMN name_color TEXT');
 if (!columnsOf('users').includes('status')) db.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'online'");
@@ -364,6 +366,7 @@ export const toPublicUser = (row) =>
     bio: row.bio || '',
     bannerColor: row.banner_color || null,
     bannerUrl: row.banner ? `/api/banners/${row.banner}` : null,
+    game: row.game || null,
     nameColor: row.name_color || null,
     memberSince: row.created_at,
     publicKey: row.public_key || null,
@@ -412,6 +415,7 @@ const q = {
   setTotpRecovery: db.prepare('UPDATE users SET totp_recovery = ? WHERE id = ?'),
   updateAvatar: db.prepare('UPDATE users SET avatar = ? WHERE id = ?'),
   updateBanner: db.prepare('UPDATE users SET banner = ? WHERE id = ?'),
+  updateGame: db.prepare('UPDATE users SET game = ? WHERE id = ?'),
 
   listContacts: db.prepare(`
     SELECT u.*, c.chat_theme FROM contacts c JOIN users u ON u.id = c.contact_id
@@ -603,6 +607,7 @@ const q = {
   roomMessageById: db.prepare('SELECT * FROM room_messages WHERE id = ?'),
   deleteRoomMessage: db.prepare('DELETE FROM room_messages WHERE id = ?'),
   roomMessages: db.prepare('SELECT * FROM room_messages WHERE room_id = ? AND thread_root IS NULL AND id < ? ORDER BY id DESC LIMIT ?'),
+  roomLastMessage: db.prepare('SELECT MAX(created_at) AS ts FROM room_messages WHERE room_id = ?'),
   roomThread: db.prepare('SELECT * FROM room_messages WHERE thread_root = ? ORDER BY id LIMIT ?'),
   roomThreadAuthors: db.prepare('SELECT DISTINCT from_id FROM room_messages WHERE thread_root = ?'),
   roomReplyCounts: db.prepare('SELECT thread_root, COUNT(*) AS count FROM room_messages WHERE room_id = ? AND thread_root IS NOT NULL GROUP BY thread_root'),
@@ -630,6 +635,7 @@ export const users = {
   setTotpRecovery: (id, recoveryHashes) => q.setTotpRecovery.run(JSON.stringify(recoveryHashes), id),
   updateAvatar: (id, avatar) => q.updateAvatar.run(avatar, id),
   updateBanner: (id, banner) => q.updateBanner.run(banner, id),
+  setGame: (id, game) => q.updateGame.run(game, id),
 };
 
 // Дружба взаимная: при добавлении записываем обе стороны
@@ -1013,6 +1019,8 @@ export const roomMessages = {
     for (const row of q.roomReplyCounts.all(roomId)) map.set(row.thread_root, row.count);
     return map;
   },
+  /** Время последнего сообщения в комнате: для значка активности */
+  lastAt: (roomId) => q.roomLastMessage.get(roomId)?.ts || 0,
   byId: (id) => q.roomMessageById.get(id),
   remove: (id) => q.deleteRoomMessage.run(id),
 };
