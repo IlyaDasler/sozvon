@@ -116,6 +116,9 @@ if ! mv "$NEW" "$APP"; then
   exit 1
 fi
 xattr -dr com.apple.quarantine "$APP" 2>/dev/null
+# Подпись должна быть валидной, иначе macOS скажет «приложение повреждено» (на Apple Silicon
+# это требование ко всему коду). Архив уже подписан адхоком, но подстрахуемся
+codesign --force --deep --sign - "$APP" 2>/dev/null
 open "$APP" || true
 sleep 2
 rm -rf "$OLD"
