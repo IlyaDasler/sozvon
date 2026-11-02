@@ -2010,7 +2010,7 @@ export function createApi() {
       // @all: клиент присылает флаг, потому что текст зашифрован и сервер его не читает
       const mentionAll = Boolean(req.body.mentionAll);
       const message = withMessageMeta(
-        [toRoomMessage(roomMessages.add(room.id, req.user.id, text, { ...extra, replyTo, threadRoot }))],
+        [toRoomMessage(roomMessages.add(room.id, req.user.id, text, { ...extra, replyTo, threadRoot, mentionAll }))],
         'room',
         room.id,
         req.user.id

@@ -2442,3 +2442,22 @@ code, pre, .msg-text code, .e2ee-card input { font-family: var(--font-mono); }
   letter-spacing: 0;
 }
 .oauth-btn[data-provider='yandex'] .provider-badge { background: #fc3f1d; color: #fff; }
+/* Упоминание всех участников канала (@all): подсветка строки и метка */
+.msg.mentions-all { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.msg.mentions-all .msg-text::before {
+  content: 'на всех';
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  vertical-align: 1px;
+}
+[data-theme='glass'] .msg.mentions-all {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 70%, transparent);
+}

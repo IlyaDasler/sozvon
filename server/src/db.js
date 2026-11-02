@@ -263,6 +263,8 @@ if (!columnsOf('rooms').includes('group_id')) db.exec('ALTER TABLE rooms ADD COL
   // Треды: ответ в треде хранится отдельной строкой и ссылается на корневое сообщение.
   // В основной ленте такие ответы не показываются, их видно только внутри треда
   if (!columnsOf('room_messages').includes('thread_root')) db.exec('ALTER TABLE room_messages ADD COLUMN thread_root INTEGER');
+  // @all: флаг хранится в сообщении, чтобы он переживал перезагрузку и был виден всем
+  if (!columnsOf('room_messages').includes('mention_all')) db.exec('ALTER TABLE room_messages ADD COLUMN mention_all INTEGER NOT NULL DEFAULT 0');
   if (!columnsOf('messages').includes('thread_root')) db.exec('ALTER TABLE messages ADD COLUMN thread_root INTEGER');
   db.exec('CREATE INDEX IF NOT EXISTS room_messages_thread ON room_messages (thread_root, id)');
   db.exec('CREATE INDEX IF NOT EXISTS messages_thread ON messages (thread_root, id)');
@@ -382,6 +384,8 @@ export const toMessage = (row) => ({
   preview: parseJson(row.preview, null),
   enc: parseJson(row.enc, null),
   replyTo: row.reply_to || null,
+  mentionAll: Boolean(row.mention_all),
+  threadRoot: row.thread_root || null,
   editedAt: row.edited_at || null,
   createdAt: row.created_at,
 });
@@ -586,7 +590,7 @@ const q = {
   removeHubBan: db.prepare('DELETE FROM hub_bans WHERE hub_id = ? AND user_id = ?'),
 
   insertRoomMessage: db.prepare(
-    'INSERT INTO room_messages (room_id, from_id, text, attachments, preview, enc, reply_to, thread_root, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO room_messages (room_id, from_id, text, attachments, preview, enc, reply_to, thread_root, mention_all, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ),
 
   insertUpload: db.prepare('INSERT INTO uploads (id, owner_id, name, mime, size, kind, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'),
@@ -970,13 +974,15 @@ export const toRoomMessage = (row) => ({
   preview: parseJson(row.preview, null),
   enc: parseJson(row.enc, null),
   replyTo: row.reply_to || null,
+  mentionAll: Boolean(row.mention_all),
+  threadRoot: row.thread_root || null,
   editedAt: row.edited_at || null,
   createdAt: row.created_at,
 });
 
 export const roomMessages = {
-  add(roomId, fromId, text, { attachments = [], preview = null, enc = null, replyTo = null, threadRoot = null } = {}) {
-    const res = q.insertRoomMessage.run(roomId, fromId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), enc && JSON.stringify(enc), replyTo, threadRoot, Date.now());
+  add(roomId, fromId, text, { attachments = [], preview = null, enc = null, replyTo = null, threadRoot = null, mentionAll = false } = {}) {
+    const res = q.insertRoomMessage.run(roomId, fromId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), enc && JSON.stringify(enc), replyTo, threadRoot, mentionAll ? 1 : 0, Date.now());
     return q.roomMessageById.get(Number(res.lastInsertRowid));
   },
   /** Правка: новый зашифрованный конверт вместо текста */
