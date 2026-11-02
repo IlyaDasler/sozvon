@@ -91,3 +91,64 @@ function renderThemePicker() {
     grid.append(card);
   }
 }
+// ---------- Форма углов и «живая» подсветка стекла ----------
+
+const uiRadius = () => Math.min(24, Math.max(6, Number(store.get('uiRadius', 12))));
+const sheenOn = () => store.get('glassSheen', true) !== false;
+
+/** Скругление действует на весь интерфейс: от него зависят и панели, и поля, и окна */
+function applyUiShape() {
+  const r = uiRadius();
+  const root = document.documentElement.style;
+  root.setProperty('--r-s', `${Math.max(4, r - 6)}px`);
+  root.setProperty('--r-m', `${r}px`);
+  root.setProperty('--r-l', `${r + 4}px`);
+  root.setProperty('--r-xl', `${r + 8}px`);
+  root.setProperty('--radius', `${Math.max(6, r - 2)}px`);
+  root.setProperty('--glass-radius', `${r + 6}px`);
+  root.setProperty('--glass-sheen', sheenOn() ? '1' : '0');
+  const radiusInput = $('ui-radius');
+  if (radiusInput) {
+    radiusInput.value = String(r);
+    $('ui-radius-value').textContent = `${r} px`;
+  }
+  const sheen = $('ui-sheen');
+  if (sheen) sheen.checked = sheenOn();
+}
+
+$('ui-radius').oninput = () => {
+  store.set('uiRadius', Number($('ui-radius').value));
+  applyUiShape();
+};
+$('ui-sheen').onchange = () => {
+  store.set('glassSheen', $('ui-sheen').checked);
+  applyUiShape();
+};
+applyUiShape();
+
+// Подсветка следует за курсором: каждая стеклянная панель узнаёт, где курсор внутри неё,
+// и «отзывается» бликом — именно это отличает жидкое стекло от простой прозрачности
+let sheenQueued = false;
+let lastPointer = null;
+
+function paintSheen() {
+  sheenQueued = false;
+  const event = lastPointer;
+  if (!event || !sheenOn()) return;
+  const panel = event.target?.closest?.('.sidebar, .content, .modal-card, .call-panel');
+  if (!panel) return;
+  const box = panel.getBoundingClientRect();
+  panel.style.setProperty('--mx', `${Math.round(event.clientX - box.left)}px`);
+  panel.style.setProperty('--my', `${Math.round(event.clientY - box.top)}px`);
+}
+
+document.addEventListener(
+  'pointermove',
+  (event) => {
+    lastPointer = event;
+    if (sheenQueued) return;
+    sheenQueued = true;
+    requestAnimationFrame(paintSheen);
+  },
+  { passive: true }
+);
