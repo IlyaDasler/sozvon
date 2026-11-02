@@ -2277,27 +2277,3 @@ input[type='radio']:disabled { opacity: .45; cursor: default; }
 .plan-item.now { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); }
 .plan-item.now .plan-dot { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent); }
 .plan-item.todo .plan-dot { background: color-mix(in srgb, var(--muted) 45%, transparent); }
-/* Плавающий индикатор этапа рефакторинга: виден всегда, открывает «План 3.0» */
-.plan-chip {
-  position: fixed;
-  right: 14px;
-  bottom: 92px;
-  z-index: 30;
-  max-width: 46vw;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  background: color-mix(in srgb, var(--bg-deep) 82%, transparent);
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
-  backdrop-filter: blur(12px) saturate(160%);
-  color: var(--text);
-  font: 600 11px/1.3 system-ui, sans-serif;
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-  opacity: .92;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, .28);
-}
-.plan-chip:hover { opacity: 1; border-color: var(--accent); }
