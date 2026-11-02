@@ -32,7 +32,8 @@ const ICONS = {
 };
 
 // Токен и закрытый ключ на диске — только зашифрованными (vault.js)
-const isSecret = (key) => key === 'session' || key.startsWith('e2ee:identity:');
+// Секретным считается и ключ шифрования нового вида: e2ee:<сервер>:identity:<id>
+const isSecret = (key) => key === 'session' || (key.startsWith('e2ee:') && key.includes(':identity:'));
 
 const store = {
   get(key, fallback) {
