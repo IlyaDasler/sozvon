@@ -2546,13 +2546,7 @@ function renderUpdate() {
   $('update-status').textContent = (UPDATE_TEXT[s.state]?.(s) ?? '') + checked;
   $('update-status').title = s.state === 'error' ? s.message || '' : '';
   $('update-check-btn').textContent =
-    s.state === 'ready'
-      ? 'Перезапустить и обновить'
-      : s.state === 'available'
-        ? s.manual
-          ? 'Скачать для macOS'
-          : 'Обновить…'
-        : 'Проверить обновления';
+    s.state === 'ready' ? 'Перезапустить и обновить' : s.state === 'available' ? 'Обновить…' : 'Проверить обновления';
   $('update-check-btn').disabled = s.state === 'checking' || s.state === 'downloading';
 }
 
@@ -2569,12 +2563,8 @@ function installUpdate() {
 async function startUpdate() {
   if (activeSession() && !(await ask('После загрузки приложение перезапустится, и звонок завершится.', { title: 'Сейчас идёт звонок', ok: 'Обновить' })))
     return;
-  // macOS без сертификата Apple: установить сами не можем — открываем страницу с новой версией
-  if (updateStatus.manual) {
-    updateRequested = false;
-    window.desktop.update.download();
-    return;
-  }
+  // macOS без сертификата Apple: приложение качает архив с GitHub и подменяет себя само,
+  // поэтому здесь тот же путь, что и в Windows
   updateRequested = true;
   $('update-error').textContent = '';
   if (updateStatus.state === 'ready') return installUpdate();

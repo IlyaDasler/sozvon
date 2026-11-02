@@ -239,9 +239,11 @@ function checkForUpdates() {
 }
 
 // На macOS автообновление ставится только подписанному приложению (Squirrel.Mac сверяет подпись).
-// Пока сертификата Apple нет — проверку делаем, а вместо установки открываем страницу релиза
-const MAC_RELEASE_URL = 'https://github.com/IlyaDasler/sozvon/releases/latest';
+// Сертификата Apple нет, поэтому обновление делает наш модуль: качает zip с GitHub, подменяет
+// бандл и перезапускает приложение. Цена — macOS заново спросит разрешения после обновления
+const macUpdate = require('./mac-update');
 const manualUpdate = () => process.platform === 'darwin';
+let macUpdateApp = null;
 
 // Описание релиза с GitHub приходит строкой HTML или списком по версиям
 function releaseNotes(info) {
@@ -259,13 +261,12 @@ function setupUpdater({ checkNow = true } = {}) {
     setUpdateStatus({
       state: 'available',
       version: info.version,
-      // На macOS установить сами не можем — сразу говорим, что делать
+      // На macOS ставим сами: предупреждаем, что система заново спросит разрешения
       notes: manualUpdate()
-        ? `${releaseNotes(info)}\n\nНа macOS обновление ставится вручную: нажмите «Скачать», откроется страница с новой версией.`
+        ? `${releaseNotes(info)}\n\nПосле обновления macOS заново спросит доступ к микрофону, камере и экрану — это нормально.`
         : releaseNotes(info),
       percent: 0,
       checkedAt: Date.now(),
-      manual: manualUpdate(),
     })
   );
   autoUpdater.on('download-progress', (p) => setUpdateStatus({ state: 'downloading', percent: Math.round(p.percent) }));
@@ -322,20 +323,55 @@ async function startWithSplash() {
 ipcMain.handle('update:status', () => ({ ...updateStatus, current: app.getVersion() }));
 ipcMain.on('update:check', checkForUpdates);
 ipcMain.on('update:download', () => {
-  // macOS без сертификата Apple: качаем не мы, а человек — открываем страницу релиза
+  // macOS: качаем архив с GitHub сами, потому что системный автоапдейтер без подписи не работает
   if (manualUpdate()) {
-    shell.openExternal(MAC_RELEASE_URL);
+    downloadMacUpdate();
     return;
   }
   if (updateStatus.state !== 'available' && updateStatus.state !== 'error') return;
   setUpdateStatus({ state: 'downloading', percent: 0 });
   autoUpdater.downloadUpdate().catch(() => {}); // ошибка придёт через событие 'error'
 });
+
+// Обновление для macOS: скачать zip и распаковать рядом во временной папке
+async function downloadMacUpdate() {
+  if (updateStatus.state === 'downloading') return;
+  setUpdateStatus({ state: 'downloading', percent: 0 });
+  try {
+    macUpdateApp = await macUpdate.prepare({
+      version: updateStatus.version,
+      onProgress: (percent) => setUpdateStatus({ state: 'downloading', percent }),
+    });
+    setUpdateStatus({ state: 'ready', version: updateStatus.version });
+  } catch (err) {
+    macUpdateApp = null;
+    setUpdateStatus({ state: 'error', message: `${err.message}. Можно скачать новую версию со страницы релиза` });
+  }
+}
 // true, true — установить молча, без окна установщика, и сразу запустить новую версию.
 // Что идёт обновление, человек видит в самом приложении («Устанавливаем обновление…») перед его закрытием.
 // Окно приложения закрываем заранее: установщик не должен застать Созвон ещё запущенным
 ipcMain.on('update:install', () => {
   if (updateStatus.state !== 'ready') return;
+  // macOS: подменяем бандл скриптом после выхода и запускаем заново
+  if (manualUpdate()) {
+    const bundle = macUpdate.bundlePath();
+    const result =
+      macUpdateApp && bundle
+        ? macUpdate.apply({
+            newApp: macUpdateApp,
+            app: bundle,
+            onQuit: () => {
+              quitting = true;
+              app.removeAllListeners('window-all-closed');
+              win?.destroy();
+              app.quit();
+            },
+          })
+        : { ok: false, reason: 'Обновление не скачано' };
+    if (!result.ok) setUpdateStatus({ state: 'error', message: `${result.reason}. Скачайте новую версию со страницы релиза` });
+    return;
+  }
   quitting = true;
   app.removeAllListeners('window-all-closed');
   win?.destroy();
