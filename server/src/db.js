@@ -259,6 +259,13 @@ db.exec(`
   );
 `);
 if (!columnsOf('rooms').includes('group_id')) db.exec('ALTER TABLE rooms ADD COLUMN group_id INTEGER');
+
+  // Треды: ответ в треде хранится отдельной строкой и ссылается на корневое сообщение.
+  // В основной ленте такие ответы не показываются, их видно только внутри треда
+  if (!columnsOf('room_messages').includes('thread_root')) db.exec('ALTER TABLE room_messages ADD COLUMN thread_root INTEGER');
+  if (!columnsOf('messages').includes('thread_root')) db.exec('ALTER TABLE messages ADD COLUMN thread_root INTEGER');
+  db.exec('CREATE INDEX IF NOT EXISTS room_messages_thread ON room_messages (thread_root, id)');
+  db.exec('CREATE INDEX IF NOT EXISTS messages_thread ON messages (thread_root, id)');
 // Свой порядок комнат в канале (перетаскивание): меньше — выше
 if (!columnsOf('rooms').includes('position')) db.exec('ALTER TABLE rooms ADD COLUMN position INTEGER');
 db.exec('UPDATE rooms SET position = id WHERE position IS NULL');
@@ -579,7 +586,7 @@ const q = {
   removeHubBan: db.prepare('DELETE FROM hub_bans WHERE hub_id = ? AND user_id = ?'),
 
   insertRoomMessage: db.prepare(
-    'INSERT INTO room_messages (room_id, from_id, text, attachments, preview, enc, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO room_messages (room_id, from_id, text, attachments, preview, enc, reply_to, thread_root, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ),
 
   insertUpload: db.prepare('INSERT INTO uploads (id, owner_id, name, mime, size, kind, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'),
@@ -589,7 +596,10 @@ const q = {
   deleteUpload: db.prepare('DELETE FROM uploads WHERE id = ?'),
   roomMessageById: db.prepare('SELECT * FROM room_messages WHERE id = ?'),
   deleteRoomMessage: db.prepare('DELETE FROM room_messages WHERE id = ?'),
-  roomMessages: db.prepare('SELECT * FROM room_messages WHERE room_id = ? AND id < ? ORDER BY id DESC LIMIT ?'),
+  roomMessages: db.prepare('SELECT * FROM room_messages WHERE room_id = ? AND thread_root IS NULL AND id < ? ORDER BY id DESC LIMIT ?'),
+  roomThread: db.prepare('SELECT * FROM room_messages WHERE thread_root = ? ORDER BY id LIMIT ?'),
+  roomThreadAuthors: db.prepare('SELECT DISTINCT from_id FROM room_messages WHERE thread_root = ?'),
+  roomReplyCounts: db.prepare('SELECT thread_root, COUNT(*) AS count FROM room_messages WHERE room_id = ? AND thread_root IS NOT NULL GROUP BY thread_root'),
 };
 
 export const users = {
@@ -965,8 +975,8 @@ export const toRoomMessage = (row) => ({
 });
 
 export const roomMessages = {
-  add(roomId, fromId, text, { attachments = [], preview = null, enc = null, replyTo = null } = {}) {
-    const res = q.insertRoomMessage.run(roomId, fromId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), enc && JSON.stringify(enc), replyTo, Date.now());
+  add(roomId, fromId, text, { attachments = [], preview = null, enc = null, replyTo = null, threadRoot = null } = {}) {
+    const res = q.insertRoomMessage.run(roomId, fromId, text, JSON.stringify(attachments), preview && JSON.stringify(preview), enc && JSON.stringify(enc), replyTo, threadRoot, Date.now());
     return q.roomMessageById.get(Number(res.lastInsertRowid));
   },
   /** Правка: новый зашифрованный конверт вместо текста */
@@ -976,6 +986,23 @@ export const roomMessages = {
   },
   list(roomId, beforeId = Number.MAX_SAFE_INTEGER, limit = 50) {
     return q.roomMessages.all(roomId, beforeId, limit).reverse();
+  },
+  /** Ответы в треде, от старых к новым */
+  thread(rootId, limit = 200) {
+    return q.roomThread.all(rootId, limit);
+  },
+  /** Участники треда: автор корня и все, кто ответил */
+  participants(rootId) {
+    const root = q.roomMessageById.get(rootId);
+    const ids = new Set(q.roomThreadAuthors.all(rootId).map((r) => r.from_id));
+    if (root) ids.add(root.from_id);
+    return [...ids];
+  },
+  /** Сколько ответов в ветках у сообщений комнаты */
+  replyCounts(roomId) {
+    const map = new Map();
+    for (const row of q.roomReplyCounts.all(roomId)) map.set(row.thread_root, row.count);
+    return map;
   },
   byId: (id) => q.roomMessageById.get(id),
   remove: (id) => q.deleteRoomMessage.run(id),
