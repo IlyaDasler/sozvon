@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8">
@@ -1031,7 +1031,10 @@
         <li>На устройстве, где Созвон уже работает: Настройки → Аккаунт → «Перенести ключ на другое устройство».</li>
         <li>Введите показанный там код сюда.</li>
       </ol>
-      <input id="e2ee-code" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false">
+      <div class="row code-row">
+        <input id="e2ee-code" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false">
+        <button type="button" class="btn" id="e2ee-paste-btn" title="Вставить код из буфера">Вставить</button>
+      </div>
       <p class="error" id="e2ee-setup-error"></p>
       <div class="row">
         <button type="button" class="btn danger-outline" id="e2ee-reset-btn">Создать новый ключ</button>

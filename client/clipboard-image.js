@@ -3,6 +3,9 @@ const { clipboard, ClipboardItem, ipcMain } = require('electron');
 
 function registerClipboardImage() {
   ipcMain.handle('clipboard:write', (_event, text) => clipboard.writeText(String(text)));
+  // Чтение буфера нужно для кнопки «Вставить»: на macOS системный Cmd+V в некоторых полях
+  // не доходит до страницы, а кнопка работает всегда
+  ipcMain.handle('clipboard:read', () => clipboard.readText());
   ipcMain.handle('clipboard:image', async (_event, dataUrl) => {
     const [, base64] = /^data:image\/png;base64,(.+)$/.exec(String(dataUrl)) || [];
     if (!base64) throw new Error('Не картинка');
