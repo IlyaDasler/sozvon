@@ -1601,7 +1601,7 @@ function handleEvent(msg) {
       return toast(/^[а-яё]/.test(text) ? `${who} ${text}` : text);
     }
     default:
-      if (msg.type.startsWith('room:')) handleRoomEvent(msg);
+      if (msg.type.startsWith('room:') || msg.type.startsWith('event:')) handleRoomEvent(msg);
       else if (msg.type.startsWith('hub:')) handleHubEvent(msg);
   }
 }
