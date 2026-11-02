@@ -194,4 +194,20 @@ runTest(async () => {
   if (th.itemBg !== 'rgba(0, 0, 0, 0)') throw new Error(`У обёртки канала свой фон: ${th.itemBg}`);
   if (th.tileInside === false) throw new Error('Плитка канала вылезает за обёртку');
   console.log('✔ анимации только в стекле, рейл без рамок вокруг аватарок');
+
+  // ---------- Каналы с картинкой не обрезаются кругом ----------
+  await js(win, `openHub(${hub.id}); true`);
+  await sleep(500);
+  const photo = await js(win, `(() => {
+    const tile = document.querySelector('.rail-tile.has-image');
+    if (!tile) return JSON.stringify({ skip: true });
+    const cs = getComputedStyle(tile);
+    return JSON.stringify({ radius: cs.borderRadius, size: Math.round(tile.getBoundingClientRect().width), bg: Boolean(cs.backgroundImage && cs.backgroundImage !== 'none') });
+  })()`);
+  const ph = JSON.parse(photo);
+  if (!ph.skip) {
+    if (/50%/.test(ph.radius)) throw new Error('Плитка канала с картинкой обрезана кругом');
+    if (ph.bg !== true) throw new Error('У плитки канала пропала картинка');
+  }
+  console.log('✔ каналы с картинкой — скруглённый квадрат, фото не обрезано');
 });
