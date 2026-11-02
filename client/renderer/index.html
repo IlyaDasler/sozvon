@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="glass.css">
   <script src="theme-boot.js"></script>
   <script src="liquid-tabs.js" defer></script>
+  <script src="refactor-status.js" defer></script>
   <script src="tooltips.js"></script>
 </head>
 <body>
@@ -429,6 +430,7 @@
         <button type="button" data-tab="notify">Уведомления</button>
         <button type="button" data-tab="account">Аккаунт</button>
         <button type="button" data-tab="about">О приложении</button>
+        <button type="button" data-tab="plan">План 3.0</button>
         <div class="rs-sep"></div>
         <button type="button" class="rs-danger" id="logout-btn">Выйти из аккаунта</button>
       </nav>
@@ -438,6 +440,16 @@
           <button type="button" class="icon-btn" id="settings-close" title="Закрыть (Esc)"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
         </header>
         <div class="rs-body set-body">
+          <div class="set-pane" data-pane="plan">
+            <div class="set-block">
+              <div class="plan-head">
+                <span class="plan-title">Рефакторинг интерфейса 3.0</span>
+                <span class="plan-current" id="plan-current"></span>
+              </div>
+              <ul class="plan-list" id="plan-list"></ul>
+              <p class="muted small" style="margin:14px 0 0">Статус обновляется с каждой сборкой беты. Зелёное — готово, синее — в работе, серое — в очереди.</p>
+            </div>
+          </div>
 
           <div class="set-pane" data-pane="profile">
             <div class="set-block">
