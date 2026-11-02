@@ -2309,3 +2309,47 @@ input[type='radio']:disabled { opacity: .45; cursor: default; }
   letter-spacing: .02em;
 }
 .msg.cont { padding-top: 1px; }
+/* ---------- Единая толщина штриха у иконок ----------
+   В разметке смешаны 1.5 / 1.7 / 1.8 / 2 / 2.4 px. Приводим контурные иконки
+   к одному значению и одинаковым скруглениям концов */
+:root { --icon-stroke: 1.75; }
+svg[fill='none'],
+svg:not([fill]) {
+  stroke-width: var(--icon-stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* ---------- Переходы экранов, окон и меню ----------
+   Появление окна: подложка проявляется, карточка всплывает с пружиной.
+   Смена экрана и поповеров — тем же ритмом 160–200 мс */
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.modal:not(.hidden) .modal-card {
+  animation: modal-in 190ms cubic-bezier(.22, 1.15, .36, 1);
+}
+.modal:not(.hidden) { animation: scrim-in 160ms ease-out; }
+.popup-menu:not(.hidden),
+.popup:not(.hidden),
+.app-tip:not(.hidden) {
+  animation: pop-in 140ms cubic-bezier(.22, 1.15, .36, 1);
+}
+.screen:not(.hidden) { animation: scrim-in 180ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .modal:not(.hidden) .modal-card,
+  .modal:not(.hidden),
+  .popup-menu:not(.hidden),
+  .popup:not(.hidden),
+  .app-tip:not(.hidden),
+  .screen:not(.hidden) { animation: none; }
+}
