@@ -31,7 +31,8 @@ for (const { dir, app } of apps) {
       const isDir = fs.existsSync(path.join(root, dep)) && fs.statSync(path.join(root, dep)).isDirectory();
       required.add(path.posix.normalize(isDir ? `${dep}/index.js` : dep.endsWith('.js') ? dep : `${dep}.js`));
     }
-    for (const [, args] of source.matchAll(/path\.join\(__dirname, ((?:'[^']+')(?:, )?)+\)/g))
+    // path.join(__dirname, 'renderer', 'index.html') — берём путь целиком, а не последний кусок
+    for (const [, args] of source.matchAll(/path\.join\(__dirname, ((?:'[^']+'(?:, )?)+)\)/g))
       required.add(args.split(', ').map((a) => a.slice(1, -1)).join('/'));
   }
 
