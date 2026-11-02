@@ -8,7 +8,7 @@ const { offerRemoveOldCopy, repairShortcuts } = require('./install-repair');
 const { applyPermissions } = require('./permissions');
 const { fetchPreview } = require('./link-preview');
 const { restoreBounds, readState, trackWindow } = require('./window-state');
-const { runStartup, CHECK_TIMEOUT_MS } = require('./startup');
+const { runStartup, CHECK_TIMEOUT_MS, canAutoInstall } = require('./startup');
 const { registerNativeScreen } = require('./screen-native');
 const { registerVault } = require('./vault');
 const { registerClipboardImage } = require('./clipboard-image');
@@ -255,7 +255,9 @@ function releaseNotes(info) {
 function setupUpdater({ checkNow = true } = {}) {
   // Сами не качаем: сначала спрашиваем пользователя в окне обновления
   autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
+  // Автоустановка при выходе — только Windows: на macOS Squirrel.Mac ставит лишь подписанное
+  // приложение и на неподписанном просто зависает на заставке «Устанавливаем…»
+  autoUpdater.autoInstallOnAppQuit = process.platform !== 'darwin';
   autoUpdater.on('checking-for-update', () => setUpdateStatus({ state: 'checking', message: '' }));
   autoUpdater.on('update-available', (info) =>
     setUpdateStatus({
@@ -307,8 +309,19 @@ function showSplashStatus(status) {
 
 async function startWithSplash() {
   const result = await runStartup(autoUpdater, { onStatus: showSplashStatus, timeoutMs: app.isPackaged ? CHECK_TIMEOUT_MS : 1500 });
-  if (result === 'install') {
+  // Страховка: что бы ни случилось с обновлением, приложение обязано открыться
+  const showWindow = () => {
+    if (quitting) return;
+    if (win.webContents.isLoading()) win.webContents.once('did-finish-load', () => win.show());
+    else win.show();
+    splash?.close();
+  };
+  const watchdog = setTimeout(showWindow, 12000);
+  // На macOS обновление ставим своим механизмом, а не Squirrel: quitAndInstall здесь
+  // не отвечает и оставляет человека на заставке навсегда
+  if (canAutoInstall(process.platform, result)) {
     quitting = true;
+    clearTimeout(watchdog);
     app.removeAllListeners('window-all-closed');
     win?.destroy();
     setTimeout(() => autoUpdater.quitAndInstall(true, true), 600); // «Устанавливаем…» успевают увидеть
@@ -316,6 +329,7 @@ async function startWithSplash() {
   }
   // Приложение показываем, когда его страница готова, — без белой вспышки
   if (win.webContents.isLoading()) await new Promise((r) => win.webContents.once('did-finish-load', r));
+  clearTimeout(watchdog);
   win.show();
   splash?.close();
 }
@@ -341,6 +355,7 @@ async function downloadMacUpdate() {
     macUpdateApp = await macUpdate.prepare({
       version: updateStatus.version,
       onProgress: (percent) => setUpdateStatus({ state: 'downloading', percent }),
+      onStage: () => setUpdateStatus({ state: 'unpacking', percent: 100 }),
     });
     setUpdateStatus({ state: 'ready', version: updateStatus.version });
   } catch (err) {

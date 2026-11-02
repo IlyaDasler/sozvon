@@ -2474,6 +2474,7 @@ const UPDATE_TEXT = {
   checking: () => 'Проверяем обновления…',
   available: (s) => `Доступна версия ${s.version}`,
   downloading: (s) => `Скачивается версия ${s.version} (${s.percent ?? 0}%)`,
+  unpacking: (s) => `Распаковываем версию ${s.version}…`,
   ready: (s) => `Версия ${s.version} скачана и готова к установке`,
   latest: () => 'У вас последняя версия',
   error: () => 'Не удалось проверить обновления',
