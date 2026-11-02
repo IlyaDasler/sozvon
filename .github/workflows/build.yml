@@ -38,10 +38,16 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
-      # Своего нативного захвата экрана для macOS нет: трансляция идёт через Chromium
+      # Своего нативного захвата экрана для macOS нет: трансляция идёт через Chromium.
+      # Подпись включается сама, когда в настройках репозитория появятся секреты
+      # (docs/macos-signing.md): без сертификата Apple автообновление на macOS невозможно
       - run: npm run dist:mac
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - uses: actions/upload-artifact@v4
         with:
           name: Sozvon-mac
