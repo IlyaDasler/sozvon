@@ -2463,3 +2463,24 @@ code, pre, .msg-text code, .e2ee-card input { font-family: var(--font-mono); }
 }
 /* Приватная комната: замок в списке каналов */
 .room-lock { flex: none; font-size: 11px; line-height: 1; opacity: .8; margin-right: 2px; }
+/* Активность комнаты: тихая зелёная точка, не мешает замку и бейджу непрочитанного */
+.room-activity {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent);
+}
+/* Профиль: запущенная игра */
+.pc-game {
+  margin: 6px 0 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  color: color-mix(in srgb, var(--ok) 70%, var(--text));
+  font-size: 12px;
+  font-weight: 600;
+  width: fit-content;
+}

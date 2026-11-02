@@ -38,6 +38,12 @@ function openProfileCard(userId, anchor) {
   }
   card.append(banner);
 
+  if (user.game) {
+    const game = document.createElement('div');
+    game.className = 'pc-game';
+    game.textContent = '🎮 ' + user.game;
+    card.append(game);
+  }
   const avatar = makeAvatar(user, isMe ? myStatus() : presenceOf(user), 'huge');
   avatar.classList.add('pc-avatar');
   card.append(avatar);
