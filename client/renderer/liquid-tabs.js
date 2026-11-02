@@ -49,30 +49,37 @@
       pill.style.opacity = '0';
     }
 
+    let settling = 0;
+
     function settle() {
       const next = activeButton(root);
       if (!next) return;
       const target = rectOf(root, next);
-      if (current && (target.x !== current.x || target.w !== current.w)) {
-        // Растягиваем подложку так, чтобы она накрыла старую и новую кнопку
-        const left = Math.min(current.x, target.x);
-        const right = Math.max(current.x + current.w, target.x + target.w);
-        const stretched = { x: left, y: target.y, w: right - left, h: target.h };
-        apply(pill, stretched, 'none');
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            apply(pill, target, '');
-          });
-        });
-      } else {
+      if (!current) {
         apply(pill, target, 'none');
-        requestAnimationFrame(() => {
-          pill.style.transition = '';
-        });
+        current = target;
+        return;
       }
+      if (target.x === current.x && target.w === current.w) return;
+
+      // Фаза 1: мягко растягиваемся, накрывая старую и новую кнопку
+      const left = Math.min(current.x, target.x);
+      const right = Math.max(current.x + current.w, target.x + target.w);
+      const stretched = { x: left, y: target.y, w: right - left, h: target.h };
+      pill.style.transition =
+        'width .14s cubic-bezier(.4, 0, .2, 1), transform .14s cubic-bezier(.4, 0, .2, 1), height .14s ease';
+      apply(pill, stretched);
+
+      // Фаза 2: пружинно собираемся под новой кнопкой
+      const token = ++settling;
+      setTimeout(() => {
+        if (token !== settling) return;
+        pill.style.transition =
+          'transform .36s cubic-bezier(.22, 1.15, .36, 1), width .36s cubic-bezier(.22, 1.15, .36, 1), height .22s ease';
+        apply(pill, target);
+      }, 140);
       current = target;
     }
-
     root.addEventListener('click', () => requestAnimationFrame(settle));
     new MutationObserver(() => settle()).observe(root, {
       subtree: true,
