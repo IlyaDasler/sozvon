@@ -1,35 +1,33 @@
-// «Жидкий» индикатор активной вкладки: подложка перетекает к выбранной кнопке
-// с пружинной анимацией и лёгким растяжением — как в iOS 26 при переключении вкладок
+// Жидкий морфинг при переключении: вкладки и свитчеры
+// Вкладки: подложка сначала растягивается, накрывая старую и новую кнопку, потом собирается
+// Свитчеры: бегунок слегка вытягивается в момент переключения и возвращается — как капля
 (() => {
-  const SELECTORS = ['#friend-tabs', '#set-nav', '#screen-tabs'];
   const reduced = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
   function activeButton(root) {
     return root.querySelector('button.active, button[aria-selected="true"]');
   }
 
-  function place(root, pill, animate = true) {
-    const button = activeButton(root);
-    if (!button) {
-      pill.style.opacity = '0';
-      return;
-    }
+  function rectOf(root, el) {
     const box = root.getBoundingClientRect();
-    const rect = button.getBoundingClientRect();
-    if (!animate) pill.style.transition = 'none';
-    pill.style.opacity = '1';
-    pill.style.width = `${Math.round(rect.width)}px`;
-    pill.style.height = `${Math.round(rect.height)}px`;
-    pill.style.transform = `translate(${Math.round(rect.left - box.left)}px, ${Math.round(rect.top - box.top)}px)`;
-    if (!animate) {
-      // Вернуть переход на следующем кадре, чтобы дальше всё анимировалось
-      requestAnimationFrame(() => {
-        pill.style.transition = '';
-      });
-    }
+    const rect = el.getBoundingClientRect();
+    return {
+      x: Math.round(rect.left - box.left),
+      y: Math.round(rect.top - box.top),
+      w: Math.round(rect.width),
+      h: Math.round(rect.height),
+    };
   }
 
-  function init(root) {
+  function apply(pill, r, transition) {
+    if (transition) pill.style.transition = transition;
+    pill.style.opacity = '1';
+    pill.style.width = `${r.w}px`;
+    pill.style.height = `${r.h}px`;
+    pill.style.transform = `translate(${r.x}px, ${r.y}px)`;
+  }
+
+  function initTabs(root) {
     if (!root || root.dataset.liquid === 'yes') return;
     root.dataset.liquid = 'yes';
     root.classList.add('liquid-tabs');
@@ -37,29 +35,78 @@
     pill.className = 'liquid-pill';
     pill.setAttribute('aria-hidden', 'true');
     root.prepend(pill);
-    place(root, pill, false);
 
-    // Внутри вкладок кнопки могут перерисовываться — следим за классом «active»
-    root.addEventListener('click', () => {
-      root.classList.add('switching');
-      // Небольшое растяжение подложки в момент переключения — «жидкий» отклик
-      pill.style.width = `${Math.round(pill.getBoundingClientRect().width * 1.12)}px`;
-      requestAnimationFrame(() => place(root, pill, true));
-      setTimeout(() => root.classList.remove('switching'), 380);
-    });
+    let current = null;
+    const button = activeButton(root);
+    if (button) {
+      current = rectOf(root, button);
+      pill.style.transition = 'none';
+      apply(pill, current);
+      requestAnimationFrame(() => {
+        pill.style.transition = '';
+      });
+    } else {
+      pill.style.opacity = '0';
+    }
 
-    new MutationObserver(() => place(root, pill, true)).observe(root, {
+    function settle() {
+      const next = activeButton(root);
+      if (!next) return;
+      const target = rectOf(root, next);
+      if (current && (target.x !== current.x || target.w !== current.w)) {
+        // Растягиваем подложку так, чтобы она накрыла старую и новую кнопку
+        const left = Math.min(current.x, target.x);
+        const right = Math.max(current.x + current.w, target.x + target.w);
+        const stretched = { x: left, y: target.y, w: right - left, h: target.h };
+        apply(pill, stretched, 'none');
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            apply(pill, target, '');
+          });
+        });
+      } else {
+        apply(pill, target, 'none');
+        requestAnimationFrame(() => {
+          pill.style.transition = '';
+        });
+      }
+      current = target;
+    }
+
+    root.addEventListener('click', () => requestAnimationFrame(settle));
+    new MutationObserver(() => settle()).observe(root, {
       subtree: true,
       attributes: true,
       attributeFilter: ['class'],
     });
-    new ResizeObserver(() => place(root, pill, false)).observe(root);
-    window.addEventListener('resize', () => place(root, pill, false), { passive: true });
+    new ResizeObserver(() => {
+      const next = activeButton(root);
+      if (!next) return;
+      current = rectOf(root, next);
+      apply(pill, current, 'none');
+      requestAnimationFrame(() => {
+        pill.style.transition = '';
+      });
+    }).observe(root);
+  }
+
+  // Свитчер: вытягивание бегунка в момент переключения
+  function initSwitch(sw) {
+    if (sw.dataset.liquidSwitch === 'yes') return;
+    sw.dataset.liquidSwitch = 'yes';
+    sw.addEventListener('change', () => {
+      sw.classList.add('switch-morph');
+      setTimeout(() => sw.classList.remove('switch-morph'), 260);
+    });
   }
 
   function start() {
     if (reduced()) return;
-    for (const selector of SELECTORS) init(document.querySelector(selector));
+    for (const selector of ['#friend-tabs', '#set-nav', '#screen-tabs']) initTabs(document.querySelector(selector));
+    for (const sw of document.querySelectorAll('.switch')) initSwitch(sw);
+    new MutationObserver(() => {
+      for (const sw of document.querySelectorAll('.switch:not([data-liquid-switch])')) initSwitch(sw);
+    }).observe(document.body, { childList: true, subtree: true });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
