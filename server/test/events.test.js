@@ -54,6 +54,14 @@ test('событие канала: публикация, готовность и
   const otherRoom = (await api('POST', '/rooms', { name: 'Там', kind: 'text', hubId: otherHub.id }, owner.token)).body;
   assert.equal(otherRoom.events.length, 0);
 
+  // Изменить может автор и управляющий; другое время сохраняется
+  const moved = await api('PATCH', `/events/${event.id}`, { title: 'Broken Arrow', startsAt: readyAt, repeat: 'none', remind: 15 }, owner.token);
+  assert.equal(moved.status, 200);
+  const patched = moved.body.events[0];
+  assert.equal(patched.startsAt, readyAt);
+  assert.equal(patched.remind, 15);
+  assert.equal((await api('PATCH', `/events/${event.id}`, { title: 'Взлом', startsAt: readyAt }, friend.token)).status, 403);
+
   // Удалить может автор; друг — нет
   assert.equal((await api('DELETE', `/events/${event.id}`, null, friend.token)).status, 403);
   assert.equal((await api('DELETE', `/events/${event.id}`, null, owner.token)).status, 200);
