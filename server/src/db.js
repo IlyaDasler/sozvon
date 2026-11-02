@@ -210,6 +210,27 @@ db.exec(`
     PRIMARY KEY (hub_id, user_id)
   );
 `);
+// События канала: собираемся играть в 21:00. Публикуются сообщением в выбранную комнату,
+// а готовность участников («буду», «не смогу», «готов в 21:30») живёт здесь
+db.exec(`
+  CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    hub_id INTEGER NOT NULL REFERENCES hubs(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    starts_at INTEGER NOT NULL,
+    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS event_responses (
+    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL,
+    ready_at INTEGER,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (event_id, user_id)
+  );
+`);
 db.exec(`
   CREATE TABLE IF NOT EXISTS room_groups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -502,6 +523,17 @@ const q = {
     ON CONFLICT (hub_id, user_id) DO UPDATE SET name = excluded.name
   `),
   clearHubNickname: db.prepare('DELETE FROM hub_nicknames WHERE hub_id = ? AND user_id = ?'),
+  // События канала
+  insertEvent: db.prepare('INSERT INTO events (room_id, hub_id, title, starts_at, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
+  eventById: db.prepare('SELECT * FROM events WHERE id = ?'),
+  eventsOfRoom: db.prepare('SELECT * FROM events WHERE room_id = ? ORDER BY starts_at, id'),
+  deleteEvent: db.prepare('DELETE FROM events WHERE id = ?'),
+  eventResponses: db.prepare('SELECT * FROM event_responses WHERE event_id = ? ORDER BY updated_at, user_id'),
+  setEventResponse: db.prepare(`
+    INSERT INTO event_responses (event_id, user_id, status, ready_at, updated_at) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT (event_id, user_id) DO UPDATE SET status = excluded.status, ready_at = excluded.ready_at, updated_at = excluded.updated_at
+  `),
+  clearEventResponse: db.prepare('DELETE FROM event_responses WHERE event_id = ? AND user_id = ?'),
   hubMember: db.prepare('SELECT * FROM hub_members WHERE hub_id = ? AND user_id = ?'),
   addHubMember: db.prepare('INSERT OR IGNORE INTO hub_members (hub_id, user_id, created_at) VALUES (?, ?, ?)'),
   removeHubMember: db.prepare('DELETE FROM hub_members WHERE hub_id = ? AND user_id = ?'),
@@ -806,6 +838,20 @@ export const hubs = {
     q.removeHubInvite.run(hubId, userId);
   },
   unban: (hubId, userId) => q.removeHubBan.run(hubId, userId),
+};
+
+export const events = {
+  create(roomId, hubId, title, startsAt, createdBy) {
+    const id = Number(q.insertEvent.run(roomId, hubId, title, startsAt, createdBy, Date.now()).lastInsertRowid);
+    return q.eventById.get(id);
+  },
+  byId: (id) => q.eventById.get(id),
+  ofRoom: (roomId) => q.eventsOfRoom.all(roomId),
+  remove: (id) => q.deleteEvent.run(id),
+  responses: (eventId) => q.eventResponses.all(eventId),
+  /** Готовность: yes (буду), no (не смогу), maybe (готов в другое время — ready_at) */
+  respond: (eventId, userId, status, readyAt = null) => q.setEventResponse.run(eventId, userId, status, readyAt, Date.now()),
+  clearResponse: (eventId, userId) => q.clearEventResponse.run(eventId, userId),
 };
 
 export const roles = {

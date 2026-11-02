@@ -19,6 +19,7 @@ import {
   messages,
   pins,
   reactions,
+  events,
   readState,
   relatedUserIds,
   roles,
@@ -350,6 +351,7 @@ const toRoom = (row) => ({
     timeoutUntil: m.timeout_until > Date.now() ? m.timeout_until : null,
   })),
   bans: rooms.bans(row.id).map((b) => ({ ...toPublicUser(b), bannedAt: b.banned_at })),
+  events: events.ofRoom(row.id).map(toEvent),
   voice: voice.participants(row.id),
   voiceSince: voice.since(row.id),
   // Часы сервера: по ним приложение считает поправку, чтобы таймер разговора был одинаковым
@@ -362,6 +364,19 @@ function notifyRoom(roomId) {
   const room = toRoom(rooms.byId(roomId));
   for (const m of room.members) hub.send(m.id, { type: 'room:updated', room });
   return room;
+}
+
+function toEvent(row) {
+  return {
+    id: row.id,
+    roomId: row.room_id,
+    title: row.title,
+    startsAt: row.starts_at,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    // Готовность: yes — буду, no — не смогу, maybe — готов в другое время (readyAt)
+    responses: events.responses(row.id).map((r) => ({ userId: r.user_id, status: r.status, readyAt: r.ready_at })),
+  };
 }
 
 function validateGroupName(name) {
@@ -1721,6 +1736,66 @@ export function createApi() {
       const room = requireRoom(req);
       const before = Number(req.query.before) || undefined;
       return withMessageMeta(roomMessages.list(room.id, before).map(toRoomMessage), 'room', room.id, req.user.id);
+    })
+  );
+
+  // ---------- События канала ----------
+  // Событие публикуется сообщением в выбранную комнату, а готовность («буду», «не смогу»,
+  // «готов в 21:30») хранится на сервере и приходит всем участникам вместе с комнатой
+
+  api.post(
+    '/rooms/:id/events',
+    handle((req) => {
+      const room = requireRoom(req);
+      if (!room.hub_id) throw new HttpError(400, 'События бывают только в каналах');
+      requirePerm(req, room, PERMS.write, 'Вам нельзя писать в эту комнату');
+      const title = str(req.body.title).trim();
+      if (title.length < 1 || title.length > 80) throw new HttpError(400, 'Название события — от 1 до 80 символов');
+      const startsAt = Number(req.body.startsAt);
+      if (!Number.isFinite(startsAt) || startsAt < Date.now() - 86_400_000)
+        throw new HttpError(400, 'Укажите дату и время события');
+      const invitees = Array.isArray(req.body.invitees) ? req.body.invitees.map(Number) : [];
+      const row = events.create(room.id, room.hub_id, title, startsAt, req.user.id);
+      // Автор сразу «буду», приглашённые — «приглашён»
+      events.respond(row.id, req.user.id, 'yes');
+      for (const id of invitees) {
+        if (id !== req.user.id && rooms.isMember(room.id, id)) events.respond(row.id, id, 'invited');
+      }
+      return notifyRoom(room.id);
+    })
+  );
+
+  api.put(
+    '/events/:eventId/response',
+    handle((req) => {
+      const event = events.byId(Number(req.params.eventId));
+      if (!event) throw new HttpError(404, 'Событие не найдено');
+      const room = rooms.byId(event.room_id);
+      if (!room || !rooms.isMember(room.id, req.user.id)) throw new HttpError(404, 'Событие не найдено');
+      const status = ['yes', 'no', 'maybe'].includes(req.body.status) ? req.body.status : null;
+      if (!status) throw new HttpError(400, 'Неизвестный ответ');
+      const readyAt = status === 'maybe' ? Number(req.body.readyAt) : null;
+      if (status === 'maybe' && !Number.isFinite(readyAt)) throw new HttpError(400, 'Укажите время, когда сможете');
+      events.respond(event.id, req.user.id, status, readyAt);
+      return notifyRoom(room.id);
+    })
+  );
+
+  api.delete(
+    '/events/:eventId',
+    handle((req) => {
+      const event = events.byId(Number(req.params.eventId));
+      if (!event) throw new HttpError(404, 'Событие не найдено');
+      const room = rooms.byId(event.room_id);
+      if (!room || !rooms.isMember(room.id, req.user.id)) throw new HttpError(404, 'Событие не найдено');
+      const hubRow = hubs.byId(room.hub_id);
+      const member = hubRow && hubs.members(hubRow.id).find((m) => m.id === req.user.id);
+      const role = member?.role_id ? roles.byId(member.role_id) : null;
+      const manages = Boolean(hubRow) && (hubs.rankOf(hubRow, req.user.id) >= 2 || ((role?.perms || 0) & PERMS.manage));
+      if (event.created_by !== req.user.id && !manages)
+        throw new HttpError(403, 'Удалить событие может его автор или управляющий каналом');
+      events.remove(event.id);
+      return notifyRoom(room.id);
     })
   );
 

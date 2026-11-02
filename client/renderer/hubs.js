@@ -612,7 +612,7 @@ let settingsHubId = null;
 const HUB_MEMBER_TABS = ['members', 'emojis']; // что видно участнику без управления каналом
 let settingsTab = 'overview';
 let hubMemberQuery = '';
-const HUB_TABS = { overview: 'Обзор', roles: 'Роли и права', emojis: 'Смайлики', members: 'Участники', bans: 'Баны' };
+const HUB_TABS = { overview: 'Обзор', events: 'События', roles: 'Роли и права', emojis: 'Смайлики', members: 'Участники', bans: 'Баны' };
 
 function openHubSettings(id, tab = 'overview') {
   if (!hubById(id)) return;
@@ -647,7 +647,7 @@ function renderHubSettings() {
   const body = $('hs-body');
   const focused = document.activeElement?.dataset?.keep;
   const draft = focused && document.activeElement.value;
-  body.replaceChildren(...{ overview: hubOverviewPane, roles: rolesPane, emojis: hubEmojisPane, members: hubMembersPane, bans: hubBansPane }[settingsTab](hub));
+  body.replaceChildren(...{ overview: hubOverviewPane, events: hubEventsPane, roles: rolesPane, emojis: hubEmojisPane, members: hubMembersPane, bans: hubBansPane }[settingsTab](hub));
   if (focused) {
     const input = body.querySelector(`[data-keep="${focused}"]`);
     if (input) {
@@ -763,6 +763,136 @@ $('hub-emoji-input').onchange = (e) => {
   const file = e.target.files[0];
   e.target.value = '';
   if (file && settingsHubId) addHubEmoji(file);
+};
+
+// ---------- События канала ----------
+
+let eventHubId = null;
+
+/** Все события канала: лежат в комнатах, куда их опубликовали */
+function hubEvents(hub) {
+  return roomsOfHub(hub.id)
+    .flatMap((room) => (room.events || []).map((ev) => ({ ev, room })))
+    .sort((a, b) => a.ev.startsAt - b.ev.startsAt);
+}
+
+function hubEventsPane(hub) {
+  const box = el(
+    'div',
+    { className: 'hub-events' },
+    el('p', {
+      className: 'muted small',
+      textContent:
+        'Событие появится в выбранном чате: участники отметят готовность — «буду», «не смогу» или «готов в другое время».',
+    })
+  );
+  const create = el('button', { className: 'btn primary', type: 'button', textContent: 'Создать событие' });
+  create.onclick = () => openEventCreate(hub);
+  box.append(el('div', { className: 'row' }, create));
+
+  const list = hubEvents(hub);
+  if (!list.length) {
+    box.append(el('p', { className: 'muted small', textContent: 'Пока событий нет' }));
+    return [box];
+  }
+  for (const { ev, room } of list) {
+    const going = (ev.responses || []).filter((r) => r.status === 'yes').length;
+    const row = el(
+      'div',
+      { className: 'hub-event' },
+      el(
+        'div',
+        { className: 'hub-event-main' },
+        el('b', { textContent: ev.title }),
+        el('span', {
+          className: 'muted small',
+          textContent: `${formatDay(ev.startsAt)} · ${formatTime(ev.startsAt)} · #${room.name}`,
+        })
+      ),
+      el('span', { className: 'muted small', textContent: `Будут: ${going}` })
+    );
+    const del = el('button', { className: 'btn small', type: 'button', textContent: 'Удалить' });
+    del.onclick = () => hubAction(Api.del(`/events/${ev.id}`), 'Событие удалено');
+    row.append(del);
+    box.append(row);
+  }
+  return [box];
+}
+
+function openEventCreate(hub) {
+  eventHubId = hub.id;
+  $('event-title').value = '';
+  $('event-error').textContent = '';
+
+  // По умолчанию — сегодня, через час
+  const soon = new Date(Date.now() + 60 * 60_000);
+  soon.setMinutes(0, 0, 0);
+  $('event-date').value = soon.toISOString().slice(0, 10);
+  $('event-time').value = `${String(soon.getHours()).padStart(2, '0')}:00`;
+
+  const rooms = roomsOfHub(hub.id);
+  const select = $('event-room');
+  select.replaceChildren(...rooms.map((room) => el('option', { value: room.id, textContent: `# ${room.name}` })));
+  // По умолчанию — комната, открытая сейчас, иначе первая текстовая
+  const current = rooms.find((r) => r.id === state.selectedRoomId) || rooms.find((r) => r.kind === 'text') || rooms[0];
+  if (current) select.value = current.id;
+
+  const people = hub.members.filter((m) => m.id !== state.me.id);
+  $('event-invitees').replaceChildren(
+    ...people.map((m) =>
+      el(
+        'label',
+        { className: 'event-invite' },
+        Object.assign(document.createElement('input'), { type: 'checkbox', value: m.id }),
+        el('span', { textContent: m.nickname || m.displayName })
+      )
+    )
+  );
+  $('event-create').classList.remove('hidden');
+  setTimeout(() => $('event-title').focus(), 0);
+}
+
+const closeEventCreate = () => {
+  $('event-create').classList.add('hidden');
+  eventHubId = null;
+};
+
+$('event-cancel').onclick = closeEventCreate;
+$('event-create').onclick = (e) => {
+  if (e.target === $('event-create')) closeEventCreate();
+};
+
+$('event-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const hub = hubById(eventHubId);
+  if (!hub) return;
+  const title = $('event-title').value.trim();
+  const date = $('event-date').value;
+  const time = $('event-time').value;
+  if (!title) return ($('event-error').textContent = 'Название события обязательно');
+  if (!date || !time) return ($('event-error').textContent = 'Выберите день и время');
+  const startsAt = new Date(`${date}T${time}`).getTime();
+  if (!Number.isFinite(startsAt)) return ($('event-error').textContent = 'Не получилось разобрать дату');
+
+  const roomId = Number($('event-room').value);
+  const invitees = [...$('event-invitees').querySelectorAll('input:checked')].map((i) => Number(i.value));
+  try {
+    const room = await Api.post(`/rooms/${roomId}/events`, { title, startsAt, invitees });
+    // Комната пришла уже с событием — обновляем её у себя, иначе карточка не найдёт событие
+    applyRoomUpdate(room);
+    // Публикуем событие сообщением в выбранный чат: внутри конверта только id
+    const event = [...(room.events || [])].reverse().find((x) => x.createdBy === state.me.id && x.title === title);
+    if (event) {
+      const { body, plain } = await encryptOutgoing(roomConvOf(roomId), { text: `Событие: ${title}`, eventId: event.id });
+      addRoomMessage({ ...(await Api.post(`/rooms/${roomId}/messages`, body)), plain });
+    }
+    closeEventCreate();
+    renderHubSettings();
+    toast('Событие создано');
+    if (state.selectedRoomId !== roomId) selectRoom(roomId);
+  } catch (err) {
+    $('event-error').textContent = err.message;
+  }
 };
 
 function hubMembersPane(hub) {
