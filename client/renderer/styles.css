@@ -1957,3 +1957,10 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 }
 .notif-item.event .notif-icon { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 .notif-item.event b { color: var(--accent); }
+
+/* Ответы участников — в столбец; время выбирается панелью внутри карточки */
+.event-people { flex-direction: column; align-items: flex-start; gap: 2px; }
+.event-time-pop {
+  position: static; width: auto; max-width: 280px; margin-top: 8px;
+  box-shadow: none; background: var(--bg-3);
+}

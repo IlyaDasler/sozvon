@@ -678,7 +678,7 @@ function eventCard(event, roomId) {
     const chip = document.createElement('span');
     chip.className = `event-chip ${r.status}`;
     const extra = r.status === 'maybe' && r.readyAt ? ` · в ${formatTime(r.readyAt)}` : '';
-    chip.textContent = `${eventPersonName(room, r.userId)} — ${EVENT_STATUS_LABEL[r.status]}${extra}`;
+    chip.textContent = `${eventPersonName(room, r.userId)} - ${EVENT_STATUS_LABEL[r.status]}${extra}`;
     people.append(chip);
   }
   if (!answers.length) {
@@ -721,7 +721,8 @@ function eventCard(event, roomId) {
   laterBtn.type = 'button';
   laterBtn.className = `btn small event-btn${mine?.status === 'maybe' ? ' active' : ''}`;
   const syncLater = () => {
-    laterBtn.textContent = `Готов в ${pad2(draft.h)}:${pad2(draft.m)}`;
+    const hasTime = mine?.status === 'maybe' && mine.readyAt;
+    laterBtn.textContent = hasTime ? `Готов в ${pad2(draft.h)}:${pad2(draft.m)}` : 'Готов в другое время';
   };
   syncLater();
   const pop = document.createElement('div');
