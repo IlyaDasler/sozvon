@@ -1,7 +1,7 @@
 // Обновление macOS своими руками: выбор ассета, путь к бандлу и скрипт подмены
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { bundlePath, assetName, pickAsset, swapScript } = require('../mac-update');
+const { bundlePath, assetName, pickAsset, manifestEntry, swapScript } = require('../mac-update');
 
 test('имя архива зависит от архитектуры', () => {
   assert.equal(assetName('2.9.0', 'arm64'), 'Sozvon-2.9.0-arm64.zip');
@@ -47,4 +47,27 @@ test('скрипт подмены ждёт процесс, держит стар
   // Кавычки экранируются: путь с апострофом не должен ломать скрипт
   const weird = swapScript({ pid: 1, appDir: "/Applications/Bob's app.app", newApp: '/tmp/x.app' });
   assert.match(weird, /'\/Applications\/Bob'\\''s app\.app'/);
+});
+test('из latest-mac.yml берём размер и sha512 нужного архива', () => {
+  const yml = [
+    'version: 2.9.3',
+    'files:',
+    '  - url: Sozvon-2.9.3-x64.zip',
+    '    sha512: AAAAx64',
+    '    size: 111',
+    '  - url: Sozvon-2.9.3-arm64.zip',
+    '    sha512: BBBBarm',
+    '    size: 222',
+    '  - url: Sozvon-2.9.3-arm64.dmg',
+    '    sha512: CCCCdmg',
+    '    size: 333',
+    'path: Sozvon-2.9.3-arm64.zip',
+    "sha512: BBBBarm",
+    'releaseDate: "2026-11-02T10:36:23.552Z"',
+  ].join('\n');
+  assert.deepEqual(manifestEntry(yml, 'Sozvon-2.9.3-arm64.zip'), { size: 222, sha512: 'BBBBarm' });
+  assert.deepEqual(manifestEntry(yml, 'Sozvon-2.9.3-x64.zip'), { size: 111, sha512: 'AAAAx64' });
+  // Файла нет в манифесте — проверять нечем, обновление ставить нельзя
+  assert.equal(manifestEntry(yml, 'Sozvon-2.9.3-arm64.dmg2'), null);
+  assert.equal(manifestEntry('version: 1.0.0\nfiles:\n', 'Sozvon-9.9.9-arm64.zip'), null);
 });

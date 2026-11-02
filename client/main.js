@@ -56,7 +56,8 @@ function createWindow({ show = true } = {}) {
     autoHideMenuBar: true,
     // Своя полоса окна в цветах темы: системную прячем, кнопки «свернуть, развернуть, закрыть» Windows
     // рисует поверх полосы страницы; их цвета страница присылает при смене темы (window:titlebar)
-    titleBarStyle: 'hidden',
+    // macOS: hiddenInset оставляет системные «светофоры» поверх страницы, отступ делаем в CSS
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
     titleBarOverlay: { color: '#07080c', symbolColor: '#c8ccda', height: TITLEBAR_H },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -397,6 +398,8 @@ ipcMain.on('update:install', () => {
 // и окно закрывается само
 let pendingOAuth = null;
 ipcMain.handle('oauth', async (_event, authUrl) => {
+  // Только https: адрес приходит из ответа сервера, открывать по нему что попало нельзя
+  if (!/^https:\/\/[^\s]+$/i.test(String(authUrl || ''))) throw new Error('Неверный адрес входа');
   pendingOAuth?.close();
   const pending = (pendingOAuth = await listenForOAuth(authUrl));
   try {

@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const https = require('node:https');
+const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 
 const REPO = 'IlyaDasler/sozvon';
@@ -39,6 +40,25 @@ function pickAsset(release, arch = process.arch) {
   const asset = (release.assets || []).find((a) => a.name === want);
   if (!asset?.browser_download_url?.startsWith(DOWNLOAD_PREFIX)) return null;
   return { version, url: asset.browser_download_url, size: asset.size, name: asset.name };
+}
+
+/** Разбор latest-mac.yml: размер и sha512 нужного архива (в base64, как у electron-builder) */
+function manifestEntry(text, name) {
+  const lines = String(text).split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^\s*-\s*url:\s*/.test(lines[i])) continue;
+    if (lines[i].split('url:')[1].trim() !== name) continue;
+    let size = null;
+    let sha512 = null;
+    for (let j = i + 1; j < lines.length && !/^\s*-\s*url:/.test(lines[j]); j++) {
+      const sizeMatch = /^\s+size:\s*(\d+)/.exec(lines[j]);
+      const shaMatch = /^\s+sha512:\s*(\S+)/.exec(lines[j]);
+      if (sizeMatch) size = Number(sizeMatch[1]);
+      if (shaMatch) sha512 = shaMatch[1];
+    }
+    return { size, sha512 };
+  }
+  return null;
 }
 
 function getJson(url) {
@@ -163,19 +183,55 @@ echo "готово"
 const workDir = () => path.join(os.tmpdir(), 'sozvon-update');
 const swapLog = () => path.join(workDir(), 'swap.log');
 
+/** Скачиваем файл и проверяем, что он совпал с latest-mac.yml: без этого можно исполнить
+ *  подменённый архив. Проверка по sha512 — как у electron-updater на Windows */
+async function downloadVerified(name, url, dest, manifest, onProgress) {
+  await download(url, dest, onProgress);
+  const size = fs.statSync(dest).size;
+  if (manifest?.size && size !== manifest.size) throw new Error('Архив скачался не полностью');
+  if (!manifest?.sha512) throw new Error('Не удалось проверить целостность обновления');
+  const hash = crypto.createHash('sha512').update(fs.readFileSync(dest)).digest('base64');
+  if (hash !== manifest.sha512) throw new Error('Обновление повреждено: контрольная сумма не совпала');
+  return size;
+}
+
+/** Текст с HTTPS (для latest-mac.yml) */
+function getText(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'Sozvon-Updater' } }, (res) => {
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error(`Сервер ответил ${res.statusCode}`));
+      }
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => (body += chunk));
+      res.on('end', () => resolve(body));
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => req.destroy(new Error('Не дождались ответа сервера')));
+  });
+}
+
 /** Скачать и распаковать обновление; возвращает путь к новой .app */
 async function prepare({ version, onProgress, onStage = () => {} }) {
   const dir = workDir();
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
 
-  // Ссылку собираем по шаблону релиза: не зависим от GitHub API, у которого лимит запросов
-  const asset = { version, name: assetName(version), url: `${DOWNLOAD_PREFIX}v${version}/${assetName(version)}` };
-  const zip = path.join(dir, asset.name);
-  await download(asset.url, zip, onProgress);
-  const size = fs.statSync(zip).size;
+  // Ссылку собираем по шаблону релиза: не зависим от GitHub API, у которого лимит запросов.
+  // Размер и sha512 берём из манифеста релиза — он публикуется вместе с архивом
+  const name = assetName(version);
+  const base = `${DOWNLOAD_PREFIX}v${version}/${name}`;
+  const manifest = await getText(`${DOWNLOAD_PREFIX}v${version}/latest-mac.yml`)
+    .then((text) => manifestEntry(text, name))
+    .catch(() => null);
+  if (!manifest?.sha512) throw new Error('Не удалось получить подписанный список файлов релиза');
+
+  const zip = path.join(dir, name);
+  await downloadVerified(name, base, zip, manifest, onProgress);
   // Архив меньше мегабайта — значит скачалась страница ошибки, а не приложение
-  if (size < 1024 * 1024) throw new Error('Скачался не архив приложения');
+  if (fs.statSync(zip).size < 1024 * 1024) throw new Error('Скачался не архив приложения');
   const head = Buffer.alloc(2);
   const fd = fs.openSync(zip, 'r');
   fs.readSync(fd, head, 0, 2, 0);
@@ -215,4 +271,4 @@ function apply({ newApp, app, onQuit }) {
   return { ok: true, log };
 }
 
-module.exports = { bundlePath, assetName, pickAsset, swapScript, prepare, apply, getJson, swapLog };
+module.exports = { bundlePath, assetName, pickAsset, manifestEntry, swapScript, prepare, apply, getJson, swapLog, downloadVerified };

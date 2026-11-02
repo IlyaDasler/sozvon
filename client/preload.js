@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('desktop', {
   attention: () => ipcRenderer.send('attention'),
   focus: () => ipcRenderer.send('focus'),
   // Цвета кнопок окна под тему: { color, symbolColor } в виде #rrggbb
+  // Платформа нужна странице: на macOS у окна свои кнопки, и полоса заголовка сдвигается
+  platform: process.platform,
   titleBar: (colors) => ipcRenderer.send('window:titlebar', colors),
   // Давно не трогали мышь и клавиатуру (true) или вернулись (false) — для статуса «Неактивен»
   onIdle: (callback) => ipcRenderer.on('idle', (_event, idle) => callback(idle)),

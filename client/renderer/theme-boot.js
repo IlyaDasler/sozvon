@@ -6,4 +6,6 @@
   } catch {}
   // В браузере нет окна приложения: полоса с кнопками «назад/вперёд» и перетаскиванием не нужна
   if (!window.desktop) document.documentElement.classList.add('is-web');
+  // macOS: у окна системные кнопки слева, наша полоса сдвигается, чтобы они не налезали
+  if (window.desktop?.platform === 'darwin') document.documentElement.classList.add('is-mac');
 })();
