@@ -194,3 +194,68 @@
     transition: none;
   }
 }
+/* ---------- 6. Компоненты по референсу: меню, прогресс, чипы, разделители ---------- */
+
+/* Context menu / popup: стекло с широким безелем и подсветкой пункта */
+[data-theme='glass'] .popup-menu {
+  border-radius: var(--lq-radius-pop);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02) 46%),
+    var(--lq-tint-deep);
+  box-shadow:
+    inset 0 1px 0 var(--lq-rim-hi),
+    inset 0 -1px 0 var(--lq-rim-lo),
+    var(--lq-shadow);
+  padding: 6px;
+}
+[data-theme='glass'] .popup-item {
+  border-radius: 10px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+[data-theme='glass'] .popup-item:hover {
+  background: var(--lq-highlight);
+  color: var(--text);
+}
+[data-theme='glass'] .popup-item.danger:hover {
+  background: color-mix(in srgb, var(--lq-danger) 20%, transparent);
+  color: var(--lq-danger-text);
+}
+
+/* Progress и meter: тонкая дорожка и акцентная заливка */
+[data-theme='glass'] .progress-track,
+[data-theme='glass'] .meter {
+  background: var(--lq-control);
+  box-shadow: inset 0 0 0 1px var(--lq-control-rim);
+  border-radius: 999px;
+}
+[data-theme='glass'] .progress-fill,
+[data-theme='glass'] .meter-fill {
+  background: var(--lq-accent);
+  border-radius: 999px;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--lq-accent) 45%, transparent);
+}
+
+/* Чипы (метки, фильтры) */
+[data-theme='glass'] .chip {
+  border-radius: 999px;
+  background: var(--lq-control);
+  border: 1px solid var(--lq-control-rim);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+/* Разделители: волосяная линия, без тени */
+[data-theme='glass'] .rs-sep,
+[data-theme='glass'] .sep,
+[data-theme='glass'] .rail-sep {
+  background: var(--lq-control-rim);
+  height: 1px;
+  border-radius: 1px;
+}
+
+/* Аватар: тонкое кольцо, чтобы читался на стекле */
+[data-theme='glass'] .avatar {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+[data-theme='glass'] .badge {
+  box-shadow: 0 0 0 2px var(--bg-deep);
+}
