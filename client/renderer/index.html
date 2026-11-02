@@ -150,6 +150,11 @@
           <span id="auth-switch-text">Нет аккаунта?</span>
           <a href="#" id="auth-toggle">Зарегистрироваться</a>
         </p>
+        <!-- Свой сервер: по умолчанию общий, но можно указать адрес своего (docs/self-hosting.md) -->
+        <p class="muted center small auth-server">
+          <button type="button" class="linkish" id="server-toggle">Свой сервер</button>
+          <span class="hidden" id="server-hint">Сейчас: <b id="server-current"></b></span>
+        </p>
         <p class="muted center small auth-version hidden" id="auth-version-row">
           <span id="auth-version"></span> · <a href="#" id="auth-update-check">Проверить обновления</a>
         </p>
@@ -609,6 +614,14 @@
                 <code id="e2ee-share-code" class="e2ee-share-code hidden"></code>
               </div>
               <span class="hint-text" id="e2ee-share-hint"></span>
+            </div>
+            <div class="set-block" id="server-section">
+              <h4>Сервер</h4>
+              <span class="hint-text">Приложение подключено к <b id="server-current-main"></b>. Свой сервер можно поставить на VPS — инструкция в docs/self-hosting.md.</span>
+              <div class="row">
+                <button type="button" class="btn" id="server-change-btn">Сменить сервер</button>
+              </div>
+              <span class="hint-text" id="server-change-hint">При смене сервера нужно войти заново: аккаунты на разных серверах не связаны.</span>
             </div>
             <div class="set-block">
               <h4 id="password-title">Сменить пароль</h4>
