@@ -170,6 +170,26 @@ const AVATAR_DIR = path.join(config.dataDir, 'avatars');
 const AVATAR_MAX_BYTES = 300 * 1024;
 const BACKGROUND_MAX_BYTES = 2 * 1024 * 1024; // фон комнаты — во всю ширину окна
 const AVATAR_FILE_RE = /^[a-f0-9]{32}\.webp$/;
+// Баннер профиля: картинка или GIF, хранится рядом с базой и отдаётся без токена
+const BANNER_DIR = path.join(config.dataDir, 'banners');
+const BANNER_MAX_BYTES = 2 * 1024 * 1024;
+const BANNER_FILE_RE = /^[a-f0-9]{32}\.(webp|gif|png|jpg)$/;
+fs.mkdirSync(BANNER_DIR, { recursive: true });
+
+/** Формат картинки по сигнатуре: расширению из заголовка не доверяем */
+function bannerExt(buf) {
+  if (!Buffer.isBuffer(buf) || buf.length < 12) return null;
+  if (buf.slice(0, 4).toString('hex') === '52494646' && buf.slice(8, 12).toString() === 'WEBP') return 'webp';
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'png';
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpg';
+  if (buf.slice(0, 3).toString() === 'GIF') return 'gif';
+  return null;
+}
+
+function removeBannerFile(name) {
+  if (!name) return;
+  fs.rm(path.join(BANNER_DIR, name), { force: true }, () => {});
+}
 fs.mkdirSync(AVATAR_DIR, { recursive: true });
 
 // Файлы вложений лежат рядом с базой под именем-id. Загрузку, которую за час так и не прикрепили, удаляем
@@ -794,6 +814,13 @@ export function createApi() {
     })
   );
 
+  // Баннер профиля открывается без токена: тег img не передаёт заголовок
+  api.get('/banners/:file', (req, res, next) => {
+    if (!BANNER_FILE_RE.test(req.params.file)) return next(new HttpError(404, 'Не найдено'));
+    res.sendFile(req.params.file, { root: BANNER_DIR, maxAge: '365d', immutable: true }, (err) => {
+      if (err && !res.headersSent) next(new HttpError(404, 'Не найдено'));
+    });
+  });
   api.use(requireAuth);
 
   // Предпросмотр ссылки для поля ввода: заголовок, описание, картинка. null — превью нет
@@ -946,6 +973,34 @@ export function createApi() {
     })
   );
 
+  // Баннер профиля: картинка или GIF. Клиент шлёт файл как есть, формат проверяем по сигнатуре
+  api.put(
+    '/me/banner',
+    express.raw({ type: ['image/webp', 'image/png', 'image/jpeg', 'image/gif'], limit: BANNER_MAX_BYTES }),
+    handle((req) => {
+      const ext = bannerExt(req.body);
+      if (!ext) throw new HttpError(400, 'Нужна картинка PNG, JPEG, WebP или GIF');
+      const id = crypto.randomBytes(16).toString('hex');
+      const name = `${id}.${ext}`;
+      fs.writeFileSync(path.join(BANNER_DIR, name), req.body);
+      removeBannerFile(req.user.banner);
+      users.updateBanner(req.user.id, name);
+      const row = users.byId(req.user.id);
+      notifyProfile(row);
+      return toSelf(row);
+    })
+  );
+
+  api.delete(
+    '/me/banner',
+    handle((req) => {
+      removeBannerFile(req.user.banner);
+      users.updateBanner(req.user.id, null);
+      const row = users.byId(req.user.id);
+      notifyProfile(row);
+      return toSelf(row);
+    })
+  );
   // Свой статус: активен, неактивен, не беспокоить, невидимый. Другие устройства узнают о нём сразу
   api.put(
     '/me/status',

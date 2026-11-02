@@ -31,7 +31,11 @@ function openProfileCard(userId, anchor) {
 
   const banner = document.createElement('div');
   banner.className = 'pc-banner';
-  banner.style.setProperty('--banner', user.bannerColor || user.avatarColor);
+  banner.style.setProperty('--banner', user.bannerColor || user.avatarColor);  if (user.bannerUrl) {
+    banner.style.backgroundImage = `url("${Api.base}${user.bannerUrl}")`;
+    banner.style.backgroundSize = 'cover';
+    banner.style.backgroundPosition = 'center';
+  }
   card.append(banner);
 
   const avatar = makeAvatar(user, isMe ? myStatus() : presenceOf(user), 'huge');

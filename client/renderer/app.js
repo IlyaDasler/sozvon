@@ -2919,3 +2919,33 @@ async function boot() {
 }
 
 window.addEventListener('DOMContentLoaded', boot);
+// ---------- Баннер профиля картинкой или GIF ----------
+
+async function uploadBanner(file) {
+  $('settings-error').textContent = '';
+  $('banner-upload-btn').disabled = true;
+  try {
+    if (file.size > 2 * 1024 * 1024) throw new Error('Баннер — не больше 2 МБ');
+    applyMe(await Api.upload('PUT', '/me/banner', file));
+    toast('Баннер профиля обновлён');
+  } catch (err) {
+    $('settings-error').textContent = err.message;
+  } finally {
+    $('banner-upload-btn').disabled = false;
+  }
+}
+
+$('banner-upload-btn').onclick = () => $('banner-input').click();
+$('banner-input').onchange = (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (file) uploadBanner(file);
+};
+$('banner-remove-btn').onclick = async () => {
+  try {
+    applyMe(await Api.del('/me/banner'));
+    toast('Баннер убран');
+  } catch (err) {
+    $('settings-error').textContent = err.message;
+  }
+};
