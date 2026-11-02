@@ -2355,6 +2355,7 @@ const SETTINGS_TABS = {
   notify: 'Уведомления',
   account: 'Аккаунт',
   about: 'О приложении',
+  plan: 'План 3.0',
 };
 
 function showSettingsTab(tab) {
