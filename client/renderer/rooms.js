@@ -586,6 +586,17 @@ function showNewRoomMessage(m) {
 
 function handleRoomEvent(msg) {
   switch (msg.type) {
+    // Меня позвали на событие канала — отметить в колокольчике
+    case 'event:invite': {
+      const when = `${formatDay(msg.startsAt)} · ${formatTime(msg.startsAt)}`;
+      const who = msg.from?.displayName || 'Кто-то';
+      notify(msg.title, `${who} зовёт: ${when} · #${msg.roomName}`, {
+        kind: 'event',
+        open: { room: msg.roomId },
+        hub: msg.hubId,
+      });
+      break;
+    }
     case 'room:updated': {
       const room = msg.room;
       const old = roomById(room.id);
