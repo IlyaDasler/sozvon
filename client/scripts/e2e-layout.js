@@ -139,4 +139,29 @@ runTest(async () => {
   if (tab.activeBg !== 'rgba(0, 0, 0, 0)' && tab.activeBg !== 'transparent')
     throw new Error(`У активной вкладки свой фон поверх индикатора: ${tab.activeBg}`);
   console.log('✔ жидкий индикатор вкладок на месте');
+
+  // ---------- Радиокнопки: круг 18 px, текст не наезжает ----------
+  await js(win, `document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); selectContact(${b.user.id}); true`);
+  await sleep(500);
+  await js(win, `document.getElementById('chat-theme-btn').click(); true`);
+  await sleep(400);
+  const radio = await js(win, `(() => {
+    const scope = document.querySelector('.chat-theme-scope');
+    const box = scope?.querySelector('input[type=radio]');
+    if (!box) return JSON.stringify({ error: 'нет радиокнопок' });
+    const r = box.getBoundingClientRect();
+    const label = box.closest('label').getBoundingClientRect();
+    const cs = getComputedStyle(box);
+    return JSON.stringify({
+      w: Math.round(r.width), h: Math.round(r.height),
+      radius: cs.borderRadius, height: cs.height, padding: cs.padding,
+      gapToText: Math.round(label.width - r.width),
+    });
+  })()`);
+  const rd = JSON.parse(radio);
+  if (rd.error) throw new Error(`Тема чата: ${rd.error}`);
+  if (rd.w > 22 || rd.h > 22) throw new Error(`Радиокнопка раздулась: ${rd.w}x${rd.h}`);
+  if (!/50%|999px/.test(rd.radius)) throw new Error(`Радиокнопка не круглая: ${rd.radius}`);
+  if (rd.height !== '18px' || rd.padding !== '0px') throw new Error(`К радиокнопке применились стили поля: ${rd.height}, ${rd.padding}`);
+  console.log('✔ радиокнопки — ровные круги, без стилей поля');
 });

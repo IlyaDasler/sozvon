@@ -256,7 +256,7 @@
 }
 
 /* Поля */
-[data-theme='glass'] input:not([type='checkbox']):not([type='range']),
+[data-theme='glass'] input:not([type='checkbox']):not([type='range']):not([type='radio']):not([type='color']),
 [data-theme='glass'] textarea,
 [data-theme='glass'] select {
   background-color: rgba(255, 255, 255, calc(var(--glass-a) * 0.7));
