@@ -438,6 +438,9 @@ document.addEventListener(
 const BELL_ON = '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
 const BELL_OFF =
   '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-9.3-5.2M6 9v-1a6 6 0 0 0-.9 3c0 7-3 9-3 9h14"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M3 3l18 18"/></svg>';
+// Календарь с плюсом — событие канала
+const EVENT_ICON =
+  '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M12 14v5M9.5 16.5h5"/></svg>';
 
 const hubMuteKey = (id) => `hub:mute:${id}`;
 const hubMuted = (id) => Boolean(store.get(hubMuteKey(id), false));
@@ -456,6 +459,7 @@ function hubMenuItems(hub) {
   return [
     manager && { label: 'Пригласить друзей', onclick: () => openHubInvite(hub.id) },
     manager && { label: 'Создать комнату', onclick: () => openRoomCreate('voice', hub.id) },
+    manager && { label: 'Создать событие', icon: EVENT_ICON, onclick: () => openEventCreate(hub) },
     manager && { label: 'Создать группу комнат', onclick: () => createRoomGroup(hub) },
     { label: muted ? 'Включить уведомления' : 'Выключить уведомления', icon: muted ? BELL_OFF : BELL_ON, onclick: () => toggleHubMute(hub) },
     { label: manager ? 'Настройки канала' : 'Участники канала', onclick: () => openHubSettings(hub.id, manager ? 'overview' : 'members') },
