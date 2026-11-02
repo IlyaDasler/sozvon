@@ -1841,6 +1841,31 @@ export function createApi() {
     })
   );
 
+  api.patch(
+    '/events/:eventId',
+    handle((req) => {
+      const event = events.byId(Number(req.params.eventId));
+      if (!event) throw new HttpError(404, 'Событие не найдено');
+      const room = rooms.byId(event.room_id);
+      if (!room || !rooms.isMember(room.id, req.user.id)) throw new HttpError(404, 'Событие не найдено');
+      const hubRow = hubs.byId(room.hub_id);
+      const member = hubRow && hubs.members(hubRow.id).find((m) => m.id === req.user.id);
+      const role = member?.role_id ? roles.byId(member.role_id) : null;
+      const manages = Boolean(hubRow) && (hubs.rankOf(hubRow, req.user.id) >= 2 || ((role?.perms || 0) & PERMS.manage));
+      if (event.created_by !== req.user.id && !manages)
+        throw new HttpError(403, 'Изменить событие может его автор или управляющий каналом');
+      const title = str(req.body.title).trim();
+      if (title.length < 1 || title.length > 80) throw new HttpError(400, 'Название события — от 1 до 80 символов');
+      const startsAt = Number(req.body.startsAt);
+      if (!Number.isFinite(startsAt) || startsAt < Date.now() - 86_400_000)
+        throw new HttpError(400, 'Укажите дату и время события');
+      const repeat = EVENT_REPEATS.has(req.body.repeat) ? req.body.repeat : 'none';
+      const remind = EVENT_REMIND.has(Number(req.body.remind)) ? Number(req.body.remind) : 0;
+      events.update(event.id, title, startsAt, repeat, remind);
+      return notifyRoom(room.id);
+    })
+  );
+
   api.post(
     '/events/:eventId/finish',
     handle((req) => {
