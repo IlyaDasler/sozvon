@@ -310,9 +310,9 @@ runTest(async () => {
 
   // Шумоподавление переключается сразу, прямо в разговоре
   await js(winC, `document.getElementById('call-ns').click(); true`);
-  await waitFor(winC, `state.settings.noiseSuppression === false && activeSession().local.tracks.mic.getSettings().noiseSuppression === false`, 'шумоподавление выключено');
+  await waitFor(winC, `noiseLevelOf() === 0 && activeSession().local.tracks.mic.getSettings().noiseSuppression === false`, 'шумоподавление выключено');
   await js(winC, `document.getElementById('call-ns').click(); true`);
-  await waitFor(winC, `state.settings.noiseSuppression === true && (activeSession().local.micChain != null || activeSession().local.tracks.mic.getSettings().noiseSuppression === true)`, 'шумоподавление включено (нейросеть или браузер)');
+  await waitFor(winC, `noiseLevelOf() === 2 && activeSession().local.micChain != null`, 'шумоподавление включено (нейросеть)');
   console.log('✔ шумоподавление включается и выключается на ходу');
 
   // Права: всем без роли запрещаем говорить — Вику не слышно, у неё самой микрофон выключен

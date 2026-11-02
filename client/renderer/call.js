@@ -164,12 +164,25 @@ async function noiseSuppressorNode(ctx) {
 }
 
 /** Дорожка микрофона через нейросеть: { track — очищенная, stop() — отпустить всё } */
-async function denoiseTrack(raw) {
+async function denoiseTrack(raw, level = 2) {
   const ctx = new AudioContext({ sampleRate: 48000 });
   try {
     const node = await noiseSuppressorNode(ctx);
     const dest = ctx.createMediaStreamDestination();
-    ctx.createMediaStreamSource(new MediaStream([raw])).connect(node).connect(dest);
+    const source = ctx.createMediaStreamSource(new MediaStream([raw]));
+    // Интенсивность — доля очищенного звука в миксе: на «сильном» остаётся только нейросеть,
+    // на «мягком» голос чистится, но комната слышна — так меньше «металлического» призвука
+    const wetAmount = level >= 3 ? 1 : level === 2 ? 0.7 : 0.4;
+    if (wetAmount >= 1) {
+      source.connect(node).connect(dest);
+    } else {
+      const wet = ctx.createGain();
+      wet.gain.value = wetAmount;
+      const dry = ctx.createGain();
+      dry.gain.value = 1 - wetAmount;
+      source.connect(node).connect(wet).connect(dest);
+      source.connect(dry).connect(dest);
+    }
     const track = dest.stream.getAudioTracks()[0];
     return {
       track,
@@ -192,7 +205,9 @@ function micConstraints(settings) {
       deviceId: settings.micId ? { ideal: settings.micId } : undefined,
       // Эхоподавление нужно всегда, иначе без наушников друзья слышат сами себя
       echoCancellation: true,
-      noiseSuppression: settings.noiseSuppression,
+      // Нейросеть и встроенное шумоподавление одновременно не нужны: портят голос дважды.
+      // Встроенное включаем только как запасной путь, если нейросеть не загрузилась
+      noiseSuppression: Boolean(settings.browserNoise),
       autoGainControl: true,
     },
   };
@@ -311,17 +326,18 @@ class LocalMedia {
     this.tracks.mic?.stop();
     this.micChain?.stop();
     this.micChain = null;
-    const neural = settings.noiseSuppression;
-    const stream = await navigator.mediaDevices.getUserMedia(micConstraints({ ...settings, noiseSuppression: false }));
+    const level = Number(settings.noiseLevel ?? 0);
+    const neural = level > 0;
+    const stream = await navigator.mediaDevices.getUserMedia(micConstraints({ ...settings, browserNoise: false }));
     let track = stream.getAudioTracks()[0];
     if (neural) {
       try {
-        this.micChain = await denoiseTrack(track);
+        this.micChain = await denoiseTrack(track, level);
         track = this.micChain.track;
       } catch (err) {
         // Нейросеть не загрузилась — хотя бы встроенное шумоподавление браузера
         console.warn('Шумоподавление нейросетью недоступно:', err.message);
-        await track.applyConstraints({ ...micConstraints(settings).audio, deviceId: undefined }).catch(() => {});
+        await track.applyConstraints({ ...micConstraints({ ...settings, browserNoise: true }).audio, deviceId: undefined }).catch(() => {});
       }
     }
     if (this.closed) return this.micChain?.stop() ?? track.stop();
