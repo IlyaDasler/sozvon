@@ -2461,3 +2461,5 @@ code, pre, .msg-text code, .e2ee-card input { font-family: var(--font-mono); }
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 70%, transparent);
 }
+/* Приватная комната: замок в списке каналов */
+.room-lock { flex: none; font-size: 11px; line-height: 1; opacity: .8; margin-right: 2px; }
