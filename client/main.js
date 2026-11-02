@@ -29,9 +29,9 @@ applyChromiumFlags(app);
 const profileArg = process.argv.find((a) => a.startsWith('--profile='));
 if (profileArg) app.setPath('userData', path.join(app.getPath('appData'), `Sozvon-${profileArg.split('=')[1]}`));
 
-// Одна копия приложения: повторный запуск ярлыка показывает уже открытое (или спрятанное в трей) окно
-// В бете блокировку не берём: она нужна, чтобы не открыть два раза одну и ту же копию,
-// а бета и установленная версия — разные копии и должны работать вместе\nconst primary = IS_BETA || app.requestSingleInstanceLock();
+// Одна копия приложения: повторный запуск ярлыка показывает уже открытое (или спрятанное в трей) окно.
+// В бете блокировку не берём: бета и установленная версия — разные копии и должны работать вместе
+const primary = IS_BETA || app.requestSingleInstanceLock();
 if (!primary) app.quit();
 app.on('second-instance', () => showWindow());
 
