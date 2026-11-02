@@ -183,7 +183,7 @@
 /* Кнопки и поля — лёгкая стеклянная кромка */
 [data-theme='glass'] .btn,
 [data-theme='glass'] .input,
-[data-theme='glass'] input,
+[data-theme='glass'] input:not([type='checkbox']):not([type='range']),
 [data-theme='glass'] textarea { background: var(--glass); border-color: var(--line); }
 
 /* Слабое железо: размытие выключается целиком, полупрозрачность остаётся */
@@ -268,7 +268,7 @@
   box-shadow: 0 6px 16px var(--glow);
 }
 
-[data-theme='glass'] input,
+[data-theme='glass'] input:not([type='checkbox']):not([type='range']),
 [data-theme='glass'] textarea,
 [data-theme='glass'] select {
   border-radius: 9px;
@@ -487,7 +487,7 @@
 }
 
 /* Поля и выпадающие списки — та же «линза», что у панелей */
-[data-theme='glass'] input,
+[data-theme='glass'] input:not([type='checkbox']):not([type='range']),
 [data-theme='glass'] textarea,
 [data-theme='glass'] select {
   background-color: rgba(255, 255, 255, calc(var(--glass-a) * 0.7));

@@ -400,7 +400,8 @@ body:has(#auth:not(.hidden)) .nav-btn { visibility: hidden; }
 .head-home > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .head-home img { flex: none; }
 @container sidebar (max-width: 236px) { .head-home > span { display: none; } }
-.sidebar-head .icon-btn { width: 28px; height: 28px; margin-right: -6px; }
+.sidebar-head .icon-btn { width: 28px; height: 28px; margin-right: 0; }
+.sidebar-head { padding-right: 14px; }
 .conn-dot.ok { background: var(--ok); }
 
 .list-title { padding: 10px 16px 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
@@ -1441,7 +1442,8 @@ kbd {
 /* Переключатель как в macOS, но из того же стекла: прозрачная дорожка и стеклянный бегунок.
    Геометрия сходится: 42 = 3 + 20 + 16 + 3, поэтому шарик не вылезает и не «пляшет» */
 .switch {
-  appearance: none; width: 42px; height: 26px; flex: none; margin: 0; border-radius: 999px; position: relative;
+  appearance: none; width: 42px; height: 26px; flex: none; margin: 0; border: 0; padding: 0;
+  border-radius: 999px; position: relative;
   cursor: pointer; background: color-mix(in srgb, var(--text) 9%, transparent);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent),
@@ -1737,9 +1739,9 @@ kbd {
 .icon-btn.members-toggle.on { color: var(--text); }
 
 /* Р В РЎС“РЎвЂЎР С”Р В° Р Р…Р В° Р С”РЎР‚Р В°РЎР‹ Р В±Р С•Р С”Р С•Р Р†Р С•Р в„– Р С—Р В°Р Р…Р ВµР В»Р С‘: РЎвЂљРЎРЏР Р…РЎС“РЎвЂљ Р СРЎвЂ№РЎв‚¬РЎРЉРЎР‹, Р С—РЎР‚Р С‘ Р Р…Р В°Р Р†Р ВµР Т‘Р ВµР Р…Р С‘Р С‘ РІР‚вЂќ РЎвЂљР С•Р Р…Р С”Р В°РЎРЏ Р В»Р С‘Р Р…Р С‘РЎРЏ Р В°Р С”РЎвЂ Р ВµР Р…РЎвЂљР В° */
-.panel-resizer { position: absolute; top: 0; bottom: 0; z-index: 3; width: 8px; cursor: col-resize; }
-.panel-resizer.right { right: -4px; }
-.panel-resizer.left { left: -4px; }
+.panel-resizer { position: absolute; top: 0; bottom: 0; z-index: 20; width: 10px; cursor: col-resize; }
+.panel-resizer.right { right: -5px; }
+.panel-resizer.left { left: -5px; }
 .panel-resizer.bottom { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 8px; cursor: row-resize; }
 .panel-resizer.bottom::after { top: auto; bottom: 0; left: 0; right: 0; width: auto; height: 2px; }
 body.resizing-rows { cursor: row-resize; }
@@ -2117,3 +2119,16 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 .update-card.failed #update-skip { display: none; }
 .update-card.failed #update-notes,
 .update-card.failed #update-notes-title { display: none; }
+/* ---------- Скругление панелей во всех темах ----------
+   Меняем только форму: радиус. Без отступа, рамки и обрезки — иначе ручка-разделитель
+   перестаёт ловить мышь, а узкие окна начинают себя вести иначе */
+.sidebar,
+.content {
+  border-radius: var(--panel-radius, 16px);
+  position: relative;
+}
+/* Сайдбар выше чата: ручка выступает на 5 px за край и должна быть доступна мыши */
+.sidebar { z-index: 3; }
+.content { z-index: 2; border-top: 1px solid var(--line); }
+/* Кнопки окна Windows не перекрывают панель трансляции */
+html.is-win .fullview-bar { padding-right: 148px; }

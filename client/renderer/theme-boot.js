@@ -8,4 +8,5 @@
   if (!window.desktop) document.documentElement.classList.add('is-web');
   // macOS: у окна системные кнопки слева, наша полоса сдвигается, чтобы они не налезали
   if (window.desktop?.platform === 'darwin') document.documentElement.classList.add('is-mac');
+  if (window.desktop?.platform === 'win32') document.documentElement.classList.add('is-win');
 })();
