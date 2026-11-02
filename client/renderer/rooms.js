@@ -1,4 +1,4 @@
-﻿// Комнаты: голосовые (общий голосовой канал с видео и демонстрацией экрана + чат) и текстовые (только чат).
+// Комнаты: голосовые (общий голосовой канал с видео и демонстрацией экрана + чат) и текстовые (только чат).
 // Каждая комната — в канале (hubs.js); в боковой панели видны комнаты открытого канала
 
 const ROOM_ERRORS = {
@@ -604,6 +604,23 @@ function handleRoomEvent(msg) {
       const when = `${formatDay(msg.startsAt)} · ${formatTime(msg.startsAt)}`;
       const who = msg.from?.displayName || 'Кто-то';
       notify(msg.title, `${who} зовёт: ${when} · #${msg.roomName}`, {
+        kind: 'event',
+        open: { room: msg.roomId },
+        hub: msg.hubId,
+      });
+      break;
+    }
+    // Событие изменили: время, название или повтор — говорим всем участникам
+    case 'event:changed': {
+      const who = msg.from?.displayName || 'Кто-то';
+      const changes = [];
+      if (msg.startsAt !== msg.beforeStartsAt) {
+        changes.push(
+          `время: ${formatDay(msg.beforeStartsAt)} ${formatTime(msg.beforeStartsAt)} → ${formatDay(msg.startsAt)} ${formatTime(msg.startsAt)}`
+        );
+      }
+      if (msg.title !== msg.beforeTitle) changes.push(`название: «${msg.beforeTitle}» → «${msg.title}»`);
+      notify(`Событие изменено: ${msg.title}`, `${who}: ${changes.join('; ') || 'обновил событие'} · #${msg.roomName}`, {
         kind: 'event',
         open: { room: msg.roomId },
         hub: msg.hubId,

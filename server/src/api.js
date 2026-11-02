@@ -1861,7 +1861,27 @@ export function createApi() {
         throw new HttpError(400, 'Укажите дату и время события');
       const repeat = EVENT_REPEATS.has(req.body.repeat) ? req.body.repeat : 'none';
       const remind = EVENT_REMIND.has(Number(req.body.remind)) ? Number(req.body.remind) : 0;
+      // Что именно поменялось — по этому участники поймут, о чём речь
+      const before = { title: event.title, startsAt: event.starts_at, repeat: event.repeat || 'none', remind: event.remind || 0 };
       events.update(event.id, title, startsAt, repeat, remind);
+      // Оповещаем всех, кто в событии: время, название или повтор изменились
+      for (const r of events.responses(event.id)) {
+        if (r.user_id === req.user.id) continue;
+        hub.send(r.user_id, {
+          type: 'event:changed',
+          eventId: event.id,
+          title,
+          beforeTitle: before.title,
+          startsAt,
+          beforeStartsAt: before.startsAt,
+          repeat,
+          remind,
+          roomId: room.id,
+          roomName: room.name,
+          hubId: room.hub_id,
+          from: toPublicUser(req.user),
+        });
+      }
       return notifyRoom(room.id);
     })
   );
