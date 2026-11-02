@@ -1075,6 +1075,7 @@ function openEventCreate(hub, editEvent = null) {
   const current = rooms.find((r) => r.id === state.selectedRoomId) || rooms.find((r) => r.kind === 'text') || rooms[0];
   $('event-title').value = editEvent?.title ?? '';
   $('event-create-title').textContent = editEvent ? 'Изменить событие' : 'Новое событие';
+  $('event-submit').textContent = editEvent ? 'Обновить событие' : 'Создать событие';
   eventDraft = {
     date: base,
     time: `${pad2(base.getHours())}:${pad2(base.getMinutes())}`,
@@ -1098,6 +1099,11 @@ function openEventCreate(hub, editEvent = null) {
       )
     )
   );
+  // При правке отмечаем тех, кто уже в событии: кого пригласили и кто присоединился сам
+  if (editEvent) {
+    const inEvent = new Set((editEvent.responses || []).map((r) => r.userId));
+    for (const input of list.querySelectorAll('input')) input.checked = inEvent.has(Number(input.value));
+  }
   const updateToggle = () => {
     const chosen = list.querySelectorAll('input:checked').length;
     toggle.textContent = chosen ? `Выбрано: ${chosen}` : 'Никто не выбран';
@@ -1192,6 +1198,7 @@ $('event-form').onsubmit = async (e) => {
           startsAt: startsAt.getTime(),
           repeat: eventDraft.repeat,
           remind: eventDraft.remind,
+          invitees,
         })
       );
       closeEventCreate();
