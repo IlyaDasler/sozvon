@@ -1754,12 +1754,27 @@ export function createApi() {
     })
   );
 
+  // Тред: корневое сообщение и все ответы в нём
+  api.get(
+    '/rooms/:id/messages/:messageId/thread',
+    handle((req) => {
+      const room = requireRoom(req);
+      const found = roomMessages.byId(Number(req.params.messageId));
+      if (!found || found.room_id !== room.id) throw new HttpError(404, 'Сообщение не найдено');
+      const rootId = found.thread_root || found.id;
+      const rows = [roomMessages.byId(rootId), ...roomMessages.thread(rootId)].filter(Boolean);
+      return withMessageMeta(rows.map(toRoomMessage), 'room', room.id, req.user.id);
+    })
+  );
+
   api.get(
     '/rooms/:id/messages',
     handle((req) => {
       const room = requireRoom(req);
       const before = Number(req.query.before) || undefined;
-      return withMessageMeta(roomMessages.list(room.id, before).map(toRoomMessage), 'room', room.id, req.user.id);
+      const list = withMessageMeta(roomMessages.list(room.id, before).map(toRoomMessage), 'room', room.id, req.user.id);
+      const counts = roomMessages.replyCounts(room.id);
+      return list.map((m) => ({ ...m, replies: counts.get(m.id) || 0 }));
     })
   );
 
@@ -1929,14 +1944,36 @@ export function createApi() {
       requirePerm(req, room, PERMS.write, 'Вам нельзя писать в эту комнату');
       const { text, ...extra } = await messageFrom(req, roomConv(room.id));
       const replyTo = replyTarget(req.body.replyToId, roomMessages, (r) => r.room_id === room.id);
+      // Тред: ответ прикрепляется к корневому сообщению. Если ответили на ответ —
+      // всё равно поднимаемся к корню, чтобы не было вложенных веток
+      let threadRoot = null;
+      if (req.body.threadRootId != null) {
+        const candidate = roomMessages.byId(Number(req.body.threadRootId));
+        if (!candidate || candidate.room_id !== room.id) throw new HttpError(404, 'Сообщение треда не найдено');
+        threadRoot = candidate.thread_root || candidate.id;
+      }
+      // @all: клиент присылает флаг, потому что текст зашифрован и сервер его не читает
+      const mentionAll = Boolean(req.body.mentionAll);
       const message = withMessageMeta(
-        [toRoomMessage(roomMessages.add(room.id, req.user.id, text, { ...extra, replyTo }))],
+        [toRoomMessage(roomMessages.add(room.id, req.user.id, text, { ...extra, replyTo, threadRoot }))],
         'room',
         room.id,
         req.user.id
       )[0];
-      for (const m of rooms.members(room.id)) hub.send(m.id, { type: 'room:message', message });
-      return message;
+      // Ответ в треде виден только участникам треда, а не всей комнате
+      const receivers = threadRoot && !mentionAll ? roomMessages.participants(threadRoot) : rooms.members(room.id).map((m) => m.id);
+      if (threadRoot) {
+        // В основной ленте показываем только счётчик ответов
+        const root = roomMessages.byId(threadRoot);
+        for (const m of rooms.members(room.id)) {
+          const uid = m.id;
+          if (receivers.includes(uid)) hub.send(uid, { type: 'room:message', message });
+          hub.send(uid, { type: 'room:thread:new', roomId: room.id, rootId: threadRoot, message });
+        }
+        return { ...message, threadRoot, replies: roomMessages.thread(threadRoot).length, rootFrom: root?.from_id ?? null };
+      }
+      for (const m of rooms.members(room.id)) hub.send(m.id, { type: 'room:message', message, mentionAll });
+      return { ...message, mentionAll };
     })
   );
 
