@@ -2353,3 +2353,38 @@ svg:not([fill]) {
   .app-tip:not(.hidden),
   .screen:not(.hidden) { animation: none; }
 }
+/* ---------- Единый ритм анимаций: без рывков ----------
+   Четыре длительности и две кривые на весь интерфейс, чтобы переходы не дёргались
+   из-за разных значений у соседних компонентов */
+:root {
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+  --dur-3: 240ms;
+  --dur-4: 320ms;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-spring: cubic-bezier(.22, 1.12, .36, 1);
+}
+.btn,
+.icon-btn,
+.round-btn,
+.nav-btn,
+.tab,
+.rail-tile,
+.contact,
+.friend-row,
+.room-row,
+.tile,
+.msg,
+input[type='range'] {
+  transition-timing-function: var(--ease-out);
+  transition-duration: var(--dur-2);
+}
+.switch { transition-duration: var(--dur-3); transition-timing-function: var(--ease-out); }
+.switch::after { transition-duration: var(--dur-3); transition-timing-function: var(--ease-spring); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

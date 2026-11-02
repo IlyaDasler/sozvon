@@ -82,51 +82,13 @@
       )
         return;
 
-      const vertical = Math.abs(target.y - current.y) > Math.abs(target.x - current.x);
-      const distance = vertical ? Math.abs(target.y - current.y) : Math.abs(target.x - current.x);
-      const size = vertical ? current.h : current.w;
-
-      // Дальний прыжок (первая вкладка → последняя): едем пружиной, но НЕ растягиваемся
-      // на весь путь — иначе подложка превращается в «колбасу» через весь тулбар
-      if (distance > size * 1.8) {
-        pill.style.transition = `transform .30s ${SPRING}, width .30s ${SPRING}, height .26s ${SPRING}`;
-        apply(pill, target);
-        current = target;
-        return;
-      }
-
-      // Ближний переход: растяжение 140 мс, затем пружинная сборка под новую кнопку
-      const stretched = vertical
-        ? {
-            x: target.x,
-            y: Math.min(current.y, target.y),
-            w: target.w,
-            h:
-              Math.max(current.y + current.h, target.y + target.h) -
-              Math.min(current.y, target.y),
-          }
-        : {
-            x: Math.min(current.x, target.x),
-            y: target.y,
-            w:
-              Math.max(current.x + current.w, target.x + target.w) -
-              Math.min(current.x, target.x),
-            h: target.h,
-          };
-
+      // Один плавный морфинг для любой дистанции: подложка едет пружиной, без
+      // промежуточного растяжения — так нет ни «колбасы», ни рывка на дальнем переходе
       pill.style.transition =
-        'width .14s cubic-bezier(.4, 0, .2, 1), height .14s cubic-bezier(.4, 0, .2, 1), transform .14s cubic-bezier(.4, 0, .2, 1)';
-      apply(pill, stretched);
-
-      const mine = ++token;
-      setTimeout(() => {
-        if (mine !== token) return;
-        pill.style.transition = `transform .36s ${SPRING}, width .36s ${SPRING}, height .26s ${SPRING}`;
-        apply(pill, target);
-      }, 140);
+        `transform 320ms ${SPRING}, width 320ms ${SPRING}, height 260ms ${SPRING}`;
+      apply(pill, target);
       current = target;
     }
-
     root.addEventListener('click', onClick);
     observer.observe(root, {
       subtree: true,
