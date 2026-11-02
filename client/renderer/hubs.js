@@ -940,7 +940,7 @@ function buildEventCalendar() {
   draw();
 }
 
-// Время: часы и минуты двумя колонками
+// Время: часы и минуты сеткой, подтверждение — «ОК»
 function buildEventTimePicker() {
   const pop = $('event-time-pop');
   const [hours, minutes] = eventDraft.time.split(':').map(Number);
@@ -964,11 +964,17 @@ function buildEventTimePicker() {
     b.onclick = () => {
       eventDraft.time = `${pad2(hours)}:${pad2(m)}`;
       syncEventPickers();
-      pop.classList.add('hidden');
+      buildEventTimePicker();
     };
     minGrid.append(b);
   }
-  pop.replaceChildren(labelHours, hourGrid, labelMinutes, minGrid);
+
+  // ОК закрывает окно выбора: часы и минуты выбираются без повторного открытия
+  const foot = el('div', { className: 'time-foot' });
+  const ok = el('button', { type: 'button', className: 'btn small primary', textContent: 'ОК' });
+  ok.onclick = () => pop.classList.add('hidden');
+  foot.append(ok);
+  pop.replaceChildren(labelHours, hourGrid, labelMinutes, minGrid, foot);
 }
 
 // Список чатов канала
@@ -1442,6 +1448,8 @@ function handleHubEvent(msg) {
 
 // Выпадающие списки (участники, календарь, время, чат) закрываются щелчком мимо
 document.addEventListener('click', (e) => {
+  // Кнопку могли перерисовать прямо во время клика — это не «щелчок мимо»
+  if (!e.target.isConnected) return;
   if (!e.target.closest('.multi-select')) {
     for (const list of document.querySelectorAll('.multi-select .multi-list')) list.classList.add('hidden');
     for (const toggle of document.querySelectorAll('.multi-toggle')) toggle.classList.remove('open');
