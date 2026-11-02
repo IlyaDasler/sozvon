@@ -480,6 +480,19 @@
               <h4>Тема</h4>
               <div class="theme-grid" id="theme-grid"></div>
             </div>
+            <!-- Настройки стекла: видны только для темы «Жидкое стекло» -->
+            <div class="set-block hidden" id="glass-tuning">
+              <h4>Стекло</h4>
+              <label class="field">
+                <span>Прозрачность панелей <b id="glass-alpha-value">7%</b></span>
+                <input type="range" id="glass-alpha" min="2" max="30" step="1" value="7">
+              </label>
+              <label class="field">
+                <span>Размытие <b id="glass-blur-value">26 px</b></span>
+                <input type="range" id="glass-blur" min="0" max="40" step="2" value="26">
+              </label>
+              <span class="hint-text">Чем выше прозрачность, тем сильнее видно фон. На слабом компьютере уменьшите размытие или поставьте 0.</span>
+            </div>
           </div>
 
           <div class="set-pane" data-pane="sound">
