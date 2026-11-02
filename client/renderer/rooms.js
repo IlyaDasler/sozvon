@@ -398,7 +398,12 @@ function roomItem(room) {
 function applyRoomUpdate(room) {
   state.rooms.set(room.id, room);
   renderRooms();
-  if (state.selectedRoomId === room.id) renderRoomView();
+  if (state.selectedRoomId === room.id) {
+    renderRoomView();
+    // Карточки событий живут в сообщениях — после смены готовности их нужно перерисовать
+    renderRoomMessages();
+    refreshEventCards();
+  }
   if (state.room?.roomId === room.id) applyRoomPerms();
   if (manageRoomId === room.id) renderRoomManage();
   if (inviteRoomId === room.id && !$('room-invite').classList.contains('hidden')) renderRoomInvite();

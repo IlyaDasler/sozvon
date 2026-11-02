@@ -1855,3 +1855,46 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 .tile-strip .tile { width: 168px; height: 110px; flex: none; }
 .tile-strip .tile .avatar.big { width: 44px; height: 44px; font-size: 18px; }
 .tile-strip .tile-tools { opacity: 1; }
+
+/* ---------- События канала ---------- */
+.field-row { display: flex; gap: 10px; }
+.field-row .field { flex: 1; min-width: 0; }
+.event-invitees { display: flex; flex-wrap: wrap; gap: 6px 14px; max-height: 140px; overflow-y: auto; }
+.event-invite { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.hub-events { display: flex; flex-direction: column; gap: 10px; }
+.hub-event {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--bg-3);
+}
+.hub-event-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.hub-event b { font-size: 14px; }
+
+/* Карточка события в сообщении */
+.event-card {
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-3) 92%, transparent); max-width: 520px;
+}
+.event-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.event-badge {
+  flex: none; padding: 2px 7px; border-radius: 5px; background: var(--accent); color: #fff;
+  font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+}
+.event-title { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event-when { font-size: 13px; color: var(--muted); }
+.event-people { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.event-chip { font-size: 12.5px; }
+.event-chip.yes { color: var(--ok); }
+.event-chip.no { color: var(--muted); text-decoration: line-through; }
+.event-chip.maybe { color: var(--warn, #f5a524); }
+.event-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.event-btn.active { border-color: var(--accent); color: var(--accent); }
+.event-later { display: inline-flex; align-items: center; gap: 6px; }
+.event-time {
+  width: 96px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--bg-2); color: var(--text); font: inherit; font-size: 12px;
+}
+
+/* Кнопки события не переносятся по словам, «другое время» — своей строкой */
+.event-btn { white-space: nowrap; }
+.event-later { width: 100%; }

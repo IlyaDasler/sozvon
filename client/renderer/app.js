@@ -1166,7 +1166,22 @@ function messageRow(m, prev, list, actions, shown, fresh) {
   // У ответа своя дуга к аватарке, поэтому он всегда начинает новую группу
   const continued = !reply && !newDay && prev.fromId === m.fromId && m.createdAt - prev.createdAt < 5 * 60_000;
 
-  const look = JSON.stringify([continued, m.createdAt, m.editedAt, m.reactions, m.pinned, reply, mentionsMe(m), actions.canDelete(m), author.displayName, author.nameColor, author.avatarColor, author.avatarUrl]);
+  const look = JSON.stringify([
+    continued,
+    m.createdAt,
+    m.editedAt,
+    m.reactions,
+    m.pinned,
+    reply,
+    mentionsMe(m),
+    actions.canDelete(m),
+    author.displayName,
+    author.nameColor,
+    author.avatarColor,
+    author.avatarUrl,
+    // Событие в сообщении: ответы участников меняются — карточку нужно перерисовать
+    m.plain?.eventId ? JSON.stringify(roomById(m.roomId)?.events?.find((e) => e.id === m.plain.eventId)?.responses || null) : '',
+  ]);
   const text = JSON.stringify([m.text, m.plain, m.attachments, m.preview]);
   if (shown?.look === look && shown.text === text) {
     shown.row.message = m;

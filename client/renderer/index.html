@@ -766,6 +766,7 @@
       <nav class="rs-nav" id="hs-nav">
         <div class="rs-room ellipsis" id="hs-hub-name"></div>
         <button type="button" data-tab="overview">Обзор</button>
+        <button type="button" data-tab="events">События</button>
         <button type="button" data-tab="roles">Роли и права</button>
         <button type="button" data-tab="emojis">Смайлики</button>
         <button type="button" data-tab="members">Участники <span class="rs-count" id="hs-member-count"></span></button>
@@ -785,6 +786,41 @@
   </div>
   <input type="file" id="hub-icon-input" accept="image/*" hidden>
   <input type="file" id="hub-emoji-input" accept="image/*" hidden>
+
+  <!-- Создать событие канала: день, время, чат для публикации и участники -->
+  <div id="event-create" class="modal hidden">
+    <form class="modal-card event-form" id="event-form">
+      <h3>Новое событие</h3>
+      <label class="field">
+        <span>Название</span>
+        <input id="event-title" maxlength="80" placeholder="Например: Broken Arrow" autocomplete="off">
+      </label>
+      <div class="field-row">
+        <label class="field">
+          <span>День</span>
+          <input id="event-date" type="date">
+        </label>
+        <label class="field">
+          <span>Время</span>
+          <input id="event-time" type="time">
+        </label>
+      </div>
+      <label class="field">
+        <span>Чат для публикации</span>
+        <select id="event-room"></select>
+      </label>
+      <div class="field">
+        <span>Позвать участников</span>
+        <div class="event-invitees" id="event-invitees"></div>
+      </div>
+      <p class="error" id="event-error"></p>
+      <div class="row">
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="event-cancel">Отмена</button>
+        <button class="btn primary" type="submit">Создать событие</button>
+      </div>
+    </form>
+  </div>
 
   <!-- Пригласить друзей в канал -->
   <div id="hub-invite" class="modal hidden">
