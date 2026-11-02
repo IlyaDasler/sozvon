@@ -2094,3 +2094,7 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
   box-shadow: inset 0 0 0 2px var(--accent);
   border-radius: var(--r-m);
 }
+/* Окно неудачной проверки обновлений: без «Что нового», с повтором и ссылкой на релизы */
+.update-card.failed #update-skip { display: none; }
+.update-card.failed #update-notes,
+.update-card.failed #update-notes-title { display: none; }

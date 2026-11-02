@@ -2627,7 +2627,10 @@ function openUpdateModal(mode = 'available') {
   const s = updateStatus;
   const latest = mode === 'latest';
   const failed = mode === 'error';
-  $('update-modal').classList.toggle('latest', latest || failed);
+  $('update-modal').classList.toggle('latest', latest);
+  $('update-modal').classList.toggle('failed', failed);
+  $('update-notes').classList.toggle('hidden', failed);
+  $('update-notes-title').classList.toggle('hidden', failed);
   $('update-title').textContent = failed
     ? 'Не удалось проверить обновления'
     : latest
