@@ -627,6 +627,17 @@ function handleRoomEvent(msg) {
       });
       break;
     }
+    // Напоминание о событии: за N минут до начала
+    case 'event:remind': {
+      const minutes = Number(msg.minutes) || 0;
+      const lead = minutes >= 60 ? `${Math.round(minutes / 60)} ч` : `${minutes} мин`;
+      notify(`Скоро событие: ${msg.title}`, `Через ${lead} · ${formatTime(msg.startsAt)} · #${msg.roomName}`, {
+        kind: 'event',
+        open: { room: msg.roomId },
+        hub: msg.hubId,
+      });
+      break;
+    }
     case 'room:updated': {
       const room = msg.room;
       const old = roomById(room.id);
