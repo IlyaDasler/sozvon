@@ -176,9 +176,7 @@
 [data-theme='glass'] #chat,
 [data-theme='glass'] #room-view { background: rgba(10, 14, 30, 0.35); }
 
-/* Пузыри сообщений — тоже стекло, но плотнее, чтобы текст читался */
-[data-theme='glass'] .msg-text { background: var(--glass-strong); }
-[data-theme='glass'] .msg.mine .msg-text { background: color-mix(in srgb, var(--accent) 38%, transparent); }
+/* Сообщения оставляем плоскими, как в приложении: стекло — только на панелях */
 
 /* Кнопки и поля — лёгкая стеклянная кромка */
 [data-theme='glass'] .btn,
