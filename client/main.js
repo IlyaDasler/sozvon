@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, globalShortcut, ipcMain, powerMonitor, screen, session, shell } = require('electron');
+const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, powerMonitor, screen, session, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { autoUpdater } = require('electron-updater');
@@ -40,6 +40,9 @@ function toPage(channel, ...args) {
 const TITLEBAR_H = 32; // как .titlebar в styles.css
 
 const WINDOW_MIN = { width: 820, height: 540 };
+// macOS: приложение запущено прямо из DMG — система держит его в случайной папке (App Translocation).
+// Обновление подменить такую копию не может, а после перезагрузки она исчезает
+const TRANSLOCATED = process.platform === 'darwin' && /AppTranslocation/i.test(process.execPath);
 
 /** show: false — окно грузится за окошком загрузки и показывается, когда запуск закончен */
 function createWindow({ show = true } = {}) {
@@ -131,6 +134,23 @@ function createTray() {
 
 app.whenReady().then(() => {
   if (!primary) return;
+  // Запустили из образа: просим перетащить в «Программы», иначе обновления не заработают
+  if (TRANSLOCATED) {
+    dialog
+      .showMessageBox({
+        type: 'info',
+        message: 'Созвон запущен из образа',
+        detail:
+          'Перетащите «Созвон» в папку «Программы» и запустите оттуда. Иначе обновления не смогут установиться, а после перезагрузки приложение придётся открывать заново.',
+        buttons: ['Открыть «Программы»', 'Продолжить'],
+        defaultId: 0,
+        cancelId: 1,
+      })
+      .then(({ response }) => {
+        if (response === 0) shell.openPath('/Applications');
+      })
+      .catch(() => {});
+  }
   applyPermissions(session.defaultSession);
   // Встроенные плееры (YouTube, Vimeo): у страницы из file:// нет Referer, и YouTube отвечает
   // «Ошибка настройки 153». Подставляем адрес сайта приложения — для плееров это обычное встраивание
@@ -233,6 +253,8 @@ function checkForUpdates() {
     setUpdateStatus({ state: 'unsupported' });
     return;
   }
+  // Из образа обновление поставить нельзя — не предлагаем и не висим
+  if (TRANSLOCATED) return;
   // Пока качаем или уже скачали, повторно не проверяем
   if (updateStatus.state === 'downloading' || updateStatus.state === 'ready') return;
   lastUpdateCheck = Date.now();
