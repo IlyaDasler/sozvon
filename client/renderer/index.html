@@ -493,7 +493,15 @@
                 <span>Динамики / наушники</span>
                 <select id="set-speaker"></select>
               </label>
-              <label class="check"><input type="checkbox" id="set-ns"> Шумоподавление нейросетью — убирает клавиатуру, вентилятор, улицу и другие звуки вокруг, голос остаётся (работает на вашем компьютере, без интернета)</label>
+              <label class="field">
+                <span>Шумоподавление нейросетью <em class="muted small">— клавиатура, вентилятор, улица убираются на вашем компьютере, без интернета</em></span>
+                <select id="set-ns-level">
+                  <option value="0">Выключено</option>
+                  <option value="1">Мягкое — фон тише, но слышно, что вокруг</option>
+                  <option value="2">Среднее — рекомендую</option>
+                  <option value="3">Сильное — только голос</option>
+                </select>
+              </label>
             </div>
             <div class="set-block hidden" id="ptt-block">
               <h4>Режим микрофона</h4>

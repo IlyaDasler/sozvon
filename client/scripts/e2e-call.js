@@ -47,12 +47,12 @@ runTest(async () => {
       }
       return level;
     })()`);
-  await js(winA, 'setNoiseSuppression(true)');
+  await js(winA, 'setNoiseLevel(3)');
   await sleep(1500);
   const heardOn = await loudness();
-  await js(winA, 'setNoiseSuppression(false)');
+  await js(winA, 'setNoiseLevel(0)');
   await sleep(1500);
-  await js(winA, 'setNoiseSuppression(true)');
+  await js(winA, 'setNoiseLevel(3)');
   await sleep(1500);
   const heardAgain = await loudness();
   console.log(`  Боря слышит Аню: ${heardOn.toFixed(3)}, после выкл/вкл шумоподавления ${heardAgain.toFixed(3)}`);
