@@ -2388,3 +2388,33 @@ input[type='range'] {
     transition-duration: 1ms !important;
   }
 }
+/* Кнопки шапки сайдбара: ровный квадрат со скруглением, значок по центру */
+.sidebar-head .icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  padding: 0;
+}
+.sidebar-head .icon-btn svg { width: 17px; height: 17px; }
+#sidebar-update-check { position: relative; }
+#sidebar-update-check.has-dot::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 2px var(--bg-deep);
+}
+/* Дети иконочной кнопки лежат в одной ячейке: иначе бейдж создаёт вторую колонку
+   и сдвигает значок вправо (было смещение 4 px у кнопок с бейджем) */
+.icon-btn > * { grid-area: 1 / 1; }
+/* Иконочные кнопки: никаких браузерных отступов — иначе значок уезжает влево.
+   Правило в конце файла, чтобы перекрывать любые более ранние варианты */
+.icon-btn,
+.list-title .icon-btn,
+.sidebar-head .icon-btn,
+.chat-head .icon-btn,
+.msg-tools .icon-btn { padding: 0; }
