@@ -2484,3 +2484,11 @@ code, pre, .msg-text code, .e2ee-card input { font-family: var(--font-mono); }
   font-weight: 600;
   width: fit-content;
 }
+/* Обои чата: картинка или GIF под сообщениями, с затемнением для читаемости */
+#chat[data-chat-wallpaper='1'] .messages {
+  background-image: linear-gradient(rgba(6, 8, 16, .38), rgba(6, 8, 16, .38)), var(--chat-wallpaper);
+  background-size: cover;
+  background-position: center;
+}
+.chat-wallpaper { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.chat-wallpaper .row { gap: 8px; }

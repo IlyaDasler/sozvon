@@ -1565,6 +1565,8 @@ function handleEvent(msg) {
       return;
     case 'chat:theme':
       return onChatTheme(msg);
+    case 'chat:wallpaper':
+      return onChatWallpaper(msg);
     case 'user:updated':
       if (msg.user.id === state.me.id) {
         // Свой профиль (с этого или другого устройства): и себя, и свои копии в участниках комнат и каналов

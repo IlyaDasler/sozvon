@@ -306,6 +306,8 @@ if (!columnsOf('rooms').includes('default_perms'))
 if (!columnsOf('room_members').includes('role_id')) db.exec('ALTER TABLE room_members ADD COLUMN role_id INTEGER');
 // Тема личного чата «у обоих» — одна на пару, хранится в обеих строках дружбы
 if (!columnsOf('contacts').includes('chat_theme')) db.exec('ALTER TABLE contacts ADD COLUMN chat_theme TEXT');
+  // Обои чата картинкой или гифкой: имя файла в data/wallpapers, общие для пары друзей
+  if (!columnsOf('contacts').includes('wallpaper')) db.exec('ALTER TABLE contacts ADD COLUMN wallpaper TEXT');
 // Свой фон комнаты: имя картинки в папке аватарок (как иконка канала)
 if (!columnsOf('rooms').includes('background')) db.exec('ALTER TABLE rooms ADD COLUMN background TEXT');
 // Кик на время: до этого момента (мс) участник может только читать чат
@@ -418,11 +420,13 @@ const q = {
   updateGame: db.prepare('UPDATE users SET game = ? WHERE id = ?'),
 
   listContacts: db.prepare(`
-    SELECT u.*, c.chat_theme FROM contacts c JOIN users u ON u.id = c.contact_id
+    SELECT u.*, c.chat_theme, c.wallpaper FROM contacts c JOIN users u ON u.id = c.contact_id
     WHERE c.user_id = ? ORDER BY u.display_name COLLATE NOCASE
   `),
   hasContact: db.prepare('SELECT 1 FROM contacts WHERE user_id = ? AND contact_id = ?'),
   setChatTheme: db.prepare('UPDATE contacts SET chat_theme = ? WHERE (user_id = ? AND contact_id = ?) OR (user_id = ? AND contact_id = ?)'),
+  setContactWallpaper: db.prepare('UPDATE contacts SET wallpaper = ? WHERE (user_id = ? AND contact_id = ?) OR (user_id = ? AND contact_id = ?)'),
+  contactWallpaperOf: db.prepare('SELECT wallpaper FROM contacts WHERE user_id = ? AND contact_id = ?'),
   addContact: db.prepare('INSERT OR IGNORE INTO contacts (user_id, contact_id, created_at) VALUES (?, ?, ?)'),
   removeContact: db.prepare('DELETE FROM contacts WHERE user_id = ? AND contact_id = ?'),
   incomingRequests: db.prepare(`
@@ -643,6 +647,8 @@ export const contacts = {
   list: (userId) => q.listContacts.all(userId),
   has: (userId, contactId) => Boolean(q.hasContact.get(userId, contactId)),
   setTheme: (a, b, theme) => q.setChatTheme.run(theme, a, b, b, a),
+  setWallpaper: (a, b, file) => q.setContactWallpaper.run(file, a, b, b, a),
+  wallpaperOf: (a, b) => q.contactWallpaperOf.get(a, b)?.wallpaper || null,
   add(a, b) {
     const now = Date.now();
     q.addContact.run(a, b, now);
