@@ -152,3 +152,32 @@ document.addEventListener(
   },
   { passive: true }
 );
+// ---------- Цвета из системы: акцент из macOS/Windows ----------
+
+const osAccentOn = () => store.get('osAccent', true) !== false;
+
+function applySystemColors(info) {
+  const root = document.documentElement.style;
+  const accent = String(info?.accent || '').toLowerCase();
+  if (osAccentOn() && /^#[0-9a-f]{6}$/.test(accent)) {
+    root.setProperty('--accent', accent);
+    root.setProperty('--accent-2', accent);
+    root.setProperty('--accent-hover', accent);
+  } else {
+    root.removeProperty('--accent');
+    root.removeProperty('--accent-2');
+    root.removeProperty('--accent-hover');
+  }
+  const toggle = $('os-accent');
+  if (toggle) toggle.checked = osAccentOn();
+}
+
+if (window.desktop?.system) {
+  window.desktop.system.theme().then(applySystemColors).catch(() => {});
+  window.desktop.system.onTheme((info) => applySystemColors(info));
+}
+
+$('os-accent').onchange = () => {
+  store.set('osAccent', $('os-accent').checked);
+  window.desktop?.system?.theme?.().then(applySystemColors).catch(() => {});
+};

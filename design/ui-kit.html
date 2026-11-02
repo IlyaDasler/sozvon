@@ -158,6 +158,32 @@
   /* ===== Окно ===== */
   .modal { border-radius: 18px; padding: 22px; max-width: 420px; }
 
+  /* ===== Макет экрана приложения ===== */
+  .app-frame { padding: 0; overflow: hidden; border-radius: 22px; }
+  .app-frame .inner { display: flex; height: 520px; gap: 0; }
+  .rail { width: 64px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+    background: rgba(255,255,255,.05); border-right: 1px solid var(--line); }
+  .rail .tile { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; font-weight: 700;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.10); }
+  .rail .tile.active { background: color-mix(in srgb, var(--accent) 60%, transparent); }
+  .side { width: 250px; padding: 14px 12px; display: flex; flex-direction: column; gap: 10px;
+    background: rgba(255,255,255,.04); border-right: 1px solid var(--line); }
+  .side .head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; }
+  .side .item { padding: 7px 10px; border-radius: 10px; color: var(--text-2); font-size: 13px; }
+  .side .item.active { background: rgba(255,255,255,.10); color: var(--text); }
+  .side .group { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+  .chat { flex: 1; display: flex; flex-direction: column; background: rgba(10,14,30,.25); }
+  .chat .bar { height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 16px;
+    border-bottom: 1px solid var(--line); background: rgba(255,255,255,.05); }
+  .chat .body { flex: 1; padding: 16px; overflow: hidden; }
+  .chat .composer { margin: 12px; height: 46px; border-radius: 14px; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); color: var(--muted); }
+  .call-bar { display: flex; gap: 10px; align-items: center; padding: 12px; border-radius: 18px;
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); width: fit-content; }
+  .call-bar .rb { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: 16px;
+    background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.14); }
+  .call-bar .rb.on { background: color-mix(in srgb, var(--accent) 65%, transparent); }
+  .call-bar .rb.danger { background: color-mix(in srgb, var(--danger) 70%, transparent); }
   code.k { background: rgba(255,255,255,.08); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
   .tokens { display: grid; gap: 6px; font-size: 13px; }
   .tokens div { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,.08); padding: 4px 0; }
@@ -259,6 +285,49 @@
   <div class="row" style="justify-content: flex-end; margin-top: 10px;">
     <button class="btn">Отмена</button>
     <button class="btn primary">Сохранить</button>
+  </div>
+</div>
+
+<h2>Экран приложения</h2>
+<div class="app-frame glass">
+  <div class="inner">
+    <div class="rail">
+      <div class="tile active">С</div>
+      <div class="tile">Э</div>
+      <div class="tile">+</div>
+    </div>
+    <div class="side">
+      <div class="head"><span>Эридан</span><span class="muted small">•••</span></div>
+      <div class="group">Голосовые</div>
+      <div class="item">🔊 Основной</div>
+      <div class="item">🔊 PUBG</div>
+      <div class="group">Текстовые</div>
+      <div class="item active"># Флудильня</div>
+      <div class="item"># Мемы</div>
+      <div style="flex:1"></div>
+      <div class="item" style="display:flex; align-items:center; gap:8px;">
+        <span class="avatar" style="width:28px;height:28px;font-size:12px;">А</span> Аня
+      </div>
+    </div>
+    <div class="chat">
+      <div class="bar"><b>Боря</b><span class="muted small">в сети</span><span style="flex:1"></span><button class="btn primary" style="height:30px">Позвонить</button></div>
+      <div class="body">
+        <div class="msg"><div class="avatar">А</div><div><b>Аня</b><time>20:16</time><p>Привет! Пробую новое стекло</p></div></div>
+        <div class="msg"><div class="avatar" style="background:linear-gradient(180deg,#7ee787,#1d7a55)">Б</div><div><b>Боря</b><time>20:17</time><p>Блик на панели — самое то</p></div></div>
+      </div>
+      <div class="composer">＋ <span>Написать сообщение</span></div>
+    </div>
+  </div>
+</div>
+
+<h2>Звонок</h2>
+<div class="glass" style="display:flex; justify-content:center;">
+  <div class="call-bar">
+    <div class="rb on">🎙</div>
+    <div class="rb">📷</div>
+    <div class="rb">🖥</div>
+    <div class="rb">🔔</div>
+    <div class="rb danger">⏻</div>
   </div>
 </div>
 

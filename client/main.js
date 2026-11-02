@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, powerMonitor, screen, session, shell } = require('electron');
+const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, nativeTheme, powerMonitor, screen, session, shell, systemPreferences } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { autoUpdater } = require('electron-updater');
@@ -440,6 +440,34 @@ ipcMain.on('update:install', () => {
 // Вход через Яндекс: страница входа открывается в окне приложения, присылает ответ на localhost
 // и окно закрывается само
 let pendingOAuth = null;
+// ---------- Цвета из системы: акцент и тёмная/светлая тема ----------
+// Приложение подстраивается под ОС: акцент берём из системных настроек, чтобы интерфейс
+// не выбивался из остальных окон на Mac и Windows
+function systemThemeInfo() {
+  let accent = '';
+  try {
+    const raw = systemPreferences.getAccentColor?.();
+    if (raw && /^[0-9a-f]{6,8}$/i.test(String(raw))) accent = `#${String(raw).slice(0, 6)}`;
+  } catch {}
+  return { accent, dark: nativeTheme.shouldUseDarkColors };
+}
+
+let lastSystemTheme = '';
+function broadcastSystemTheme() {
+  const info = systemThemeInfo();
+  const key = `${info.accent}|${info.dark}`;
+  if (key === lastSystemTheme) return;
+  lastSystemTheme = key;
+  for (const window of BrowserWindow.getAllWindows()) window.webContents.send('system:theme', info);
+}
+
+ipcMain.handle('system:theme', () => systemThemeInfo());
+nativeTheme.on('updated', broadcastSystemTheme);
+// На macOS смена акцента приходит отдельным уведомлением, на Windows — опрос раз в 20 секунд
+try {
+  systemPreferences.subscribeNotification('AppleColorPreferencesChangedNotification', broadcastSystemTheme);
+} catch {}
+setInterval(broadcastSystemTheme, 20_000).unref();
 ipcMain.handle('oauth', async (_event, authUrl) => {
   // Только https: адрес приходит из ответа сервера, открывать по нему что попало нельзя
   if (!/^https:\/\/[^\s]+$/i.test(String(authUrl || ''))) throw new Error('Неверный адрес входа');
