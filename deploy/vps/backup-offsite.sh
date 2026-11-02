@@ -2,6 +2,20 @@
 # Выгрузка резервной копии базы в объектное хранилище (S3-совместимое).
 # Ключи доступа лежат НЕ здесь, а в /root/.config/rclone/rclone.conf (его заполняет владелец сервера).
 # Пока конфигурации нет — просто выходим: сервер не должен ругаться из-за ненастроенной копии.
+#
+# Пример конфигурации для Selectel (панель: my.selectel.ru/storage → Продукты → S3 → Бакеты):
+#
+#   [sozvon]
+#   type = s3
+#   provider = Selectel
+#   access_key_id = ...
+#   secret_access_key = ...
+#   region = ru-1
+#   endpoint = https://s3.ru-1.storage.selcloud.ru
+#
+# Пул и адрес S3 API зависят от пула: ru-1 → s3.ru-1.storage.selcloud.ru,
+# ru-3 → s3.ru-3.storage.selcloud.ru (docs.selectel.ru/s3/manage/domains/).
+# Для Selectel нужен rclone 1.69 или новее и включённая Virtual-Hosted адресация в бакете.
 set -uo pipefail
 
 REMOTE="${OFFSITE_REMOTE:-sozvon:sozvon-backup}"
@@ -19,6 +33,12 @@ if [ ! -f "$CONF" ]; then
   log "нет $CONF — выгрузка не настроена, пропускаем"
   exit 0
 fi
+
+# Бакета может не быть: rclone mkdir для S3 создаёт его, если он ещё не заведён
+REMOTE_NAME=${REMOTE%%:*}
+BUCKET=${REMOTE#*:}
+BUCKET=${BUCKET%%/*}
+rclone mkdir --config "$CONF" "$REMOTE_NAME:$BUCKET" >/dev/null 2>&1 || true
 
 STAMP=$(date +%Y-%m-%d-%H%M%S)
 BK="/root/sozvon-offsite-$STAMP.db"

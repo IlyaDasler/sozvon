@@ -57,8 +57,36 @@ sudo DOMAIN=chat.example.com INVITE_CODE=моя-семья bash deploy/vps/setup
 ## Резервные копии
 
 Локально: `/var/backups/sozvon`, ежедневно в 04:00 (systemd-таймер `sozvon-backup.timer`).
-Выгрузка в объектное хранилище: таймер `sozvon-offsite.timer` в 04:30. Чтобы включить,
-заполните `/root/.config/rclone/rclone.conf` (пример — в `deploy/vps/backup-offsite.sh`).
+Выгрузка в объектное хранилище: таймер `sozvon-offsite.timer` в 04:30.
+
+### Как включить выгрузку в Selectel
+
+Нужно **объектное** хранилище (S3), а не файловое (NFS/SMB) — это разные продукты.
+
+1. Панель: [my.selectel.ru/storage](https://my.selectel.ru/storage/) → в верхнем меню **Продукты** → **S3** → раздел **Бакеты** → **Создать бакет**.
+   Тип — приватный, класс хранения — стандартный, адресация — **Virtual-Hosted** (её требует rclone).
+2. **Управление доступом** → создать сервисного пользователя с ролью для S3 → выдать ему **S3-ключ**
+   (Access key и Secret key).
+3. На сервере заполнить `/root/.config/rclone/rclone.conf`:
+
+```ini
+[sozvon]
+type = s3
+provider = Selectel
+access_key_id = ВАШ_ACCESS_KEY
+secret_access_key = ВАШ_SECRET_KEY
+region = ru-1
+endpoint = https://s3.ru-1.storage.selcloud.ru
+```
+
+Пул и адрес S3 API зависят от пула: `ru-1` → `https://s3.ru-1.storage.selcloud.ru`,
+`ru-3` → `https://s3.ru-3.storage.selcloud.ru`. Подробнее — [домены S3](https://docs.selectel.ru/s3/manage/domains/).
+Для Selectel нужен rclone 1.69+ (в Ubuntu лежит старее, установщик сервера ставит свежий).
+
+4. Проверить: `rclone --config /root/.config/rclone/rclone.conf lsd sozvon:sozvon-backup`.
+5. Прогнать вручную: `systemctl start sozvon-offsite.service && journalctl -u sozvon-offsite -n 20`.
+
+Пока конфига нет, служба пишет в журнал «выгрузка не настроена» и завершается успешно.
 
 ## Обновление сервера
 
