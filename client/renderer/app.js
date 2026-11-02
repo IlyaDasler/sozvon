@@ -1715,6 +1715,15 @@ function hideIncoming() {
 async function acceptIncoming() {
   const inc = state.incoming;
   if (!inc) return;
+  // Звонящий может застать нас в голосовом канале: предлагаем выйти из него и принять
+  if (state.room) {
+    const ok = await ask('Вы в голосовом канале. Выйти из него и принять звонок?', {
+      title: 'Принять звонок?',
+      ok: 'Выйти и принять',
+    });
+    if (!ok) return; // остаёмся в канале, звонок продолжает звонить
+    leaveRoomVoice();
+  }
   hideIncoming();
   const peer = state.contacts.get(inc.from.id) || inc.from;
   const call = newCall(peer, inc.callId, 'connecting');

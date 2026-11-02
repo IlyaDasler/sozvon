@@ -397,11 +397,14 @@ runTest(async () => {
     await waitFor(win, `activeSession().peers.size === 1 && !document.querySelector('.tile[data-key="u${c.user.id}"]')`, 'Вика вышла');
   console.log('✔ выход участника виден остальным');
 
-  // Пока Боря в комнате, позвонить ему нельзя — он занят
+  // Человеку в комнате можно позвонить: он получает входящий, звонок не срывается
   await js(winA, 'leaveRoomVoice()');
   await js(winA, `selectContact(${b.user.id}).then(() => startCall())`);
-  await waitFor(winA, 'state.call === null', 'отказ в звонке занятому');
-  console.log('✔ человек в комнате для звонков «занят»');
+  await waitFor(winB, `!document.getElementById('incoming').classList.contains('hidden')`, 'входящий человеку в комнате');
+  console.log('✔ человеку в голосовом канале можно позвонить');
+  // Отклоняем, чтобы не мешать дальнейшим проверкам
+  await js(winB, `document.getElementById('decline-btn').click(); true`);
+  await waitFor(winA, 'state.call === null', 'звонок завершён после отказа');
 
   // Бан из окна управления: Боря пропадает из комнаты и из голоса
   await js(winA, `selectRoom(${roomId}); openRoomManage(${roomId}, 'members'); true`);
