@@ -2518,3 +2518,24 @@ code, pre, .msg-text code, .e2ee-card input { font-family: var(--font-mono); }
 @media (max-width: 1180px) {
   .thread-panel { right: 12px; }
 }
+/* ---------- Разделитель панелей: тонкая линия в зазоре, как в Discord ---------- */
+.main { position: relative; }
+.main-divider {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  width: 1px;
+  background: var(--line-strong);
+  opacity: .45;
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 120ms ease, background-color 120ms ease, width 120ms ease;
+}
+.main-divider:hover { opacity: .8; }
+body.resizing .main-divider { background: var(--accent); width: 2px; opacity: 1; }
+@media (max-width: 760px) { .main-divider { display: none; } }
+
+/* Ручка перетаскивания: невидимая, без всплывающей подсказки */
+.panel-resizer { width: 10px; }
+.panel-resizer::after { opacity: 0; }
+.panel-resizer:hover::after { opacity: 0; }
