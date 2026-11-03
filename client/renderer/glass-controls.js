@@ -136,23 +136,32 @@
   }
 
   function start() {
+    // Разметка настроек статичная — одного прохода достаточно.
+    // Наблюдатели за #settings зацикливались: обёртка блока сама вызывала мутацию.
     for (const range of document.querySelectorAll('#settings input[type=range]')) addNumberField(range);
     for (const block of document.querySelectorAll('#settings .set-block')) addCollapsible(block);
     const totp = document.getElementById('auth-totp');
     if (totp) addOtp(totp);
-    const list = document.getElementById('plan-list');
-    if (list) {
-      paintPlanMeter();
-      new MutationObserver(paintPlanMeter).observe(list, { childList: true });
-    }
-    // Динамические ползунки в окне «Стекло» появляются при открытии настроек
-    const settings = document.getElementById('settings');
-    if (settings) new MutationObserver(() => {
-      for (const range of document.querySelectorAll('#settings input[type=range]')) addNumberField(range);
-      for (const block of document.querySelectorAll('#settings .set-block')) addCollapsible(block);
-    }).observe(settings, { childList: true, subtree: true });
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
-  else start();
+  // Meter рисуем после того, как «План 3.0» отрендерил список
+  function startMeter() {
+    let attempts = 0;
+    const tick = () => {
+      paintPlanMeter();
+      if (++attempts < 20 && !document.querySelector('#plan-list .plan-item')) setTimeout(tick, 250);
+    };
+    tick();
+  }
+
+  window.initGlassControls = start;
+  window.paintPlanMeterNow = paintPlanMeter;
+
+  function boot() {
+    start();
+    startMeter();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();

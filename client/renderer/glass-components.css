@@ -311,3 +311,5 @@ html[data-theme='glass'] .meter { background: rgba(255, 255, 255, 0.12); }
     border-radius: 16px;
   }
 }
+/* Заголовок сворачиваемой секции: одинаковая высота во всех темах */
+.collapse-head { min-height: 24px; }

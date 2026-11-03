@@ -2394,6 +2394,11 @@ for (const b of document.querySelectorAll('#set-nav [data-tab]')) b.onclick = ()
 /** tab — раздел, который открыть (по кнопке настроек приходит событие щелчка — тогда «Профиль») */
 async function openSettings(tab) {
   showSettingsTab(typeof tab === 'string' ? tab : 'profile');
+  // Компоненты стекла и Meter перерисовываем после того, как вкладка показана
+  setTimeout(() => {
+    window.initGlassControls?.();
+    window.paintPlanMeterNow?.();
+  }, 0);
   renderThemePicker();
   renderPttSettings();
   renderNotifySettings();

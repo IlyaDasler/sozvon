@@ -17,12 +17,19 @@
 
   // Тред открывается кодом — ему достаточно класса. Участники открываются
   // только по нажатию кнопки, чтобы не накрывать панель звонка сами собой.
+  // Меняем класс только если он реально отличается: иначе наблюдатель
+  // за классами будит сам себя и рендерер встаёт в бесконечный цикл
+  const setClass = (element, name, on) => {
+    if (!element || element.classList.contains(name) === on) return;
+    element.classList.toggle(name, on);
+  };
+
   function syncDrawerClass() {
     const narrow = window.innerWidth <= NARROW;
     const thread = document.getElementById('thread-panel');
-    if (thread) thread.classList.toggle('drawer-open', narrow && isOpen(thread));
+    setClass(thread, 'drawer-open', narrow && isOpen(thread));
     const members = document.getElementById('members-panel');
-    if (members && (!narrow || !members.classList.contains('drawer-open'))) members.classList.remove('drawer-open');
+    if (members && (!narrow || !members.classList.contains('drawer-open'))) setClass(members, 'drawer-open', false);
   }
 
   function syncScrim() {
@@ -43,7 +50,7 @@
       const panel = document.getElementById(id);
       if (!panel) continue;
       panel.classList.add('hidden');
-      panel.classList.remove('drawer-open');
+      setClass(panel, 'drawer-open', false);
     }
     syncScrim();
   }
@@ -56,9 +63,11 @@
     event.stopPropagation();
     const panel = document.getElementById('members-panel');
     if (!panel) return;
-    const willOpen = panel.classList.contains('hidden');
-    panel.classList.toggle('hidden', !willOpen);
-    panel.classList.toggle('drawer-open', willOpen);
+    // Состояние выдвижной панели — её собственный класс: скрытая панель
+    // может быть видимой по разметке, но спрятанной медиа-правилом
+    const shown = panel.classList.contains('drawer-open');
+    setClass(panel, 'drawer-open', !shown);
+    setClass(panel, 'hidden', shown);
     syncScrim();
   }, true);
 
