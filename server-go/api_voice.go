@@ -268,6 +268,11 @@ func (a *server) roomJoin(conn *realtime.Conn, user *store.User, message map[str
 		fail("in-call")
 		return
 	}
+	perms, _ := a.store.RoomPerms(roomID, user.ID)
+	if perms&1 == 0 {
+		fail("no-access")
+		return
+	}
 	if current := a.voice.roomOf(user.ID); current != 0 {
 		a.voice.leave(current, user.ID)
 		a.broadcastVoice(current)
@@ -287,6 +292,9 @@ func (a *server) roomJoin(conn *realtime.Conn, user *store.User, message map[str
 		return
 	}
 	muted, _ := message["muted"].(bool)
+	if perms&2 == 0 {
+		muted = true
+	}
 	deafened, _ := message["deafened"].(bool)
 	peers := a.voice.join(roomID, user.ID, conn, media, muted, deafened)
 

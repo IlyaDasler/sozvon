@@ -198,8 +198,22 @@ func (s *Store) BlocksOf(userID int64) ([]BlockRow, error) {
 }
 
 func (s *Store) Block(userID, blockedID int64) error {
-	_, err := s.db.Exec(`INSERT OR REPLACE INTO blocks (user_id, blocked_id, created_at) VALUES (?, ?, ?)`, userID, blockedID, time.Now().UnixMilli())
-	return err
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	// Блокировка разрывает дружбу и заявки в обе стороны, как в Node
+	if _, err := tx.Exec(`DELETE FROM contacts WHERE (user_id = ? AND contact_id = ?) OR (user_id = ? AND contact_id = ?)`, userID, blockedID, blockedID, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM friend_requests WHERE (from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)`, userID, blockedID, blockedID, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`INSERT OR REPLACE INTO blocks (user_id, blocked_id, created_at) VALUES (?, ?, ?)`, userID, blockedID, time.Now().UnixMilli()); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (s *Store) Unblock(userID, blockedID int64) error {

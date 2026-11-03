@@ -93,6 +93,12 @@ func (a *server) hubInvite(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
 	}
+	for _, invited := range request.UserIDs {
+		if banned, _ := a.store.IsHubBanned(hubID, invited); banned {
+			fail(http.StatusBadRequest, "Забаненного нельзя позвать в этот канал").write(w)
+			return
+		}
+	}
 	if err := a.store.InviteToHub(hubID, user.ID, request.UserIDs); err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
@@ -170,7 +176,12 @@ func (a *server) hubMember(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
-	a.hub.Send(memberID, map[string]any{"type": "hub:removed", "hubId": hubID})
+	reason := "kicked"
+	if memberID == user.ID {
+		reason = "left"
+	}
+	a.hub.Send(memberID, map[string]any{"type": "hub:removed", "hubId": hubID, "reason": reason})
+	a.broadcastHub(hubID)
 	if hub := a.hubOr404(w, hubID); hub != nil {
 		writeJSON(w, http.StatusOK, a.hubJSON(hub))
 	}
@@ -195,6 +206,8 @@ func (a *server) hubMemberManager(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	// Новые права управляющего видят все участники канала, включая его самого
+	a.broadcastHub(hubID)
 	if hub := a.hubOr404(w, hubID); hub != nil {
 		writeJSON(w, http.StatusOK, a.hubJSON(hub))
 	}
@@ -377,9 +390,10 @@ func (a *server) roomDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if room.HubID != nil {
-		if ids, err := a.store.RoomMemberIDs(*room.HubID); err == nil {
-			for _, id := range ids {
-				a.hub.Send(id, map[string]any{"type": "room:removed", "roomId": roomID})
+		// Комнату убираем у всех участников канала, а не по id канала вместо комнаты
+		if hub, err := a.store.HubByID(*room.HubID); err == nil {
+			for _, member := range hub.Members {
+				a.hub.Send(member.User.ID, map[string]any{"type": "room:removed", "roomId": roomID})
 			}
 		}
 	}
@@ -434,7 +448,18 @@ func (a *server) roomAdminAction(w http.ResponseWriter, r *http.Request, action 
 		}
 	case "members":
 		userID, _ := parseInt64(chi.URLParam(r, "userId"))
+		if userID == room.OwnerID {
+			fail(http.StatusBadRequest, "Создатель не может выйти из своей комнаты — её можно только удалить").write(w)
+			return
+		}
+		if part := a.voice.participant(roomID, userID); part != nil {
+			a.voice.setMuted(roomID, userID, true)
+		}
 		_ = a.store.RemoveRoomMember(roomID, userID)
+		a.voice.leave(roomID, userID)
+		a.hub.Send(userID, map[string]any{"type": "room:removed", "roomId": roomID, "reason": "kicked"})
+		a.broadcastVoice(roomID)
+		a.notifyRoom(roomID)
 	case "role":
 		userID, _ := parseInt64(chi.URLParam(r, "userId"))
 		var request struct {
@@ -536,6 +561,7 @@ func (a *server) hubAddMembers(w http.ResponseWriter, r *http.Request) {
 			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 			return
 		}
+		_ = a.store.AddMemberToHubRooms(hubID, id)
 		a.hub.Send(id, map[string]any{"type": "hub:added", "hubId": hubID})
 	}
 	a.broadcastHubRooms(hubID)
@@ -632,6 +658,87 @@ func (a *server) roomTimeouts(w http.ResponseWriter, r *http.Request) {
 	a.voice.leave(roomID, request.UserID)
 	a.broadcastVoice(roomID)
 	a.notifyRoom(roomID)
+	updated, _ := a.store.RoomByID(roomID)
+	writeJSON(w, http.StatusOK, a.roomJSON(updated))
+}
+func (a *server) addRoomMember(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	roomID, err := parseInt64(chi.URLParam(r, "id"))
+	if err != nil {
+		fail(http.StatusBadRequest, "Неверная комната").write(w)
+		return
+	}
+	room, err := a.store.RoomByID(roomID)
+	if err != nil {
+		fail(http.StatusNotFound, "Комната не найдена").write(w)
+		return
+	}
+	if !a.roomManager(room, user.ID) {
+		fail(http.StatusForbidden, "Нет прав").write(w)
+		return
+	}
+	var request struct {
+		UserID int64 `json:"userId"`
+	}
+	if err := decode(r, &request); err != nil || request.UserID == 0 {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	if err := a.store.AddRoomMember(roomID, request.UserID); err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	a.hub.Send(request.UserID, map[string]any{"type": "room:updated", "room": a.roomJSON(room)})
+	a.notifyRoom(roomID)
+	updated, _ := a.store.RoomByID(roomID)
+	writeJSON(w, http.StatusOK, a.roomJSON(updated))
+}
+// disconnectMember — модератор отключает человека от голоса, не выгоняя из комнаты.
+func (a *server) disconnectMember(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	roomID, err := parseInt64(chi.URLParam(r, "id"))
+	if err != nil {
+		fail(http.StatusBadRequest, "Неверная комната").write(w)
+		return
+	}
+	room, err := a.store.RoomByID(roomID)
+	if err != nil || !a.roomManager(room, user.ID) {
+		fail(http.StatusForbidden, "Нет прав").write(w)
+		return
+	}
+	var request struct {
+		UserID int64 `json:"userId"`
+	}
+	if err := decode(r, &request); err != nil || request.UserID == 0 {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	if part := a.voice.participant(roomID, request.UserID); part != nil && part.conn != nil {
+		part.conn.Send(map[string]any{"type": "room:left", "roomId": roomID, "reason": "kicked"})
+	}
+	a.voice.leave(roomID, request.UserID)
+	a.broadcastVoice(roomID)
+	updated, _ := a.store.RoomByID(roomID)
+	writeJSON(w, http.StatusOK, a.roomJSON(updated))
+}
+func (a *server) voiceKick(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	roomID, err := parseInt64(chi.URLParam(r, "id"))
+	if err != nil {
+		fail(http.StatusBadRequest, "Неверная комната").write(w)
+		return
+	}
+	room, err := a.store.RoomByID(roomID)
+	if err != nil || !a.roomManager(room, user.ID) {
+		fail(http.StatusForbidden, "Нет прав").write(w)
+		return
+	}
+	targetID, _ := parseInt64(chi.URLParam(r, "userId"))
+	if part := a.voice.participant(roomID, targetID); part != nil && part.conn != nil {
+		part.conn.Send(map[string]any{"type": "room:left", "roomId": roomID, "reason": "kicked"})
+	}
+	a.voice.leave(roomID, targetID)
+	a.broadcastVoice(roomID)
 	updated, _ := a.store.RoomByID(roomID)
 	writeJSON(w, http.StatusOK, a.roomJSON(updated))
 }

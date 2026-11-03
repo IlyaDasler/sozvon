@@ -165,14 +165,7 @@ func (s *Store) IsRoomMember(roomID, userID int64) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if exists > 0 {
-		return true, nil
-	}
-	// участник канала тоже имеет доступ к комнате канала
-	err = s.db.QueryRow(`
-		SELECT COUNT(*) FROM rooms r JOIN hub_members m ON m.hub_id = r.hub_id
-		WHERE r.id = ? AND m.user_id = ?`, roomID, userID).Scan(&exists)
-	return exists > 0, err
+	return exists > 0, nil
 }
 
 // UnreadRooms — комнаты с сообщениями после отметки прочтения (свои сообщения не считаем).
@@ -182,13 +175,10 @@ func (s *Store) UnreadRooms(userID int64) ([]map[string]any, error) {
 		FROM rooms r
 		JOIN room_messages m ON m.room_id = r.id AND m.from_id <> ?
 		LEFT JOIN read_state rs ON rs.user_id = ? AND rs.conv = 'room:' || r.id
-		WHERE r.id IN (
-			SELECT room_id FROM room_members WHERE user_id = ?
-			UNION
-			SELECT r2.id FROM rooms r2 JOIN hub_members hm ON hm.hub_id = r2.hub_id AND hm.user_id = ? WHERE r2.hub_id IS NOT NULL
-		) AND m.id > COALESCE(rs.last_id, 0)
+		WHERE r.id IN (SELECT room_id FROM room_members WHERE user_id = ?)
+		AND m.id > COALESCE(rs.last_id, 0)
 		GROUP BY r.id
-		ORDER BY last_id DESC`, userID, userID, userID, userID)
+		ORDER BY last_id DESC`, userID, userID, userID)
 	if err != nil {
 		return nil, err
 	}

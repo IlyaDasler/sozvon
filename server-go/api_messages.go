@@ -102,6 +102,11 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusForbidden, "Вас кикнули — пока можно только читать").write(w)
 		return
 	}
+	perms, _ := a.store.RoomPerms(roomID, user.ID)
+	if perms&8 == 0 {
+		fail(http.StatusForbidden, "В этой комнате у вас нет права писать").write(w)
+		return
+	}
 	var request struct {
 		Text          string `json:"text"`
 		MentionAll    bool   `json:"mentionAll"`
