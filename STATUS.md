@@ -118,3 +118,6 @@ call:invite/accept/decline/hangup/signal с проверкой дружбы, о�
 
 ## Go, фаза 5: голос, LiveKit и TURN (23:15 MSK)
 Голосовые комнаты: room:join/leave/resume/state/signal/preview, room:voice с participants/since/media, room:joined с peers и media, окно переподключения 20 с, /api/ice (STUN + TURN HMAC-SHA1). LiveKit: JWT HS256, выбор p2p/sfu по LIVEKIT_MIN_MEMBERS, лимит 10 в p2p; юнит-тест пропуска (iss/sub/name/video.room/sources/подпись) зелёный. Node-клиент: вход двоих, peers, room:voice на двоих, muted, room:signal, выход, ICE — все true.
+
+## Go, фаза 5: групповые звонки и LiveKit-команды (23:40 MSK)
+call:add с проверками и call:incoming group+others, call:member (ringing/joined/left/declined/missed), call:joined с peers, адресный signal. LiveKit: RemoveParticipant и DeleteRoom через Twirp с admin-пропуском, пустая sfu-комната закрывается. Node-клиент на трёх: group-incoming, ringing, joined-peers, joined-member, signal, left — все true. Юнит-тест admin-пропуска зелёный. Фаза 5 по ADR закрыта; остались TURN-пользователь и живая проверка медиасервера.

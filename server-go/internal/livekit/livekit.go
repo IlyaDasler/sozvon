@@ -1,10 +1,13 @@
 package livekit
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -110,4 +113,52 @@ func itoa(value int64) string {
 		value /= 10
 	}
 	return digits
+}
+// adminToken — пропуск администратора комнаты на минуту (как в Node).
+func (o Options) adminToken(room string, ttl int64) string {
+	now := time.Now().Unix()
+	return sign(o.Secret, map[string]any{
+		"iss": o.Key,
+		"nbf": now - 10,
+		"exp": now + ttl,
+		"video": map[string]any{
+			"roomAdmin": true,
+			"roomList":  true,
+			"room":      room,
+		},
+	})
+}
+
+func (o Options) twirp(method string, body map[string]any) error {
+	if !o.Enabled() {
+		return nil
+	}
+	payload, _ := json.Marshal(body)
+	room, _ := body["room"].(string)
+	request, err := http.NewRequest(http.MethodPost, strings.TrimRight(o.APIURL, "/")+"/twirp/livekit.RoomService/"+method, bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+o.adminToken(room, 60))
+	client := &http.Client{Timeout: 5 * time.Second}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	if response.StatusCode >= 300 {
+		return errors.New("livekit: " + response.Status)
+	}
+	return nil
+}
+
+// RemoveParticipant — человека выгнали из голоса, убираем и с медиасервера.
+func (o Options) RemoveParticipant(roomID, userID int64) error {
+	return o.twirp("RemoveParticipant", map[string]any{"room": o.Room(roomID), "identity": itoa(userID)})
+}
+
+// DeleteRoom — комнату удалили, закрываем разговор в LiveKit.
+func (o Options) DeleteRoom(roomID int64) error {
+	return o.twirp("DeleteRoom", map[string]any{"room": o.Room(roomID)})
 }
