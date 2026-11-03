@@ -55,7 +55,7 @@ if (typeof document !== 'undefined') {
   function addResizer(panel, kind, edge) {
     const handle = document.createElement('div');
     handle.className = `panel-resizer ${edge}`;
-    handle.title = 'Потяните, чтобы изменить ширину; двойной щелчок — как было';
+    handle.setAttribute('aria-label', 'Изменить ширину панели. Двойной щелчок — вернуть как было');
     handle.onpointerdown = (e) => {
       e.preventDefault();
       handle.setPointerCapture(e.pointerId);
@@ -75,7 +75,7 @@ if (typeof document !== 'undefined') {
   function addSplitResizer(panel) {
     const handle = document.createElement('div');
     handle.className = 'panel-resizer bottom';
-    handle.title = 'Потяните, чтобы поделить место между разговором и чатом; двойной щелчок — как было';
+    handle.setAttribute('aria-label', 'Поделить место между разговором и чатом. Двойной щелчок — вернуть как было');
     handle.onpointerdown = (e) => {
       e.preventDefault();
       handle.setPointerCapture(e.pointerId);
@@ -99,3 +99,25 @@ if (typeof document !== 'undefined') {
   new MutationObserver(applyPanelWidths).observe($('members-panel'), { attributes: true, attributeFilter: ['class'] });
   applyPanelWidths();
 }
+// Тонкая линия в зазоре между панелями: стоит точно по правому краю сайдбара
+(function placeMainDivider() {
+  const side = document.querySelector('.sidebar');
+  const main = side?.closest('.main');
+  if (!side || !main) return;
+  const line = document.createElement('span');
+  line.className = 'main-divider';
+  main.append(line);
+  const place = () => {
+    if (!side.getClientRects().length) {
+      line.hidden = true;
+      return;
+    }
+    line.hidden = false;
+    const mr = main.getBoundingClientRect();
+    const sr = side.getBoundingClientRect();
+    line.style.left = `${Math.round(sr.right - mr.left + 4)}px`;
+  };
+  new ResizeObserver(place).observe(side);
+  window.addEventListener('resize', place, { passive: true });
+  place();
+})();
