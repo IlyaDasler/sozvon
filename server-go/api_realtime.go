@@ -145,6 +145,20 @@ func (a *server) websocket(w http.ResponseWriter, r *http.Request) {
 			a.handleRead(user, message)
 		case "me:status":
 			a.handleStatus(user, message)
+		case "room:join":
+			a.roomJoin(conn, user, message)
+		case "room:leave":
+			a.roomLeave(conn, user, message)
+		case "room:resume":
+			a.roomResume(conn, user, message)
+		case "room:state":
+			a.roomState(conn, user, message)
+		case "room:signal":
+			a.roomSignal(conn, user, message)
+		case "room:preview":
+			a.roomPreview(conn, user, message)
+		case "room:preview:get":
+			a.roomPreviewGet(conn, user, message)
 		case "call:invite":
 			a.callInvite(conn, user, message)
 		case "call:accept":

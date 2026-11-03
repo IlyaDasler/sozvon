@@ -21,6 +21,7 @@ import (
 
 	"sozvon/server/internal/auth"
 	"sozvon/server/internal/config"
+	"sozvon/server/internal/livekit"
 	"sozvon/server/internal/realtime"
 	"sozvon/server/internal/store"
 )
@@ -35,6 +36,8 @@ type server struct {
 	tickets map[string]ticket
 	hub     *realtime.Hub
 	calls   *callManager
+	voice   *voiceManager
+	livekit livekit.Options
 }
 
 func authRandomID() string { return auth.RandomID(16) }
@@ -69,7 +72,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager()}
+	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}}
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
@@ -110,6 +113,7 @@ func main() {
 			r.Get("/rooms/{id}/messages/{messageId}/thread", app.threadMessages)
 			r.Post("/rooms/{id}/read", app.markRoomRead)
 			r.Get("/unread", app.unread)
+			r.Get("/ice", app.ice)
 		})
 	})
 

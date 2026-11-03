@@ -115,3 +115,6 @@ Go установлен пользователю: %LOCALAPPDATA%\\Programs\\Go +
 
 ## Go, фаза 5: звонки на двоих (22:40 MSK)
 call:invite/accept/decline/hangup/signal с проверкой дружбы, онлайна и занятости; call:ringing, call:incoming с профилем, call:accepted, signal с from/data, call:ended; таймаут 45 с; при обрыве участник выходит. Node-клиент подтвердил все пять шагов. Групповые звонки, голосовые комнаты, LiveKit и TURN — следующий кусок.
+
+## Go, фаза 5: голос, LiveKit и TURN (23:15 MSK)
+Голосовые комнаты: room:join/leave/resume/state/signal/preview, room:voice с participants/since/media, room:joined с peers и media, окно переподключения 20 с, /api/ice (STUN + TURN HMAC-SHA1). LiveKit: JWT HS256, выбор p2p/sfu по LIVEKIT_MIN_MEMBERS, лимит 10 в p2p; юнит-тест пропуска (iss/sub/name/video.room/sources/подпись) зелёный. Node-клиент: вход двоих, peers, room:voice на двоих, muted, room:signal, выход, ICE — все true.
