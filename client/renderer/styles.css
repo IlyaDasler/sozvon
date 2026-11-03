@@ -2227,7 +2227,7 @@ input[type='radio']:disabled { opacity: .45; cursor: default; }
 
 @media (max-width: 1180px) {
   /* Правая панель участников уступает место чату */
-  #members-panel { display: none !important; }
+  #members-panel:not(.drawer-open) { display: none !important; }
 }
 @media (max-width: 900px) {
   .rail { width: 60px; }
