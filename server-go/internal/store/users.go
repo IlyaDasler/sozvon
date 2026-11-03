@@ -41,23 +41,44 @@ type Identity struct {
 
 var ErrNotFound = errors.New("not found")
 
+// Только настоящие столбцы: строку подставляем и в одиночный SELECT, и в JOIN с префиксом
 const userColumns = `id, username, password_hash, display_name, avatar_color, created_at,
-	COALESCE(avatar, ''), COALESCE(email, ''), COALESCE(email_shown, ''), COALESCE(bio, ''),
-	COALESCE(banner_color, ''), COALESCE(banner, ''), COALESCE(game, ''), COALESCE(name_color, ''),
-	COALESCE(status, 'online'), COALESCE(public_key, ''), COALESCE(totp_secret, '')`
+	avatar, email, email_shown, bio, banner_color, banner, game, name_color, status, public_key, totp_secret`
+
+// scanUserInto читает строку users с учётом NULL и добавляет поля из JOIN.
+func scanUserInto(row interface{ Scan(...any) error }, user *User, extra ...any) error {
+	var avatar, email, emailShown, bio, bannerColor, banner, game, nameColor, status, publicKey, totp sql.NullString
+	args := []any{
+		&user.ID, &user.Username, &user.PasswordHash, &user.DisplayName, &user.AvatarColor, &user.CreatedAt,
+		&avatar, &email, &emailShown, &bio, &bannerColor, &banner, &game, &nameColor, &status, &publicKey, &totp,
+	}
+	args = append(args, extra...)
+	if err := row.Scan(args...); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	user.Avatar = avatar.String
+	user.Email = email.String
+	user.EmailShown = emailShown.String
+	user.Bio = bio.String
+	user.BannerColor = bannerColor.String
+	user.Banner = banner.String
+	user.Game = game.String
+	user.NameColor = nameColor.String
+	user.Status = status.String
+	if user.Status == "" {
+		user.Status = "online"
+	}
+	user.PublicKey = publicKey.String
+	user.TotpSecret = totp.String
+	return nil
+}
 
 func scanUser(row interface{ Scan(...any) error }) (*User, error) {
 	var user User
-	err := row.Scan(
-		&user.ID, &user.Username, &user.PasswordHash, &user.DisplayName, &user.AvatarColor, &user.CreatedAt,
-		&user.Avatar, &user.Email, &user.EmailShown, &user.Bio,
-		&user.BannerColor, &user.Banner, &user.Game, &user.NameColor,
-		&user.Status, &user.PublicKey, &user.TotpSecret,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
-		}
+	if err := scanUserInto(row, &user); err != nil {
 		return nil, err
 	}
 	return &user, nil
