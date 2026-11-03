@@ -219,3 +219,23 @@ $('ui-font').onchange = () => {
 };
 
 applyFont();
+// ---------- Ползунки: заполнение до бегунка ----------
+
+function paintRange(input) {
+  const min = Number(input.min || 0);
+  const max = Number(input.max || 100);
+  const value = Number(input.value || 0);
+  const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+  input.style.setProperty('--range-p', percent + '%');
+}
+
+function paintAllRanges() {
+  for (const input of document.querySelectorAll('input[type=range]')) paintRange(input);
+}
+
+document.addEventListener('input', (e) => {
+  if (e.target instanceof HTMLInputElement && e.target.type === 'range') paintRange(e.target);
+}, true);
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paintAllRanges);
+else paintAllRanges();
