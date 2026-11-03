@@ -88,3 +88,13 @@ node ..\..\_tools\contract-compare.js ..\server\contract\api.json ..\_backup\con
 
 Ещё не перенесено: звонки и сигналинг (`call:*`, `room:signal`), голосовые комнаты,
 LiveKit-токены, TURN, правка/удаление и реакции по сокету.
+**Фаза 5 — звонки на двоих**
+- `call:invite` → звонящему `call:ringing`, вызываемому `call:incoming` с профилем;
+- `call:accept` → звонящему `call:accepted`; проверка дружбы, онлайн и занятости;
+- `signal` (SDP/ICE) → второму участнику, с `from` и `data`;
+- `call:decline`, `call:hangup`, таймаут 45 с, `call:ended` обоим;
+- при обрыве соединения участник выходит, второй получает `call:ended`;
+- проверено node-клиентом: ringing, incoming, accepted, signal, ended — все пять.
+
+Ещё не перенесено: групповые звонки (`call:add`, несколько участников), голосовые комнаты
+(`room:join`/`room:leave`, кто в голосе), LiveKit-пропуска и TURN.

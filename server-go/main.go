@@ -28,13 +28,16 @@ import (
 var colors = []string{"#e5484d", "#f76b15", "#ffc53d", "#30a46c", "#12a594", "#0090ff", "#6e56cf", "#d6409f"}
 
 type server struct {
-	cfg    config.Config
-	store  *store.Store
-	secret []byte
-	mu     sync.Mutex
+	cfg     config.Config
+	store   *store.Store
+	secret  []byte
+	mu      sync.Mutex
 	tickets map[string]ticket
-	hub    *realtime.Hub
+	hub     *realtime.Hub
+	calls   *callManager
 }
+
+func authRandomID() string { return auth.RandomID(16) }
 
 type ticket struct {
 	userID  int64
@@ -66,7 +69,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub()}
+	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager()}
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
