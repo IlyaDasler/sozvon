@@ -207,13 +207,65 @@
   .banner { height:86px; border-radius:14px 14px 0 0; background:linear-gradient(120deg,#5b8cff,#9b6bff 60%,#33d1c0); }
   .stream-card-k { border-radius:16px; overflow:hidden; border:1px solid var(--line); background:rgba(10,14,28,.55); }
   .stream-head { display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line); }
-  code.k { background: rgba(255,255,255,.08); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
+  /* ===== Палитры всех шести тем — те же значения, что в приложении ===== */
+  [data-theme='sozvon'] { --bg-deep:#07080c; --bg:#181a24; --bg-2:#0f1118; --bg-3:#1c1f2a; --bg-4:#252937; --line:#262b39; --line-strong:#3a4050; --text:#eef0f7; --text-2:#c7cddc; --muted:#8a90a3; --accent:#7b6cff; --accent-2:#a855f7; }
+  [data-theme='midnight'] { --bg-deep:#000; --bg:#08080a; --bg-2:#050506; --bg-3:#131317; --bg-4:#1c1c22; --line:#19191e; --line-strong:#2b2b33; --text:#f2f3f5; --text-2:#cfd2da; --muted:#858a94; --accent:#6f7bff; --accent-2:#8f6bff; }
+  [data-theme='light'] { --bg-deep:#e9ebf2; --bg:#fff; --bg-2:#f5f6fa; --bg-3:#eef0f6; --bg-4:#e2e5ef; --line:#e1e4ec; --line-strong:#c9cfdb; --text:#11131a; --text-2:#3c4250; --muted:#646a7b; --accent:#6656f0; --accent-2:#9a4de8; }
+  [data-theme='forest'] { --bg-deep:#0a0f0d; --bg:#121916; --bg-2:#0e1411; --bg-3:#19221e; --bg-4:#222e29; --line:#1f2a25; --line-strong:#2f4038; --text:#e9f1ec; --text-2:#c3d2c9; --muted:#8a9a91; --accent:#2fc98a; --accent-2:#20b2c9; }
+  [data-theme='dusk'] { --bg-deep:#110d18; --bg:#1d1727; --bg-2:#17121f; --bg-3:#261f33; --bg-4:#312840; --line:#2c2439; --line-strong:#413653; --text:#f3eefa; --text-2:#d4c9e4; --muted:#a194b6; --accent:#b06bff; --accent-2:#ff6ba8; }
+  [data-theme='glass'] { --bg-deep:#0a0d1a; --bg:#0e1222; --bg-2:#0b0f1e; --bg-3:rgba(10,14,30,.42); --bg-4:rgba(255,255,255,.10); --line:rgba(255,255,255,.10); --line-strong:rgba(255,255,255,.22); --text:#f4f6ff; --text-2:#d5daf0; --muted:#9aa2c4; --accent:#7aa7ff; --accent-2:#c58bff; }
+  html, body { background: var(--bg); color: var(--text); }
+
+  /* Панель переключения темы */
+  .kit-top {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    padding: 12px 20px; margin: -20px -20px 20px;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+    border-bottom: 1px solid var(--line);
+  }
+  .kit-top b { font-size: 14px; }
+  .kit-themes { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kit-themes button {
+    border: 1px solid var(--line); background: var(--bg-3); color: var(--text-2);
+    padding: 6px 12px; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: background-color .16s ease, color .16s ease, border-color .16s ease;
+  }
+  .kit-themes button:hover { color: var(--text); border-color: var(--line-strong); }
+  .kit-themes button.active { background: var(--accent); color: #fff; border-color: transparent; }
+
+  /* Карта структуры */
+  .kit-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  .kit-map a { display: block; padding: 12px 14px; border-radius: 14px; background: var(--bg-3); border: 1px solid var(--line); color: var(--text); text-decoration: none; }
+  .kit-map a:hover { border-color: var(--line-strong); }
+  .kit-map b { display: block; margin-bottom: 4px; }
+  .kit-map span { color: var(--muted); font-size: 12px; }
+  .kit-swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+  .kit-swatch { padding: 10px; border-radius: 12px; border: 1px solid var(--line); font-size: 12px; }
+  .kit-swatch i { display: block; height: 34px; border-radius: 8px; margin-bottom: 6px; }
+  .kit-scale { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .kit-scale div { background: var(--bg-4); border-radius: 6px; display: grid; place-items: center; font-size: 11px; color: var(--text-2); }
+  [data-theme='light'] .glass { background: #fff; box-shadow: 0 10px 26px rgba(20, 24, 40, .10); }\n  [data-theme='light'] .glass { border-color: var(--line); }\n  code.k { background: rgba(255,255,255,.08); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
   .tokens { display: grid; gap: 6px; font-size: 13px; }
   .tokens div { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,.08); padding: 4px 0; }
 </style>
 </head>
 <body>
 
+<div class="kit-top">
+  <b>Созвон 3.0 · дизайн-система</b>
+  <span class="muted small">Тема:</span>
+  <div class="kit-themes" id="kit-themes">
+    <button type="button" data-theme-id="sozvon" class="active">Тёмная</button>
+    <button type="button" data-theme-id="midnight">Полночь</button>
+    <button type="button" data-theme-id="light">Светлая</button>
+    <button type="button" data-theme-id="forest">Лес</button>
+    <button type="button" data-theme-id="dusk">Сумерки</button>
+    <button type="button" data-theme-id="glass">Жидкое стекло</button>
+  </div>
+</div>
 <h1>Созвон 3.0 — UI-кит</h1>
 <p class="lead">Жидкое стекло: слои, блик за курсором, радужная кромка. Плоские контролы, крупные скругления, тёмные полупрозрачные поверхности. Токены совпадают с приложением — можно переносить в Figma один в один.</p>
 
@@ -222,6 +274,79 @@
   <p class="small" style="margin:0">Компоненты слева направо показывают состояния: обычное, наведение, нажатие, выключено. Все размеры кратны 4: <code class="k">4 / 8 / 12 / 16 / 20</code>. Радиусы: <code class="k">6 / 12 / 16 / 20</code>.</p>
 </div>
 
+<h2 id="structure">Структура дизайн-системы</h2>
+<div class="glass">
+  <div class="kit-map">
+    <a href="#principles"><b>1. Принципы</b><span>стекло для действия, заливка для значения, один ритм движения</span></a>
+    <a href="#tokens"><b>2. Токены</b><span>цвет, типографика, радиусы, отступы, движение, стекло</span></a>
+    <a href="#themes"><b>3. Темы</b><span>шесть палитр, переключатель сверху страницы</span></a>
+    <a href="#components"><b>4. Компоненты</b><span>кнопки, поля, свитчеры, вкладки, окна, меню, тосты</span></a>
+    <a href="#screens"><b>5. Экраны</b><span>чат, комната, звонок, настройки, профиль, вход</span></a>
+    <a href="#a11y"><b>6. Доступность</b><span>фокус, reduced-motion, reduced-transparency</span></a>
+  </div>
+</div>
+
+<h2 id="principles">Принципы</h2>
+<div class="glass">
+  <ol class="small" style="margin:0; padding-left:18px; line-height:1.7">
+    <li><b>Стекло — для того, через что действуют:</b> кнопки, меню, окна, тосты.</li>
+    <li><b>Плоская заливка — для того, что несёт значение:</b> поля, чекбоксы, радио, ползунки.</li>
+    <li><b>Акцент и опасность — сплошные:</b> цвет и есть сообщение, прозрачность его размывает.</li>
+    <li><b>Один ритм:</b> 120 / 180 / 240 / 320 мс и две кривые на весь интерфейс.</li>
+    <li><b>Геометрия проверяется тестом:</b> центровка иконок, высоты шапок, отсутствие переполнений.</li>
+  </ol>
+</div>
+
+<h2 id="themes">Темы</h2>
+<div class="glass">
+  <p class="small muted" style="margin-top:0">Переключай кнопками в шапке — вся витрина ниже перекрашивается вместе с примерами.</p>
+  <div class="kit-swatches">
+    <div class="kit-swatch"><i style="background:#7b6cff"></i>Тёмная · <code class="k">sozvon</code></div>
+    <div class="kit-swatch"><i style="background:#6f7bff"></i>Полночь · <code class="k">midnight</code></div>
+    <div class="kit-swatch"><i style="background:#6656f0"></i>Светлая · <code class="k">light</code></div>
+    <div class="kit-swatch"><i style="background:#2fc98a"></i>Лес · <code class="k">forest</code></div>
+    <div class="kit-swatch"><i style="background:#b06bff"></i>Сумерки · <code class="k">dusk</code></div>
+    <div class="kit-swatch"><i style="background:#7aa7ff"></i>Жидкое стекло · <code class="k">glass</code></div>
+  </div>
+</div>
+
+<h2 id="spacing">Отступы и радиусы</h2>
+<div class="glass">
+  <p class="small muted" style="margin-top:0">Шаг кратна 4: 4 / 8 / 12 / 16 / 20 / 24. Радиусы: 6 / 12 / 16 / 20 px.</p>
+  <div class="kit-scale">
+    <div style="width:4px;height:40px">4</div>
+    <div style="width:8px;height:40px">8</div>
+    <div style="width:12px;height:40px">12</div>
+    <div style="width:16px;height:40px">16</div>
+    <div style="width:20px;height:40px">20</div>
+    <div style="width:24px;height:40px">24</div>
+    <div style="width:56px;height:40px;border-radius:6px">r6</div>
+    <div style="width:56px;height:40px;border-radius:12px">r12</div>
+    <div style="width:56px;height:40px;border-radius:16px">r16</div>
+    <div style="width:56px;height:40px;border-radius:20px">r20</div>
+  </div>
+</div>
+
+<h2 id="motion">Движение</h2>
+<div class="glass">
+  <div class="kit-swatches">
+    <div class="kit-swatch"><i style="background:linear-gradient(90deg,var(--accent),transparent)"></i>120 мс · нажатие</div>
+    <div class="kit-swatch"><i style="background:linear-gradient(90deg,var(--accent),transparent)"></i>180 мс · наведение</div>
+    <div class="kit-swatch"><i style="background:linear-gradient(90deg,var(--accent),transparent)"></i>240 мс · переключение</div>
+    <div class="kit-swatch"><i style="background:linear-gradient(90deg,var(--accent),transparent)"></i>320 мс · вкладки, окна</div>
+  </div>
+  <p class="small muted" style="margin:10px 0 0"><code class="k">ease-out</code> — появление и наведение, <code class="k">ease-spring</code> — плитки, бегунок, подложка вкладок.</p>
+</div>
+
+<h2 id="a11y">Доступность</h2>
+<div class="glass">
+  <ul class="small" style="margin:0; padding-left:18px; line-height:1.7">
+    <li>Фокус: кольцо <code class="k">0 0 0 3px accent/38%</code>.</li>
+    <li><code class="k">prefers-reduced-motion</code> — анимации до 1 мс.</li>
+    <li><code class="k">prefers-reduced-transparency</code> — сплошной фон вместо стекла.</li>
+    <li>Цели нажатия: иконки 28×28, кнопки 40, круглые кнопки звонка 44.</li>
+  </ul>
+</div>
 <h2>Цвета</h2>
 <div class="grid">
   <div class="swatch"><i style="background: var(--bg-deep)"></i><span>bg-deep · #0B0E1C</span></div>
@@ -244,7 +369,7 @@
   <p class="mono small" style="margin: 8px 0 0;">mono: код и терминал — JetBrains Mono</p>
 </div>
 
-<h2>Кнопки</h2>
+<h2 id="components">Кнопки</h2>
 <div class="glass">
   <div class="row">
     <button class="btn">Обычная</button>
@@ -360,7 +485,7 @@
   })();
 </script>
 
-<h2>Экран приложения</h2>
+<h2 id="screens">Экран приложения</h2>
 <div class="app-frame glass">
   <div class="inner">
     <div class="rail">
@@ -482,7 +607,7 @@
   </div>
 </div>
 
-<h2>Токены</h2>
+<h2 id="tokens">Токены</h2>
 <div class="glass">
   <div class="tokens">
     <div><span>Радиусы</span><span class="mono">--r-s 6 · --r-m 12 · --r-l 16 · --r-xl 20</span></div>
@@ -503,5 +628,16 @@
     panel.style.setProperty('--my', (e.clientY - r.top) + 'px');
   }, { passive: true });
 </script>
-</body>
+<script>
+  (function () {
+    const root = document.documentElement;
+    const buttons = document.querySelectorAll('#kit-themes button');
+    function apply(id) {
+      root.dataset.theme = id;
+      buttons.forEach((b) => b.classList.toggle('active', b.dataset.themeId === id));
+    }
+    buttons.forEach((b) => b.addEventListener('click', () => apply(b.dataset.themeId)));
+    apply('sozvon');
+  })();
+</script></body>
 </html>
