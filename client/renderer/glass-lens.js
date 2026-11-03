@@ -2,8 +2,9 @@
 // Слой линзы лежит ПОД содержимым (z-index: -1) и НАД фоном поверхности,
 // поэтому текст остаётся резким, а фон под кромкой преломляется.
 (() => {
-  const SURFACES = '.modal-card, .popup-menu, .chat-theme-pop, .profile-card, .notif-panel, .toast, .gif-popover';
-  const MAX_SIDE = 900;
+  const SURFACES = '.sidebar, .content, .members-panel, .thread-panel, .modal-card, .popup-menu, .chat-theme-pop, .profile-card, .notif-panel, .toast, .gif-popover';
+  const MAX_SIDE = 1400;
+  const MAX_ACTIVE = 8;
   const BEZEL_RATIO = 0.055;
   const MIN_BEZEL = 10;
   const MAX_BEZEL = 34;

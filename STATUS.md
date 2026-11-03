@@ -97,3 +97,6 @@
 
 ## Настоящая рефракция и контракт API (20:00 MSK)
 Линза: glass-lens.js строит карту смещения на canvas (SDF), фильтр feImage+feDisplacementMap, слой под содержимым. Включена для модалок, меню, поповеров, карточки профиля и тостов. Замер: filter url(#lens-860x680-22-34) принят, CPU с открытыми настройками 0–1 %, при выключении темы слои удаляются. Тесты look/layout/spacing зелёные. Контракт: _tools/contract-snapshot.js снял 29 вызовов API и 44 события WS в server/contract, значения нормализованы, README с порядком сравнения для Go.
+
+## Линза на панелях и каркас Go (20:15 MSK)
+Линза расширена на sidebar/content/members/thread: 3 слоя, FPS 145, CPU 0 %. Go установлен портативно в _tools/go (зеркало aliyun, модули через goproxy.cn). server-go: конфиг, SQLite с теми же прагмами, миграции с schema_migrations, /api/health 1:1 с контрактом, graceful shutdown. Проверено: health 200 два запуска, schema_migrations = 1 запись, app_meta engine=go, бинарь собирается.
