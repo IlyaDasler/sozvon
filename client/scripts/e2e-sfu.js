@@ -46,9 +46,9 @@ runTest(async () => {
   // Аня выключает и снова включает шумоподавление — Боря её по-прежнему слышит
   const anya = people[0].user.id;
   const hearsAnya = `(() => { const p = state.room.session.peers.get(${anya}); window.anyaLevel = Math.max(window.anyaLevel || 0, p?.meter?.level ?? (p?.speaking ? 1 : 0)); return p?.speaking; })()`;
-  await js(wins[0], 'setNoiseSuppression(false)');
+  await js(wins[0], 'setNoiseLevel(0)');
   await sleep(2000);
-  await js(wins[0], 'setNoiseSuppression(true)');
+  await js(wins[0], 'setNoiseLevel(3)');
   await sleep(1500);
   await js(wins[1], `window.anyaHeard = false; const t = setInterval(() => { if (${hearsAnya}) { window.anyaHeard = true; clearInterval(t); } }, 50); true`);
   await waitFor(wins[1], 'window.anyaHeard', 'Боря слышит Аню после выкл/вкл шумоподавления', 15000);
