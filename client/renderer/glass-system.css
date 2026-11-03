@@ -89,7 +89,8 @@
 [data-theme='glass'] input:not([type='checkbox']):not([type='radio']):not([type='range']),
 [data-theme='glass'] textarea,
 [data-theme='glass'] select {
-  background: var(--lq-control);
+  /* именно цвет: сокращённое background сбрасывало стрелку списка */
+  background-color: var(--lq-control);
   border: 1px solid var(--lq-control-rim);
   border-radius: 11px;
   box-shadow: none;
@@ -640,3 +641,6 @@
 }
 /* Переключение канала: пружинное «вспухание» новой плитки */
 [data-theme='glass'] .rail-item.active .rail-tile { transition-duration: 320ms; }
+/* Список выбора в стекле: тёмный фон и читаемый текст */
+[data-theme='glass'] select { color-scheme: dark; }
+[data-theme='glass'] select option { background-color: #141a2c; color: var(--text); }
