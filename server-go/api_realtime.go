@@ -145,12 +145,23 @@ func (a *server) websocket(w http.ResponseWriter, r *http.Request) {
 			a.handleRead(user, message)
 		case "me:status":
 			a.handleStatus(user, message)
+		case "call:invite":
+			a.callInvite(conn, user, message)
+		case "call:accept":
+			a.callAccept(conn, user, message)
+		case "call:decline":
+			a.callDecline(conn, user, message)
+		case "call:hangup":
+			a.callHangup(conn, user, message)
+		case "signal":
+			a.callSignal(conn, user, message)
 		}
 	}
 
 	close(done)
 	conn.CloseRaw()
 	if a.hub.Remove(conn) {
+		a.userDisconnected(user.ID)
 		a.broadcastPresence(user.ID)
 	}
 }

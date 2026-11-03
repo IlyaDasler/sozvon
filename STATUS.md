@@ -112,3 +112,6 @@ Go установлен пользователю: %LOCALAPPDATA%\\Programs\\Go +
 
 ## Go, фаза 5: WebSocket, presence, typing (22:10 MSK)
 Первый срез реального времени: /ws с билетом/токеном, presence (подключение, отключение, статусы) друзьям и соседям по каналам, typing в комнату/другу, read, me:status, рассылка room:message и room:thread:new при HTTP-отправке, пинг 30 с. Проверено node-клиентом: presence=true, typing=true, status=dnd=true, room:message=true. Go-тесты зелёные.
+
+## Go, фаза 5: звонки на двоих (22:40 MSK)
+call:invite/accept/decline/hangup/signal с проверкой дружбы, онлайна и занятости; call:ringing, call:incoming с профилем, call:accepted, signal с from/data, call:ended; таймаут 45 с; при обрыве участник выходит. Node-клиент подтвердил все пять шагов. Групповые звонки, голосовые комнаты, LiveKit и TURN — следующий кусок.
