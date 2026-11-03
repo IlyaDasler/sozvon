@@ -359,6 +359,18 @@
 
       <!-- Комната -->
       <div id="room-view" class="chat hidden">
+  <!-- Тред: обсуждение одного сообщения, чтобы не спамить в общий чат -->
+  <aside id="thread-panel" class="thread-panel hidden" aria-label="Тред">
+    <header class="thread-head">
+      <b id="thread-title">Тред</b>
+      <button type="button" class="icon-btn" id="thread-close" title="Закрыть (Esc)"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </header>
+    <div class="thread-list" id="thread-list"></div>
+    <form class="thread-form" id="thread-form">
+      <textarea id="thread-input" rows="1" placeholder="Ответить в треде"></textarea>
+      <button type="submit" class="btn primary" id="thread-send">Ответить</button>
+    </form>
+  </aside>
         <header class="chat-head">
           <span class="room-icon big" id="room-icon"></span>
           <div class="peer-meta">
@@ -410,18 +422,7 @@
     </aside>
   </section>
 
-  <!-- Тред: обсуждение одного сообщения, чтобы не спамить в общий чат -->
-  <aside id="thread-panel" class="thread-panel hidden" aria-label="Тред">
-    <header class="thread-head">
-      <b id="thread-title">Тред</b>
-      <button type="button" class="icon-btn" id="thread-close" title="Закрыть (Esc)"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-    </header>
-    <div class="thread-list" id="thread-list"></div>
-    <form class="thread-form" id="thread-form">
-      <textarea id="thread-input" rows="1" placeholder="Ответить в треде"></textarea>
-      <button type="submit" class="btn primary" id="thread-send">Ответить</button>
-    </form>
-  </aside>
+
   <!-- Входящий звонок -->
   <div id="incoming" class="modal hidden">
     <div class="modal-card incoming-card">

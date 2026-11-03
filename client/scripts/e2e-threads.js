@@ -62,6 +62,20 @@ runTest(async () => {
     rootMarked: Boolean(document.querySelector('#thread-list .thread-root')),
   })`);
   const panel = JSON.parse(statePanel);
+  // Панель треда не должна вылезать за пределы чата и налезать на панель участников
+  const bounds = await js(win, `(() => {
+    const tp = document.getElementById('thread-panel').getBoundingClientRect();
+    const chat = document.getElementById('room-view').getBoundingClientRect();
+    const members = document.getElementById('members-panel');
+    const mr = members && members.getClientRects().length ? members.getBoundingClientRect() : null;
+    return JSON.stringify({
+      inChat: tp.left >= chat.left - 1 && tp.right <= chat.right + 1 && tp.top >= chat.top - 1,
+      overMembers: mr ? (tp.right > mr.left + 1) : false,
+    });
+  })()`);
+  const geo = JSON.parse(bounds);
+  if (!geo.inChat) throw new Error('Панель треда вылезает за пределы чата');
+  if (geo.overMembers) throw new Error('Панель треда налезает на панель участников');
   if (!panel.visible) throw new Error('Панель треда не открылась');
   if (panel.rows < 2) throw new Error(`В треде ожидали корень и ответ, а строк ${panel.rows}`);
   if (!panel.rootMarked) throw new Error('Корневое сообщение не отмечено в треде');

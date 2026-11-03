@@ -2492,3 +2492,29 @@ code, pre, .msg-text code, .e2ee-card input { font-family: var(--font-mono); }
 }
 .chat-wallpaper { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .chat-wallpaper .row { gap: 8px; }
+/* ---------- Панель участников: та же форма, что у остальных панелей ---------- */
+.members-panel {
+  border-radius: var(--panel-radius, 16px);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  margin-left: 10px;
+}
+.members-head .icon-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 9px;
+}
+
+/* ---------- Тред: внутри контента, левее участников, под полосой заголовка ---------- */
+.content { position: relative; }
+.thread-panel {
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 26;
+}
+.chat { position: relative; }
+@media (max-width: 1180px) {
+  .thread-panel { right: 12px; }
+}
