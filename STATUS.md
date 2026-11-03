@@ -100,3 +100,6 @@
 
 ## Линза на панелях и каркас Go (20:15 MSK)
 Линза расширена на sidebar/content/members/thread: 3 слоя, FPS 145, CPU 0 %. Go установлен портативно в _tools/go (зеркало aliyun, модули через goproxy.cn). server-go: конфиг, SQLite с теми же прагмами, миграции с schema_migrations, /api/health 1:1 с контрактом, graceful shutdown. Проверено: health 200 два запуска, schema_migrations = 1 запись, app_meta engine=go, бинарь собирается.
+
+## Go, фаза 2: аккаунты (20:45 MSK)
+Go установлен пользователю: %LOCALAPPDATA%\\Programs\\Go + PATH, GOPROXY=goproxy.cn. server-go: register/login (scrypt как в Node), токены Node-формата с общим secret.key, серверные сессии, /me, ws-ticket, sessions list/delete. Кросс-проверка: пользователь Node входит через Go (200) и пользователь Go входит через Node (200), /me совпадает. Контракт auth (health, register, login, me, ws-ticket) совпал через contract-compare. Go-тесты auth зелёные.

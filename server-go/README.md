@@ -1,50 +1,52 @@
-# Go-сервер: фаза 1
+# Go-сервер «Созвона»
 
-Каркас будущего сервера «Созвона» на Go. План и ограничения — `docs/adr/0002-go-backend.md`.
+Совместимая замена Node-сервера по плану `docs/adr/0002-go-backend.md`.
+Пока работает параллельно: Node остаётся основным, Go догоняет по фазам.
 
-## Что уже есть (фаза 1)
+## Что готово
 
-- конфиг из тех же переменных окружения, что у Node (`PORT`, `DATA_DIR`, `INVITE_CODE`,
-  `SMTP_HOST`, `SMTP_USER`);
-- открытие **той же** SQLite-базы (`DATA_DIR/sozvon.db`): WAL, `busy_timeout`, внешние ключи,
-  одно соединение на запись;
-- миграции с таблицей `schema_migrations`, идемпотентные при повторном запуске;
-- `GET /api/health` с ответом 1:1 как у Node (сверено с `server/contract/api.json`);
-- `log/slog`, таймауты, корректная остановка по SIGINT/SIGTERM.
+**Фаза 1 — каркас**
+- конфиг из тех же переменных окружения (`PORT`, `DATA_DIR`, `INVITE_CODE`, `SMTP_HOST`, `SMTP_USER`, `JWT_SECRET`);
+- та же SQLite-база (`DATA_DIR/sozvon.db`): WAL, `busy_timeout`, внешние ключи, одно соединение на запись;
+- миграции с `schema_migrations`, идемпотентные;
+- `GET /api/health` — ответ 1:1 с Node;
+- `log/slog`, таймауты, корректная остановка.
+
+**Фаза 2 — аккаунты**
+- `POST /api/register`, `POST /api/login` — scrypt-хеши в формате Node (`scrypt$salt$hash`);
+- токены в формате Node (`base64url(payload).base64url(HMAC-SHA256)`, TTL 30 дней), общий `secret.key`;
+- серверные сессии: `GET /api/sessions`, `DELETE /api/sessions/{id}`;
+- `GET /api/me`, `POST /api/ws-ticket`;
+- проверено: пользователь, созданный Node, входит через Go, и наоборот; `me` совпадает.
 
 ## Чего ещё нет
 
-Маршрутов API, WebSocket, авторизации, файлов, LiveKit. Они добавляются фазами 2–6;
-до переключения Node-сервер остаётся рабочим.
+Контакты, хабы, комнаты, сообщения, файлы, реакции, звонки, LiveKit, OAuth, полная
+проверка TOTP, регистрация по почте. Фазы 3–6.
 
 ## Сборка и запуск
 
+Go установлен в `%LOCALAPPDATA%\Programs\Go` и добавлен в PATH пользователя
+(нужен новый терминал). Временный PATH для текущей сессии:
+
 ```powershell
+$env:Path = "$env:LOCALAPPDATA\Programs\Go\bin;$env:Path"
 cd sozvon\server-go
-$env:GOPROXY = "https://goproxy.cn,direct"   # если proxy.golang.org медленно
+go test ./...
 go build -o sozvon-server-go.exe .
 $env:PORT = "3100"
-$env:DATA_DIR = "..\_go-data"
+$env:DATA_DIR = "..\_e2e\data"   # можно указать тот же каталог, что у Node
 .\sozvon-server-go.exe
 curl.exe http://127.0.0.1:3100/api/health
 ```
 
-Ожидаемый ответ:
-
-```json
-{"ok":true,"app":"sozvon","inviteRequired":false,"emailCodes":false}
-```
-
-Повторный запуск не должен применять миграции второй раз — в логе будет тот же список версий,
-а `schema_migrations` не вырастет.
-
-## Сверка с контрактом
-
-Когда появятся маршруты, прогонять тот же сценарий:
+## Сверка с Node
 
 ```powershell
 $env:CONTRACT_BASE = "http://127.0.0.1:3100/api"
-node _tools\contract-snapshot.js
+$env:CONTRACT_OUT  = "..\_backup\contract-go"   # каталог
+node ..\..\_tools\contract-snapshot.js
+node ..\..\_tools\contract-compare.js ..\server\contract\api.json ..\_backup\contract-go\api.json health register-a register-b login me ws-ticket
 ```
 
-`api.json` перезапишется; сравнить с эталоном в git по форме и кодам (значения нормализованы).
+Ожидаемо: `✔ контракт совпал`.
