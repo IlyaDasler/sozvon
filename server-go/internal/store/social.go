@@ -232,3 +232,18 @@ func (s *Store) UpdateUserStatus(userID int64, status string) error {
 	_, err := s.db.Exec(`UPDATE users SET status = ? WHERE id = ?`, status, userID)
 	return err
 }
+
+// SetChatTheme — тема личной переписки «у обоих»: обновляем обе стороны.
+func (s *Store) SetChatTheme(a, b int64, theme *string) error {
+	if _, err := s.db.Exec(`UPDATE contacts SET chat_theme = ? WHERE (user_id = ? AND contact_id = ?) OR (user_id = ? AND contact_id = ?)`, theme, a, b, b, a); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ChatThemeOf — тема переписки, как её видит userID.
+func (s *Store) ChatThemeOf(userID, peerID int64) (string, error) {
+	var theme sql.NullString
+	err := s.db.QueryRow(`SELECT chat_theme FROM contacts WHERE user_id = ? AND contact_id = ?`, userID, peerID).Scan(&theme)
+	return theme.String, err
+}

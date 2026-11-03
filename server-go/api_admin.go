@@ -405,7 +405,11 @@ func (a *server) roomAdminAction(w http.ResponseWriter, r *http.Request, action 
 	case "bans":
 		if r.Method == http.MethodDelete {
 			userID, _ := parseInt64(chi.URLParam(r, "userId"))
-			_ = a.store.UnbanFromRoom(roomID, userID)
+			if room.HubID != nil {
+				_ = a.store.UnbanFromHub(*room.HubID, userID)
+			} else {
+				_ = a.store.UnbanFromRoom(roomID, userID)
+			}
 		} else {
 			var request struct {
 				UserID int64 `json:"userId"`
@@ -414,7 +418,19 @@ func (a *server) roomAdminAction(w http.ResponseWriter, r *http.Request, action 
 				fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 				return
 			}
-			_ = a.store.BanFromRoom(roomID, request.UserID, user.ID)
+			if room.HubID != nil {
+				// В канале бан общий: убираем из канала и всех его комнат
+				_ = a.store.BanFromHub(*room.HubID, request.UserID, user.ID)
+				a.hub.Send(request.UserID, map[string]any{"type": "hub:removed", "hubId": *room.HubID, "reason": "banned"})
+				a.broadcastHub(*room.HubID)
+			} else {
+				_ = a.store.BanFromRoom(roomID, request.UserID, user.ID)
+			}
+			if part := a.voice.participant(roomID, request.UserID); part != nil && part.conn != nil {
+				part.conn.Send(map[string]any{"type": "room:left", "roomId": roomID, "reason": "banned"})
+			}
+			a.voice.leave(roomID, request.UserID)
+			a.broadcastVoice(roomID)
 		}
 	case "members":
 		userID, _ := parseInt64(chi.URLParam(r, "userId"))
@@ -428,9 +444,26 @@ func (a *server) roomAdminAction(w http.ResponseWriter, r *http.Request, action 
 			fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 			return
 		}
-		_ = a.store.EnsureRoomMember(roomID, userID)
-		_ = a.store.AssignRoomRole(roomID, userID, request.RoleID)
+		if room.HubID != nil {
+			_ = a.store.AssignHubRole(*room.HubID, userID, request.RoleID)
+			if role, err := a.store.HubRoleByID(*room.HubID, request.RoleID); err == nil && role.Perms&2 != 0 {
+				a.voice.setMuted(roomID, userID, false)
+			}
+		} else {
+			_ = a.store.EnsureRoomMember(roomID, userID)
+			_ = a.store.AssignRoomRole(roomID, userID, request.RoleID)
+			if role, err := a.store.RoomRoleByID(roomID, request.RoleID); err == nil && role.Perms&2 != 0 {
+				a.voice.setMuted(roomID, userID, false)
+			}
+		}
+		a.broadcastVoice(roomID)
 	case "roles":
+		if room.HubID != nil {
+			if err := a.hubRoomRoles(r, roomID, *room.HubID, user); err != nil {
+				err.(*apiError).write(w)
+			}
+			break
+		}
 		if r.Method == http.MethodPost {
 			var request struct {
 				Name  string `json:"name"`
@@ -462,6 +495,7 @@ func (a *server) roomAdminAction(w http.ResponseWriter, r *http.Request, action 
 		fail(http.StatusNotFound, "Не найдено").write(w)
 		return
 	}
+	a.notifyRoom(roomID)
 	updated, err := a.store.RoomByID(roomID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -477,3 +511,127 @@ func (a *server) roomBans(w http.ResponseWriter, r *http.Request)    { a.roomAdm
 func (a *server) roomMembers(w http.ResponseWriter, r *http.Request) { a.roomAdminAction(w, r, "members") }
 func (a *server) roomRole(w http.ResponseWriter, r *http.Request)    { a.roomAdminAction(w, r, "role") }
 func (a *server) roomRoles(w http.ResponseWriter, r *http.Request)   { a.roomAdminAction(w, r, "roles") }
+
+func (a *server) hubAddMembers(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	hubID, err := parseInt64(chi.URLParam(r, "id"))
+	if err != nil || !a.hubManager(hubID, user.ID) {
+		fail(http.StatusForbidden, "Нет прав").write(w)
+		return
+	}
+	var request struct {
+		UserID  int64   `json:"userId"`
+		UserIDs []int64 `json:"userIds"`
+	}
+	if err := decode(r, &request); err != nil {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	ids := request.UserIDs
+	if request.UserID != 0 {
+		ids = append(ids, request.UserID)
+	}
+	for _, id := range ids {
+		if err := a.store.AddHubMember(hubID, id); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+		a.hub.Send(id, map[string]any{"type": "hub:added", "hubId": hubID})
+	}
+	a.broadcastHubRooms(hubID)
+	a.broadcastHub(hubID)
+	if hub := a.hubOr404(w, hubID); hub != nil {
+		writeJSON(w, http.StatusOK, a.hubJSON(hub))
+	}
+}
+
+// hubRoomRoles — роли комнаты канала живут в канале (как в Node)
+func (a *server) hubRoomRoles(r *http.Request, roomID, hubID int64, user *store.User) error {
+	switch r.Method {
+	case http.MethodPost:
+		var request struct {
+			Name  string `json:"name"`
+			Color string `json:"color"`
+			Perms int64  `json:"perms"`
+		}
+		if err := decode(r, &request); err != nil {
+			return &apiError{status: http.StatusBadRequest, body: map[string]any{"error": "Неверный формат запроса"}}
+		}
+		if _, err := a.store.CreateHubRole(hubID, request.Name, request.Color, request.Perms); err != nil {
+			return &apiError{status: http.StatusInternalServerError, body: map[string]any{"error": "Внутренняя ошибка сервера"}}
+		}
+	case http.MethodDelete:
+		roleID, _ := parseInt64(chi.URLParam(r, "roleId"))
+		if err := a.store.DeleteHubRole(hubID, roleID); err != nil {
+			return &apiError{status: http.StatusInternalServerError, body: map[string]any{"error": "Внутренняя ошибка сервера"}}
+		}
+	default:
+		roleID, _ := parseInt64(chi.URLParam(r, "roleId"))
+		var request struct {
+			Name  *string `json:"name"`
+			Color *string `json:"color"`
+			Perms *int64  `json:"perms"`
+		}
+		if err := decode(r, &request); err != nil {
+			return &apiError{status: http.StatusBadRequest, body: map[string]any{"error": "Неверный формат запроса"}}
+		}
+		if err := a.store.UpdateHubRole(hubID, roleID, request.Name, request.Color, request.Perms); err != nil {
+			return &apiError{status: http.StatusInternalServerError, body: map[string]any{"error": "Внутренняя ошибка сервера"}}
+		}
+	}
+	a.broadcastHubRooms(hubID)
+	a.broadcastHub(hubID)
+	_ = roomID
+	_ = user
+	return nil
+}
+
+// roomTimeouts — кик на время: только чтение, из голоса выкидываем сразу.
+func (a *server) roomTimeouts(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	roomID, err := parseInt64(chi.URLParam(r, "id"))
+	if err != nil {
+		fail(http.StatusBadRequest, "Неверная комната").write(w)
+		return
+	}
+	room, err := a.store.RoomByID(roomID)
+	if err != nil {
+		fail(http.StatusNotFound, "Комната не найдена").write(w)
+		return
+	}
+	if !a.roomManager(room, user.ID) {
+		fail(http.StatusForbidden, "Нет прав").write(w)
+		return
+	}
+	if r.Method == http.MethodDelete {
+		userID, _ := parseInt64(chi.URLParam(r, "userId"))
+		_ = a.store.ClearRoomTimeout(roomID, userID)
+		a.notifyRoom(roomID)
+		updated, _ := a.store.RoomByID(roomID)
+		writeJSON(w, http.StatusOK, a.roomJSON(updated))
+		return
+	}
+	var request struct {
+		UserID  int64 `json:"userId"`
+		Seconds int64 `json:"seconds"`
+	}
+	if err := decode(r, &request); err != nil || request.UserID == 0 || request.Seconds < 1 {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	_ = a.store.EnsureRoomMember(roomID, request.UserID)
+	if err := a.store.SetRoomTimeout(roomID, request.UserID, request.Seconds); err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	// Из голоса — сразу, с причиной
+	if part := a.voice.participant(roomID, request.UserID); part != nil && part.conn != nil {
+		part.conn.Send(map[string]any{"type": "room:left", "roomId": roomID, "reason": "kicked"})
+	}
+	a.voice.setMuted(roomID, request.UserID, true)
+	a.voice.leave(roomID, request.UserID)
+	a.broadcastVoice(roomID)
+	a.notifyRoom(roomID)
+	updated, _ := a.store.RoomByID(roomID)
+	writeJSON(w, http.StatusOK, a.roomJSON(updated))
+}

@@ -469,8 +469,17 @@ func (a *server) hubInvites(w http.ResponseWriter, r *http.Request) {
 
 func (a *server) roomJSON(room *store.RoomRow) map[string]any {
 	roles := make([]map[string]any, 0, len(room.Roles))
-	for _, role := range room.Roles {
-		roles = append(roles, a.roleJSON(role))
+	// Роли канала общие для всех его комнат, как в Node
+	if room.HubID != nil {
+		if hub, err := a.store.HubByID(*room.HubID); err == nil {
+			for _, role := range hub.Roles {
+				roles = append(roles, a.roleJSON(role))
+			}
+		}
+	} else {
+		for _, role := range room.Roles {
+			roles = append(roles, a.roleJSON(role))
+		}
 	}
 	members := make([]map[string]any, 0, len(room.Members))
 	for _, member := range room.Members {
@@ -481,8 +490,17 @@ func (a *server) roomJSON(room *store.RoomRow) map[string]any {
 		members = append(members, item)
 	}
 	bans := make([]map[string]any, 0, len(room.Bans))
-	for _, user := range room.Bans {
-		bans = append(bans, a.publicUser(user))
+	if room.HubID != nil {
+		// В канале бан общий для всех комнат
+		if hub, err := a.store.HubByID(*room.HubID); err == nil {
+			for _, user := range hub.Bans {
+				bans = append(bans, a.publicUser(user))
+			}
+		}
+	} else {
+		for _, user := range room.Bans {
+			bans = append(bans, a.publicUser(user))
+		}
 	}
 	var backgroundURL any
 	if room.Background != "" {
@@ -551,10 +569,11 @@ func (a *server) notifyRoom(roomID int64) {
 func (a *server) createRoom(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
 	var request struct {
-		HubID   int64  `json:"hubId"`
-		Name    string `json:"name"`
-		Kind    string `json:"kind"`
-		Private bool   `json:"private"`
+		HubID     int64   `json:"hubId"`
+		Name      string  `json:"name"`
+		Kind      string  `json:"kind"`
+		Private   bool    `json:"private"`
+		MemberIDs []int64 `json:"memberIds"`
 	}
 	if err := decode(r, &request); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
@@ -582,6 +601,11 @@ func (a *server) createRoom(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
+	}
+	for _, memberID := range request.MemberIDs {
+		if memberID != user.ID {
+			_ = a.store.AddRoomMember(room.ID, memberID)
+		}
 	}
 	a.notifyRoom(room.ID)
 	writeJSON(w, http.StatusOK, a.roomJSON(room))
@@ -642,11 +666,23 @@ func (a *server) patchRoom(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var request struct {
-		Name string `json:"name"`
+		Name         string `json:"name"`
+		DefaultPerms *int64 `json:"defaultPerms"`
 	}
 	if err := decode(r, &request); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
+	}
+	if request.DefaultPerms != nil {
+		if err := a.store.UpdateRoomDefaultPerms(id, *request.DefaultPerms); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+		// Право говорить пропало — выключаем микрофон всем без него
+		if *request.DefaultPerms&2 == 0 {
+			a.voice.muteAll(id)
+			a.broadcastVoice(id)
+		}
 	}
 	if name := strings.TrimSpace(request.Name); name != "" {
 		if err := a.store.UpdateRoomName(id, name); err != nil {
@@ -687,4 +723,100 @@ func itoa(value int64) string {
 		value /= 10
 	}
 	return digits
+}
+func (a *server) setMyStatus(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	var request struct {
+		Status string `json:"status"`
+	}
+	if err := decode(r, &request); err != nil {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	switch request.Status {
+	case "online", "idle", "dnd", "invisible":
+	default:
+		fail(http.StatusBadRequest, "Неизвестный статус").write(w)
+		return
+	}
+	if err := a.store.UpdateUserStatus(user.ID, request.Status); err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	a.broadcastPresence(user.ID)
+	fresh, _ := a.store.UserByID(user.ID)
+	self, err := a.self(fresh)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	writeJSON(w, http.StatusOK, self)
+}
+
+func (a *server) setMyKey(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	var request struct {
+		PublicKey string `json:"publicKey"`
+	}
+	if err := decode(r, &request); err != nil || len(request.PublicKey) < 16 || len(request.PublicKey) > 4096 {
+		fail(http.StatusBadRequest, "Неверный ключ").write(w)
+		return
+	}
+	if err := a.store.SetPublicKey(user.ID, request.PublicKey); err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	fresh, _ := a.store.UserByID(user.ID)
+	// Друзья должны узнать ключ, иначе не смогут запечатать для нас сообщение
+	event := map[string]any{"type": "user:updated", "user": a.publicUser(fresh)}
+	if ids, err := a.store.RelatedUserIDs(fresh.ID); err == nil {
+		for _, id := range ids {
+			a.hub.Send(id, event)
+		}
+	}
+	a.hub.Send(fresh.ID, event)
+	self, err := a.self(fresh)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	writeJSON(w, http.StatusOK, self)
+}
+func (a *server) contactTheme(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	peerID, err := parseInt64(chi.URLParam(r, "id"))
+	if err != nil {
+		fail(http.StatusBadRequest, "Неверный собеседник").write(w)
+		return
+	}
+	if _, ok := a.dmPeer(peerID, user.ID); !ok {
+		fail(http.StatusNotFound, "Этого человека нет в друзьях").write(w)
+		return
+	}
+	var request struct {
+		Theme *string `json:"theme"`
+	}
+	if err := decode(r, &request); err != nil {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	if request.Theme != nil {
+		theme := strings.TrimSpace(*request.Theme)
+		if len(theme) > 24 {
+			fail(http.StatusBadRequest, "Неизвестная тема").write(w)
+			return
+		}
+		request.Theme = &theme
+	}
+	if err := a.store.SetChatTheme(user.ID, peerID, request.Theme); err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	var value any
+	if request.Theme != nil && *request.Theme != "" {
+		value = *request.Theme
+	}
+	a.hub.Send(peerID, map[string]any{"type": "chat:theme", "userId": user.ID, "theme": value, "by": user.ID})
+	a.hub.Send(user.ID, map[string]any{"type": "chat:theme", "userId": peerID, "theme": value, "by": user.ID})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "theme": value})
 }

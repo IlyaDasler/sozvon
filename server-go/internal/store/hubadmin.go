@@ -295,3 +295,13 @@ func (s *Store) RoomOwner(roomID int64) (int64, error) {
 	err := s.db.QueryRow(`SELECT owner_id FROM rooms WHERE id = ?`, roomID).Scan(&owner)
 	return owner, err
 }
+
+func (s *Store) HubRoleByID(hubID, roleID int64) (*RoleRow, error) {
+	var role RoleRow
+	err := s.db.QueryRow(`SELECT id, name, color, perms, created_at FROM hub_roles WHERE id = ? AND hub_id = ?`, roleID, hubID).
+		Scan(&role.ID, &role.Name, &role.Color, &role.Perms, &role.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &role, nil
+}

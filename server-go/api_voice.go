@@ -194,6 +194,16 @@ func (v *voiceManager) updateState(roomID, userID int64, conn *realtime.Conn, me
 	return true
 }
 
+func (v *voiceManager) muteAll(roomID int64) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if room := v.rooms[roomID]; room != nil {
+		for _, part := range room.parts {
+			part.muted = true
+		}
+	}
+}
+
 func (v *voiceManager) participants(roomID int64) []map[string]any {
 	v.mu.Lock()
 	defer v.mu.Unlock()
@@ -427,3 +437,12 @@ func hasPrefix(value, prefix string) bool {
 }
 
 var _ = livekit.Options{}
+func (v *voiceManager) setMuted(roomID, userID int64, muted bool) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if room := v.rooms[roomID]; room != nil {
+		if part := room.parts[userID]; part != nil {
+			part.muted = muted
+		}
+	}
+}
