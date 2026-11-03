@@ -206,3 +206,29 @@ func (s *Store) Unblock(userID, blockedID int64) error {
 	_, err := s.db.Exec(`DELETE FROM blocks WHERE user_id = ? AND blocked_id = ?`, userID, blockedID)
 	return err
 }
+// RelatedUserIDs — кому рассказывать о статусе: друзья и соседи по каналам.
+func (s *Store) RelatedUserIDs(userID int64) ([]int64, error) {
+	rows, err := s.db.Query(`
+		SELECT contact_id FROM contacts WHERE user_id = ?
+		UNION
+		SELECT m2.user_id FROM hub_members m1 JOIN hub_members m2 ON m2.hub_id = m1.hub_id
+		WHERE m1.user_id = ? AND m2.user_id <> ?`, userID, userID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func (s *Store) UpdateUserStatus(userID int64, status string) error {
+	_, err := s.db.Exec(`UPDATE users SET status = ? WHERE id = ?`, status, userID)
+	return err
+}

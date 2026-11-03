@@ -482,3 +482,24 @@ func (s *Store) HubInvitesOf(userID int64) ([]HubInvite, error) {
 	}
 	return list, rows.Err()
 }
+// RoomMemberIDs — кто получает события комнаты.
+func (s *Store) RoomMemberIDs(roomID int64) ([]int64, error) {
+	rows, err := s.db.Query(`
+		SELECT user_id FROM room_members WHERE room_id = ?
+		UNION
+		SELECT m.user_id FROM rooms r JOIN hub_members m ON m.hub_id = r.hub_id WHERE r.id = ?`,
+		roomID, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
