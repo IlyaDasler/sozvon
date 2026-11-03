@@ -109,3 +109,6 @@ Go установлен пользователю: %LOCALAPPDATA%\\Programs\\Go +
 
 ## Go, фаза 4: сообщения и треды (21:40 MSK)
 Лента, отправка с mentionAll/threadRootId/replyTo, тред (корень+ответы), unread, отметка прочтения; lastActivity комнаты по сообщениям. Миграция 004 (room_messages, uploads, reactions, pins, read_state, read_baseline). Контракт: 22 вызова совпали. Общая база: Node читает сообщение из Go, Go — из Node; ответ из Go виден в треде Node (2 строки). Go-тесты store (сообщения/тред/активность) зелёные.
+
+## Go, фаза 5: WebSocket, presence, typing (22:10 MSK)
+Первый срез реального времени: /ws с билетом/токеном, presence (подключение, отключение, статусы) друзьям и соседям по каналам, typing в комнату/другу, read, me:status, рассылка room:message и room:thread:new при HTTP-отправке, пинг 30 с. Проверено node-клиентом: presence=true, typing=true, status=dnd=true, room:message=true. Go-тесты зелёные.

@@ -131,6 +131,7 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	a.broadcastRoomMessage(roomID, message, request.MentionAll, threadRoot)
 	writeJSON(w, http.StatusOK, withMeta(a.messageJSON(message), message))
 }
 

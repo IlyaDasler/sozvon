@@ -21,6 +21,7 @@ import (
 
 	"sozvon/server/internal/auth"
 	"sozvon/server/internal/config"
+	"sozvon/server/internal/realtime"
 	"sozvon/server/internal/store"
 )
 
@@ -32,6 +33,7 @@ type server struct {
 	secret []byte
 	mu     sync.Mutex
 	tickets map[string]ticket
+	hub    *realtime.Hub
 }
 
 type ticket struct {
@@ -64,10 +66,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}}
+	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub()}
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	router.Get("/ws", app.websocket)
 
 	router.Route("/api", func(r chi.Router) {
 		r.Get("/health", app.health)
