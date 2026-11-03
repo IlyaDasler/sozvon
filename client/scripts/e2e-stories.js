@@ -673,15 +673,18 @@ runTest(async () => {
     await js(winB, `openSettings(); showSettingsTab('notify'); true`);
     await js(winB, click('#set-notify-preview'));
     const value = await js(winB, 'notifySettings().preview');
-    await js(winB, `showSettingsTab('sound'); document.getElementById('set-ns').click(); document.getElementById('settings-form').requestSubmit(); true`);
+    await js(
+      winB,
+      `(() => { const s = document.getElementById('set-ns-level'); s.value = s.value === '3' ? '2' : '3'; s.dispatchEvent(new Event('change')); document.getElementById('settings-form').requestSubmit(); return true; })()`
+    );
     await sleep(300);
-    const ns = await js(winB, 'state.settings.noiseSuppression');
+    const ns = await js(winB, 'state.settings.noiseLevel');
     await js(winB, 'location.reload()').catch(() => {});
     await sleep(1500);
     await waitFor(winB, 'e2eeReady()', 'перезапуск');
     await js(winB, ACCEPT_DIALOGS);
     expect((await js(winB, 'notifySettings().preview')) === value, 'уведомления не сохранились');
-    expect((await js(winB, 'state.settings.noiseSuppression')) === ns, 'шумоподавление не сохранилось');
+    expect((await js(winB, 'state.settings.noiseLevel')) === ns, 'шумоподавление не сохранилось');
   });
 
   await story('Esc закрывает окна по очереди, настройки без изменений закрываются', async () => {

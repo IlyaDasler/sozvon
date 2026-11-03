@@ -443,6 +443,8 @@ func (a *server) roomAdminAction(w http.ResponseWriter, r *http.Request, action 
 				a.broadcastHub(*room.HubID)
 			} else {
 				_ = a.store.BanFromRoom(roomID, request.UserID, user.ID)
+				a.hub.Send(request.UserID, map[string]any{"type": "room:removed", "roomId": roomID, "reason": "banned"})
+				a.notifyRoom(roomID)
 			}
 			if part := a.voice.participant(roomID, request.UserID); part != nil && part.conn != nil {
 				part.conn.Send(map[string]any{"type": "room:left", "roomId": roomID, "reason": "banned"})
@@ -682,19 +684,44 @@ func (a *server) addRoomMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request struct {
-		UserID int64 `json:"userId"`
+		UserID  int64   `json:"userId"`
+		UserIDs []int64 `json:"userIds"`
 	}
-	if err := decode(r, &request); err != nil || request.UserID == 0 {
+	if err := decode(r, &request); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
 	}
-	if err := a.store.AddRoomMember(roomID, request.UserID); err != nil {
-		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+	ids := request.UserIDs
+	if request.UserID != 0 {
+		ids = append(ids, request.UserID)
+	}
+	if len(ids) == 0 {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
 	}
-	a.hub.Send(request.UserID, map[string]any{"type": "room:updated", "room": a.roomJSON(room)})
+	for _, id := range ids {
+		// Вернувшийся в комнату канала снова становится участником канала:
+		// иначе он не увидит канал и не сможет писать
+		if room.HubID != nil {
+			if err := a.store.AddHubMember(*room.HubID, id); err != nil {
+				fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+				return
+			}
+		}
+		if err := a.store.AddRoomMember(roomID, id); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+	}
 	a.notifyRoom(roomID)
 	updated, _ := a.store.RoomByID(roomID)
+	for _, id := range ids {
+		a.hub.Send(id, map[string]any{"type": "room:updated", "room": a.roomJSON(updated)})
+	}
+	// Вернувшемуся нужен весь канал: комнаты в его списке могло уже не быть
+	if room.HubID != nil {
+		a.broadcastHub(*room.HubID)
+	}
 	writeJSON(w, http.StatusOK, a.roomJSON(updated))
 }
 // disconnectMember — модератор отключает человека от голоса, не выгоняя из комнаты.
