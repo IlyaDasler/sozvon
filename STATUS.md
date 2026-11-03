@@ -127,3 +127,6 @@ call:add с проверками и call:incoming group+others, call:member (rin
 
 ## Go: реакции, пины, правка, удаление (21:45 MSK)
 Реакции (toggle, кто поставил, событие), пины (список, закрепить/снять, событие), правка своего сообщения (enc, editedAt, событие), удаление автором или управляющим (событие). Реакции и пины подставляются в ленту и тред. Проверка скриптом: reaction, who, pinned, reactionInFeed, edit, afterEdit, unpin, deleted — все true. Go-тесты зелёные.
+
+## Go: вложения (22:05 MSK)
+POST /uploads (сырое тело до 25 МБ, kind по mime, файл в DATA_DIR/files), публичный GET /api/files/{id}/{name} с inline/attachment и nosniff/CSP, attachments в сообщении с проверкой владельца и пометкой used. Проверка: upload, url, fileServed, message, feed — все true. Go-тесты зелёные.

@@ -17,7 +17,7 @@ func (a *server) messageJSON(message *store.Message) map[string]any {
 		"roomId":      message.RoomID,
 		"fromId":      message.FromID,
 		"text":        message.Text,
-		"attachments": []any{},
+		"attachments": attachmentsFromJSON(message.Attachments),
 		"preview":     nil,
 		"enc":         encValue(message.Enc),
 		"replyTo":     message.ReplyTo,
@@ -102,13 +102,16 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 		MentionAll   bool   `json:"mentionAll"`
 		ThreadRootID *int64 `json:"threadRootId"`
 		ReplyTo      *int64 `json:"replyTo"`
+		Attachments  []struct {
+			ID string `json:"id"`
+		} `json:"attachments"`
 	}
 	if err := decode(r, &request); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
 	}
 	text := strings.TrimSpace(request.Text)
-	if text == "" || len([]rune(text)) > 4000 {
+	if len([]rune(text)) > 4000 {
 		fail(http.StatusBadRequest, "Сообщение: от 1 до 4000 символов").write(w)
 		return
 	}
@@ -128,10 +131,35 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 		threadRoot = &target
 	}
 
+	// Вложения: только текстом можно без файлов, пустое сообщение не отправляем
+	if text == "" && len(request.Attachments) == 0 {
+		fail(http.StatusBadRequest, "Сообщение: от 1 до 4000 символов").write(w)
+		return
+	}
+	if len(request.Attachments) > maxAttachments {
+		fail(http.StatusBadRequest, "Можно прикрепить не больше 10 файлов").write(w)
+		return
+	}
+	var attachments []map[string]any
+	if len(request.Attachments) > 0 {
+		resolved, err := a.resolveAttachments(user, request.Attachments)
+		if err != nil {
+			err.(*apiError).write(w)
+			return
+		}
+		attachments = resolved
+	}
+
 	message, err := a.store.CreateRoomMessage(roomID, user.ID, text, request.MentionAll, threadRoot, request.ReplyTo)
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
+	}
+	if len(attachments) > 0 {
+		raw, _ := json.Marshal(attachments)
+		if updated, err := a.store.SetMessageAttachments(message.ID, string(raw)); err == nil {
+			message = updated
+		}
 	}
 	a.broadcastRoomMessage(roomID, message, request.MentionAll, threadRoot)
 	writeJSON(w, http.StatusOK, withMeta(a.messageJSON(message), message))

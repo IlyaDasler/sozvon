@@ -76,6 +76,7 @@ func main() {
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
+	router.Get("/api/files/{id}/{name}", app.serveFile)
 	router.Get("/ws", app.websocket)
 
 	router.Route("/api", func(r chi.Router) {
@@ -142,6 +143,7 @@ func main() {
 			r.Post("/rooms/{id}/read", app.markRoomRead)
 			r.Get("/unread", app.unread)
 			r.Get("/ice", app.ice)
+			r.Post("/uploads", app.upload)
 		})
 	})
 
@@ -187,6 +189,12 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 }
 
 func (e *apiError) write(w http.ResponseWriter) { writeJSON(w, e.status, e.body) }
+func (e *apiError) Error() string {
+	if message, ok := e.body["error"].(string); ok {
+		return message
+	}
+	return "api error"
+}
 
 func decode(r *http.Request, target any) error {
 	decoder := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 16<<10))
