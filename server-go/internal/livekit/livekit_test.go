@@ -55,3 +55,15 @@ func TestJoinGrant(t *testing.T) {
 		t.Fatal("подпись не совпала")
 	}
 }
+func TestAdminToken(t *testing.T) {
+	opts := Options{URL: "wss://lk", Key: "key", Secret: "secret", MinMembers: 3}
+	token := opts.adminToken("sozvon-room-5", 60)
+	payload := DecodeUnverified(token)
+	if payload["iss"] != "key" {
+		t.Fatalf("iss: %+v", payload)
+	}
+	video, _ := payload["video"].(map[string]any)
+	if video["roomAdmin"] != true || video["room"] != "sozvon-room-5" {
+		t.Fatalf("права администратора: %+v", video)
+	}
+}

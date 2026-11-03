@@ -301,7 +301,10 @@ func (a *server) roomLeave(conn *realtime.Conn, user *store.User, message map[st
 	if part == nil || part.conn != conn {
 		return
 	}
-	if _, _, removed := a.voice.leave(roomID, user.ID); removed {
+	if _, media, removed := a.voice.leave(roomID, user.ID); removed {
+		if media == "sfu" && len(a.voice.participants(roomID)) == 0 {
+			_ = a.livekit.DeleteRoom(roomID)
+		}
 		a.broadcastVoice(roomID)
 	}
 }

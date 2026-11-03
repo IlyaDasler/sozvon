@@ -13,7 +13,8 @@ import (
 const ringTimeout = 45 * time.Second
 
 type callMember struct {
-	conn *realtime.Conn
+	conn  *realtime.Conn
+	group bool
 }
 
 type call struct {
@@ -50,6 +51,16 @@ func (m *callManager) busy(userID int64) bool {
 		}
 	}
 	return false
+}
+
+func (m *callManager) setGroup(id string, userID int64, group bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if call, exists := m.calls[id]; exists {
+		if member, ok := call.members[userID]; ok {
+			member.group = group
+		}
+	}
 }
 
 func (m *callManager) setRinging(id string, userID int64, timer *time.Timer) bool {
@@ -119,7 +130,9 @@ func (a *server) callInvite(conn *realtime.Conn, user *store.User, message map[s
 		return
 	}
 	id := authRandomID()
+	group, _ := messageBool(message, "group")
 	a.calls.create(id, user.ID, conn)
+	a.calls.setGroup(id, user.ID, group)
 	if _, err := a.store.UserByID(to); err != nil {
 		a.calls.delete(id)
 		return
@@ -152,7 +165,8 @@ func (a *server) callAccept(conn *realtime.Conn, user *store.User, message map[s
 	for memberID := range call.members {
 		peers = append(peers, memberID)
 	}
-	call.members[user.ID] = &callMember{conn: conn}
+	group, _ := messageBool(message, "group")
+	call.members[user.ID] = &callMember{conn: conn, group: group}
 	wasRinging := call.state == "ringing"
 	if wasRinging {
 		call.state = "active"
@@ -314,4 +328,106 @@ func (a *server) userDisconnected(userID int64) {
 		return
 	}
 	a.endCall(id, "disconnected")
+}
+
+func messageBool(message map[string]any, key string) (bool, bool) {
+	value, exists := message[key]
+	flag, ok := value.(bool)
+	return flag, exists && ok
+}
+
+// callAdd — позвать друга в идущий звонок
+func (a *server) callAdd(conn *realtime.Conn, user *store.User, message map[string]any) {
+	id, _ := message["callId"].(string)
+	to, ok := number(message["to"])
+	if !ok || to == 0 {
+		return
+	}
+	call := a.calls.get(id)
+	if call == nil {
+		return
+	}
+	fail := func(reason string) {
+		conn.Send(map[string]any{"type": "call:add:failed", "callId": id, "to": to, "reason": reason})
+	}
+	a.calls.mu.Lock()
+	member, exists := call.members[user.ID]
+	active := call.state == "active"
+	size := len(call.members) + len(call.ringing)
+	allGroup := true
+	for _, m := range call.members {
+		if !m.group {
+			allGroup = false
+			break
+		}
+	}
+	a.calls.mu.Unlock()
+	if !exists || member.conn != conn || !active {
+		return
+	}
+	if friends, _ := a.store.AreFriends(user.ID, to); !friends {
+		fail("not-contact")
+		return
+	}
+	if !a.hub.IsOnline(to) {
+		fail("offline")
+		return
+	}
+	if a.calls.busy(to) {
+		fail("busy")
+		return
+	}
+	if size >= 10 {
+		fail("full")
+		return
+	}
+	if !allGroup {
+		fail("old-version")
+		return
+	}
+	target, err := a.store.UserByID(to)
+	if err != nil {
+		fail("offline")
+		return
+	}
+	timer := time.AfterFunc(ringTimeout, func() { a.stopRinging(id, to, "missed") })
+	if !a.calls.setRinging(id, to, timer) {
+		timer.Stop()
+		return
+	}
+	a.calls.mu.Lock()
+	others := make([]map[string]any, 0, len(call.members))
+	for memberID := range call.members {
+		if memberUser, err := a.store.UserByID(memberID); err == nil {
+			others = append(others, a.publicUser(memberUser))
+		}
+	}
+	a.calls.mu.Unlock()
+	a.hub.Send(to, map[string]any{"type": "call:incoming", "callId": id, "from": a.publicUser(user), "group": true, "others": others})
+	a.callMembers(id, to, "ringing")
+	_ = target
+}
+
+// stopRinging — человек не ответил или отказался, звонок остальным продолжается
+func (a *server) stopRinging(id string, userID int64, state string) {
+	call := a.calls.get(id)
+	if call == nil {
+		return
+	}
+	a.calls.mu.Lock()
+	timer, ringing := call.ringing[userID]
+	if ringing {
+		timer.Stop()
+		delete(call.ringing, userID)
+	}
+	a.calls.mu.Unlock()
+	if !ringing {
+		return
+	}
+	reason := "declined"
+	if state == "missed" {
+		reason = "timeout"
+	}
+	a.hub.Send(userID, map[string]any{"type": "call:ended", "callId": id, "reason": reason})
+	a.callMembers(id, userID, state)
 }

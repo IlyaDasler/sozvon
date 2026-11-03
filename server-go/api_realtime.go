@@ -161,6 +161,8 @@ func (a *server) websocket(w http.ResponseWriter, r *http.Request) {
 			a.roomPreviewGet(conn, user, message)
 		case "call:invite":
 			a.callInvite(conn, user, message)
+		case "call:add":
+			a.callAdd(conn, user, message)
 		case "call:accept":
 			a.callAccept(conn, user, message)
 		case "call:decline":
