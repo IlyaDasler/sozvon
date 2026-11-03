@@ -22,6 +22,7 @@ import (
 	"sozvon/server/internal/auth"
 	"sozvon/server/internal/config"
 	"sozvon/server/internal/livekit"
+	"sozvon/server/internal/mail"
 	"sozvon/server/internal/realtime"
 	"sozvon/server/internal/store"
 )
@@ -35,6 +36,7 @@ type server struct {
 	mu      sync.Mutex
 	tickets map[string]ticket
 	hub     *realtime.Hub
+	mail    *mail.Mailer
 	calls   *callManager
 	voice   *voiceManager
 	livekit livekit.Options
@@ -72,18 +74,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}}
+	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}}
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second), middleware.Logger)
 	router.Get("/api/files/{id}/{name}", app.serveFile)
 	router.Get("/api/avatars/{name}", app.serveMedia)
+	router.Get("/api/hubs/{id}/icon", app.serveHubIcon)
 	router.Get("/ws", app.websocket)
 
 	router.Route("/api", func(r chi.Router) {
 		r.Get("/health", app.health)
+		r.Post("/register/code", app.registerCode)
 		r.Post("/register", app.register)
 		r.Post("/login", app.login)
+		r.Post("/password/code", app.passwordCode)
+		r.Post("/password/reset", app.passwordReset)
+		r.Get("/oauth/providers", app.oauthProviders)
 
 		r.Group(func(r chi.Router) {
 			r.Use(app.requireAuth)
@@ -91,6 +98,11 @@ func main() {
 			r.Patch("/me", app.patchMe)
 			r.Put("/me/status", app.setMyStatus)
 			r.Put("/me/key", app.setMyKey)
+			r.Post("/key-transfer", app.keyTransferPut)
+			r.Get("/key-transfer/{id}", app.keyTransferGet)
+			r.Post("/me/email/code", app.emailCode)
+			r.Put("/me/email", app.updateEmail)
+			r.Delete("/me/email", app.updateEmail)
 			r.Get("/messages/{peerId}", app.dmMessages)
 			r.Get("/messages/{peerId}/pins", app.dmPins)
 			r.Post("/messages/{peerId}", app.sendDM)
@@ -123,6 +135,8 @@ func main() {
 			r.Get("/hubs", app.hubs)
 			r.Post("/hubs", app.createHub)
 			r.Patch("/hubs/{id}", app.patchHub)
+			r.Put("/hubs/{id}/icon", app.hubIcon)
+			r.Delete("/hubs/{id}/icon", app.hubIcon)
 			r.Delete("/hubs/{id}", app.deleteHub)
 			r.Get("/hub-invites", app.hubInvites)
 
@@ -140,6 +154,8 @@ func main() {
 			r.Get("/rooms/{id}/pins", app.roomPinsList)
 			r.Post("/rooms/{id}/timeouts", app.roomTimeouts)
 			r.Delete("/rooms/{id}/timeouts/{userId}", app.roomTimeouts)
+			r.Post("/rooms/{id}/disconnect", app.disconnectMember)
+			r.Delete("/rooms/{id}/voice/{userId}", app.voiceKick)
 			r.Put("/rooms/{id}/messages/{messageId}/pin", app.roomPin)
 			r.Delete("/rooms/{id}/messages/{messageId}/pin", app.roomPin)
 			r.Patch("/rooms/{id}/messages/{messageId}", app.roomEditMessage)
@@ -168,6 +184,7 @@ func main() {
 			r.Delete("/rooms/{id}", app.roomDelete)
 			r.Post("/rooms/{id}/bans", app.roomBans)
 			r.Delete("/rooms/{id}/bans/{userId}", app.roomBans)
+			r.Post("/rooms/{id}/members", app.addRoomMember)
 			r.Delete("/rooms/{id}/members/{userId}", app.roomMembers)
 			r.Put("/rooms/{id}/members/{userId}/role", app.roomRole)
 			r.Post("/rooms/{id}/roles", app.roomRoles)
@@ -336,13 +353,7 @@ func (a *server) health(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (a *server) register(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Username    string `json:"username"`
-		Password    string `json:"password"`
-		DisplayName string `json:"displayName"`
-		InviteCode  string `json:"inviteCode"`
-		Email       string `json:"email"`
-	}
+	var body registerBody
 	if err := decode(r, &body); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
@@ -353,7 +364,7 @@ func (a *server) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if body.Email != "" {
-		fail(http.StatusBadRequest, "Регистрация по почте появится в следующей фазе").write(w)
+		a.registerByEmail(w, r, body)
 		return
 	}
 	username := strings.ToLower(strings.TrimSpace(body.Username))
@@ -504,15 +515,49 @@ func (a *server) me(w http.ResponseWriter, r *http.Request) {
 func (a *server) patchMe(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
 	var request struct {
-		DisplayName *string `json:"displayName"`
-		AvatarColor *string `json:"avatarColor"`
-		Bio         *string `json:"bio"`
-		BannerColor *string `json:"bannerColor"`
-		NameColor   *string `json:"nameColor"`
+		DisplayName     *string `json:"displayName"`
+		AvatarColor     *string `json:"avatarColor"`
+		Bio             *string `json:"bio"`
+		BannerColor     *string `json:"bannerColor"`
+		NameColor       *string `json:"nameColor"`
+		NewPassword     string  `json:"newPassword"`
+		CurrentPassword string  `json:"currentPassword"`
 	}
 	if err := decode(r, &request); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
+	}
+	if request.NewPassword != "" {
+		if user.PasswordHash != "" && !auth.VerifyPassword(request.CurrentPassword, user.PasswordHash) {
+			fail(http.StatusBadRequest, "Текущий пароль указан неверно").write(w)
+			return
+		}
+		if !auth.ValidPassword(request.NewPassword) {
+			fail(http.StatusBadRequest, "Пароль должен быть от 8 до 128 символов").write(w)
+			return
+		}
+		hash, err := auth.HashPassword(request.NewPassword)
+		if err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+		if err := a.store.UpdatePassword(user.ID, hash); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+		// Пароль сменили — остальные устройства выходят, текущее остаётся
+		current := ""
+		if session, ok := r.Context().Value(sessionKey).(*store.Session); ok && session != nil {
+			current = session.ID
+		}
+		if sessions, err := a.store.SessionsOf(user.ID); err == nil {
+			for _, session := range sessions {
+				if session.ID != current {
+					_ = a.store.DeleteSession(session.ID)
+				}
+			}
+		}
+		a.hub.CloseOtherSessions(user.ID, current)
 	}
 	if request.DisplayName != nil {
 		name := strings.TrimSpace(*request.DisplayName)

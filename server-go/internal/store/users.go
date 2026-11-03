@@ -245,3 +245,30 @@ func (s *Store) SetPublicKey(userID int64, key string) error {
 	_, err := s.db.Exec(`UPDATE users SET public_key = ? WHERE id = ?`, nullIfEmpty(key), userID)
 	return err
 }
+
+// CreateUserWithEmail — регистрация по почте: логин придуман, почта подтверждена кодом.
+func (s *Store) CreateUserWithEmail(username, passwordHash, displayName, avatarColor, email, emailShown string) (*User, error) {
+	now := time.Now().UnixMilli()
+	result, err := s.db.Exec(`
+		INSERT INTO users (username, password_hash, display_name, avatar_color, created_at, email, email_shown)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		username, passwordHash, displayName, avatarColor, now, nullIfEmpty(email), nullIfEmpty(emailShown))
+	if err != nil {
+		return nil, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	return s.UserByID(id)
+}
+
+func (s *Store) SetEmail(userID int64, email, shown string) error {
+	_, err := s.db.Exec(`UPDATE users SET email = ?, email_shown = ? WHERE id = ?`, nullIfEmpty(email), nullIfEmpty(shown), userID)
+	return err
+}
+
+func (s *Store) UpdatePassword(userID int64, hash string) error {
+	_, err := s.db.Exec(`UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID)
+	return err
+}

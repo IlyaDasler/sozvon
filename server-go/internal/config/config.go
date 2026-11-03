@@ -12,10 +12,14 @@ import (
 // между реализациями не требовало менять деплой.
 type Config struct {
 	Port       string
-	DataDir    string
-	InviteCode string
-	SMTPHost   string
-	SMTPUser   string
+	DataDir     string
+	InviteCode  string
+	SMTPHost    string
+	SMTPPort    string
+	SMTPUser    string
+	SMTPPass    string
+	SMTPFrom    string
+	MailTestFile string
 
 	LiveKitURL        string
 	LiveKitAPIURL     string
@@ -94,7 +98,11 @@ func Load() Config {
 		DataDir:    dataDir,
 		InviteCode: os.Getenv("INVITE_CODE"),
 		SMTPHost:   os.Getenv("SMTP_HOST"),
+		SMTPPort:   envOr("SMTP_PORT", "587"),
 		SMTPUser:   os.Getenv("SMTP_USER"),
+		SMTPPass:   os.Getenv("SMTP_PASS"),
+		SMTPFrom:   os.Getenv("SMTP_FROM"),
+		MailTestFile: os.Getenv("MAIL_TEST_FILE"),
 
 		LiveKitURL:        os.Getenv("LIVEKIT_URL"),
 		LiveKitAPIURL:     envOr("LIVEKIT_API_URL", "http://127.0.0.1:7880"),

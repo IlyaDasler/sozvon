@@ -87,6 +87,14 @@ func (s *Store) InviteToHub(hubID int64, byID int64, userIDs []int64) error {
 	}
 	defer tx.Rollback()
 	for _, userID := range userIDs {
+		// Проверка бана внутри той же транзакции: отдельный запрос ждал бы освобождения соединения
+		var banned int
+		if err := tx.QueryRow(`SELECT COUNT(*) FROM hub_bans WHERE hub_id = ? AND user_id = ?`, hubID, userID).Scan(&banned); err != nil {
+			return err
+		}
+		if banned > 0 {
+			continue
+		}
 		var member int
 		if err := tx.QueryRow(`SELECT COUNT(*) FROM hub_members WHERE hub_id = ? AND user_id = ?`, hubID, userID).Scan(&member); err != nil {
 			return err
@@ -123,7 +131,16 @@ func (s *Store) AcceptHubInvite(hubID, userID int64) error {
 	if _, err := tx.Exec(`INSERT OR IGNORE INTO hub_members (hub_id, user_id, manager, created_at) VALUES (?, ?, 0, ?)`, hubID, userID, time.Now().UnixMilli()); err != nil {
 		return err
 	}
+	// В канале участник сразу попадает во все его комнаты (как hubs.join в Node)
+	if _, err := tx.Exec(`INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) SELECT id, ?, ? FROM rooms WHERE hub_id = ?`, userID, time.Now().UnixMilli(), hubID); err != nil {
+		return err
+	}
 	return tx.Commit()
+}
+
+func (s *Store) AddMemberToHubRooms(hubID, userID int64) error {
+	_, err := s.db.Exec(`INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) SELECT id, ?, ? FROM rooms WHERE hub_id = ?`, userID, time.Now().UnixMilli(), hubID)
+	return err
 }
 
 func (s *Store) DeclineHubInvite(hubID, userID int64) error {
@@ -304,4 +321,28 @@ func (s *Store) HubRoleByID(hubID, roleID int64) (*RoleRow, error) {
 		return nil, err
 	}
 	return &role, nil
+}
+
+// RoomPerms — итоговые права в комнате: права по умолчанию, роль канала или всё для создателя.
+func (s *Store) RoomPerms(roomID, userID int64) (int64, error) {
+	var ownerID, perms int64
+	err := s.db.QueryRow(`
+		SELECT r.owner_id, COALESCE(hr.perms, r.default_perms)
+		FROM rooms r
+		LEFT JOIN hub_members hm ON hm.hub_id = r.hub_id AND hm.user_id = ?
+		LEFT JOIN hub_roles hr ON hr.id = hm.role_id
+		WHERE r.id = ?`, userID, roomID).Scan(&ownerID, &perms)
+	if err != nil {
+		return 0, err
+	}
+	if ownerID == userID || perms&256 != 0 {
+		return 511, nil
+	}
+	return perms, nil
+}
+
+func (s *Store) IsHubBanned(hubID, userID int64) (bool, error) {
+	var count int64
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM hub_bans WHERE hub_id = ? AND user_id = ?`, hubID, userID).Scan(&count)
+	return count > 0, err
 }

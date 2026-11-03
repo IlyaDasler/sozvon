@@ -179,6 +179,13 @@ func createRoomTx(tx *sql.Tx, hubID, ownerID int64, name, kind string, private b
 	); err != nil {
 		return 0, err
 	}
+	// Все участники канала сразу в комнате, как rooms.create(...,{everyone:true}) в Node
+	if _, err := tx.Exec(
+		`INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) SELECT ?, user_id, ? FROM hub_members WHERE hub_id = ?`,
+		roomID, now, hubID,
+	); err != nil {
+		return 0, err
+	}
 	return roomID, nil
 }
 
@@ -409,24 +416,15 @@ func (s *Store) RoomByID(id int64) (*RoomRow, error) {
 	}
 	rows.Close()
 
-	// В канале участники комнаты — все участники канала, а роль в комнате — из room_members
-	if room.HubID != nil {
-		rows, err = s.db.Query(`
-			SELECT `+prefixed("u.", userColumns)+`, hm.role_id, rm.timeout_until, n.name
-			FROM hub_members hm
-			JOIN users u ON u.id = hm.user_id
-			LEFT JOIN room_members rm ON rm.room_id = ? AND rm.user_id = hm.user_id
-			LEFT JOIN hub_nicknames n ON n.hub_id = hm.hub_id AND n.user_id = hm.user_id
-			WHERE hm.hub_id = ? ORDER BY hm.created_at`, id, *room.HubID)
-	} else {
-		rows, err = s.db.Query(`
-			SELECT `+prefixed("u.", userColumns)+`, rm.role_id, rm.timeout_until, n.name
-			FROM room_members rm
-			JOIN users u ON u.id = rm.user_id
-			LEFT JOIN rooms r ON r.id = rm.room_id
-			LEFT JOIN hub_nicknames n ON n.hub_id = r.hub_id AND n.user_id = rm.user_id
-			WHERE rm.room_id = ? ORDER BY rm.created_at`, id)
-	}
+	// Участники комнаты — только room_members; при вступлении в канал туда добавляются все
+	rows, err = s.db.Query(`
+		SELECT `+prefixed("u.", userColumns)+`, COALESCE(hm.role_id, rm.role_id), rm.timeout_until, n.name
+		FROM room_members rm
+		JOIN users u ON u.id = rm.user_id
+		LEFT JOIN rooms r ON r.id = rm.room_id
+		LEFT JOIN hub_members hm ON hm.hub_id = r.hub_id AND hm.user_id = rm.user_id
+		LEFT JOIN hub_nicknames n ON n.hub_id = r.hub_id AND n.user_id = rm.user_id
+		WHERE rm.room_id = ? ORDER BY rm.created_at`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -516,11 +514,7 @@ func (s *Store) HubInvitesOf(userID int64) ([]HubInvite, error) {
 }
 // RoomMemberIDs — кто получает события комнаты.
 func (s *Store) RoomMemberIDs(roomID int64) ([]int64, error) {
-	rows, err := s.db.Query(`
-		SELECT user_id FROM room_members WHERE room_id = ?
-		UNION
-		SELECT m.user_id FROM rooms r JOIN hub_members m ON m.hub_id = r.hub_id WHERE r.id = ?`,
-		roomID, roomID)
+	rows, err := s.db.Query(`SELECT user_id FROM room_members WHERE room_id = ?`, roomID)
 	if err != nil {
 		return nil, err
 	}
@@ -634,5 +628,10 @@ func (s *Store) SetHubReactionsVisible(hubID int64, visible bool) error {
 
 func (s *Store) SetHubIconColor(hubID int64, color string) error {
 	_, err := s.db.Exec(`UPDATE hubs SET icon_color = ? WHERE id = ?`, color, hubID)
+	return err
+}
+
+func (s *Store) SetHubIcon(hubID int64, icon string) error {
+	_, err := s.db.Exec(`UPDATE hubs SET icon = ? WHERE id = ?`, nullIfEmpty(icon), hubID)
 	return err
 }

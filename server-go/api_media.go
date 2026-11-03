@@ -80,6 +80,7 @@ func (a *server) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 			_ = os.Remove(filepath.Join(a.mediaDir(), user.Avatar+".webp"))
 		}
 		_ = a.store.SetUserAvatar(user.ID, "")
+		a.announceProfile(user.ID)
 		fresh, _ := a.store.UserByID(user.ID)
 		self, _ := a.self(fresh)
 		writeJSON(w, http.StatusOK, self)
@@ -98,6 +99,7 @@ func (a *server) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 		_ = os.Remove(filepath.Join(a.mediaDir(), user.Avatar+".webp"))
 	}
 	_ = a.store.SetUserAvatar(user.ID, id)
+	a.announceProfile(user.ID)
 	fresh, _ := a.store.UserByID(user.ID)
 	self, _ := a.self(fresh)
 	writeJSON(w, http.StatusOK, self)
@@ -110,6 +112,7 @@ func (a *server) uploadBanner(w http.ResponseWriter, r *http.Request) {
 			_ = os.Remove(filepath.Join(a.mediaDir(), user.Banner+".webp"))
 		}
 		_ = a.store.SetUserBanner(user.ID, "")
+		a.announceProfile(user.ID)
 		fresh, _ := a.store.UserByID(user.ID)
 		self, _ := a.self(fresh)
 		writeJSON(w, http.StatusOK, self)
@@ -128,6 +131,7 @@ func (a *server) uploadBanner(w http.ResponseWriter, r *http.Request) {
 		_ = os.Remove(filepath.Join(a.mediaDir(), user.Banner+".webp"))
 	}
 	_ = a.store.SetUserBanner(user.ID, id)
+	a.announceProfile(user.ID)
 	fresh, _ := a.store.UserByID(user.ID)
 	self, _ := a.self(fresh)
 	writeJSON(w, http.StatusOK, self)
@@ -176,4 +180,78 @@ func (a *server) roomBackground(w http.ResponseWriter, r *http.Request) {
 	}
 	a.notifyRoom(roomID)
 	writeJSON(w, http.StatusOK, a.roomJSON(updated))
+}
+// announceProfile — новый аватар или баннер видят друзья и соседи по каналам.
+func (a *server) announceProfile(userID int64) {
+	fresh, err := a.store.UserByID(userID)
+	if err != nil {
+		return
+	}
+	event := map[string]any{"type": "user:updated", "user": a.publicUser(fresh)}
+	if ids, err := a.store.RelatedUserIDs(userID); err == nil {
+		for _, id := range ids {
+			a.hub.Send(id, event)
+		}
+	}
+	a.hub.Send(userID, event)
+}
+func (a *server) hubIcon(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	hubID, err := parseInt64(chi.URLParam(r, "id"))
+	if err != nil {
+		fail(http.StatusBadRequest, "Неверный канал").write(w)
+		return
+	}
+	hub, err := a.store.HubByID(hubID)
+	if err != nil {
+		fail(http.StatusNotFound, "Канал не найден").write(w)
+		return
+	}
+	if !a.hubManager(hubID, user.ID) {
+		fail(http.StatusForbidden, "Нет прав").write(w)
+		return
+	}
+	if r.Method == http.MethodDelete {
+		if hub.Icon != "" {
+			_ = os.Remove(filepath.Join(a.mediaDir(), hub.Icon+".webp"))
+		}
+		_ = a.store.SetHubIcon(hubID, "")
+		a.broadcastHub(hubID)
+		if updated := a.hubOr404(w, hubID); updated != nil {
+			writeJSON(w, http.StatusOK, a.hubJSON(updated))
+		}
+		return
+	}
+	body, ok := readLimited(w, r, maxAvatarBytes)
+	if !ok {
+		return
+	}
+	id, err := a.storeMedia(body)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	if hub.Icon != "" {
+		_ = os.Remove(filepath.Join(a.mediaDir(), hub.Icon+".webp"))
+	}
+	_ = a.store.SetHubIcon(hubID, id)
+	a.broadcastHub(hubID)
+	if updated := a.hubOr404(w, hubID); updated != nil {
+		writeJSON(w, http.StatusOK, a.hubJSON(updated))
+	}
+}
+
+// serveHubIcon — публичная картинка канала для списка и шапки.
+func (a *server) serveHubIcon(w http.ResponseWriter, r *http.Request) {
+	hubID, err := parseInt64(chi.URLParam(r, "id"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	hub, err := a.store.HubByID(hubID)
+	if err != nil || hub.Icon == "" {
+		http.NotFound(w, r)
+		return
+	}
+	http.ServeFile(w, r, filepath.Join(a.mediaDir(), hub.Icon+".webp"))
 }
