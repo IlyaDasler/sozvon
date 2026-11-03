@@ -632,3 +632,11 @@
   border: 1px solid var(--lq-control-rim);
 }
 [data-theme='glass'] .thread-form .btn.primary { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28); }
+/* Фото каналов в стекле: не терять масштаб и позицию картинки */
+[data-theme='glass'] .rail-tile.has-image {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+/* Переключение канала: пружинное «вспухание» новой плитки */
+[data-theme='glass'] .rail-item.active .rail-tile { transition-duration: 320ms; }

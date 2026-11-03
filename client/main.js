@@ -71,7 +71,6 @@ function createWindow({ show = true } = {}) {
     // рисует поверх полосы страницы; их цвета страница присылает при смене темы (window:titlebar)
     // macOS: hiddenInset оставляет системные «светофоры» поверх страницы, отступ делаем в CSS
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
-    titleBarOverlay: { color: '#07080c', symbolColor: '#c8ccda', height: TITLEBAR_H },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -86,11 +85,14 @@ function createWindow({ show = true } = {}) {
   if (saved?.maximized) show ? win.maximize() : win.once('show', () => win.maximize());
   trackWindow(win, stateFile);
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-  ipcMain.on('window:titlebar', (_e, { color, symbolColor }) => {
-    // setTitleBarOverlay есть только в Windows: на macOS заголовок рисует сама система
-    if (process.platform !== 'win32') return;
-    if (/^#[0-9a-f]{6}$/i.test(color) && /^#[0-9a-f]{6}$/i.test(symbolColor)) win.setTitleBarOverlay({ color, symbolColor, height: TITLEBAR_H });
-  });
+  // Кнопки окна рисует страница: нативных Windows-кнопок больше нет
+  ipcMain.on('window:minimize', () => win.minimize());
+  ipcMain.on('window:toggle-maximize', () => (win.isMaximized() ? win.unmaximize() : win.maximize()));
+  ipcMain.on('window:close', () => win.close());
+  const sendWindowState = () => win.webContents.send('window:state', { maximized: win.isMaximized() });
+  win.on('maximize', sendWindowState);
+  win.on('unmaximize', sendWindowState);
+  win.webContents.once('did-finish-load', sendWindowState);
   win.on('focus', () => win.flashFrame(false));
   // Крестик прячет окно в трей: звонки, голос и уведомления продолжают работать
   win.on('close', (event) => {

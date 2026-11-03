@@ -131,10 +131,10 @@
     box-shadow .24s ease,
     transform var(--fast) var(--spring);
 }
-[data-theme='glass'] .rail-tile:hover { background: rgba(255, 255, 255, 0.12); }
+[data-theme='glass'] .rail-tile:hover { background-color: rgba(255, 255, 255, 0.12); }
 [data-theme='glass'] .rail-tile:active { transform: scale(0.94); }
 [data-theme='glass'] .rail-item.active .rail-tile {
-  background: color-mix(in srgb, var(--hub-color, var(--accent)) 58%, rgba(255, 255, 255, 0.10));
+  background-color: color-mix(in srgb, var(--hub-color, var(--accent)) 58%, rgba(255, 255, 255, 0.10));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.35),
     0 8px 20px color-mix(in srgb, var(--hub-color, var(--accent)) 40%, transparent);

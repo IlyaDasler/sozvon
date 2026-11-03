@@ -2539,3 +2539,21 @@ body.resizing .main-divider { background: var(--accent); width: 2px; opacity: 1;
 .panel-resizer { width: 10px; }
 .panel-resizer::after { opacity: 0; }
 .panel-resizer:hover::after { opacity: 0; }
+/* Кнопки окна: свои, в цветах темы — вместо системных Windows-кнопок */
+.titlebar-spacer { flex: 1; }
+.win-controls { display: none; align-self: stretch; margin: 0 -12px 0 0; -webkit-app-region: no-drag; }
+html.is-win .win-controls { display: flex; }
+.win-btn {
+  width: 46px;
+  height: 100%;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.win-btn svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.4; }
+.win-btn:hover { background: var(--bg-4); color: var(--text); }
+.win-btn.close:hover { background: #e5484d; color: #fff; }
