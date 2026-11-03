@@ -351,3 +351,17 @@ html[data-theme='glass'] .meter { background: rgba(255, 255, 255, 0.12); }
 .cb-body b { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cb-body span { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html[data-theme='glass'] .cb-menu { border-color: rgba(255, 255, 255, 0.18); }
+/* ---------- Настоящая линза: слой преломления под содержимым ---------- */
+html[data-theme='glass'] .lens-surface {
+  position: relative;
+  isolation: isolate;
+}
+html[data-theme='glass'] .lens-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: block;
+  border-radius: inherit;
+  pointer-events: none;
+  background: transparent;
+}
