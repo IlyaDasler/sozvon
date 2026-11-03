@@ -456,7 +456,7 @@ func (a *server) roomJSON(room *store.RoomRow) map[string]any {
 		"events":        []any{},
 		"voice":         []any{},
 		"voiceSince":    nil,
-		"lastActivity":  0,
+		"lastActivity":  a.store.RoomLastActivity(room.ID),
 		"now":           time.Now().UnixMilli(),
 	}
 }

@@ -99,6 +99,11 @@ func main() {
 			r.Get("/rooms", app.rooms)
 			r.Post("/rooms", app.createRoom)
 			r.Patch("/rooms/{id}", app.patchRoom)
+			r.Get("/rooms/{id}/messages", app.roomMessages)
+			r.Post("/rooms/{id}/messages", app.sendRoomMessage)
+			r.Get("/rooms/{id}/messages/{messageId}/thread", app.threadMessages)
+			r.Post("/rooms/{id}/read", app.markRoomRead)
+			r.Get("/unread", app.unread)
 		})
 	})
 
