@@ -384,3 +384,32 @@ html[data-theme='glass'] .composer .composer-bar {
   border-bottom-left-radius: var(--glass-radius, 18px);
   border-bottom-right-radius: var(--glass-radius, 18px);
 }
+/* ---------- 7. Единое окно — только в теме стекла ----------
+   В стекле панели сливаются в одну поверхность без карточек и зазоров.
+   Остальные темы остаются со скруглениями и зазорами: это их стиль */
+html[data-theme='glass'] .main { gap: 0; padding: 0; }
+html[data-theme='glass'] .sidebar,
+html[data-theme='glass'] .content,
+html[data-theme='glass'] .members-panel {
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 42%),
+    color-mix(in srgb, var(--lg-tint) 90%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+}
+html[data-theme='glass'] .sidebar { border-right: 1px solid rgba(255, 255, 255, 0.10); }
+html[data-theme='glass'] .members-panel { border-left: 1px solid rgba(255, 255, 255, 0.10); margin-left: 0; }
+html[data-theme='glass'] .sidebar::after,
+html[data-theme='glass'] .content::after,
+html[data-theme='glass'] .members-panel::after { content: none; }
+html[data-theme='glass'] .main-divider { display: none; }
+
+/* Полоса ввода в едином окне: снизу без скругления, она продолжает панель */
+html[data-theme='glass'] .composer .composer-bar {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
