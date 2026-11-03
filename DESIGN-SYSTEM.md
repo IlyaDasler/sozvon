@@ -121,7 +121,7 @@ Chromium/Electron не принимает — проверено флагом `l
 | Scroll Area | ✅ | кастомный скролл |
 | Drawer | ✅ | `glass-drawer.js`: участники и тред выезжают до 900 px |
 | Preview Card | ✅ | `preview-card.js`: карточка профиля по наведению |
-| Combobox / Autocomplete | ⚠️ | поиск друзей фильтрует список на месте, без подсказок и клавиатуры |
+| Combobox / Autocomplete | ✅ | combobox.js: подсказки под поиском, стрелки/Enter/Escape, выбор нажимает строку (переписка, приглашение) |
 | Navigation Menu | ⚠️ | рейл каналов + сайдбар вместо отдельного компонента |
 | Toolbar | ⚠️ | шапки чата и звонка собраны вручную |
 
@@ -158,7 +158,7 @@ Menubar, Toggle, Fieldset-компонент, Combobox/Autocomplete, Navigation 
 | 6 | Иконка Яндекса | сделано: `#fc3f1d`, белая «Я» |
 | 7 | Drawer, Preview Card, Accordion/Collapsible | сделано |
 | 8 | UI-кит синхронизирован с интерфейсом | сделано |
-| 9 | Combobox/Autocomplete с подсказками и клавиатурой | не сделано |
+| 9 | Combobox/Autocomplete с подсказками и клавиатурой | сделано, e2e-combobox |
 | 10 | Toggle, Menubar, Toolbar как отдельные компоненты | не сделано (нет сценария) |
 ## 7. Как менять дизайн-систему
 
