@@ -400,13 +400,24 @@ func (s *Store) RoomByID(id int64) (*RoomRow, error) {
 	}
 	rows.Close()
 
-	rows, err = s.db.Query(`
-		SELECT `+prefixed("u.", userColumns)+`, rm.role_id, rm.timeout_until, n.name
-		FROM room_members rm
-		JOIN users u ON u.id = rm.user_id
-		LEFT JOIN rooms r ON r.id = rm.room_id
-		LEFT JOIN hub_nicknames n ON n.hub_id = r.hub_id AND n.user_id = rm.user_id
-		WHERE rm.room_id = ? ORDER BY rm.created_at`, id)
+	// В канале участники комнаты — все участники канала, а роль в комнате — из room_members
+	if room.HubID != nil {
+		rows, err = s.db.Query(`
+			SELECT `+prefixed("u.", userColumns)+`, rm.role_id, rm.timeout_until, n.name
+			FROM hub_members hm
+			JOIN users u ON u.id = hm.user_id
+			LEFT JOIN room_members rm ON rm.room_id = ? AND rm.user_id = hm.user_id
+			LEFT JOIN hub_nicknames n ON n.hub_id = hm.hub_id AND n.user_id = hm.user_id
+			WHERE hm.hub_id = ? ORDER BY hm.created_at`, id, *room.HubID)
+	} else {
+		rows, err = s.db.Query(`
+			SELECT `+prefixed("u.", userColumns)+`, rm.role_id, rm.timeout_until, n.name
+			FROM room_members rm
+			JOIN users u ON u.id = rm.user_id
+			LEFT JOIN rooms r ON r.id = rm.room_id
+			LEFT JOIN hub_nicknames n ON n.hub_id = r.hub_id AND n.user_id = rm.user_id
+			WHERE rm.room_id = ? ORDER BY rm.created_at`, id)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -514,4 +525,72 @@ func (s *Store) RoomMemberIDs(roomID int64) ([]int64, error) {
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
+}
+
+// RoomsOfHub — все комнаты канала (для рассылки room:updated при вступлении).
+func (s *Store) RoomsOfHub(hubID int64) ([]*RoomRow, error) {
+	rows, err := s.db.Query(`SELECT id FROM rooms WHERE hub_id = ? ORDER BY position, id`, hubID)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	list := make([]*RoomRow, 0, len(ids))
+	for _, id := range ids {
+		if room, err := s.RoomByID(id); err == nil {
+			list = append(list, room)
+		}
+	}
+	return list, nil
+}
+
+// DeleteHub — канал со всем содержимым (создатель удаляет насовсем).
+func (s *Store) DeleteHub(hubID int64) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM room_messages WHERE room_id IN (SELECT id FROM rooms WHERE hub_id = ?)`, hubID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM room_members WHERE room_id IN (SELECT id FROM rooms WHERE hub_id = ?)`, hubID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM room_roles WHERE room_id IN (SELECT id FROM rooms WHERE hub_id = ?)`, hubID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM room_bans WHERE room_id IN (SELECT id FROM rooms WHERE hub_id = ?)`, hubID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM rooms WHERE hub_id = ?`, hubID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM hub_members WHERE hub_id = ?`, hubID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM hub_invites WHERE hub_id = ?`, hubID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM hub_bans WHERE hub_id = ?`, hubID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM hub_roles WHERE hub_id = ?`, hubID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM hub_nicknames WHERE hub_id = ?`, hubID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM hubs WHERE id = ?`, hubID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }

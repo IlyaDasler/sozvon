@@ -77,6 +77,7 @@ func main() {
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second))
 	router.Get("/api/files/{id}/{name}", app.serveFile)
+	router.Get("/api/avatars/{name}", app.serveMedia)
 	router.Get("/ws", app.websocket)
 
 	router.Route("/api", func(r chi.Router) {
@@ -87,6 +88,11 @@ func main() {
 		r.Group(func(r chi.Router) {
 			r.Use(app.requireAuth)
 			r.Get("/me", app.me)
+			r.Patch("/me", app.patchMe)
+			r.Put("/me/avatar", app.uploadAvatar)
+			r.Delete("/me/avatar", app.uploadAvatar)
+			r.Put("/me/banner", app.uploadBanner)
+			r.Delete("/me/banner", app.uploadBanner)
 			r.Post("/ws-ticket", app.wsTicket)
 			r.Get("/sessions", app.sessions)
 			r.Delete("/sessions/{id}", app.deleteSession)
@@ -98,17 +104,21 @@ func main() {
 			r.Post("/friend-requests/{id}/accept", app.acceptFriendRequest)
 			r.Delete("/friend-requests/{id}", app.declineFriendRequest)
 			r.Get("/blocks", app.blocks)
+			r.Post("/blocks", app.blockUser)
 			r.Post("/blocks/{id}", app.blockUser)
 			r.Delete("/blocks/{id}", app.unblockUser)
 
 			r.Get("/hubs", app.hubs)
 			r.Post("/hubs", app.createHub)
 			r.Patch("/hubs/{id}", app.patchHub)
+			r.Delete("/hubs/{id}", app.deleteHub)
 			r.Get("/hub-invites", app.hubInvites)
 
 			r.Get("/rooms", app.rooms)
 			r.Post("/rooms", app.createRoom)
 			r.Patch("/rooms/{id}", app.patchRoom)
+			r.Put("/rooms/{id}/background", app.roomBackground)
+			r.Delete("/rooms/{id}/background", app.roomBackground)
 			r.Get("/rooms/{id}/messages", app.roomMessages)
 			r.Post("/rooms/{id}/messages", app.sendRoomMessage)
 			r.Get("/rooms/{id}/messages/{messageId}/thread", app.threadMessages)
@@ -264,7 +274,7 @@ func (a *server) self(user *store.User) (selfJSON, error) {
 		body.AvatarURL = &url
 	}
 	if user.Banner != "" {
-		url := "/api/banners/" + user.Banner
+		url := "/api/avatars/" + user.Banner + ".webp"
 		body.BannerURL = &url
 	}
 	if user.BannerColor != "" {
@@ -460,6 +470,52 @@ func (a *server) requireAuth(next http.Handler) http.Handler {
 func (a *server) me(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
 	self, err := a.self(user)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	writeJSON(w, http.StatusOK, self)
+}
+
+func (a *server) patchMe(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	var request struct {
+		DisplayName *string `json:"displayName"`
+		AvatarColor *string `json:"avatarColor"`
+		Bio         *string `json:"bio"`
+		BannerColor *string `json:"bannerColor"`
+		NameColor   *string `json:"nameColor"`
+	}
+	if err := decode(r, &request); err != nil {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	if request.DisplayName != nil {
+		name := strings.TrimSpace(*request.DisplayName)
+		if len([]rune(name)) < 1 || len([]rune(name)) > 32 {
+			fail(http.StatusBadRequest, "Имя — от 1 до 32 символов").write(w)
+			return
+		}
+		request.DisplayName = &name
+	}
+	if err := a.store.UpdateProfile(user.ID, request.DisplayName, request.AvatarColor, request.Bio, request.BannerColor, request.NameColor); err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	fresh, err := a.store.UserByID(user.ID)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	// Как notifyProfile в Node: новый профиль уходит друзьям, соседям по каналам и себе
+	event := map[string]any{"type": "user:updated", "user": a.publicUser(fresh)}
+	if ids, err := a.store.RelatedUserIDs(fresh.ID); err == nil {
+		for _, id := range ids {
+			a.hub.Send(id, event)
+		}
+	}
+	a.hub.Send(fresh.ID, event)
+	self, err := a.self(fresh)
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return

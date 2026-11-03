@@ -211,3 +211,32 @@ func (s *Store) SetTotpRecovery(userID int64, recovery string) error {
 	_, err := s.db.Exec(`UPDATE users SET totp_recovery = ? WHERE id = ?`, recovery, userID)
 	return err
 }
+
+func (s *Store) UpdateProfile(userID int64, displayName, avatarColor, bio *string, bannerColor, nameColor *string) error {
+	if displayName != nil {
+		if _, err := s.db.Exec(`UPDATE users SET display_name = ? WHERE id = ?`, *displayName, userID); err != nil {
+			return err
+		}
+	}
+	if avatarColor != nil {
+		if _, err := s.db.Exec(`UPDATE users SET avatar_color = ? WHERE id = ?`, *avatarColor, userID); err != nil {
+			return err
+		}
+	}
+	if bio != nil {
+		if _, err := s.db.Exec(`UPDATE users SET bio = ? WHERE id = ?`, *bio, userID); err != nil {
+			return err
+		}
+	}
+	if bannerColor != nil {
+		if _, err := s.db.Exec(`UPDATE users SET banner_color = ? WHERE id = ?`, *bannerColor, userID); err != nil {
+			return err
+		}
+	}
+	if nameColor != nil {
+		if _, err := s.db.Exec(`UPDATE users SET name_color = ? WHERE id = ?`, *nameColor, userID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
