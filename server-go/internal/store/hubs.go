@@ -28,9 +28,10 @@ type GroupRow struct {
 }
 
 type EmojiRow struct {
-	ID   int64
-	Name string
-	File string
+	ID        int64
+	Name      string
+	File      string
+	CreatedBy int64
 }
 
 type HubRow struct {
@@ -296,13 +297,13 @@ func (s *Store) fillHub(hub *HubRow) error {
 	rows.Close()
 
 	// эмодзи
-	rows, err = s.db.Query(`SELECT id, name, file FROM hub_emojis WHERE hub_id = ? ORDER BY id`, hub.ID)
+	rows, err = s.db.Query(`SELECT id, name, file, created_by FROM hub_emojis WHERE hub_id = ? ORDER BY id`, hub.ID)
 	if err != nil {
 		return err
 	}
 	for rows.Next() {
 		var emoji EmojiRow
-		if err := rows.Scan(&emoji.ID, &emoji.Name, &emoji.File); err != nil {
+		if err := rows.Scan(&emoji.ID, &emoji.Name, &emoji.File, &emoji.CreatedBy); err != nil {
 			rows.Close()
 			return err
 		}

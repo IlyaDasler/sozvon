@@ -244,7 +244,8 @@ func (a *server) unread(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"dm": []any{}, "rooms": rooms})
+	dm, _ := a.store.UnreadDM(user.ID)
+	writeJSON(w, http.StatusOK, map[string]any{"dm": dm, "rooms": rooms})
 }
 
 func (a *server) markRoomRead(w http.ResponseWriter, r *http.Request) {
@@ -278,4 +279,56 @@ func encValue(raw string) any {
 		return nil
 	}
 	return value
+}
+// readConv — «прочитал переписку до конца»: dm или room, плюс событие себе.
+func (a *server) readConv(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	var request struct {
+		Conv string `json:"conv"`
+	}
+	if err := decode(r, &request); err != nil {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	parts := strings.SplitN(request.Conv, ":", 2)
+	if len(parts) != 2 {
+		fail(http.StatusBadRequest, "Неверная переписка").write(w)
+		return
+	}
+	id, err := parseInt64(parts[1])
+	if err != nil {
+		fail(http.StatusBadRequest, "Неверная переписка").write(w)
+		return
+	}
+	switch parts[0] {
+	case "dm":
+		if _, ok := a.dmPeer(id, user.ID); !ok {
+			fail(http.StatusNotFound, "Собеседник не найден").write(w)
+			return
+		}
+		if err := a.store.MarkDMRead(user.ID, id); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+	case "room":
+		member, err := a.store.IsRoomMember(id, user.ID)
+		if err != nil || !member {
+			fail(http.StatusNotFound, "Комната не найдена").write(w)
+			return
+		}
+		list, err := a.store.RoomMessages(id, 1, nil)
+		last := int64(0)
+		if err == nil && len(list) > 0 {
+			last = list[len(list)-1].ID
+		}
+		if err := a.store.MarkRoomRead(user.ID, id, last); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+	default:
+		fail(http.StatusBadRequest, "Неверная переписка").write(w)
+		return
+	}
+	a.hub.Send(user.ID, map[string]any{"type": "read", "conv": request.Conv})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }

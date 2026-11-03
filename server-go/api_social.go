@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -337,7 +338,12 @@ func (a *server) hubJSON(hub *store.HubRow) map[string]any {
 	}
 	emojis := make([]map[string]any, 0, len(hub.Emojis))
 	for _, emoji := range hub.Emojis {
-		emojis = append(emojis, map[string]any{"id": emoji.ID, "name": emoji.Name, "file": emoji.File})
+		emojis = append(emojis, map[string]any{
+			"id":        emoji.ID,
+			"name":      emoji.Name,
+			"createdBy": emoji.CreatedBy,
+			"url":       "/api/avatars/" + emoji.File + ".webp",
+		})
 	}
 	// В Node invited — массив id, клиент строит Set и сравнивает с id друзей
 	invited := make([]int64, 0, len(hub.Invited))
@@ -666,12 +672,26 @@ func (a *server) patchRoom(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var request struct {
-		Name         string `json:"name"`
-		DefaultPerms *int64 `json:"defaultPerms"`
+		Name         string          `json:"name"`
+		DefaultPerms *int64          `json:"defaultPerms"`
+		GroupID      json.RawMessage `json:"groupId"`
 	}
 	if err := decode(r, &request); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
+	}
+	if len(request.GroupID) > 0 {
+		var groupID *int64
+		if string(request.GroupID) != "null" {
+			var value int64
+			if err := json.Unmarshal(request.GroupID, &value); err == nil {
+				groupID = &value
+			}
+		}
+		if err := a.store.SetRoomGroup(id, groupID); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
 	}
 	if request.DefaultPerms != nil {
 		if err := a.store.UpdateRoomDefaultPerms(id, *request.DefaultPerms); err != nil {

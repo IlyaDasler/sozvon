@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 )
 
@@ -151,4 +152,50 @@ func (s *Store) DMPinnedIDs(a, b int64) ([]int64, error) {
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
+}
+
+// UnreadDM — непрочитанные личные переписки: [{peerId,count,lastId}]
+func (s *Store) UnreadDM(userID int64) ([]map[string]any, error) {
+	rows, err := s.db.Query(`
+		SELECT peer, MAX(id) AS last_id,
+		       (SELECT COALESCE(last_id, 0) FROM read_state WHERE user_id = ? AND conv = 'dm:' || peer) AS read_id
+		FROM (
+			SELECT CASE WHEN from_id = ? THEN to_id ELSE from_id END AS peer, id
+			FROM messages WHERE from_id = ? OR to_id = ?
+		)
+		GROUP BY peer`, userID, userID, userID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	list := []map[string]any{}
+	for rows.Next() {
+		var peer, lastID, readID int64
+		if err := rows.Scan(&peer, &lastID, &readID); err != nil {
+			return nil, err
+		}
+		if lastID <= readID {
+			continue
+		}
+		var count int64
+		if err := s.db.QueryRow(`SELECT COUNT(*) FROM messages WHERE ((from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)) AND id > ?`,
+			peer, userID, userID, peer, readID).Scan(&count); err != nil {
+			return nil, err
+		}
+		list = append(list, map[string]any{"peerId": peer, "count": count, "lastId": lastID})
+	}
+	return list, rows.Err()
+}
+
+func (s *Store) MarkDMRead(userID, peerID int64) error {
+	var lastID int64
+	if err := s.db.QueryRow(`SELECT COALESCE(MAX(id), 0) FROM messages WHERE (from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)`,
+		userID, peerID, peerID, userID).Scan(&lastID); err != nil {
+		return err
+	}
+	_, err := s.db.Exec(`
+		INSERT INTO read_state (user_id, conv, last_id) VALUES (?, ?, ?)
+		ON CONFLICT (user_id, conv) DO UPDATE SET last_id = MAX(last_id, excluded.last_id)`,
+		userID, "dm:"+strconv.FormatInt(peerID, 10), lastID)
+	return err
 }
