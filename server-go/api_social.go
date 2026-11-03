@@ -49,9 +49,23 @@ func (a *server) publicUser(user *store.User) map[string]any {
 	return body
 }
 
-// presence пока без WebSocket: как у Node до подключения — offline/false
+// presence — из WebSocket-хаба и сохранённого статуса (invisible показываем как offline)
 func (a *server) presence(userID int64) (bool, string) {
-	return false, "offline"
+	if !a.hub.IsOnline(userID) {
+		return false, "offline"
+	}
+	user, err := a.store.UserByID(userID)
+	if err != nil {
+		return true, "online"
+	}
+	if user.Status == "invisible" {
+		return false, "offline"
+	}
+	status := user.Status
+	if status == "" {
+		status = "online"
+	}
+	return true, status
 }
 
 func (a *server) userWithPresence(user *store.User) map[string]any {
@@ -129,11 +143,18 @@ func (a *server) addContact(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		friendship = "friends"
+		// Как в Node: обоим contact:added (себе — accepted)
+		a.hub.Send(target.ID, map[string]any{"type": "contact:added", "user": a.userWithPresence(user)})
+		a.hub.Send(user.ID, map[string]any{"type": "contact:added", "user": a.userWithPresence(target), "accepted": true})
 	default:
 		if err := a.store.SendFriendRequest(user.ID, target.ID); err != nil {
 			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 			return
 		}
+		// Получателю — уведомление о заявке
+		request := a.publicUser(user)
+		request["requestedAt"] = time.Now().UnixMilli()
+		a.hub.Send(target.ID, map[string]any{"type": "friend:request", "user": request})
 	}
 	body := a.publicUser(target)
 	body["friendship"] = friendship
@@ -154,6 +175,8 @@ func (a *server) removeContact(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	// Второй участник сразу видит, что дружбы больше нет
+	a.hub.Send(other, map[string]any{"type": "contact:removed", "userId": user.ID})
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -202,6 +225,10 @@ func (a *server) acceptFriendRequest(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	// Оба видят нового друга, у заявки исчезает счётчик
+	a.hub.Send(user.ID, map[string]any{"type": "contact:added", "user": a.userWithPresence(other), "accepted": true})
+	a.hub.Send(other.ID, map[string]any{"type": "contact:added", "user": a.userWithPresence(user)})
+	a.hub.Send(other.ID, map[string]any{"type": "friend:request:removed", "userId": user.ID})
 	body := a.userWithPresence(other)
 	body["friendship"] = "friends"
 	writeJSON(w, http.StatusOK, body)
@@ -218,6 +245,7 @@ func (a *server) declineFriendRequest(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	a.hub.Send(from, map[string]any{"type": "friend:request:removed", "userId": user.ID})
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -240,7 +268,17 @@ func (a *server) blocks(w http.ResponseWriter, r *http.Request) {
 func (a *server) blockUser(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
 	other, err := parseInt64(chi.URLParam(r, "id"))
-	if err != nil || other == user.ID {
+	if err != nil {
+		var request struct {
+			UserID int64 `json:"userId"`
+		}
+		if decodeErr := decode(r, &request); decodeErr != nil || request.UserID == 0 {
+			fail(http.StatusBadRequest, "Неверный пользователь").write(w)
+			return
+		}
+		other = request.UserID
+	}
+	if other == user.ID {
 		fail(http.StatusBadRequest, "Неверный пользователь").write(w)
 		return
 	}
@@ -248,7 +286,15 @@ func (a *server) blockUser(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	target, err := a.store.UserByID(other)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	a.hub.Send(other, map[string]any{"type": "contact:removed", "userId": user.ID})
+	body := a.publicUser(target)
+	body["blockedAt"] = time.Now().UnixMilli()
+	writeJSON(w, http.StatusOK, body)
 }
 
 func (a *server) unblockUser(w http.ResponseWriter, r *http.Request) {
@@ -293,9 +339,10 @@ func (a *server) hubJSON(hub *store.HubRow) map[string]any {
 	for _, emoji := range hub.Emojis {
 		emojis = append(emojis, map[string]any{"id": emoji.ID, "name": emoji.Name, "file": emoji.File})
 	}
-	invited := make([]map[string]any, 0, len(hub.Invited))
+	// В Node invited — массив id, клиент строит Set и сравнивает с id друзей
+	invited := make([]int64, 0, len(hub.Invited))
 	for _, user := range hub.Invited {
-		invited = append(invited, a.publicUser(user))
+		invited = append(invited, user.ID)
 	}
 	bans := make([]map[string]any, 0, len(hub.Bans))
 	for _, user := range hub.Bans {
@@ -397,6 +444,13 @@ func (a *server) patchHub(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, a.hubJSON(updated))
 }
 
+func (a *server) hubInviteBody(invite store.HubInvite) map[string]any {
+	return map[string]any{
+		"hub":       map[string]any{"id": invite.HubID, "name": invite.HubName, "iconColor": invite.IconColor, "iconUrl": nil, "memberCount": invite.MemberCount},
+		"from":      a.publicUser(invite.From),
+		"createdAt": invite.CreatedAt,
+	}
+}
 func (a *server) hubInvites(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
 	list, err := a.store.HubInvitesOf(user.ID)
@@ -406,11 +460,7 @@ func (a *server) hubInvites(w http.ResponseWriter, r *http.Request) {
 	}
 	body := make([]map[string]any, 0, len(list))
 	for _, invite := range list {
-		body = append(body, map[string]any{
-			"hub":       map[string]any{"id": invite.HubID, "name": invite.HubName, "iconColor": invite.IconColor, "iconUrl": nil, "memberCount": invite.MemberCount},
-			"from":      a.publicUser(invite.From),
-			"createdAt": invite.CreatedAt,
-		})
+		body = append(body, a.hubInviteBody(invite))
 	}
 	writeJSON(w, http.StatusOK, body)
 }
@@ -436,7 +486,7 @@ func (a *server) roomJSON(room *store.RoomRow) map[string]any {
 	}
 	var backgroundURL any
 	if room.Background != "" {
-		backgroundURL = "/api/room-backgrounds/" + room.Background
+		backgroundURL = "/api/avatars/" + room.Background + ".webp"
 	}
 	return map[string]any{
 		"id":            room.ID,
@@ -475,6 +525,29 @@ func (a *server) rooms(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, body)
 }
 
+// notifyRoom — свежая комната всем её участникам (как notifyRoom в Node)
+func (a *server) notifyRoom(roomID int64) {
+	room, err := a.store.RoomByID(roomID)
+	if err != nil {
+		return
+	}
+	body := a.roomJSON(room)
+	ids := make([]int64, 0)
+	if room.HubID != nil {
+		if hub, err := a.store.HubByID(*room.HubID); err == nil {
+			for _, member := range hub.Members {
+				ids = append(ids, member.User.ID)
+			}
+		}
+	} else {
+		for _, member := range room.Members {
+			ids = append(ids, member.User.ID)
+		}
+	}
+	for _, id := range ids {
+		a.hub.Send(id, map[string]any{"type": "room:updated", "room": body})
+	}
+}
 func (a *server) createRoom(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
 	var request struct {
@@ -510,9 +583,45 @@ func (a *server) createRoom(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	a.notifyRoom(room.ID)
 	writeJSON(w, http.StatusOK, a.roomJSON(room))
 }
 
+func (a *server) deleteHub(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	hubID, err := parseInt64(chi.URLParam(r, "id"))
+	if err != nil {
+		fail(http.StatusBadRequest, "Неверный канал").write(w)
+		return
+	}
+	hub, err := a.store.HubByID(hubID)
+	if err != nil {
+		fail(http.StatusNotFound, "Канал не найден").write(w)
+		return
+	}
+	if hub.OwnerID != user.ID {
+		fail(http.StatusForbidden, "Удалить канал может только создатель").write(w)
+		return
+	}
+	rooms, _ := a.store.RoomsOfHub(hubID)
+	members := make([]int64, 0, len(hub.Members))
+	for _, member := range hub.Members {
+		members = append(members, member.User.ID)
+	}
+	if err := a.store.DeleteHub(hubID); err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	for _, room := range rooms {
+		if room.Kind == "voice" {
+			_ = a.livekit.DeleteRoom(room.ID)
+		}
+	}
+	for _, id := range members {
+		a.hub.Send(id, map[string]any{"type": "hub:removed", "hubId": hubID, "reason": "deleted"})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
 func (a *server) patchRoom(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
 	id, err := parseInt64(chi.URLParam(r, "id"))
@@ -550,6 +659,7 @@ func (a *server) patchRoom(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	a.notifyRoom(updated.ID)
 	writeJSON(w, http.StatusOK, a.roomJSON(updated))
 }
 

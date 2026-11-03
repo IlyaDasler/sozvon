@@ -157,7 +157,7 @@ func (a *server) totpEnable(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusBadRequest, "Неверный код").write(w)
 		return
 	}
-	codes, err := recoveryCodes(8)
+	codes, err := recoveryCodes(10)
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return

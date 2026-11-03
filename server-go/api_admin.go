@@ -47,6 +47,34 @@ func (a *server) roomOr404(w http.ResponseWriter, roomID int64) *store.RoomRow {
 
 // ---------- приглашения в канал ----------
 
+// broadcastHub — полный объект канала всем участникам (как notifyHub в Node)
+// broadcastHubRooms — свежие комнаты канала всем участникам (как notifyRoom в Node)
+func (a *server) broadcastHubRooms(hubID int64) {
+	hub, err := a.store.HubByID(hubID)
+	if err != nil {
+		return
+	}
+	rooms, err := a.store.RoomsOfHub(hubID)
+	if err != nil {
+		return
+	}
+	for _, room := range rooms {
+		body := a.roomJSON(room)
+		for _, member := range hub.Members {
+			a.hub.Send(member.User.ID, map[string]any{"type": "room:updated", "room": body})
+		}
+	}
+}
+func (a *server) broadcastHub(hubID int64) {
+	hub, err := a.store.HubByID(hubID)
+	if err != nil {
+		return
+	}
+	body := a.hubJSON(hub)
+	for _, member := range hub.Members {
+		a.hub.Send(member.User.ID, map[string]any{"type": "hub:updated", "hub": body})
+	}
+}
 func (a *server) hubInvite(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
 	hubID, err := parseInt64(chi.URLParam(r, "id"))
@@ -71,7 +99,14 @@ func (a *server) hubInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	// Приглашённым — событие, чтобы приложение обновило список
 	for _, invited := range request.UserIDs {
-		a.hub.Send(invited, map[string]any{"type": "hub:invite", "hubId": hubID})
+		if list, err := a.store.HubInvitesOf(invited); err == nil {
+			for _, inv := range list {
+				if inv.HubID == hubID {
+					a.hub.Send(invited, map[string]any{"type": "hub:invite", "invite": a.hubInviteBody(inv)})
+					break
+				}
+			}
+		}
 	}
 	if hub := a.hubOr404(w, hubID); hub != nil {
 		writeJSON(w, http.StatusOK, a.hubJSON(hub))
@@ -93,12 +128,9 @@ func (a *server) acceptHubInvite(w http.ResponseWriter, r *http.Request) {
 	if hub == nil {
 		return
 	}
-	for _, member := range hub.Members {
-		if member.User.ID == user.ID {
-			continue
-		}
-		a.hub.Send(member.User.ID, map[string]any{"type": "hub:updated", "hubId": hubID})
-	}
+			a.broadcastHubRooms(hubID)
+		a.broadcastHub(hubID)
+		_ = hub
 	writeJSON(w, http.StatusOK, a.hubJSON(hub))
 }
 
