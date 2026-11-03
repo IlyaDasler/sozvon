@@ -179,3 +179,35 @@ func (s *Store) SessionsOf(userID int64) ([]Session, error) {
 	}
 	return list, rows.Err()
 }
+
+func (s *Store) SetTotpPending(userID int64, secret string) error {
+	_, err := s.db.Exec(`UPDATE users SET totp_pending = ? WHERE id = ?`, secret, userID)
+	return err
+}
+
+func (s *Store) TotpPending(userID int64) (string, error) {
+	var value sql.NullString
+	err := s.db.QueryRow(`SELECT totp_pending FROM users WHERE id = ?`, userID).Scan(&value)
+	return value.String, err
+}
+
+func (s *Store) EnableTotp(userID int64, secret, recovery string) error {
+	_, err := s.db.Exec(`UPDATE users SET totp_secret = ?, totp_pending = NULL, totp_recovery = ? WHERE id = ?`, secret, recovery, userID)
+	return err
+}
+
+func (s *Store) DisableTotp(userID int64) error {
+	_, err := s.db.Exec(`UPDATE users SET totp_secret = NULL, totp_pending = NULL, totp_recovery = NULL WHERE id = ?`, userID)
+	return err
+}
+
+func (s *Store) TotpRecovery(userID int64) (string, error) {
+	var value sql.NullString
+	err := s.db.QueryRow(`SELECT totp_recovery FROM users WHERE id = ?`, userID).Scan(&value)
+	return value.String, err
+}
+
+func (s *Store) SetTotpRecovery(userID int64, recovery string) error {
+	_, err := s.db.Exec(`UPDATE users SET totp_recovery = ? WHERE id = ?`, recovery, userID)
+	return err
+}
