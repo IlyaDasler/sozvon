@@ -617,3 +617,18 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     0 20px 48px rgba(2, 4, 12, 0.35);
 }
+/* Композер треда: та же пилюля, что у основного чата */
+.thread-form { align-items: flex-end; }
+.thread-form textarea {
+  border: 1px solid var(--line);
+  background: var(--bg-deep);
+  color: var(--text);
+  font: inherit;
+}
+.thread-form textarea:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.thread-form .btn { height: 38px; border-radius: 12px; padding: 0 16px; }
+[data-theme='glass'] .thread-form textarea {
+  background: var(--lq-control);
+  border: 1px solid var(--lq-control-rim);
+}
+[data-theme='glass'] .thread-form .btn.primary { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28); }

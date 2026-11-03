@@ -41,6 +41,17 @@
     box.scrollTop = box.scrollHeight;
   }
 
+  /** Поле ответа доступно только если сервер умеет треды */
+  function setComposerEnabled(on) {
+    const area = input();
+    const btn = document.getElementById('thread-send');
+    if (area) {
+      area.disabled = !on;
+      area.placeholder = on ? 'Ответить в треде' : 'Треды недоступны на этом сервере';
+    }
+    if (btn) btn.disabled = !on;
+  }
+
   async function openThread(message, chat) {
     const roomId = chat.roomId || message.roomId;
     const rootId = message.threadRoot || message.id;
@@ -52,10 +63,15 @@
     try {
       const rows = await Api.get(`/rooms/${roomId}/messages/${rootId}/thread`);
       paint(rows, roomId);
+      thread.unsupported = false;
+      setComposerEnabled(true);
       input()?.focus();
     } catch (err) {
       // Старый сервер не знает про треды: не показываем «не найдено», объясняем причину
+      // и ГЛУШИМ отправку, чтобы ответ не улетел обычным сообщением в общий чат
       const oldServer = /не найдено|not found|404/i.test(err.message || '');
+      thread.unsupported = oldServer;
+      setComposerEnabled(!oldServer);
       listEl().innerHTML = oldServer
         ? '<div class="thread-empty muted small">Треды появятся после обновления сервера до 3.0</div>'
         : `<div class="error small">${err.message}</div>`;
