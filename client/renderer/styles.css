@@ -2571,3 +2571,20 @@ select optgroup {
   color: var(--text);
 }
 select:focus option:checked { background-color: var(--accent); color: var(--on-accent, #fff); }
+/* ---------- Настройки: ровные отступы и читаемые ползунки ---------- */
+#settings .set-block { padding: 18px; }
+#settings .set-pane { gap: 14px; }
+#settings .field { gap: 8px; }
+#settings .field > span { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+#settings .field > span > b { margin-left: auto; font-variant-numeric: tabular-nums; }
+#settings .rs-nav button { min-height: 34px; padding: 0 12px; }
+#settings .set-body { padding-top: 8px; }
+
+/* Ползунок с заполнением до бегунка: видно текущее значение */
+input[type='range'] { --range-p: 0%; }
+input[type='range']::-webkit-slider-runnable-track {
+  background:
+    linear-gradient(90deg,
+      var(--accent) 0 var(--range-p),
+      color-mix(in srgb, var(--text) 22%, transparent) var(--range-p) 100%);
+}
