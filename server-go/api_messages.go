@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -18,7 +19,7 @@ func (a *server) messageJSON(message *store.Message) map[string]any {
 		"text":        message.Text,
 		"attachments": []any{},
 		"preview":     nil,
-		"enc":         nil,
+		"enc":         encValue(message.Enc),
 		"replyTo":     message.ReplyTo,
 		"mentionAll":  message.MentionAll,
 		"threadRoot":  message.ThreadRoot,
@@ -80,6 +81,7 @@ func (a *server) roomMessages(w http.ResponseWriter, r *http.Request) {
 		}
 		body = append(body, item)
 	}
+	a.enrichRoomMessages(roomID, body, list, user.ID)
 	writeJSON(w, http.StatusOK, body)
 }
 
@@ -167,6 +169,7 @@ func (a *server) threadMessages(w http.ResponseWriter, r *http.Request) {
 		// В треде Node отдаёт «плоскую» форму без replies/rootFrom
 		body = append(body, a.messageJSON(message))
 	}
+	a.enrichRoomMessages(roomID, body, list, user.ID)
 	writeJSON(w, http.StatusOK, body)
 }
 
@@ -199,4 +202,16 @@ func (a *server) markRoomRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// encValue — сохранённый зашифрованный конверт как объект (или null)
+func encValue(raw string) any {
+	if raw == "" {
+		return nil
+	}
+	var value any
+	if err := json.Unmarshal([]byte(raw), &value); err != nil {
+		return nil
+	}
+	return value
 }
