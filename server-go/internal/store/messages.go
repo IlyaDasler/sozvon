@@ -208,3 +208,10 @@ func (s *Store) MarkRoomRead(userID, roomID, lastID int64) error {
 		userID, "room:"+strconv.FormatInt(roomID, 10), lastID)
 	return err
 }
+
+func (s *Store) SetMessageAttachments(messageID int64, attachments string) (*Message, error) {
+	if _, err := s.db.Exec(`UPDATE room_messages SET attachments = ? WHERE id = ?`, attachments, messageID); err != nil {
+		return nil, err
+	}
+	return s.RoomMessageByID(messageID)
+}
