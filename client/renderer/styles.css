@@ -2611,3 +2611,28 @@ input[type='range'] {
 .main-divider { display: none; }
 /* Полоса окна и низ — та же поверхность, без стыков */
 .titlebar { border-bottom: 1px solid var(--line); }
+/* ---------- Поле ввода: полоса во всю ширину, без пилюли ----------
+   Раньше это была скруглённая пилюля внутри панели — получалось «окно в окне».
+   Теперь это нижняя полоса чата: без радиуса, с линией сверху, как в Discord */
+.composer { padding: 0; }
+.composer-bar {
+  border-radius: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-2) 94%, transparent);
+  box-shadow: none;
+  padding: 8px 14px;
+  min-height: var(--dock-h);
+  align-items: center;
+}
+.composer-bar:focus-within {
+  border-top-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  box-shadow: none;
+}
+.composer textarea { padding: 10px 6px; min-height: 38px; }
+.thread-form {
+  border-radius: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-2) 94%, transparent);
+}
