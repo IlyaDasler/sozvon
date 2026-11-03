@@ -74,12 +74,28 @@ function forgetHub(id) {
 // ---------- Что открыто: дом или канал ----------
 
 /** Открыть канал: его последнюю комнату, иначе первую текстовую, иначе любую; комнат нет — «Тут пока пусто» */
+/** Пружинный отклик плитки канала после перерисовки рейла */
+function pulseRailTile(hubId) {
+  if (document.documentElement.dataset.theme !== 'glass') return;
+  const paint = () => {
+    const tile = document.querySelector(`.rail-item[data-hub="${hubId}"] .rail-tile`);
+    if (!tile) return;
+    tile.classList.remove('rail-pop');
+    void tile.offsetWidth;
+    tile.classList.add('rail-pop');
+    setTimeout(() => tile.classList.remove('rail-pop'), 360);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(paint));
+}
 function openHub(id) {
   if (!hubById(id)) return;
   readNotifsOf({ hub: id });
   const rooms = roomsOfHub(id);
   const room = rooms.find((r) => r.id === lastRoomOf.get(id)) || rooms.find((r) => r.kind === 'text') || rooms[0];
-  if (room) return selectRoom(room.id);
+  if (room) {
+    pulseRailTile(id);
+    return selectRoom(room.id);
+  }
   state.view = id;
   state.selectedRoomId = null;
   state.selectedId = null;
@@ -88,6 +104,7 @@ function openHub(id) {
   renderRooms();
   renderHubChrome();
   renderVoice();
+  pulseRailTile(id);
 }
 
 /** Открытая комната пропала: в канале — другая его комната, дома — раздел «Друзья» */

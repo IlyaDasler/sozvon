@@ -36,6 +36,13 @@ contextBridge.exposeInMainWorld('desktop', {
   preview: (url) => ipcRenderer.invoke('preview:fetch', String(url)),
   // Запущенные игры: список названий, определённых по процессам Windows
   games: { running: () => ipcRenderer.invoke('games:running') },
+  // Кнопки окна: свои, в стиле приложения
+  window: {
+    minimize: () => ipcRenderer.send('window:minimize'),
+    toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
+    close: () => ipcRenderer.send('window:close'),
+    onState: (callback) => ipcRenderer.on('window:state', (_event, state) => callback(state)),
+  },
   edit: (command) => ipcRenderer.send('edit', command),
   screen: {
     sources: () => ipcRenderer.invoke('screen:sources'),
