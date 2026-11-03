@@ -54,7 +54,11 @@
       paint(rows, roomId);
       input()?.focus();
     } catch (err) {
-      listEl().innerHTML = `<div class="error small">${err.message}</div>`;
+      // Старый сервер не знает про треды: не показываем «не найдено», объясняем причину
+      const oldServer = /не найдено|not found|404/i.test(err.message || '');
+      listEl().innerHTML = oldServer
+        ? '<div class="thread-empty muted small">Треды появятся после обновления сервера до 3.0</div>'
+        : `<div class="error small">${err.message}</div>`;
     }
   }
 
