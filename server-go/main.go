@@ -80,6 +80,25 @@ func main() {
 			r.Post("/ws-ticket", app.wsTicket)
 			r.Get("/sessions", app.sessions)
 			r.Delete("/sessions/{id}", app.deleteSession)
+
+			r.Get("/contacts", app.contacts)
+			r.Post("/contacts", app.addContact)
+			r.Delete("/contacts/{id}", app.removeContact)
+			r.Get("/friend-requests", app.friendRequests)
+			r.Post("/friend-requests/{id}/accept", app.acceptFriendRequest)
+			r.Delete("/friend-requests/{id}", app.declineFriendRequest)
+			r.Get("/blocks", app.blocks)
+			r.Post("/blocks/{id}", app.blockUser)
+			r.Delete("/blocks/{id}", app.unblockUser)
+
+			r.Get("/hubs", app.hubs)
+			r.Post("/hubs", app.createHub)
+			r.Patch("/hubs/{id}", app.patchHub)
+			r.Get("/hub-invites", app.hubInvites)
+
+			r.Get("/rooms", app.rooms)
+			r.Post("/rooms", app.createRoom)
+			r.Patch("/rooms/{id}", app.patchRoom)
 		})
 	})
 

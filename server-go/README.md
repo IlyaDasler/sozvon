@@ -50,3 +50,15 @@ node ..\..\_tools\contract-compare.js ..\server\contract\api.json ..\_backup\con
 ```
 
 Ожидаемо: `✔ контракт совпал`.
+**Фаза 3 — контакты и каналы (ядро)**
+- `GET/POST/DELETE /api/contacts`, `POST /api/contacts` (заявка), `GET /api/friend-requests`,
+  `POST /api/friend-requests/{id}/accept`, `DELETE /api/friend-requests/{id}`;
+- `GET /api/blocks`, `POST/DELETE /api/blocks/{id}`;
+- `POST/GET /api/hubs`, `PATCH /api/hubs/{id}`, `GET /api/hub-invites`;
+- `POST/GET /api/rooms`, `PATCH /api/rooms/{id}`;
+- при создании канала, как в Node, сразу появляются «Голосовая» и «Общий чат», роли и участники;
+- проверено: контракт (16 вызовов) совпал; Go видит дружбу, созданную Node, а Node — канал и
+  комнату, созданные Go, на одной базе.
+
+Ещё не перенесено: роли (создание/изменение), управление участниками, баны, принятие
+приглашений в канал, удаление комнат, группы и эмодзи, права.
