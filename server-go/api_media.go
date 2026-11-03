@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"sozvon/server/internal/auth"
+	"sozvon/server/internal/linkpreview"
 	"sozvon/server/internal/store"
 )
 
@@ -254,4 +255,13 @@ func (a *server) serveHubIcon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.ServeFile(w, r, filepath.Join(a.mediaDir(), hub.Icon+".webp"))
+}
+func (a *server) linkPreview(w http.ResponseWriter, r *http.Request) {
+	value := r.URL.Query().Get("url")
+	if linkpreview.PreviewableURL(value) == nil {
+		fail(http.StatusBadRequest, "Неверная ссылка").write(w)
+		return
+	}
+	preview := a.preview.Fetch(value)
+	writeJSON(w, http.StatusOK, preview)
 }

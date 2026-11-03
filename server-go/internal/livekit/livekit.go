@@ -162,3 +162,22 @@ func (o Options) RemoveParticipant(roomID, userID int64) error {
 func (o Options) DeleteRoom(roomID int64) error {
 	return o.twirp("DeleteRoom", map[string]any{"room": o.Room(roomID)})
 }
+// ListRooms — проверка, что медиасервер принимает наш пропуск администратора.
+func (o Options) ListRooms() (int, error) {
+	if !o.Enabled() {
+		return 0, errors.New("livekit не настроен")
+	}
+	request, err := http.NewRequest(http.MethodPost, strings.TrimRight(o.APIURL, "/")+"/twirp/livekit.RoomService/ListRooms", bytes.NewReader([]byte("{}")))
+	if err != nil {
+		return 0, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+o.adminToken("", 60))
+	client := &http.Client{Timeout: 5 * time.Second}
+	response, err := client.Do(request)
+	if err != nil {
+		return 0, err
+	}
+	defer response.Body.Close()
+	return response.StatusCode, nil
+}

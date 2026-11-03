@@ -24,6 +24,7 @@ import (
 	"sozvon/server/internal/linkpreview"
 	"sozvon/server/internal/livekit"
 	"sozvon/server/internal/mail"
+	"sozvon/server/internal/oauth"
 	"sozvon/server/internal/realtime"
 	"sozvon/server/internal/store"
 )
@@ -39,6 +40,7 @@ type server struct {
 	hub     *realtime.Hub
 	mail    *mail.Mailer
 	preview *linkpreview.Fetcher
+	oauth   oauth.Options
 	calls   *callManager
 	voice   *voiceManager
 	livekit livekit.Options
@@ -76,7 +78,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}}
+	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), oauth: oauth.Options{ClientID: cfg.YandexClientID, ClientSecret: cfg.YandexClientSecret, TestBase: cfg.OAuthTestBase}, preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}}
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second), middleware.Logger)
@@ -93,9 +95,16 @@ func main() {
 		r.Post("/password/code", app.passwordCode)
 		r.Post("/password/reset", app.passwordReset)
 		r.Get("/oauth/providers", app.oauthProviders)
+		r.Get("/oauth/{provider}/url", app.oauthURL)
+		r.Post("/oauth/{provider}", app.oauthAuth)
+		r.Post("/signup/complete", app.signupComplete)
+		r.Get("/oauth/{provider}/web", app.oauthWebStart)
+		r.Get("/oauth/{provider}/callback", app.oauthWebCallback)
+		r.Post("/oauth/web/exchange", app.oauthWebExchange)
 
 		r.Group(func(r chi.Router) {
 			r.Use(app.requireAuth)
+			r.Get("/link-preview", app.linkPreview)
 			r.Get("/me", app.me)
 			r.Patch("/me", app.patchMe)
 			r.Put("/me/status", app.setMyStatus)
@@ -104,6 +113,7 @@ func main() {
 			r.Get("/key-transfer/{id}", app.keyTransferGet)
 			r.Post("/me/email/code", app.emailCode)
 			r.Put("/me/email", app.updateEmail)
+			r.Delete("/me/identities/{provider}", app.unlinkIdentity)
 			r.Delete("/me/email", app.updateEmail)
 			r.Get("/messages/{peerId}", app.dmMessages)
 			r.Get("/messages/{peerId}/pins", app.dmPins)
