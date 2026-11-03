@@ -158,7 +158,7 @@ func (s *Store) DMPinnedIDs(a, b int64) ([]int64, error) {
 func (s *Store) UnreadDM(userID int64) ([]map[string]any, error) {
 	rows, err := s.db.Query(`
 		SELECT peer, MAX(id) AS last_id,
-		       (SELECT COALESCE(last_id, 0) FROM read_state WHERE user_id = ? AND conv = 'dm:' || peer) AS read_id
+		       COALESCE((SELECT COALESCE(last_id, 0) FROM read_state WHERE user_id = ? AND conv = 'dm:' || peer), 0) AS read_id
 		FROM (
 			SELECT CASE WHEN from_id = ? THEN to_id ELSE from_id END AS peer, id
 			FROM messages WHERE from_id = ? OR to_id = ?

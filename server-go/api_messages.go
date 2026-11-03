@@ -19,7 +19,7 @@ func (a *server) messageJSON(message *store.Message) map[string]any {
 		"fromId":      message.FromID,
 		"text":        message.Text,
 		"attachments": attachmentsFromJSON(message.Attachments),
-		"preview":     nil,
+		"preview":     previewValue(message.Preview),
 		"enc":         encValue(message.Enc),
 		"replyTo":     message.ReplyTo,
 		"mentionAll":  message.MentionAll,
@@ -114,6 +114,7 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 		ReplyTo       *int64 `json:"replyTo"`
 		ReplyToID     *int64 `json:"replyToId"`
 		Enc           json.RawMessage `json:"enc"`
+		PreviewURL    string          `json:"previewUrl"`
 		AttachmentIDs []string        `json:"attachmentIds"`
 		Attachments   []struct {
 			ID string `json:"id"`
@@ -195,6 +196,16 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 		raw, _ := json.Marshal(attachments)
 		if updated, err := a.store.SetMessageAttachments(message.ID, string(raw)); err == nil {
 			message = updated
+		}
+	}
+	// Превью ссылки: только если эта ссылка действительно есть в тексте
+	if request.PreviewURL != "" && linkInText(text, request.PreviewURL) {
+		if preview := a.preview.Fetch(request.PreviewURL); preview != nil {
+			if raw, err := json.Marshal(preview); err == nil {
+				if updated, err := a.store.SetMessagePreview(message.ID, string(raw)); err == nil {
+					message = updated
+				}
+			}
 		}
 	}
 	if hasEnc {
@@ -287,6 +298,30 @@ func encValue(raw string) any {
 		return nil
 	}
 	return value
+}
+
+// previewValue — сохранённый предпросмотр ссылки как объект (или null)
+func previewValue(raw string) any {
+	if raw == "" {
+		return nil
+	}
+	var value any
+	if err := json.Unmarshal([]byte(raw), &value); err != nil {
+		return nil
+	}
+	return value
+}
+
+// linkInText — ссылка из превью должна быть в самом сообщении
+func linkInText(text, rawURL string) bool {
+	if text == "" || rawURL == "" {
+		return false
+	}
+	if strings.Contains(text, rawURL) {
+		return true
+	}
+	bare := strings.TrimPrefix(strings.TrimPrefix(rawURL, "https://"), "http://")
+	return bare != "" && strings.Contains(text, bare)
 }
 // readConv — «прочитал переписку до конца»: dm или room, плюс событие себе.
 func (a *server) readConv(w http.ResponseWriter, r *http.Request) {

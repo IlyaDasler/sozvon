@@ -214,3 +214,10 @@ func (s *Store) SetMessageEnvelope(messageID int64, enc string) (*Message, error
 	}
 	return s.RoomMessageByID(messageID)
 }
+
+func (s *Store) SetMessagePreview(messageID int64, preview string) (*Message, error) {
+	if _, err := s.db.Exec(`UPDATE room_messages SET preview = ? WHERE id = ?`, preview, messageID); err != nil {
+		return nil, err
+	}
+	return s.RoomMessageByID(messageID)
+}

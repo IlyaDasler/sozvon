@@ -94,6 +94,7 @@ func (a *server) sendDM(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Text          string          `json:"text"`
 		Enc           json.RawMessage `json:"enc"`
+		PreviewURL    string          `json:"previewUrl"`
 		AttachmentIDs []string        `json:"attachmentIds"`
 		ReplyToID     *int64          `json:"replyToId"`
 	}
@@ -130,7 +131,15 @@ func (a *server) sendDM(w http.ResponseWriter, r *http.Request) {
 			attachments = string(raw)
 		}
 	}
-	message, err := a.store.InsertDM(user.ID, peerID, text, attachments, "", envelope, request.ReplyToID)
+	previewJSON := ""
+	if request.PreviewURL != "" && linkInText(text, request.PreviewURL) {
+		if preview := a.preview.Fetch(request.PreviewURL); preview != nil {
+			if raw, err := json.Marshal(preview); err == nil {
+				previewJSON = string(raw)
+			}
+		}
+	}
+	message, err := a.store.InsertDM(user.ID, peerID, text, attachments, previewJSON, envelope, request.ReplyToID)
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return

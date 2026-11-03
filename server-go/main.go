@@ -21,6 +21,7 @@ import (
 
 	"sozvon/server/internal/auth"
 	"sozvon/server/internal/config"
+	"sozvon/server/internal/linkpreview"
 	"sozvon/server/internal/livekit"
 	"sozvon/server/internal/mail"
 	"sozvon/server/internal/realtime"
@@ -37,6 +38,7 @@ type server struct {
 	tickets map[string]ticket
 	hub     *realtime.Hub
 	mail    *mail.Mailer
+	preview *linkpreview.Fetcher
 	calls   *callManager
 	voice   *voiceManager
 	livekit livekit.Options
@@ -74,7 +76,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}}
+	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}}
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second), middleware.Logger)
