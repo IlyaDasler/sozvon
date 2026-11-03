@@ -57,6 +57,13 @@ func (a *server) roomMessageReactions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == http.MethodGet {
+		// Канал может скрывать, кто поставил реакцию
+		if room, err := a.store.RoomByID(roomID); err == nil && room.HubID != nil {
+			if hub, err := a.store.HubByID(*room.HubID); err == nil && !hub.ReactionsVisible {
+				fail(http.StatusForbidden, "В этом канале скрыто, кто поставил реакцию").write(w)
+				return
+			}
+		}
 		list, err := a.store.ReactionUsers("room", messageID)
 		if err != nil {
 			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -91,17 +92,29 @@ func (a *server) hubGroup(w http.ResponseWriter, r *http.Request) {
 func (a *server) hubEmoji(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
 	hubID, err := parseInt64(chi.URLParam(r, "id"))
-	if err != nil || !a.hubManager(hubID, user.ID) {
+	member, memberErr := a.store.IsHubMember(hubID, user.ID)
+	if err != nil || memberErr != nil || !member {
 		fail(http.StatusForbidden, "Нет прав").write(w)
 		return
 	}
 	name := strings.ToLower(strings.TrimSpace(chi.URLParam(r, "name")))
+	// Клиент присылает имя уже закодированным; chi декодирует один раз
+	if decoded, err := url.QueryUnescape(name); err == nil && decoded != name {
+		name = strings.ToLower(strings.TrimSpace(decoded))
+	}
 	if !emojiNamePattern.MatchString(name) {
 		fail(http.StatusBadRequest, "Имя смайлика — от 2 до 24 букв, цифр или _").write(w)
 		return
 	}
 	if r.Method == http.MethodDelete {
-		file, err := a.store.DeleteHubEmoji(hubID, name)
+		// Клиент удаляет по id, старые версии — по имени
+		var file string
+		var err error
+		if id, parseErr := parseInt64(name); parseErr == nil {
+			file, err = a.store.DeleteHubEmojiByID(hubID, id)
+		} else {
+			file, err = a.store.DeleteHubEmoji(hubID, name)
+		}
 		if err != nil {
 			fail(http.StatusNotFound, "Смайлик не найден").write(w)
 			return

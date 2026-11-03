@@ -175,32 +175,34 @@ func (s *Store) IsRoomMember(roomID, userID int64) (bool, error) {
 	return exists > 0, err
 }
 
-// UnreadRooms — комнаты с сообщениями после отметки прочтения.
+// UnreadRooms — комнаты с сообщениями после отметки прочтения (свои сообщения не считаем).
 func (s *Store) UnreadRooms(userID int64) ([]map[string]any, error) {
 	rows, err := s.db.Query(`
-		SELECT r.id, MAX(m.id) AS last_id, COALESCE(rs.last_id, 0) AS read_id
+		SELECT r.id, COUNT(m.id) AS unread, MAX(m.id) AS last_id, COALESCE(rs.last_id, 0) AS read_id
 		FROM rooms r
-		JOIN room_messages m ON m.room_id = r.id
-		JOIN hub_members hm ON hm.hub_id = r.hub_id AND hm.user_id = ?
+		JOIN room_messages m ON m.room_id = r.id AND m.from_id <> ?
 		LEFT JOIN read_state rs ON rs.user_id = ? AND rs.conv = 'room:' || r.id
+		WHERE r.id IN (
+			SELECT room_id FROM room_members WHERE user_id = ?
+			UNION
+			SELECT r2.id FROM rooms r2 JOIN hub_members hm ON hm.hub_id = r2.hub_id AND hm.user_id = ? WHERE r2.hub_id IS NOT NULL
+		) AND m.id > COALESCE(rs.last_id, 0)
 		GROUP BY r.id
-		HAVING last_id > read_id
-		ORDER BY last_id DESC`, userID, userID)
+		ORDER BY last_id DESC`, userID, userID, userID, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	list := []map[string]any{}
 	for rows.Next() {
-		var roomID, lastID, readID int64
-		if err := rows.Scan(&roomID, &lastID, &readID); err != nil {
+		var roomID, unread, lastID, readID int64
+		if err := rows.Scan(&roomID, &unread, &lastID, &readID); err != nil {
 			return nil, err
 		}
-		list = append(list, map[string]any{"roomId": roomID, "lastId": lastID, "count": lastID - readID})
+		list = append(list, map[string]any{"roomId": roomID, "count": unread, "lastId": lastID, "lastRead": readID})
 	}
 	return list, rows.Err()
 }
-
 func (s *Store) MarkRoomRead(userID, roomID, lastID int64) error {
 	_, err := s.db.Exec(`
 		INSERT INTO read_state (user_id, conv, last_id) VALUES (?, ?, ?)

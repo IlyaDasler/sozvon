@@ -96,6 +96,8 @@ func main() {
 			r.Post("/messages/{peerId}", app.sendDM)
 			r.Patch("/messages/{peerId}/{id}", app.editDM)
 			r.Delete("/messages/{peerId}/{id}", app.deleteDM)
+			r.Get("/messages/{peerId}/{id}/reactions", app.dmReactions)
+			r.Post("/messages/{peerId}/{id}/reactions", app.dmReactions)
 			r.Put("/messages/{peerId}/{id}/pin", app.dmPin)
 			r.Delete("/messages/{peerId}/{id}/pin", app.dmPin)
 			r.Put("/me/avatar", app.uploadAvatar)
@@ -594,6 +596,29 @@ func (a *server) deleteSession(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	// Живое соединение устройства закрываем сразу
+	a.hub.CloseSession(user.ID, id)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (a *server) revokeOtherSessions(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	current := ""
+	if session, ok := r.Context().Value(sessionKey).(*store.Session); ok && session != nil {
+		current = session.ID
+	}
+	list, err := a.store.SessionsOf(user.ID)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	for _, session := range list {
+		if session.ID == current {
+			continue
+		}
+		_ = a.store.DeleteSession(session.ID)
+	}
+	a.hub.CloseOtherSessions(user.ID, current)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 

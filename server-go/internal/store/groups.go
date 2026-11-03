@@ -71,3 +71,13 @@ func (s *Store) DeleteHubEmoji(hubID int64, name string) (string, error) {
 }
 
 var _ = time.Now
+
+func (s *Store) DeleteHubEmojiByID(hubID, emojiID int64) (string, error) {
+	var file string
+	err := s.db.QueryRow(`SELECT file FROM hub_emojis WHERE hub_id = ? AND id = ?`, hubID, emojiID).Scan(&file)
+	if err != nil {
+		return "", err
+	}
+	_, err = s.db.Exec(`DELETE FROM hub_emojis WHERE hub_id = ? AND id = ?`, hubID, emojiID)
+	return file, err
+}
