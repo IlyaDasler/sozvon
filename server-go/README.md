@@ -62,3 +62,14 @@ node ..\..\_tools\contract-compare.js ..\server\contract\api.json ..\_backup\con
 
 Ещё не перенесено: роли (создание/изменение), управление участниками, баны, принятие
 приглашений в канал, удаление комнат, группы и эмодзи, права.
+**Фаза 4 — сообщения и треды**
+- `GET /api/rooms/{id}/messages?before&limit`, `POST /api/rooms/{id}/messages`
+  (`text`, `mentionAll`, `threadRootId`, `replyTo`);
+- `GET /api/rooms/{id}/messages/{messageId}/thread` — корень и ответы;
+- `POST /api/rooms/{id}/read`, `GET /api/unread`;
+- ответы 1:1 с Node: в ленте `replies` есть всегда, у ответа — `rootFrom`, в треде «плоская» форма;
+- `lastActivity` комнаты теперь считается по последнему сообщению;
+- проверено: контракт (22 вызова) совпал; Node видит сообщения и ответы из Go, Go — из Node.
+
+Ещё не перенесено: реакции, пины, вложения и предпросмотр ссылок, правка/удаление, доставка
+событий по WebSocket.

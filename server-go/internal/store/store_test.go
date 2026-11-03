@@ -19,15 +19,22 @@ func newStore(t *testing.T) *Store {
 
 func TestMigrationsAreIdempotent(t *testing.T) {
 	store := newStore(t)
-	if err := store.Migrate(); err != nil {
-		t.Fatalf("повторная миграция: %v", err)
-	}
-	applied, err := store.Applied()
+	first, err := store.Applied()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(applied) != 3 {
-		t.Fatalf("применено %d миграций, ждали 3: %v", len(applied), applied)
+	if len(first) == 0 {
+		t.Fatal("ни одна миграция не применилась")
+	}
+	if err := store.Migrate(); err != nil {
+		t.Fatalf("повторная миграция: %v", err)
+	}
+	second, err := store.Applied()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(second) != len(first) {
+		t.Fatalf("после повтора %d миграций вместо %d: %v", len(second), len(first), second)
 	}
 }
 
@@ -86,5 +93,56 @@ func TestFriendshipFlow(t *testing.T) {
 	}
 	if ok, _ := store.AreFriends(a.ID, b.ID); !ok {
 		t.Fatal("дружба не записалась в обе стороны")
+	}
+}
+func TestMessagesAndThread(t *testing.T) {
+	store := newStore(t)
+	owner, err := store.CreateUser("writer", "hash", "Автор", "#0090ff")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.CreateHub(owner.ID, "Чат", "#12a594"); err != nil {
+		t.Fatal(err)
+	}
+	rooms, err := store.RoomsOf(owner.ID)
+	if err != nil || len(rooms) < 2 {
+		t.Fatalf("комнаты: %v, %v", rooms, err)
+	}
+	room := rooms[1]
+
+	root, err := store.CreateRoomMessage(room.ID, owner.ID, "привет", true, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !root.MentionAll || root.Replies != 0 || root.ThreadRoot != nil {
+		t.Fatalf("корневое сообщение: %+v", root)
+	}
+	reply, err := store.CreateRoomMessage(room.ID, owner.ID, "ответ", false, &root.ID, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reply.ThreadRoot == nil || *reply.ThreadRoot != root.ID || reply.Replies != 1 {
+		t.Fatalf("ответ: %+v", reply)
+	}
+	if reply.RootFrom == nil || *reply.RootFrom != owner.ID {
+		t.Fatalf("автор корня: %+v", reply.RootFrom)
+	}
+
+	feed, err := store.RoomMessages(room.ID, 50, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(feed) != 1 || feed[0].Replies != 1 {
+		t.Fatalf("лента: %+v", feed)
+	}
+	thread, err := store.ThreadMessages(room.ID, root.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(thread) != 2 || thread[0].ID != root.ID || thread[1].ID != reply.ID {
+		t.Fatalf("тред: %+v", thread)
+	}
+	if store.RoomLastActivity(room.ID) == 0 {
+		t.Fatal("активность комнаты не обновилась")
 	}
 }
