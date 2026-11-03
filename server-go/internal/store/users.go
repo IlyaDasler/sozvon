@@ -1,0 +1,160 @@
+package store
+
+import (
+	"database/sql"
+	"errors"
+	"time"
+)
+
+type User struct {
+	ID           int64
+	Username     string
+	PasswordHash string
+	DisplayName  string
+	AvatarColor  string
+	CreatedAt    int64
+	Avatar       string
+	Email        string
+	EmailShown   string
+	Bio          string
+	BannerColor  string
+	Banner       string
+	Game         string
+	NameColor    string
+	Status       string
+	PublicKey    string
+	TotpSecret   string
+}
+
+type Session struct {
+	ID        string
+	UserID    int64
+	Device    string
+	CreatedAt int64
+	LastSeen  int64
+}
+
+type Identity struct {
+	Provider string
+	Email    string
+}
+
+var ErrNotFound = errors.New("not found")
+
+const userColumns = `id, username, password_hash, display_name, avatar_color, created_at,
+	COALESCE(avatar, ''), COALESCE(email, ''), COALESCE(email_shown, ''), COALESCE(bio, ''),
+	COALESCE(banner_color, ''), COALESCE(banner, ''), COALESCE(game, ''), COALESCE(name_color, ''),
+	COALESCE(status, 'online'), COALESCE(public_key, ''), COALESCE(totp_secret, '')`
+
+func scanUser(row interface{ Scan(...any) error }) (*User, error) {
+	var user User
+	err := row.Scan(
+		&user.ID, &user.Username, &user.PasswordHash, &user.DisplayName, &user.AvatarColor, &user.CreatedAt,
+		&user.Avatar, &user.Email, &user.EmailShown, &user.Bio,
+		&user.BannerColor, &user.Banner, &user.Game, &user.NameColor,
+		&user.Status, &user.PublicKey, &user.TotpSecret,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (s *Store) CreateUser(username, passwordHash, displayName, avatarColor string) (*User, error) {
+	result, err := s.db.Exec(
+		`INSERT INTO users (username, password_hash, display_name, avatar_color, created_at) VALUES (?, ?, ?, ?, ?)`,
+		username, passwordHash, displayName, avatarColor, time.Now().UnixMilli(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	return s.UserByID(id)
+}
+
+func (s *Store) UserByID(id int64) (*User, error) {
+	return scanUser(s.db.QueryRow(`SELECT `+userColumns+` FROM users WHERE id = ?`, id))
+}
+
+func (s *Store) UserByUsername(username string) (*User, error) {
+	return scanUser(s.db.QueryRow(`SELECT `+userColumns+` FROM users WHERE username = ?`, username))
+}
+
+func (s *Store) UserByEmail(email string) (*User, error) {
+	return scanUser(s.db.QueryRow(`SELECT `+userColumns+` FROM users WHERE email = ?`, email))
+}
+
+func (s *Store) IdentitiesOf(userID int64) ([]Identity, error) {
+	rows, err := s.db.Query(`SELECT provider, COALESCE(email, '') FROM identities WHERE user_id = ? ORDER BY provider`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []Identity
+	for rows.Next() {
+		var item Identity
+		if err := rows.Scan(&item.Provider, &item.Email); err != nil {
+			return nil, err
+		}
+		list = append(list, item)
+	}
+	return list, rows.Err()
+}
+
+func (s *Store) CreateSession(id string, userID int64, device string) error {
+	now := time.Now().UnixMilli()
+	_, err := s.db.Exec(
+		`INSERT INTO sessions (id, user_id, device, created_at, last_seen) VALUES (?, ?, ?, ?, ?)`,
+		id, userID, device, now, now,
+	)
+	return err
+}
+
+func (s *Store) SessionByID(id string) (*Session, error) {
+	var session Session
+	err := s.db.QueryRow(
+		`SELECT id, user_id, device, created_at, last_seen FROM sessions WHERE id = ?`, id,
+	).Scan(&session.ID, &session.UserID, &session.Device, &session.CreatedAt, &session.LastSeen)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &session, nil
+}
+
+func (s *Store) TouchSession(id string) error {
+	_, err := s.db.Exec(`UPDATE sessions SET last_seen = ? WHERE id = ?`, time.Now().UnixMilli(), id)
+	return err
+}
+
+func (s *Store) DeleteSession(id string) error {
+	_, err := s.db.Exec(`DELETE FROM sessions WHERE id = ?`, id)
+	return err
+}
+
+func (s *Store) SessionsOf(userID int64) ([]Session, error) {
+	rows, err := s.db.Query(
+		`SELECT id, user_id, device, created_at, last_seen FROM sessions WHERE user_id = ? ORDER BY last_seen DESC`, userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []Session
+	for rows.Next() {
+		var session Session
+		if err := rows.Scan(&session.ID, &session.UserID, &session.Device, &session.CreatedAt, &session.LastSeen); err != nil {
+			return nil, err
+		}
+		list = append(list, session)
+	}
+	return list, rows.Err()
+}
