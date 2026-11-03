@@ -2594,23 +2594,7 @@ input[type='range'] {
   margin: 0;
   box-sizing: border-box;
 }
-/* ---------- Одно окно: панели больше не отдельные карточки ----------
-   Раньше сайдбар, чат и участники были скруглёнными карточками с зазорами —
-   получалось «окно в окне». Теперь это одна поверхность с внутренними линиями */
-.main { gap: 0; padding: 0; }
-.sidebar,
-.content,
-.members-panel {
-  border-radius: 0;
-  border: 0;
-  box-shadow: none;
-}
-.sidebar { border-right: 1px solid var(--line); }
-.content { border-left: 0; border-right: 0; }
-.members-panel { border-left: 1px solid var(--line); margin-left: 0; }
-.main-divider { display: none; }
-/* Полоса окна и низ — та же поверхность, без стыков */
-.titlebar { border-bottom: 1px solid var(--line); }
+
 /* ---------- Поле ввода: полоса во всю ширину, без пилюли ----------
    Раньше это была скруглённая пилюля внутри панели — получалось «окно в окне».
    Теперь это нижняя полоса чата: без радиуса, с линией сверху, как в Discord */
@@ -2635,4 +2619,9 @@ input[type='range'] {
   border: 0;
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-2) 94%, transparent);
+}
+/* Низ полосы ввода повторяет скругление панели — угол не выглядит обрезанным */
+.composer-bar {
+  border-bottom-left-radius: var(--panel-radius, 16px);
+  border-bottom-right-radius: var(--panel-radius, 16px);
 }
