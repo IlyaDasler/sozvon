@@ -51,6 +51,23 @@ func (a *server) broadcastPresence(userID int64) {
 	for _, id := range ids {
 		a.hub.Send(id, message)
 	}
+	// Себе тоже: приложение показывает свой статус из этого события
+	a.hub.Send(userID, message)
+}
+
+// handleAutoStatus — клиент сообщает, что человек давно не активен (или вернулся)
+func (a *server) handleAutoStatus(user *store.User, message map[string]any) {
+	idle, _ := message["idle"].(bool)
+	current, err := a.store.UserByID(user.ID)
+	if err != nil {
+		return
+	}
+	if idle && current.Status == "online" {
+		_ = a.store.UpdateUserStatus(user.ID, "idle")
+	} else if !idle && current.Status == "idle" {
+		_ = a.store.UpdateUserStatus(user.ID, "online")
+	}
+	a.broadcastPresence(user.ID)
 }
 
 // ---------- WebSocket ----------
@@ -145,6 +162,8 @@ func (a *server) websocket(w http.ResponseWriter, r *http.Request) {
 			a.handleRead(user, message)
 		case "me:status":
 			a.handleStatus(user, message)
+		case "status:auto":
+			a.handleAutoStatus(user, message)
 		case "room:join":
 			a.roomJoin(conn, user, message)
 		case "room:leave":

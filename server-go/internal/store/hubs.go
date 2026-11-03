@@ -86,7 +86,7 @@ func (s *Store) CreateHub(ownerID int64, name, iconColor string) (*HubRow, error
 	defer tx.Rollback()
 	now := time.Now().UnixMilli()
 	result, err := tx.Exec(
-		`INSERT INTO hubs (name, owner_id, icon_color, created_at) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO hubs (name, owner_id, icon_color, created_at, default_perms) VALUES (?, ?, ?, ?, 511)`,
 		name, ownerID, iconColor, now,
 	)
 	if err != nil {
@@ -96,6 +96,7 @@ func (s *Store) CreateHub(ownerID int64, name, iconColor string) (*HubRow, error
 	if err != nil {
 		return nil, err
 	}
+	// Как в Node: у нового канала сразу есть роль администратора
 	if _, err := tx.Exec(
 		`INSERT INTO hub_roles (hub_id, name, color, perms, created_at) VALUES (?, ?, ?, ?, ?)`,
 		hubID, adminRoleName, adminRoleColor, adminRolePerms, now,
@@ -147,9 +148,14 @@ func createRoomTx(tx *sql.Tx, hubID, ownerID int64, name, kind string, private b
 	if private {
 		privateValue = 1
 	}
+	// Права по умолчанию: как в Node — у комнаты права канала (иначе писать некому)
+	perms := int64(511)
+	if err := tx.QueryRow(`SELECT default_perms FROM hubs WHERE id = ?`, hubID).Scan(&perms); err != nil {
+		perms = 31
+	}
 	result, err := tx.Exec(
-		`INSERT INTO rooms (name, kind, owner_id, created_at, hub_id, position, private) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		name, kind, ownerID, now, hubID, position, privateValue,
+		`INSERT INTO rooms (name, kind, owner_id, created_at, hub_id, position, private, default_perms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		name, kind, ownerID, now, hubID, position, privateValue, perms,
 	)
 	if err != nil {
 		return 0, err
@@ -158,15 +164,17 @@ func createRoomTx(tx *sql.Tx, hubID, ownerID int64, name, kind string, private b
 	if err != nil {
 		return 0, err
 	}
-	if _, err := tx.Exec(
+	roleResult, err := tx.Exec(
 		`INSERT INTO room_roles (room_id, name, color, perms, created_at) VALUES (?, ?, ?, ?, ?)`,
 		roomID, adminRoleName, adminRoleColor, adminRolePerms, now,
-	); err != nil {
+	)
+	if err != nil {
 		return 0, err
 	}
+	roleID, _ := roleResult.LastInsertId()
 	if _, err := tx.Exec(
-		`INSERT INTO room_members (room_id, user_id, created_at) VALUES (?, ?, ?)`,
-		roomID, ownerID, now,
+		`INSERT INTO room_members (room_id, user_id, role_id, created_at) VALUES (?, ?, ?, ?)`,
+		roomID, ownerID, roleID, now,
 	); err != nil {
 		return 0, err
 	}
@@ -403,7 +411,7 @@ func (s *Store) RoomByID(id int64) (*RoomRow, error) {
 	// В канале участники комнаты — все участники канала, а роль в комнате — из room_members
 	if room.HubID != nil {
 		rows, err = s.db.Query(`
-			SELECT `+prefixed("u.", userColumns)+`, rm.role_id, rm.timeout_until, n.name
+			SELECT `+prefixed("u.", userColumns)+`, hm.role_id, rm.timeout_until, n.name
 			FROM hub_members hm
 			JOIN users u ON u.id = hm.user_id
 			LEFT JOIN room_members rm ON rm.room_id = ? AND rm.user_id = hm.user_id
@@ -593,4 +601,23 @@ func (s *Store) DeleteHub(hubID int64) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+func (s *Store) UpdateRoomDefaultPerms(roomID, perms int64) error {
+	_, err := s.db.Exec(`UPDATE rooms SET default_perms = ? WHERE id = ?`, perms, roomID)
+	return err
+}
+
+func (s *Store) AddRoomMember(roomID, userID int64) error {
+	_, err := s.db.Exec(`INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) VALUES (?, ?, ?)`, roomID, userID, time.Now().UnixMilli())
+	return err
+}
+func (s *Store) RoomRoleByID(roomID, roleID int64) (*RoleRow, error) {
+	var role RoleRow
+	err := s.db.QueryRow(`SELECT id, name, color, perms, created_at FROM room_roles WHERE id = ? AND room_id = ?`, roleID, roomID).
+		Scan(&role.ID, &role.Name, &role.Color, &role.Perms, &role.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &role, nil
 }

@@ -240,3 +240,8 @@ func (s *Store) UpdateProfile(userID int64, displayName, avatarColor, bio *strin
 	}
 	return nil
 }
+
+func (s *Store) SetPublicKey(userID int64, key string) error {
+	_, err := s.db.Exec(`UPDATE users SET public_key = ? WHERE id = ?`, nullIfEmpty(key), userID)
+	return err
+}

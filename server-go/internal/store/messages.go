@@ -215,3 +215,10 @@ func (s *Store) SetMessageAttachments(messageID int64, attachments string) (*Mes
 	}
 	return s.RoomMessageByID(messageID)
 }
+
+func (s *Store) SetMessageEnvelope(messageID int64, enc string) (*Message, error) {
+	if _, err := s.db.Exec(`UPDATE room_messages SET enc = ? WHERE id = ?`, enc, messageID); err != nil {
+		return nil, err
+	}
+	return s.RoomMessageByID(messageID)
+}

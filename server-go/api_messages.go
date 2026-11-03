@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -97,18 +98,48 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusNotFound, "Комната не найдена").write(w)
 		return
 	}
+	if until, _ := a.store.RoomTimeout(roomID, user.ID); until > time.Now().UnixMilli() {
+		fail(http.StatusForbidden, "Вас кикнули — пока можно только читать").write(w)
+		return
+	}
 	var request struct {
-		Text         string `json:"text"`
-		MentionAll   bool   `json:"mentionAll"`
-		ThreadRootID *int64 `json:"threadRootId"`
-		ReplyTo      *int64 `json:"replyTo"`
-		Attachments  []struct {
+		Text          string `json:"text"`
+		MentionAll    bool   `json:"mentionAll"`
+		ThreadRootID  *int64 `json:"threadRootId"`
+		ReplyTo       *int64 `json:"replyTo"`
+		ReplyToID     *int64 `json:"replyToId"`
+		Enc           json.RawMessage `json:"enc"`
+		AttachmentIDs []string        `json:"attachmentIds"`
+		Attachments   []struct {
 			ID string `json:"id"`
 		} `json:"attachments"`
 	}
 	if err := decode(r, &request); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
+	}
+	if request.ReplyTo == nil && request.ReplyToID != nil {
+		request.ReplyTo = request.ReplyToID
+	}
+	for _, id := range request.AttachmentIDs {
+		request.Attachments = append(request.Attachments, struct {
+			ID string `json:"id"`
+		}{ID: id})
+	}
+	hasEnc := len(request.Enc) > 0 && string(request.Enc) != "null"
+	if hasEnc {
+		var envelope struct {
+			Epoch int64 `json:"epoch"`
+		}
+		if err := json.Unmarshal(request.Enc, &envelope); err != nil {
+			fail(http.StatusBadRequest, "Неверный зашифрованный конверт").write(w)
+			return
+		}
+		current, _ := a.store.ConvEpoch("room:" + itoa(roomID))
+		if envelope.Epoch > current {
+			fail(http.StatusBadRequest, "Такой версии ключа у комнаты нет").write(w)
+			return
+		}
 	}
 	text := strings.TrimSpace(request.Text)
 	if len([]rune(text)) > 4000 {
@@ -132,7 +163,7 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Вложения: только текстом можно без файлов, пустое сообщение не отправляем
-	if text == "" && len(request.Attachments) == 0 {
+	if text == "" && len(request.Attachments) == 0 && !hasEnc {
 		fail(http.StatusBadRequest, "Сообщение: от 1 до 4000 символов").write(w)
 		return
 	}
@@ -158,6 +189,11 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 	if len(attachments) > 0 {
 		raw, _ := json.Marshal(attachments)
 		if updated, err := a.store.SetMessageAttachments(message.ID, string(raw)); err == nil {
+			message = updated
+		}
+	}
+	if hasEnc {
+		if updated, err := a.store.SetMessageEnvelope(message.ID, string(request.Enc)); err == nil {
 			message = updated
 		}
 	}
