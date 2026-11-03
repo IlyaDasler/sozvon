@@ -2588,3 +2588,9 @@ input[type='range']::-webkit-slider-runnable-track {
       var(--accent) 0 var(--range-p),
       color-mix(in srgb, var(--text) 22%, transparent) var(--range-p) 100%);
 }
+/* Ползунок ровно по ширине поля: внешние отступы выводили его за границы блока */
+input[type='range'] {
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}

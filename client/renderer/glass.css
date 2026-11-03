@@ -331,11 +331,7 @@
 [data-theme='glass'] .rs-role-list,
 [data-theme='glass'] .rs-facts > div,
 [data-theme='glass'] .perm-item,
-[data-theme='glass'] .rs-body .field {
-  background: rgba(10, 14, 28, 0.30);
-  border: 1px solid var(--hairline);
-  border-radius: 12px;
-}
+
 [data-theme='glass'] .perm-item { padding: 10px 12px; }
 
 /* ---------- 8. Звонок и трансляция ---------- */
