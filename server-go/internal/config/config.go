@@ -20,6 +20,10 @@ type Config struct {
 	SMTPPass    string
 	SMTPFrom    string
 	MailTestFile string
+	OAuthTestBase string
+	PublicURL string
+	YandexClientID string
+	YandexClientSecret string
 
 	LiveKitURL        string
 	LiveKitAPIURL     string
@@ -103,6 +107,10 @@ func Load() Config {
 		SMTPPass:   os.Getenv("SMTP_PASS"),
 		SMTPFrom:   os.Getenv("SMTP_FROM"),
 		MailTestFile: os.Getenv("MAIL_TEST_FILE"),
+		OAuthTestBase: os.Getenv("OAUTH_TEST_BASE"),
+		PublicURL: os.Getenv("PUBLIC_URL"),
+		YandexClientID: os.Getenv("YANDEX_CLIENT_ID"),
+		YandexClientSecret: os.Getenv("YANDEX_CLIENT_SECRET"),
 
 		LiveKitURL:        os.Getenv("LIVEKIT_URL"),
 		LiveKitAPIURL:     envOr("LIVEKIT_API_URL", "http://127.0.0.1:7880"),

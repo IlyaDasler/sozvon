@@ -278,9 +278,14 @@ func (a *server) roomJoin(conn *realtime.Conn, user *store.User, message map[str
 		a.broadcastVoice(current)
 	}
 	memberCount := len(a.voice.participants(roomID)) + 1
+	// Как в Node: медиасервер выбирается по числу участников комнаты, а не сидящих в голосе
+	roomCount := memberCount
+	if ids, err := a.store.RoomMemberIDs(roomID); err == nil {
+		roomCount = len(ids)
+	}
 	media := a.voice.mediaOf(roomID)
 	if media == "" {
-		media = a.livekit.MediaFor(memberCount)
+		media = a.livekit.MediaFor(roomCount)
 	}
 	sfuRequested, _ := message["sfu"].(bool)
 	if media == "sfu" && !sfuRequested {

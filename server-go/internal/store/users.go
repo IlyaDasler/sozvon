@@ -272,3 +272,41 @@ func (s *Store) UpdatePassword(userID int64, hash string) error {
 	_, err := s.db.Exec(`UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID)
 	return err
 }
+
+// AddIdentity — привязать аккаунт сервиса; у профиля один аккаунт на сервис.
+func (s *Store) AddIdentity(provider, providerUserID string, userID int64, email string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM identities WHERE user_id = ? AND provider = ?`, userID, provider); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`
+		INSERT INTO identities (provider, provider_user_id, user_id, email, created_at) VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT (provider, provider_user_id) DO UPDATE SET user_id = excluded.user_id, email = excluded.email`,
+		provider, providerUserID, userID, email, time.Now().UnixMilli()); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) FindIdentity(provider, providerUserID string) (int64, string, bool, error) {
+	var userID int64
+	var email string
+	err := s.db.QueryRow(`SELECT user_id, COALESCE(email, '') FROM identities WHERE provider = ? AND provider_user_id = ?`, provider, providerUserID).
+		Scan(&userID, &email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, "", false, nil
+		}
+		return 0, "", false, err
+	}
+	return userID, email, true, nil
+}
+
+func (s *Store) DeleteIdentity(userID int64, provider string) error {
+	_, err := s.db.Exec(`DELETE FROM identities WHERE user_id = ? AND provider = ?`, userID, provider)
+	return err
+}
