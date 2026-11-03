@@ -98,3 +98,16 @@ LiveKit-токены, TURN, правка/удаление и реакции по
 
 Ещё не перенесено: групповые звонки (`call:add`, несколько участников), голосовые комнаты
 (`room:join`/`room:leave`, кто в голосе), LiveKit-пропуска и TURN.
+**Фаза 5 — голосовые комнаты, LiveKit и TURN**
+- `room:join` / `room:leave` / `room:resume` / `room:state` / `room:signal` / `room:preview`;
+- `room:voice` — кто в голосе, микрофон/камера/экран, `since`, `media`, часы сервера;
+- `room:joined` с `peers` и `media`; через LiveKit — с пропуском `{url, token}`;
+- выбор `p2p` / `sfu` по числу участников (`LIVEKIT_MIN_MEMBERS`), лимит 10 в p2p;
+- обрыв связи: место в комнате держится `CALL_RECONNECT_GRACE_MS` (по умолчанию 20 с);
+- `GET /api/ice` — STUN и TURN с временными данными (HMAC-SHA1, как в Node);
+- проверено node-клиентом: вход двух, `peers`, `room:voice` на двоих, `muted`, `room:signal`,
+  выход одного, `/ice` со STUN.
+
+Ещё не перенесено: групповые звонки (`call:add`), команды LiveKit (удаление участника,
+закрытие комнаты), регистрация пользователя встроенного TURN, проверка пропуска на реальном
+медиасервере.
