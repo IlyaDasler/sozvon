@@ -52,3 +52,6 @@
 
 ## Обои чата и иконка Яндекса (00:32 MSK)
 Обои: картинка/GIF на пару друзей, PUT/DELETE /contacts/:id/wallpaper, отдача /api/wallpapers/:file, событие chat:wallpaper. Проверено: upload 200, get 200 image/png, собеседник видит URL, удаление 200. Иконка Яндекса: фирменный красный #fc3f1d с белой «Я», наушников нет (проверено замером).
+
+## Сервер 3.0 на VPS (11:15 MSK)
+Снимок базы и кода: /root/sozvon-backup-20261103-1105. Выложены server/src/api.js и db.js, сервис перезапущен. Проверено на проде: регистрация, канал, приватная комната (private:true), сообщение с @all, ответ в треде, GET треда (2 строки), /me/game, lastActivity. Старые маршруты: contacts/hubs/invites/me/ws-ticket/login — 200. Ошибок в логах нет.
