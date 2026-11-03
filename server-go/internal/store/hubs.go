@@ -312,13 +312,19 @@ func (s *Store) hubUsers(query string, hubID int64) []*User {
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
-	var list []*User
+	// Сначала собираем id и закрываем rows: при одном соединении вложенный
+	// запрос внутри цикла ждёт освобождения соединения и вешает обработчик
+	var ids []int64
 	for rows.Next() {
 		var id int64
 		if err := rows.Scan(&id); err != nil {
-			return list
+			break
 		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	list := make([]*User, 0, len(ids))
+	for _, id := range ids {
 		if user, err := s.UserByID(id); err == nil {
 			list = append(list, user)
 		}
@@ -467,20 +473,26 @@ func (s *Store) HubInvitesOf(userID int64) ([]HubInvite, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	var list []HubInvite
+	var byIDs []int64
 	for rows.Next() {
 		var invite HubInvite
 		var byID int64
 		if err := rows.Scan(&invite.HubID, &invite.HubName, &invite.IconColor, &invite.CreatedAt, &byID, &invite.MemberCount); err != nil {
+			rows.Close()
 			return nil, err
 		}
-		if from, err := s.UserByID(byID); err == nil {
-			invite.From = from
-		}
 		list = append(list, invite)
+		byIDs = append(byIDs, byID)
 	}
-	return list, rows.Err()
+	rows.Close()
+	// Пользователей догружаем после закрытия rows: одно соединение SQLite
+	for index, byID := range byIDs {
+		if from, err := s.UserByID(byID); err == nil {
+			list[index].From = from
+		}
+	}
+	return list, nil
 }
 // RoomMemberIDs — кто получает события комнаты.
 func (s *Store) RoomMemberIDs(roomID int64) ([]int64, error) {
