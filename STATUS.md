@@ -142,3 +142,6 @@ e2e-look, layout, spacing, friends, hubs, chat, room, threads, status, call, two
 
 ## Go: группы комнат, смайлики, unread, «кто поставил реакцию» (23:25 MSK)
 Группы комнат (создание/переименование/удаление, перенос комнат), смайлики канала (WebP-загрузка, удаление, раздача через /api/avatars), unread для личных переписок и комнат, POST /read для dm/room, реакция «кто поставил» теперь с именами. Сборка зелёная. Прогоны: e2e-typing, drafts, combobox, buttons, menu, уведомления частично; e2e-unread/feed/emoji/groups ещё требуют доработки.
+
+## Go: ещё восемь наборов зелёные (00:25 MSK)
+Добиты: e2e-unread (дедлок UnreadDM/UnreadRooms), e2e-reaction-who (права на имена реакций, DM-реакции), e2e-hub-emojis (смайлики, удаление по id, полная раздача файлов), e2e-room-groups (группы комнат, groupId при создании), e2e-feed, e2e-sessions (закрытие WS устройства), e2e-group-call, e2e-call-in-room, e2e-ptt, e2e-vault, e2e-typing/drafts/combobox/buttons/menu. Найдена и исправлена обрезка файлов в /api/avatars (первые 512 байт уходили в заголовок). Остались e2ee и stories, плюс не запускались oauth/sfu/sounds/update/window и др.

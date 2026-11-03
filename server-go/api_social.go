@@ -430,11 +430,25 @@ func (a *server) patchHub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request struct {
-		Name string `json:"name"`
+		Name            string  `json:"name"`
+		IconColor       *string `json:"iconColor"`
+		ReactionsVisible *bool  `json:"reactionsVisible"`
 	}
 	if err := decode(r, &request); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
+	}
+	if request.ReactionsVisible != nil {
+		if err := a.store.SetHubReactionsVisible(id, *request.ReactionsVisible); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+	}
+	if request.IconColor != nil && *request.IconColor != "" {
+		if err := a.store.SetHubIconColor(id, *request.IconColor); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
 	}
 	if name := strings.TrimSpace(request.Name); name != "" {
 		if err := a.store.RenameHub(id, name); err != nil {
@@ -447,6 +461,8 @@ func (a *server) patchHub(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	// Настройки канала видны всем его участникам сразу
+	a.broadcastHub(id)
 	writeJSON(w, http.StatusOK, a.hubJSON(updated))
 }
 
@@ -576,6 +592,7 @@ func (a *server) createRoom(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
 	var request struct {
 		HubID     int64   `json:"hubId"`
+		GroupID   *int64  `json:"groupId"`
 		Name      string  `json:"name"`
 		Kind      string  `json:"kind"`
 		Private   bool    `json:"private"`
@@ -607,6 +624,9 @@ func (a *server) createRoom(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
+	}
+	if request.GroupID != nil {
+		_ = a.store.SetRoomGroup(room.ID, request.GroupID)
 	}
 	for _, memberID := range request.MemberIDs {
 		if memberID != user.ID {

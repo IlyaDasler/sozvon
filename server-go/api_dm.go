@@ -238,3 +238,53 @@ func (a *server) dmPin(w http.ResponseWriter, r *http.Request) {
 	a.hub.Send(peerID, event)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
+func (a *server) dmReactions(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	peerID, _ := parseInt64(chi.URLParam(r, "peerId"))
+	messageID, _ := parseInt64(chi.URLParam(r, "id"))
+	if _, ok := a.dmPeer(peerID, user.ID); !ok {
+		fail(http.StatusNotFound, "Собеседник не найден").write(w)
+		return
+	}
+	message, err := a.store.DMByID(messageID)
+	if err != nil || (message.FromID != user.ID && message.ToID != user.ID) {
+		fail(http.StatusNotFound, "Сообщение не найдено").write(w)
+		return
+	}
+	if r.Method == http.MethodGet {
+		list, err := a.store.ReactionUsers("dm", messageID)
+		if err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+		named := make([]map[string]any, 0, len(list))
+		for _, group := range list {
+			users := make([]map[string]any, 0)
+			if ids, ok := group["userIds"].([]int64); ok {
+				for _, id := range ids {
+					if member, err := a.store.UserByID(id); err == nil {
+						users = append(users, a.publicUser(member))
+					}
+				}
+			}
+			named = append(named, map[string]any{"emoji": group["emoji"], "users": users})
+		}
+		writeJSON(w, http.StatusOK, named)
+		return
+	}
+	var request struct {
+		Emoji string `json:"emoji"`
+	}
+	if err := decode(r, &request); err != nil || request.Emoji == "" {
+		fail(http.StatusBadRequest, "Неверный смайлик").write(w)
+		return
+	}
+	list, err := a.store.ToggleReaction("dm", messageID, user.ID, request.Emoji)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	a.hub.Send(user.ID, map[string]any{"type": "message:reactions", "id": messageID, "peerId": peerID, "reactions": list})
+	a.hub.Send(peerID, map[string]any{"type": "message:reactions", "id": messageID, "peerId": user.ID, "reactions": list})
+	writeJSON(w, http.StatusOK, list)
+}

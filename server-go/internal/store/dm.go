@@ -167,24 +167,33 @@ func (s *Store) UnreadDM(userID int64) ([]map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	list := []map[string]any{}
+	// Сначала выбираем строки и закрываем набор: при одном соединении SQLite
+	// вложенный COUNT внутри цикла ждёт освобождения соединения и вешает весь сервер
+	type unreadRow struct {
+		peer, lastID, readID int64
+	}
+	var pending []unreadRow
 	for rows.Next() {
-		var peer, lastID, readID int64
-		if err := rows.Scan(&peer, &lastID, &readID); err != nil {
+		var row unreadRow
+		if err := rows.Scan(&row.peer, &row.lastID, &row.readID); err != nil {
+			rows.Close()
 			return nil, err
 		}
-		if lastID <= readID {
-			continue
+		if row.lastID > row.readID {
+			pending = append(pending, row)
 		}
+	}
+	rows.Close()
+	list := []map[string]any{}
+	for _, row := range pending {
 		var count int64
 		if err := s.db.QueryRow(`SELECT COUNT(*) FROM messages WHERE ((from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)) AND id > ?`,
-			peer, userID, userID, peer, readID).Scan(&count); err != nil {
+			row.peer, userID, userID, row.peer, row.readID).Scan(&count); err != nil {
 			return nil, err
 		}
-		list = append(list, map[string]any{"peerId": peer, "count": count, "lastId": lastID})
+		list = append(list, map[string]any{"peerId": row.peer, "count": count, "lastId": row.lastID, "lastRead": row.readID})
 	}
-	return list, rows.Err()
+	return list, nil
 }
 
 func (s *Store) MarkDMRead(userID, peerID int64) error {

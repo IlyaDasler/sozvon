@@ -622,3 +622,17 @@ func (s *Store) RoomRoleByID(roomID, roleID int64) (*RoleRow, error) {
 	}
 	return &role, nil
 }
+
+func (s *Store) SetHubReactionsVisible(hubID int64, visible bool) error {
+	value := 0
+	if visible {
+		value = 1
+	}
+	_, err := s.db.Exec(`UPDATE hubs SET reactions_visible = ? WHERE id = ?`, value, hubID)
+	return err
+}
+
+func (s *Store) SetHubIconColor(hubID int64, color string) error {
+	_, err := s.db.Exec(`UPDATE hubs SET icon_color = ? WHERE id = ?`, color, hubID)
+	return err
+}

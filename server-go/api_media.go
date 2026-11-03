@@ -51,6 +51,8 @@ func (a *server) serveMedia(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 	head := make([]byte, 512)
 	count, _ := file.Read(head)
+	// Читали только начало — возвращаемся, иначе браузер получит обрезанный файл
+	_, _ = file.Seek(0, io.SeekStart)
 	w.Header().Set("Content-Type", http.DetectContentType(head[:count]))
 	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
