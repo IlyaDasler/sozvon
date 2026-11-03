@@ -301,24 +301,27 @@ html[data-theme='glass'] .thread-panel::before,
 html[data-theme='glass'] .members-panel::before {
   content: '';
   position: absolute;
-  inset: -40% -10%;
+  top: -20%;
+  bottom: -20%;
+  left: -55%;
+  width: 50%;
   pointer-events: none;
-  background: linear-gradient(104deg,
-    transparent 34%,
-    rgba(255, 255, 255, 0.16) 46%,
-    rgba(190, 225, 255, 0.10) 52%,
-    transparent 64%);
-  background-size: 240% 100%;
-  background-position: 130% 0;
-  animation: lg-sheen 11s ease-in-out infinite;
-  mix-blend-mode: screen;
-  opacity: 0.75;
+  background: linear-gradient(100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(190, 225, 255, 0.07) 55%,
+    transparent 100%);
+  /* Блик едет трансформацией: это композитный слой, а не перерисовка фона.
+     mix-blend-mode убран — он вместе с backdrop-filter сжигал рендерер */
+  animation: lg-sheen 12s ease-in-out infinite;
+  opacity: 0.7;
   border-radius: inherit;
+  will-change: transform;
 }
 @keyframes lg-sheen {
-  0% { background-position: 135% 0; }
-  42% { background-position: -35% 0; }
-  100% { background-position: 135% 0; }
+  0% { transform: translate3d(0, 0, 0) rotate(6deg); }
+  50% { transform: translate3d(330%, 0, 0) rotate(6deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(6deg); }
 }
 
 /* Мелкие стеклянные элементы: тонкая кайма и подъём */
