@@ -143,6 +143,9 @@ func main() {
 			r.Post("/rooms/{id}/read", app.markRoomRead)
 			r.Get("/unread", app.unread)
 			r.Get("/ice", app.ice)
+			r.Post("/me/2fa/setup", app.totpSetup)
+			r.Post("/me/2fa/enable", app.totpEnable)
+			r.Post("/me/2fa/disable", app.totpDisable)
 			r.Post("/uploads", app.upload)
 		})
 	})
@@ -388,15 +391,14 @@ func (a *server) login(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusUnauthorized, "Неверная почта, логин или пароль").write(w)
 		return
 	}
-	if user.TotpSecret != "" {
-		// Полная проверка TOTP — следующая фаза; пока честно отвечаем, что нужен код
-		if body.TotpCode == "" {
-			writeJSON(w, http.StatusForbidden, map[string]any{
-				"error":   "Введите код из приложения-аутентификатора",
-				"needTotp": true,
-			})
-			return
-		}
+	if user.TotpSecret != "" && body.TotpCode == "" {
+		writeJSON(w, http.StatusForbidden, map[string]any{
+			"error":    "Введите код из приложения-аутентификатора",
+			"needTotp": true,
+		})
+		return
+	}
+	if !a.secondFactorOK(user, body.TotpCode) {
 		fail(http.StatusUnauthorized, "Неверный код").write(w)
 		return
 	}

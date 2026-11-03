@@ -130,3 +130,6 @@ call:add с проверками и call:incoming group+others, call:member (rin
 
 ## Go: вложения (22:05 MSK)
 POST /uploads (сырое тело до 25 МБ, kind по mime, файл в DATA_DIR/files), публичный GET /api/files/{id}/{name} с inline/attachment и nosniff/CSP, attachments в сообщении с проверкой владельца и пометкой used. Проверка: upload, url, fileServed, message, feed — все true. Go-тесты зелёные.
+
+## Go: второй фактор (22:20 MSK)
+TOTP без внешних зависимостей: секрет base32, код 6 цифр шаг 30 с окно ±1, otpauth-URI, 8 резервных кодов (сгорают). Эндпоинты /me/2fa/setup|enable|disable; вход с включённой 2FA проверяет код или резервный. Сборка и go test зелёные. Сквозной API-прогон ещё не снят.
