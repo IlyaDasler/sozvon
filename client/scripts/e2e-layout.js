@@ -117,7 +117,14 @@ runTest(async () => {
     if (!pill) return JSON.stringify({ error: 'нет индикатора' });
     const second = root.querySelectorAll('button')[1];
     second.click();
-    await new Promise((r) => setTimeout(r, 550));
+    // Ждём окончания анимации подложки (320 мс), иначе замер попадает в середину перехода
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 60));
+      const b = root.getBoundingClientRect();
+      const a = root.querySelector('button.active').getBoundingClientRect();
+      const pr = pill.getBoundingClientRect();
+      if (Math.abs(pr.left - a.left) < 2 && Math.abs(pr.width - a.width) < 2) break;
+    }
     const box = root.getBoundingClientRect();
     const active = root.querySelector('button.active');
     const r = active.getBoundingClientRect();
