@@ -2557,3 +2557,17 @@ html.is-win .win-controls { display: flex; }
 .win-btn svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.4; }
 .win-btn:hover { background: var(--bg-4); color: var(--text); }
 .win-btn.close:hover { background: #e5484d; color: #fff; }
+/* ---------- Нативные списки (select) в тёмной теме ----------
+   Без color-scheme браузер рисует выпадающий список светлым: белый фон и белый текст */
+html { color-scheme: dark; }
+select {
+  /* Оставляем системную стрелку: в тёмной схеме она сама становится светлой,
+     а свои «дорисованные» стрелки конфликтовали с фонами тем */
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  background-color: var(--bg-deep);
+  color: var(--text);
+}
+select:focus option:checked { background-color: var(--accent); color: var(--on-accent, #fff); }
