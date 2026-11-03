@@ -145,3 +145,6 @@ e2e-look, layout, spacing, friends, hubs, chat, room, threads, status, call, two
 
 ## Go: ещё восемь наборов зелёные (00:25 MSK)
 Добиты: e2e-unread (дедлок UnreadDM/UnreadRooms), e2e-reaction-who (права на имена реакций, DM-реакции), e2e-hub-emojis (смайлики, удаление по id, полная раздача файлов), e2e-room-groups (группы комнат, groupId при создании), e2e-feed, e2e-sessions (закрытие WS устройства), e2e-group-call, e2e-call-in-room, e2e-ptt, e2e-vault, e2e-typing/drafts/combobox/buttons/menu. Найдена и исправлена обрезка файлов в /api/avatars (первые 512 байт уходили в заголовок). Остались e2ee и stories, плюс не запускались oauth/sfu/sounds/update/window и др.
+
+## Go: 34 набора e2e зелёные (00:40 MSK)
+Зелёные: look, layout, spacing, friends, hubs, chat, room, threads, status, call, two-factor, typing, unread, feed, drafts, combobox, reaction-who, hub-emojis, room-groups, buttons, menu, group-call, call-in-room, ptt, vault, sessions, custom-sounds, image-menu, sounds, stream-card, window, tray, update, scenarios, oauth, oauth-window. Найдены и исправлены: nil dm в /unread, peerId в DM-закреплениях, удаление смайлика по id, обрезка файлов аватарок. Остались: e2ee (ротация ключей при кике), stories (истории канала), journey (почтовые коды), noise/ptt-key/static-screen/screen-fps (устройства), sfu* (LiveKit), compat (нужна старая версия).

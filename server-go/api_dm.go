@@ -233,9 +233,8 @@ func (a *server) dmPin(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
-	event := map[string]any{"type": "message:pinned", "id": messageID, "pinned": pinned}
-	a.hub.Send(user.ID, event)
-	a.hub.Send(peerID, event)
+	a.hub.Send(user.ID, map[string]any{"type": "message:pinned", "id": messageID, "peerId": peerID, "pinned": pinned})
+	a.hub.Send(peerID, map[string]any{"type": "message:pinned", "id": messageID, "peerId": user.ID, "pinned": pinned})
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 func (a *server) dmReactions(w http.ResponseWriter, r *http.Request) {

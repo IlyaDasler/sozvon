@@ -245,6 +245,9 @@ func (a *server) unread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	dm, _ := a.store.UnreadDM(user.ID)
+	if dm == nil {
+		dm = []map[string]any{}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"dm": dm, "rooms": rooms})
 }
 
