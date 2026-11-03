@@ -269,6 +269,9 @@
   .kit-drawer { position:relative; height:150px; border-radius:14px; background:var(--bg-2); border:1px solid var(--line); overflow:hidden; }
   .kit-drawer .page { position:absolute; inset:10px; border-radius:10px; background:var(--bg-3); }
   .kit-drawer .panel { position:absolute; top:8px; right:8px; bottom:8px; width:120px; border-radius:12px; background:color-mix(in srgb, var(--bg-2) 96%, transparent); border:1px solid var(--line-strong); box-shadow:0 18px 40px rgba(2,4,12,.45); }
+  .kit-combo { width:260px; }
+  .kit-combo .kit-select { width:100%; }
+  .kit-combo .kit-menu { width:100%; }
   .kit-preview { width:230px; border-radius:16px; border:1px solid var(--line-strong); background:color-mix(in srgb, var(--bg-2) 96%, transparent); padding:14px; box-shadow:0 20px 48px rgba(2,4,12,.5); }
   .kit-preview .row { gap:10px; }
   code.k { background: rgba(255,255,255,.08); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
@@ -646,6 +649,14 @@
   <h3>Number Field</h3>
   <div class="kit-number"><button type="button">−</button><input value="26" readonly><span class="unit">px</span><button type="button">+</button></div>
 
+  <h3>Combobox / Autocomplete</h3>
+  <div class="kit-combo">
+    <div class="kit-select"><span>Боря</span><svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="kit-menu">
+      <div class="kit-option on">Боря <span class="muted">@borya</span></div>
+      <div class="kit-option">Борис <span class="muted">@boris</span></div>
+    </div>
+  </div>
   <h3>Collapsible</h3>
   <div class="kit-collapse">
     <div class="kit-collapse-head"><span>Стекло</span><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>

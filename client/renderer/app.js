@@ -111,6 +111,7 @@ const tone = new Tone();
 function makeAvatar(user, online, className = '') {
   const el = document.createElement('div');
   el.className = `avatar ${className}`;
+  if (user?.id) el.dataset.profile = String(user.id);
   fillAvatar(el, user, online);
   return el;
 }
