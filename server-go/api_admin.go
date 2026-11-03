@@ -264,6 +264,8 @@ func (a *server) hubMemberRole(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	a.broadcastHubRooms(hubID)
+	a.broadcastHub(hubID)
 	if hub := a.hubOr404(w, hubID); hub != nil {
 		writeJSON(w, http.StatusOK, a.hubJSON(hub))
 	}
@@ -360,6 +362,8 @@ func (a *server) hubRole(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	a.broadcastHubRooms(hubID)
+	a.broadcastHub(hubID)
 	if hub := a.hubOr404(w, hubID); hub != nil {
 		writeJSON(w, http.StatusOK, a.hubJSON(hub))
 	}
