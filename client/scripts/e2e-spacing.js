@@ -30,7 +30,7 @@ const AUDIT = `(() => {
   for (const field of document.querySelectorAll('#settings .field')) {
     if (!field.getClientRects().length) continue;
     const label = field.querySelector('span');
-    const input = field.querySelector('input, textarea, select');
+    // Основной контрол поля: ползунок, стеклянный список, поле ввода или текстовая область\n    const input = field.querySelector('input[type=range], .gs-select, textarea, input[type=text], input[type=password], select:not(.gs-native)');
     if (!label || !input || !label.getClientRects().length || !input.getClientRects().length) continue;
     const gap = rect(input).top - rect(label).bottom;
     if (gap < 3) issues.push('field: зазор подписи и поля ' + px(gap) + 'px (' + (field.textContent || '').trim().slice(0, 24) + ')');
@@ -96,5 +96,47 @@ runTest(async () => {
     const issues = JSON.parse(raw);
     if (issues.length) throw new Error(`${name}: ${issues.join(' | ')}`);
   }
+  // Новые компоненты: размеры и центрирование
+  await js(win, `document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); openSettings('look'); true`);
+  await sleep(600);
+  const sizes = JSON.parse(await js(win, `(() => {
+    const out = {};
+    const box = document.querySelector('#settings .gs-select');
+    if (box) {
+      const b = box.getBoundingClientRect();
+      const v = box.querySelector('.gs-value').getBoundingClientRect();
+      out.select = { h: Math.round(b.height), centered: Math.abs((v.top + v.bottom) / 2 - (b.top + b.bottom) / 2) <= 2 };
+    }
+    const num = document.querySelector('#settings .number-field');
+    if (num) {
+      const n = num.getBoundingClientRect();
+      const field = num.closest('.field').getBoundingClientRect();
+      out.number = { h: Math.round(n.height), inside: n.right <= field.right + 1 };
+    }
+    const head = document.querySelector('#settings .collapse-head');
+    if (head) {
+      const h = head.getBoundingClientRect();
+      const title = head.querySelector('.collapse-title').getBoundingClientRect();
+      out.collapse = { h: Math.round(h.height), centered: Math.abs((title.top + title.bottom) / 2 - (h.top + h.bottom) / 2) <= 2 };
+    }
+    return JSON.stringify(out);
+  })()`));
+  if (sizes.select && (sizes.select.h < 38 || sizes.select.h > 42 || !sizes.select.centered))
+    throw new Error('стеклянный Select: размер или центрирование');
+  if (sizes.number && (sizes.number.h < 28 || sizes.number.h > 32 || !sizes.number.inside))
+    throw new Error('Number Field: размер или выход за поле');
+  if (sizes.collapse && (sizes.collapse.h < 24 || !sizes.collapse.centered))
+    throw new Error('Collapsible: заголовок не по центру');
+
+  await js(win, `openSettings('plan'); true`);
+  await sleep(500);
+  const meter = JSON.parse(await js(win, `(() => {
+    const fill = document.querySelector('#plan-meter .meter-fill');
+    const row = document.querySelector('#plan-meter .meter-row');
+    const bar = document.querySelector('#plan-meter .meter');
+    return JSON.stringify({ width: fill ? parseFloat(fill.style.width) : -1, aligned: row && bar ? Math.abs(row.getBoundingClientRect().left - bar.getBoundingClientRect().left) <= 1 : false });
+  })()`));
+  if (meter.width < 0 || meter.width > 100) throw new Error('Meter: ширина вне 0..100');
+  if (!meter.aligned) throw new Error('Meter: подпись не совпадает с полосой');
   console.log('✔ отступы и центрирование: наложений и слипаний нет');
 });
