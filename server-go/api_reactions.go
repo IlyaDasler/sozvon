@@ -62,7 +62,20 @@ func (a *server) roomMessageReactions(w http.ResponseWriter, r *http.Request) {
 			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 			return
 		}
-		writeJSON(w, http.StatusOK, list)
+		// Клиент ждёт имена: [{emoji, users:[…]}], а не только id
+		named := make([]map[string]any, 0, len(list))
+		for _, group := range list {
+			users := make([]map[string]any, 0)
+			if ids, ok := group["userIds"].([]int64); ok {
+				for _, id := range ids {
+					if member, err := a.store.UserByID(id); err == nil {
+						users = append(users, a.publicUser(member))
+					}
+				}
+			}
+			named = append(named, map[string]any{"emoji": group["emoji"], "users": users})
+		}
+		writeJSON(w, http.StatusOK, named)
 		return
 	}
 	var request struct {
