@@ -348,3 +348,35 @@ html[data-theme='glass'] .composer-bar:focus-within {
     inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
     0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent);
 }
+/* ---------- 5. Одно окно в стекле ----------
+   Панели — части одной поверхности: один материал, без скруглений и теней карточек,
+   между ними только волосяные линии. Округлыми остаются лишь плавающие слои:
+   окна, меню, тосты, панель треда */
+html[data-theme='glass'] .sidebar,
+html[data-theme='glass'] .content,
+html[data-theme='glass'] .members-panel {
+  border-radius: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 40%),
+    color-mix(in srgb, var(--lg-tint) 88%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: none;
+  border: 0;
+}
+html[data-theme='glass'] .sidebar { border-right: 1px solid rgba(255, 255, 255, 0.10); }
+html[data-theme='glass'] .members-panel { border-left: 1px solid rgba(255, 255, 255, 0.10); }
+html[data-theme='glass'] .sidebar::after,
+html[data-theme='glass'] .content::after,
+html[data-theme='glass'] .members-panel::after { content: none; }
+html[data-theme='glass'] .main-divider { display: none; }
+
+/* Кнопки в одном окне: один размер, один радиус, одна реакция на нажатие */
+html[data-theme='glass'] .titlebar .nav-btn,
+html[data-theme='glass'] .sidebar-head .icon-btn,
+html[data-theme='glass'] .chat-head .icon-btn,
+html[data-theme='glass'] .members-head .icon-btn,
+html[data-theme='glass'] .win-btn {
+  border-radius: 9px;
+}
+html[data-theme='glass'] .win-btn { border-radius: 0; }
