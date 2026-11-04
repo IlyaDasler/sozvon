@@ -267,22 +267,35 @@
   font-weight: 600;
   white-space: nowrap;
   background: transparent;
-  /* Без анимации тени: при переключении она «догоняла» плашку и выглядела как фриз */
-  transition: background-color 90ms linear, color 90ms linear;
+  box-shadow: none;
+  transition: background-color 120ms linear, color 120ms linear, box-shadow 120ms linear;
 }
-[data-theme='glass'] .friend-tabs button:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+/* Hover: same glass as the active pill, only quieter */
+[data-theme='glass'] .friend-tabs button:hover {
+  color: var(--text);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
 [data-theme='glass'] .friend-tabs button.active {
   color: var(--text);
-  /* Glassy pill: translucent fill + thin light ring, no shadow */
-  background: rgba(255, 255, 255, 0.085) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+  /* Glass pill: gradient fill and one inner highlight, no outer ring */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0.07));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.16);
 }
+/* "Add friend" looks like any other tab: no accent fill */
 [data-theme='glass'] .friend-tabs .add-tab {
-  color: #fff;
-  background: color-mix(in srgb, var(--accent) 78%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: var(--muted);
+  background: transparent;
+  box-shadow: none;
 }
-[data-theme='glass'] .friend-tabs .add-tab:hover { background: color-mix(in srgb, var(--accent) 92%, transparent); }
+[data-theme='glass'] .friend-tabs .add-tab:hover {
+  color: var(--text);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
 
 [data-theme='glass'] .friends-body { padding: 6px 0 0; }
 [data-theme='glass'] .friends-head + .friends-body { border-top: 0; }
