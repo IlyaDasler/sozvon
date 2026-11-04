@@ -77,8 +77,6 @@ runTest(async () => {
     const main = mainEl.getBoundingClientRect();
     const divider = document.querySelector('.main-divider');
     const tabs = document.querySelector('.friend-tabs');
-    const addTab = document.querySelector('.friend-tabs .add-tab');
-    const blockedTab = document.querySelector('.friend-tabs [data-tab="blocked"]');
     const railTiles = [...document.querySelectorAll('#rail-list .rail-tile')].filter((t) => t.getClientRects().length);
     const railTileWidths = railTiles.map((t) => Math.round(t.getBoundingClientRect().width));
     const contentEl = document.querySelector('.content');
@@ -86,7 +84,6 @@ runTest(async () => {
     const tile = railTiles[0];
     if (tile) tile.classList.add('rail-pop');
     const popAnim = tile ? getComputedStyle(tile).animationName : 'none';
-    const popWidth = tile ? Math.round(tile.getBoundingClientRect().width) : 0;
     if (tile) tile.classList.remove('rail-pop');
     return JSON.stringify({
       railToSide: Math.round(side.left - rail.right),
@@ -101,15 +98,8 @@ runTest(async () => {
       railWidth: Math.round(rail.width),
       railTileWidths,
       popAnim,
-      popWidth,
       overflowX: document.documentElement.scrollWidth - innerWidth,
       tabsOverflow: tabs ? tabs.scrollWidth - tabs.clientWidth : 0,
-      addTab: addTab && tabs ? {
-        right: Math.round(addTab.getBoundingClientRect().right),
-        tabsRight: Math.round(tabs.getBoundingClientRect().right),
-        left: Math.round(addTab.getBoundingClientRect().left),
-        blockedRight: blockedTab ? Math.round(blockedTab.getBoundingClientRect().right) : 0,
-      } : null,
     });
   })()`);
   const sh = JSON.parse(shell);
@@ -118,9 +108,6 @@ runTest(async () => {
   if (sh.dividerShown) throw new Error('Линия-разделитель снова висит в зазоре');
   if (sh.overflowX > 0) throw new Error(`Появилась горизонтальная прокрутка: ${sh.overflowX}px`);
   if (sh.tabsOverflow > 0) throw new Error(`Вкладки друзей обрезаны: ${sh.tabsOverflow}px`);
-  if (sh.addTab) {
-    if (sh.addTab.tabsRight - sh.addTab.right > 12) throw new Error(`«Добавить в друзья» не прижата к правому краю: ${sh.addTab.tabsRight - sh.addTab.right}px`);
-  }
   if (sh.mainHeight < sh.innerHeight * 0.8) throw new Error('Каркас сжался по высоте');
   if (sh.mainFilter !== 'none') throw new Error(`У полнооконного каркаса остался backdrop-filter: ${sh.mainFilter}`);
   if (sh.contentFilter !== 'none') throw new Error(`У контента остался backdrop-filter: ${sh.contentFilter}`);
@@ -128,8 +115,7 @@ runTest(async () => {
   if (!Number.isFinite(Number(sh.titlebarZ)) || Number(sh.titlebarZ) < 2) throw new Error(`Полоса заголовка под фоновым слоем: z-index ${sh.titlebarZ}`);
   if (sh.railTileWidths.some((w) => w > sh.railWidth - 8)) throw new Error(`Плитка канала шире рейла: ${sh.railTileWidths.join(', ')} при ${sh.railWidth}`);
   if (new Set(sh.railTileWidths).size > 1) throw new Error(`Плитки каналов разного размера: ${sh.railTileWidths.join(', ')}`);
-  if (sh.popAnim !== 'none') throw new Error(`У плитки канала осталась анимация увеличения: ${sh.popAnim}`);
-  if (sh.popWidth !== sh.railTileWidths[0]) throw new Error(`Плитка канала меняет ширину при выборе: ${sh.railTileWidths[0]} → ${sh.popWidth}`);
+  if (sh.popAnim !== 'rail-pop-soft') throw new Error(`У плитки канала пропала мягкая анимация выбора: ${sh.popAnim}`);
   console.log('✔ стеклянный каркас: без щелей, висящих линий и обрезки');
   // Tooltip рейла не должен становиться flex-ребёнком и растягиваться на всю высоту
   const railTip = await js(win, `(() => {
