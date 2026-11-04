@@ -2273,17 +2273,7 @@ input[type='radio']:disabled { opacity: .45; cursor: default; }
   .composer-bar { min-width: 0; }
   .composer textarea { min-width: 0; }
 }
-/* ---------- Панель «План 3.0» ---------- */
-.plan-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.plan-title { font-weight: 700; font-size: var(--fs-section); }
-.plan-current { color: var(--accent); font-weight: 600; font-size: 13px; }
-.plan-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.plan-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; color: var(--text-2); }
-.plan-item .plan-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--muted); }
-.plan-item.done .plan-dot { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent); }
-.plan-item.now { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); }
-.plan-item.now .plan-dot { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent); }
-.plan-item.todo .plan-dot { background: color-mix(in srgb, var(--muted) 45%, transparent); }
+
 /* ---------- Плотность интерфейса (компактный режим) ---------- */
 [data-density='compact'] .contact,
 [data-density='compact'] .friend-row,
