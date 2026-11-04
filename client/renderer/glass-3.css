@@ -319,7 +319,18 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.10);
 }
 [data-theme='glass'] .friend-add-row input { color: var(--text); }
+
+/* Плейсхолдер не должен «мылиться»: явный цвет и полная непрозрачность */
+/* Плейсхолдер не должен «мылиться»: явный цвет и полная непрозрачность */
+[data-theme='glass'] .friend-add-row input {
+  font-weight: 500;
+}
+[data-theme='glass'] .friend-add-row input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
 [data-theme='glass'] .friend-add-row .btn.primary {
+  font-weight: 600;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--accent) 42%, transparent), color-mix(in srgb, var(--accent-2) 24%, transparent)),
     rgba(11, 14, 28, 0.45);
