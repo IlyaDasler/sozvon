@@ -213,6 +213,10 @@ func number(value any) (int64, bool) {
 }
 
 func (a *server) handleTyping(user *store.User, message map[string]any) {
+	// Настройка приватности сильнее клиента: старый клиент тоже не выдаст набор
+	if !user.PrivacyTyping {
+		return
+	}
 	if to, ok := number(message["to"]); ok && to != 0 {
 		friends, _ := a.store.AreFriends(user.ID, to)
 		if !friends {

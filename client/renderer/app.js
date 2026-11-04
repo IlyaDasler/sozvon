@@ -2374,6 +2374,7 @@ const SETTINGS_TABS = {
   sound: 'Звук и видео',
   notify: 'Уведомления',
   account: 'Аккаунт',
+  privacy: 'Данные и конфиденциальность',
   about: 'О приложении',
 };
 
@@ -2382,7 +2383,13 @@ function showSettingsTab(tab) {
   $('set-title').textContent = SETTINGS_TABS[current];
   for (const b of document.querySelectorAll('#set-nav [data-tab]')) b.classList.toggle('active', b.dataset.tab === current);
   for (const p of document.querySelectorAll('#settings .set-pane')) p.classList.toggle('hidden', p.dataset.pane !== current);
+  document.getElementById('privacy-subnav')?.classList.toggle('hidden', current !== 'privacy');
+  document.getElementById('settings')?.classList.toggle('privacy-mode', current === 'privacy');
   $('settings').querySelector('.set-body').scrollTop = 0;
+  if (current === 'privacy') {
+    showPrivacyPage(window.privacyPage || 'data');
+    renderPrivacySettings();
+  }
   if (current === 'account') {
     renderDevices();
     renderTwoFactor();
@@ -2394,10 +2401,9 @@ for (const b of document.querySelectorAll('#set-nav [data-tab]')) b.onclick = ()
 /** tab — раздел, который открыть (по кнопке настроек приходит событие щелчка — тогда «Профиль») */
 async function openSettings(tab) {
   showSettingsTab(typeof tab === 'string' ? tab : 'profile');
-  // Компоненты стекла и Meter перерисовываем после того, как вкладка показана
+  // Компоненты стекла перерисовываем после того, как вкладка показана
   setTimeout(() => {
     window.initGlassControls?.();
-    window.paintPlanMeterNow?.();
   }, 0);
   renderThemePicker();
   renderPttSettings();

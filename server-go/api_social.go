@@ -38,7 +38,7 @@ func (a *server) publicUser(user *store.User) map[string]any {
 	if user.BannerColor != "" {
 		body["bannerColor"] = user.BannerColor
 	}
-	if user.Game != "" {
+	if user.Game != "" && user.PrivacyGame {
 		body["game"] = user.Game
 	}
 	if user.NameColor != "" {
@@ -148,6 +148,10 @@ func (a *server) addContact(w http.ResponseWriter, r *http.Request) {
 		a.hub.Send(target.ID, map[string]any{"type": "contact:added", "user": a.userWithPresence(user)})
 		a.hub.Send(user.ID, map[string]any{"type": "contact:added", "user": a.userWithPresence(target), "accepted": true})
 	default:
+		if !target.FriendRequests {
+			fail(http.StatusForbidden, "Пользователь не принимает заявки в друзья").write(w)
+			return
+		}
 		if err := a.store.SendFriendRequest(user.ID, target.ID); err != nil {
 			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 			return
@@ -896,4 +900,48 @@ func (a *server) contactTheme(w http.ResponseWriter, r *http.Request) {
 	a.hub.Send(peerID, map[string]any{"type": "chat:theme", "userId": user.ID, "theme": value, "by": user.ID})
 	a.hub.Send(user.ID, map[string]any{"type": "chat:theme", "userId": peerID, "theme": value, "by": user.ID})
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "theme": value})
+}
+// updatePrivacy — настройки конфиденциальности: часть проверяет сервер, часть — клиент.
+func (a *server) updatePrivacy(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	var request struct {
+		Typing         *bool   `json:"typing"`
+		ReadReceipts   *bool   `json:"readReceipts"`
+		GameActivity   *bool   `json:"gameActivity"`
+		FriendRequests *bool   `json:"friendRequests"`
+		InvitePolicy   *string `json:"invitePolicy"`
+	}
+	if err := decode(r, &request); err != nil {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	typing := user.PrivacyTyping
+	read := user.PrivacyRead
+	game := user.PrivacyGame
+	requests := user.FriendRequests
+	invite := user.InvitePolicy
+	if request.Typing != nil {
+		typing = *request.Typing
+	}
+	if request.ReadReceipts != nil {
+		read = *request.ReadReceipts
+	}
+	if request.GameActivity != nil {
+		game = *request.GameActivity
+	}
+	if request.FriendRequests != nil {
+		requests = *request.FriendRequests
+	}
+	if request.InvitePolicy != nil {
+		if *request.InvitePolicy != "all" && *request.InvitePolicy != "friends" {
+			fail(http.StatusBadRequest, "Неверный вариант приглашений").write(w)
+			return
+		}
+		invite = *request.InvitePolicy
+	}
+	if err := a.store.SetPrivacy(user.ID, typing, read, game, requests, invite); err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	a.respondSelf(w, user.ID)
 }

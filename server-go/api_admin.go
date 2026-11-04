@@ -98,6 +98,13 @@ func (a *server) hubInvite(w http.ResponseWriter, r *http.Request) {
 			fail(http.StatusBadRequest, "Забаненного нельзя позвать в этот канал").write(w)
 			return
 		}
+		// Личная настройка: приглашения только от друзей
+		if target, err := a.store.UserByID(invited); err == nil && target.InvitePolicy == "friends" {
+			if friends, _ := a.store.AreFriends(user.ID, invited); !friends {
+				fail(http.StatusForbidden, target.DisplayName+" принимает приглашения только от друзей").write(w)
+				return
+			}
+		}
 	}
 	if err := a.store.InviteToHub(hubID, user.ID, request.UserIDs); err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)

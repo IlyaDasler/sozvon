@@ -465,6 +465,13 @@
         <button type="button" data-tab="sound">Звук и видео</button>
         <button type="button" data-tab="notify">Уведомления</button>
         <button type="button" data-tab="account">Аккаунт</button>
+        <button type="button" data-tab="privacy">Данные и приватность</button>
+        <div class="set-subnav hidden" id="privacy-subnav">
+          <button type="button" data-privacy="data">Как Созвон использует мои данные</button>
+          <button type="button" data-privacy="profile">Приватность профиля</button>
+          <button type="button" data-privacy="contact">Кто может со мной связываться</button>
+          <button type="button" data-privacy="crypto">Шифрование</button>
+        </div>
         <button type="button" data-tab="about">О приложении</button>
         <div class="rs-sep"></div>
         <button type="button" class="rs-danger" id="logout-btn">Выйти из аккаунта</button>
@@ -713,6 +720,73 @@
                 <label class="field grow"><span>Новый</span><input type="password" id="set-new-pass" autocomplete="new-password"></label>
               </div>
             </div>
+          </div>
+
+          <div class="set-pane" data-pane="privacy">
+            <section class="privacy-page" data-privacy-page="data">
+              <h3>Как Созвон использует мои данные</h3>
+              <p class="privacy-lead">Коротко: Созвон не собирает аналитику, не продаёт данные и не отправляет их сторонним сервисам. Всё, что нужно для работы, хранится на сервере, который вы выбрали.</p>
+              <div class="privacy-card">
+                <h4>Что хранится на сервере</h4>
+                <p>Профиль, сообщения, вложения и список ваших каналов. Это нужно, чтобы история была на всех ваших устройствах. Личные сообщения и файлы дополнительно шифруются на устройстве — сервер видит только зашифрованный конверт.</p>
+                <h4>Чего мы не делаем</h4>
+                <p>Не собираем статистику использования, не читаем переписку, не передаём данные рекламным сетям и не используем ваши сообщения для обучения моделей. В приложении нет сторонних трекеров.</p>
+                <h4>Кто может видеть данные</h4>
+                <p>Только участники ваших каналов и собеседники — в тех пределах, которые заданы вашими настройками приватности. Владелец сервера технически обслуживает базу, поэтому считайте его доверенным лицом, как и любого администратора.</p>
+              </div>
+            </section>
+
+            <section class="privacy-page hidden" data-privacy-page="profile">
+              <h3>Приватность профиля</h3>
+              <p class="privacy-lead">Что о вас видят другие участники. Изменения сохраняются сразу и действуют на всех устройствах.</p>
+              <div class="privacy-card">
+                <label class="privacy-row">
+                  <span class="privacy-text"><b>Показывать игру</b><span class="muted small">Друзья увидят, во что вы играете, в карточке профиля. Сама игра не запускается и не читается.</span></span>
+                  <input type="checkbox" class="switch" data-privacy-toggle="gameActivity">
+                </label>
+                <label class="privacy-row">
+                  <span class="privacy-text"><b>Показывать, что я печатаю</b><span class="muted small">Собеседник видит «печатает…». Текст при этом остаётся на устройстве и на сервер не уходит.</span></span>
+                  <input type="checkbox" class="switch" data-privacy-toggle="typing">
+                </label>
+              </div>
+            </section>
+
+            <section class="privacy-page hidden" data-privacy-page="contact">
+              <h3>Кто может со мной связываться</h3>
+              <p class="privacy-lead">Ограничьте незнакомцев: заявки и приглашения можно принимать только от друзей.</p>
+              <div class="privacy-card">
+                <label class="privacy-row">
+                  <span class="privacy-text"><b>Принимать заявки в друзья</b><span class="muted small">Если выключено, новый человек не сможет отправить вам заявку по логину. Уже существующие друзья и заявки не затрагиваются.</span></span>
+                  <input type="checkbox" class="switch" data-privacy-toggle="friendRequests">
+                </label>
+                <label class="privacy-row">
+                  <span class="privacy-text"><b>Приглашения в каналы</b><span class="muted small">Кто может позвать вас в новый канал. Это не мешает вам вступать самостоятельно.</span></span>
+                  <select id="privacy-invites" class="privacy-select" data-privacy-invite>
+                    <option value="all">Все участники</option>
+                    <option value="friends">Только друзья</option>
+                  </select>
+                </label>
+              </div>
+            </section>
+
+            <section class="privacy-page hidden" data-privacy-page="crypto">
+              <h3>Шифрование</h3>
+              <p class="privacy-lead">Шифрование включено всегда и не отключается настройкой — иначе пропадёт смысл защиты.</p>
+              <div class="privacy-card">
+                <div class="privacy-state">
+                  <span class="privacy-state-icon on"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+                  <span class="privacy-text"><b>Личные сообщения и каналы</b><span class="muted small">Сквозное шифрование: ключи создаются на устройствах, сервер получает только запечатанные копии для ваших устройств и не может прочитать переписку.</span></span>
+                </div>
+                <div class="privacy-state">
+                  <span class="privacy-state-icon on"><svg viewBox="0 0 24 24"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg></span>
+                  <span class="privacy-text"><b>Звонки, голос и трансляции</b><span class="muted small">Медиа шифруется ключом комнаты. Ключ передаётся участникам по защищённому каналу, а не хранится на сервере в открытом виде.</span></span>
+                </div>
+                <div class="privacy-state">
+                  <span class="privacy-state-icon on"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>
+                  <span class="privacy-text"><b>Ключ устройства</b><span class="muted small">При входе на новое устройство старые ключи переносятся только по вашему коду. Без него новая сессия не прочитает старую переписку.</span></span>
+                </div>
+              </div>
+            </section>
           </div>
 
           <div class="set-pane" data-pane="about">
@@ -1272,6 +1346,7 @@
   <script src="call.js"></script>
   <script src="vendor/livekit-client.umd.js"></script>
   <script src="sfu.js"></script>
+  <script src="privacy.js"></script>
   <script src="app.js"></script>
   <script src="ptt-keys.js"></script>
   <script src="voice-ui.js"></script>
