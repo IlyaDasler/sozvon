@@ -69,7 +69,6 @@ runTest(async () => {
   console.log('✔ панели начинаются ниже полосы заголовка');
 
   // ---------- Стеклянный каркас: одна поверхность, без щелей и висящих линий ----------
-  await waitFor(win, `document.querySelector('.main')?.classList.contains('lg-ready')`, 'слой преломления', 5000);
   const shell = await js(win, `(() => {
     const rail = document.querySelector('.rail').getBoundingClientRect();
     const side = document.querySelector('.sidebar').getBoundingClientRect();
@@ -84,8 +83,7 @@ runTest(async () => {
       mainHeight: Math.round(main.height),
       innerHeight: window.innerHeight,
       dividerShown: divider ? getComputedStyle(divider).display !== 'none' : false,
-      refractLayer: Boolean(mainEl.querySelector(':scope > .lg-refract-layer')),
-      refractFilter: (() => { const l = mainEl.querySelector(':scope > .lg-refract-layer'); return l ? getComputedStyle(l).backdropFilter : ''; })(),
+      mainFilter: getComputedStyle(mainEl).backdropFilter,
       overflowX: document.documentElement.scrollWidth - innerWidth,
       tabsOverflow: tabs ? tabs.scrollWidth - tabs.clientWidth : 0,
     });
@@ -97,7 +95,7 @@ runTest(async () => {
   if (sh.overflowX > 0) throw new Error(`Появилась горизонтальная прокрутка: ${sh.overflowX}px`);
   if (sh.tabsOverflow > 0) throw new Error(`Вкладки друзей обрезаны: ${sh.tabsOverflow}px`);
   if (sh.mainHeight < sh.innerHeight * 0.8) throw new Error('Каркас сжался по высоте');
-  if (!sh.refractLayer || !sh.refractFilter.includes('url(')) throw new Error('У стеклянного каркаса нет слоя преломления');
+  if (sh.mainFilter !== 'none') throw new Error(`У полнооконного каркаса остался backdrop-filter: ${sh.mainFilter}`);
   console.log('✔ стеклянный каркас: без щелей, висящих линий и обрезки');
 
   // ---------- Композер: «плюс» и поле внутри пилюли ----------
