@@ -759,3 +759,16 @@ html[data-theme='glass'] .members-head {
   }
   [data-theme='glass'] .friend-tabs button { height: 28px; }
 }
+
+/* Окно выбора области должно помещаться целиком: его max-height в процентах
+   считался от тесной сетки и включал прокрутку даже при свободном окне */
+[data-theme='glass'] .crop-card { height: auto; max-height: calc(100vh - 16px); }
+
+/* Бегущий блик старых слоёв выходит за пределы окна и превращается в лишнюю
+   прокрутку внутри карточек, у которых overflow: auto. Для них блик не нужен:
+   верхний свет даёт сам материал. */
+html[data-theme='glass'] .modal-card::before,
+html[data-theme='glass'] .profile-card::before {
+  content: none !important;
+  display: none !important;
+}
