@@ -97,6 +97,34 @@ runTest(async () => {
   if (sh.mainHeight < sh.innerHeight * 0.8) throw new Error('Каркас сжался по высоте');
   if (sh.mainFilter !== 'none') throw new Error(`У полнооконного каркаса остался backdrop-filter: ${sh.mainFilter}`);
   console.log('✔ стеклянный каркас: без щелей, висящих линий и обрезки');
+  // ---------- Кнопки просмотра трансляции не заходят под кнопки окна ----------
+  for (const [width, height] of [[1100, 720], [820, 620]]) {
+    await js(win, `document.documentElement.style.setProperty('--audit-width','${width}px'); true`);
+    win.setContentSize(width, height);
+    await sleep(500);
+    const fv = JSON.parse(await js(win, `(() => {
+      const f = document.getElementById('fullview');
+      f.classList.remove('hidden'); f.classList.add('show-bar');
+      const bar = f.querySelector('.fullview-bar');
+      const cs = getComputedStyle(bar);
+      const buttons = [...bar.querySelectorAll('.btn')].map((b) => b.getBoundingClientRect());
+      const labels = [...bar.querySelectorAll('.btn .label')].map((b) => getComputedStyle(b).display);
+      const out = {
+        top: parseFloat(cs.paddingTop),
+        right: Math.max(...buttons.map((b) => b.right)),
+        firstTop: Math.min(...buttons.map((b) => b.top)),
+        inner: innerWidth,
+        labels,
+      };
+      return JSON.stringify(out);
+    })()`));
+    if (fv.top < 40) throw new Error(`Кнопки полн(о)экранного просмотра под кнопками окна: отступ сверху ${fv.top}px`);
+    if (fv.right > fv.inner - 140) throw new Error(`Кнопки просмотра заходят под кнопки окна: правый край ${Math.round(fv.right)} при ширине ${fv.inner}`);
+    if (fv.inner <= 900 && fv.labels.some((v) => v !== 'none')) throw new Error('На узком окне подписи кнопок просмотра не скрыты');
+    await js(win, `document.getElementById('fullview').classList.add('hidden'); true`);
+  }
+  win.setContentSize(1100, 720); await sleep(300);
+  console.log('✔ кнопки просмотра трансляции не пересекают кнопки окна');
 
   // ---------- Композер: «плюс» и поле внутри пилюли ----------
   await js(win, `document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); openRoom(${room.id}); true`);

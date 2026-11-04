@@ -365,7 +365,8 @@ function placeFloating() {
   if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
     box.classList.remove('at-corner');
     box.style.left = `${Math.max(4, Math.min(pos.x, innerWidth - 120))}px`;
-    box.style.top = `${Math.max(4, Math.min(pos.y, innerHeight - 80))}px`;
+    const safeTop = document.documentElement.classList.contains('is-win') ? 44 : 4;
+    box.style.top = `${Math.max(safeTop, Math.min(pos.y, innerHeight - 80))}px`;
   } else {
     box.classList.add('at-corner');
     box.style.left = '';
@@ -520,7 +521,8 @@ addEventListener('pointermove', (e) => {
   if (!floatDrag) return;
   const box = floatBox();
   const x = Math.max(4, Math.min(e.clientX - floatDrag.dx, innerWidth - box.offsetWidth - 4));
-  const y = Math.max(4, Math.min(e.clientY - floatDrag.dy, innerHeight - box.offsetHeight - 4));
+  const safeTop = document.documentElement.classList.contains('is-win') ? 44 : 4;
+  const y = Math.max(safeTop, Math.min(e.clientY - floatDrag.dy, innerHeight - box.offsetHeight - 4));
   box.style.left = `${x}px`;
   box.style.top = `${y}px`;
   store.set('float:pos', { x, y });
