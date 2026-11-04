@@ -17,7 +17,6 @@
   --lg-spec: rgba(255, 255, 255, 0.22);
   --lg-shadow-near: 0 2px 6px rgba(2, 4, 12, 0.30);
   --lg-shadow-far: 0 28px 70px rgba(2, 4, 12, 0.48);
-  --lg-refract: url(#lg-refract);
 }
 
 /* ---------- 1. Фон: живые слои, которые преломляются ---------- */
@@ -28,15 +27,23 @@
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(38% 32% at 16% 18%, rgba(84, 128, 255, 0.42), transparent 70%),
-    radial-gradient(34% 30% at 82% 14%, rgba(178, 104, 255, 0.34), transparent 72%),
-    radial-gradient(44% 38% at 66% 86%, rgba(44, 208, 220, 0.26), transparent 72%),
-    radial-gradient(30% 26% at 26% 78%, rgba(255, 138, 190, 0.18), transparent 70%);
-  filter: blur(48px) saturate(140%);
+    /* крупные световые массы: синяя слева сверху, фиолетовая справа, тёплая снизу */
+    radial-gradient(32% 30% at 16% 18%, rgba(92, 142, 255, 0.88), transparent 70%),
+    radial-gradient(28% 26% at 82% 14%, rgba(186, 112, 255, 0.78), transparent 72%),
+    radial-gradient(38% 32% at 66% 86%, rgba(40, 218, 226, 0.62), transparent 72%),
+    radial-gradient(26% 24% at 26% 78%, rgba(255, 138, 190, 0.46), transparent 70%),
+    /* блики с более резкой границей: по ним видно, как линза гнёт кромку */
+    radial-gradient(circle at 88% 46%, rgba(206, 164, 255, 0.58) 0 5%, rgba(186, 146, 255, 0.10) 10%, transparent 23%),
+    radial-gradient(circle at 7% 56%, rgba(100, 180, 255, 0.52) 0 4%, rgba(86, 164, 255, 0.08) 9%, transparent 22%),
+    radial-gradient(circle at 42% 12%, rgba(120, 176, 255, 0.30) 0 3%, transparent 18%),
+    linear-gradient(118deg, transparent 24%, rgba(136, 176, 255, 0.10) 38%, transparent 50%),
+    linear-gradient(300deg, transparent 42%, rgba(176, 128, 255, 0.10) 56%, transparent 68%);
+  filter: blur(22px) saturate(160%);
   animation: lg-drift 26s ease-in-out infinite alternate;
   display: none;
 }
 html[data-theme='glass'] .lg-aurora { display: block; }
+
 @keyframes lg-drift {
   from { transform: translate3d(-2%, -1.5%, 0) scale(1); }
   to { transform: translate3d(2.5%, 2%, 0) scale(1.07); }
@@ -58,10 +65,7 @@ html[data-theme='glass'] .profile-card,
 html[data-theme='glass'] .notif-panel,
 html[data-theme='glass'] .toast,
 html[data-theme='glass'] .app-tip {
-  background:
-    radial-gradient(120% 80% at 50% -10%, rgba(255, 255, 255, 0.16), transparent 58%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.015) 44%),
-    var(--lg-tint);
+
   -webkit-backdrop-filter: blur(22px) saturate(185%) brightness(1.06);
   backdrop-filter: blur(22px) saturate(185%) brightness(1.06);
   border: 1px solid var(--lg-rim-side);
@@ -78,32 +82,9 @@ html[data-theme='glass'] .modal-card,
 html[data-theme='glass'] .popup-menu,
 html[data-theme='glass'] .chat-theme-pop,
 html[data-theme='glass'] .profile-card {
-  background:
-    radial-gradient(120% 80% at 50% -10%, rgba(255, 255, 255, 0.18), transparent 56%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 40%),
-    var(--lg-tint-strong);
+
   -webkit-backdrop-filter: blur(32px) saturate(190%) brightness(1.04);
   backdrop-filter: blur(32px) saturate(190%) brightness(1.04);
-}
-
-/* Преломление, если браузер умеет (Chromium) */
-html.lg-refract[data-theme='glass'] .sidebar,
-html.lg-refract[data-theme='glass'] .content,
-html.lg-refract[data-theme='glass'] .members-panel,
-html.lg-refract[data-theme='glass'] .thread-panel,
-html.lg-refract[data-theme='glass'] .modal-card,
-html.lg-refract[data-theme='glass'] .popup-menu,
-html.lg-refract[data-theme='glass'] .chat-theme-pop,
-html.lg-refract[data-theme='glass'] .profile-card,
-html.lg-refract[data-theme='glass'] .toast {
-  -webkit-backdrop-filter: var(--lg-refract) blur(18px) saturate(185%) brightness(1.06);
-  backdrop-filter: var(--lg-refract) blur(18px) saturate(185%) brightness(1.06);
-}
-html.lg-refract[data-theme='glass'] .modal-card,
-html.lg-refract[data-theme='glass'] .popup-menu,
-html.lg-refract[data-theme='glass'] .chat-theme-pop {
-  -webkit-backdrop-filter: var(--lg-refract) blur(26px) saturate(190%) brightness(1.04);
-  backdrop-filter: var(--lg-refract) blur(26px) saturate(190%) brightness(1.04);
 }
 
 /* Кромка-линза: тонкое радужное кольцо по периметру */

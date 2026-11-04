@@ -1,6 +1,6 @@
 // Проверка геометрии интерфейса: ничего не съезжает, не налезает и не вылезает.
 // Запуск (сервер должен работать): node_modules/electron/dist/electron.exe scripts/e2e-layout.js
-const { api, register, js, sleep, openClient, runTest } = require('./e2e-lib');
+const { api, register, js, waitFor, sleep, openClient, runTest } = require('./e2e-lib');
 
 const near = (a, b, tolerance = 1.5) => Math.abs(a - b) <= tolerance;
 
@@ -69,11 +69,13 @@ runTest(async () => {
   console.log('✔ панели начинаются ниже полосы заголовка');
 
   // ---------- Стеклянный каркас: одна поверхность, без щелей и висящих линий ----------
+  await waitFor(win, `document.querySelector('.main')?.classList.contains('lg-ready')`, 'слой преломления', 5000);
   const shell = await js(win, `(() => {
     const rail = document.querySelector('.rail').getBoundingClientRect();
     const side = document.querySelector('.sidebar').getBoundingClientRect();
     const content = document.querySelector('.content').getBoundingClientRect();
-    const main = document.querySelector('.main').getBoundingClientRect();
+    const mainEl = document.querySelector('.main');
+    const main = mainEl.getBoundingClientRect();
     const divider = document.querySelector('.main-divider');
     const tabs = document.querySelector('.friend-tabs');
     return JSON.stringify({
@@ -82,6 +84,8 @@ runTest(async () => {
       mainHeight: Math.round(main.height),
       innerHeight: window.innerHeight,
       dividerShown: divider ? getComputedStyle(divider).display !== 'none' : false,
+      refractLayer: Boolean(mainEl.querySelector(':scope > .lg-refract-layer')),
+      refractFilter: (() => { const l = mainEl.querySelector(':scope > .lg-refract-layer'); return l ? getComputedStyle(l).backdropFilter : ''; })(),
       overflowX: document.documentElement.scrollWidth - innerWidth,
       tabsOverflow: tabs ? tabs.scrollWidth - tabs.clientWidth : 0,
     });
@@ -93,6 +97,7 @@ runTest(async () => {
   if (sh.overflowX > 0) throw new Error(`Появилась горизонтальная прокрутка: ${sh.overflowX}px`);
   if (sh.tabsOverflow > 0) throw new Error(`Вкладки друзей обрезаны: ${sh.tabsOverflow}px`);
   if (sh.mainHeight < sh.innerHeight * 0.8) throw new Error('Каркас сжался по высоте');
+  if (!sh.refractLayer || !sh.refractFilter.includes('url(')) throw new Error('У стеклянного каркаса нет слоя преломления');
   console.log('✔ стеклянный каркас: без щелей, висящих линий и обрезки');
 
   // ---------- Композер: «плюс» и поле внутри пилюли ----------
