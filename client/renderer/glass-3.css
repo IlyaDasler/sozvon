@@ -26,10 +26,10 @@
   border-radius: var(--shell-radius);
   border: 1px solid var(--pane-line-strong);
   background:
-    radial-gradient(120% 130% at 6% -16%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 58%),
-    radial-gradient(90% 110% at 104% 112%, color-mix(in srgb, var(--accent-2) 13%, transparent), transparent 62%),
+    radial-gradient(120% 130% at 6% -16%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 58%),
+    radial-gradient(90% 110% at 104% 112%, color-mix(in srgb, var(--accent-2) 9%, transparent), transparent 62%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012) 34%, transparent 68%),
-    rgba(10, 14, 28, 0.56);
+    rgba(10, 14, 28, 0.08);
   -webkit-backdrop-filter: blur(30px) saturate(165%) brightness(1.03);
   backdrop-filter: blur(30px) saturate(165%) brightness(1.03);
   box-shadow:
@@ -388,27 +388,6 @@
 
 /* ---------- 6. Карточка профиля: рядом с якорем, без обрезки и скачков ---------- */
 
-/* .lens-surface (эффект линзы) ставит position: relative. Для плавающих слоёв это
-   ломало каркас: карточка профиля становилась flex-элементом body и сжимала окно,
-   меню и тосты уезжали в поток. Возвращаем каждому его настоящее позиционирование:
-   линза работает внутри поверхности и не меняет геометрию. */
-html[data-theme='glass'] .profile-card.lens-surface,
-html[data-theme='glass'] .popup-menu.lens-surface,
-html[data-theme='glass'] .gif-popover.lens-surface,
-html[data-theme='glass'] .toast.lens-surface,
-html[data-theme='glass'] .chat-theme-pop.lens-surface {
-  position: fixed !important;
-  isolation: isolate;
-}
-html[data-theme='glass'] .thread-panel.lens-surface {
-  position: absolute !important;
-  isolation: isolate;
-}
-html[data-theme='glass'] .notif-panel.lens-surface {
-  position: absolute !important;
-  isolation: isolate;
-}
-
 [data-theme='glass'] .profile-card {
   width: 320px;
   max-height: min(560px, calc(100vh - 24px));
@@ -416,7 +395,7 @@ html[data-theme='glass'] .notif-panel.lens-surface {
   border: 1px solid var(--pane-line-strong);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.012) 30%, transparent 60%),
-    linear-gradient(180deg, rgba(22, 28, 48, 0.86), rgba(13, 18, 34, 0.92));
+    linear-gradient(180deg, rgba(22, 28, 48, 0.32), rgba(13, 18, 34, 0.44));
   -webkit-backdrop-filter: blur(38px) saturate(175%);
   backdrop-filter: blur(38px) saturate(175%);
   box-shadow:
@@ -614,7 +593,7 @@ html[data-theme='glass'] .members-head {
 [data-theme='glass'] .thread-panel {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.012) 32%, transparent 62%),
-    rgba(14, 19, 36, 0.92);
+    rgba(14, 19, 36, 0.40);
   -webkit-backdrop-filter: blur(34px) saturate(175%);
   backdrop-filter: blur(34px) saturate(175%);
   border: 1px solid var(--pane-line-strong);
@@ -717,7 +696,7 @@ html[data-theme='glass'] .members-head {
 [data-theme='glass'] .modal-card {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.012) 34%, transparent 62%),
-    rgba(18, 24, 42, 0.82);
+    rgba(18, 24, 42, 0.32);
   -webkit-backdrop-filter: blur(36px) saturate(180%);
   backdrop-filter: blur(36px) saturate(180%);
   border: 1px solid var(--pane-line-strong);
