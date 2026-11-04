@@ -308,8 +308,9 @@
 
 /* Форма «Добавить в друзья»: поле и кнопка в том же стекле, без синего кольца */
 [data-theme='glass'] .friend-add-row {
-  padding: 5px 5px 5px 14px;
-  border-radius: 14px;
+  padding: 0 4px 0 12px;
+  height: 34px;
+  border-radius: 11px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
   border: 1px solid var(--pane-line);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -319,6 +320,15 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.10);
 }
 [data-theme='glass'] .friend-add-row input { color: var(--text); }
+[data-theme='glass'] .friend-add-row .btn.primary {
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 9px;
+  font-size: 12.5px;
+}
+/* Поле стоит первым, текст — под ним; отступы спокойные */
+[data-theme='glass'] .friend-add h3 { margin: 14px 0 6px; }
+[data-theme='glass'] .friend-add > p.muted { margin: 0; }
 
 /* Плейсхолдер не должен «мылиться»: явный цвет и полная непрозрачность */
 /* Плейсхолдер не должен «мылиться»: явный цвет и полная непрозрачность */
