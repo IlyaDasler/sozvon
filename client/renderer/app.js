@@ -2368,9 +2368,6 @@ function renderPasswordSection() {
 }
 
 // Разделы настроек: какой открыт и как он называется в шапке
-// Пункт «План 3.0» — внутренний. Перед большим релизом ставим false:
-// вкладка исчезает, раздел и Meter не показываются (см. docs/release-checklist.md)
-const PLAN_ENABLED = true;
 const SETTINGS_TABS = {
   profile: 'Профиль',
   look: 'Оформление',
@@ -2378,15 +2375,7 @@ const SETTINGS_TABS = {
   notify: 'Уведомления',
   account: 'Аккаунт',
   about: 'О приложении',
-  plan: 'План 3.0',
 };
-
-// Внутренний раздел выключен — убираем пункт навигации и панель до отрисовки
-if (!PLAN_ENABLED) {
-  delete SETTINGS_TABS.plan;
-  document.querySelector('[data-tab="plan"]')?.remove();
-  document.querySelector('[data-pane="plan"]')?.remove();
-}
 
 function showSettingsTab(tab) {
   const current = SETTINGS_TABS[tab] ? tab : 'profile';

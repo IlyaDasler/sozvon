@@ -113,27 +113,7 @@
     paint();
   }
 
-  // ---------- Meter в «Плане 3.0»: сколько пунктов готово ----------
-  function paintPlanMeter() {
-    const list = document.getElementById('plan-list');
-    const host = document.querySelector('.plan-head');
-    if (!list || !host) return;
-    let meter = document.getElementById('plan-meter');
-    if (!meter) {
-      meter = document.createElement('div');
-      meter.id = 'plan-meter';
-      meter.innerHTML =
-        '<div class="meter-row"><span>Готовность:</span><b id="plan-meter-value">0 из 0</b></div>' +
-        '<div class="meter" role="meter" aria-valuemin="0" aria-valuemax="100"><div class="meter-fill" style="width:0%"></div></div>';
-      host.after(meter);
-    }
-    const items = [...list.querySelectorAll('.plan-item')];
-    const done = items.filter((item) => item.classList.contains('done')).length;
-    const percent = items.length ? Math.round((done / items.length) * 100) : 0;
-    meter.querySelector('#plan-meter-value').textContent = `${done} из ${items.length}`;
-    meter.querySelector('.meter-fill').style.width = percent + '%';
-    meter.querySelector('.meter').setAttribute('aria-valuenow', String(percent));
-  }
+  // ---------- Стеклянные поля и контролы настроек ----------
 
   function start() {
     // Разметка настроек статичная — одного прохода достаточно.
@@ -144,22 +124,10 @@
     if (totp) addOtp(totp);
   }
 
-  // Meter рисуем после того, как «План 3.0» отрендерил список
-  function startMeter() {
-    let attempts = 0;
-    const tick = () => {
-      paintPlanMeter();
-      if (++attempts < 20 && !document.querySelector('#plan-list .plan-item')) setTimeout(tick, 250);
-    };
-    tick();
-  }
-
   window.initGlassControls = start;
-  window.paintPlanMeterNow = paintPlanMeter;
 
   function boot() {
     start();
-    startMeter();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

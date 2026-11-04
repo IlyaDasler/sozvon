@@ -128,15 +128,5 @@ runTest(async () => {
   if (sizes.collapse && (sizes.collapse.h < 24 || !sizes.collapse.centered))
     throw new Error('Collapsible: заголовок не по центру');
 
-  await js(win, `openSettings('plan'); true`);
-  await sleep(500);
-  const meter = JSON.parse(await js(win, `(() => {
-    const fill = document.querySelector('#plan-meter .meter-fill');
-    const row = document.querySelector('#plan-meter .meter-row');
-    const bar = document.querySelector('#plan-meter .meter');
-    return JSON.stringify({ width: fill ? parseFloat(fill.style.width) : -1, aligned: row && bar ? Math.abs(row.getBoundingClientRect().left - bar.getBoundingClientRect().left) <= 1 : false });
-  })()`));
-  if (meter.width < 0 || meter.width > 100) throw new Error('Meter: ширина вне 0..100');
-  if (!meter.aligned) throw new Error('Meter: подпись не совпадает с полосой');
   console.log('✔ отступы и центрирование: наложений и слипаний нет');
 });
