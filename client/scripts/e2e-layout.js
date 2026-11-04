@@ -77,6 +77,15 @@ runTest(async () => {
     const main = mainEl.getBoundingClientRect();
     const divider = document.querySelector('.main-divider');
     const tabs = document.querySelector('.friend-tabs');
+    const railTiles = [...document.querySelectorAll('#rail-list .rail-tile')].filter((t) => t.getClientRects().length);
+    const railTileWidths = railTiles.map((t) => Math.round(t.getBoundingClientRect().width));
+    const contentEl = document.querySelector('.content');
+    const contentCss = getComputedStyle(contentEl);
+    const tile = railTiles[0];
+    if (tile) tile.classList.add('rail-pop');
+    const popAnim = tile ? getComputedStyle(tile).animationName : 'none';
+    const popWidth = tile ? Math.round(tile.getBoundingClientRect().width) : 0;
+    if (tile) tile.classList.remove('rail-pop');
     return JSON.stringify({
       railToSide: Math.round(side.left - rail.right),
       sideToContent: Math.round(content.left - side.right),
@@ -84,6 +93,12 @@ runTest(async () => {
       innerHeight: window.innerHeight,
       dividerShown: divider ? getComputedStyle(divider).display !== 'none' : false,
       mainFilter: getComputedStyle(mainEl).backdropFilter,
+      contentFilter: contentCss.backdropFilter,
+      contentRadius: contentCss.borderTopLeftRadius,
+      railWidth: Math.round(rail.width),
+      railTileWidths,
+      popAnim,
+      popWidth,
       overflowX: document.documentElement.scrollWidth - innerWidth,
       tabsOverflow: tabs ? tabs.scrollWidth - tabs.clientWidth : 0,
     });
@@ -96,6 +111,12 @@ runTest(async () => {
   if (sh.tabsOverflow > 0) throw new Error(`Вкладки друзей обрезаны: ${sh.tabsOverflow}px`);
   if (sh.mainHeight < sh.innerHeight * 0.8) throw new Error('Каркас сжался по высоте');
   if (sh.mainFilter !== 'none') throw new Error(`У полнооконного каркаса остался backdrop-filter: ${sh.mainFilter}`);
+  if (sh.contentFilter !== 'none') throw new Error(`У контента остался backdrop-filter: ${sh.contentFilter}`);
+  if (sh.contentRadius !== '0px') throw new Error(`Контент снова стал карточкой внутри окна: radius ${sh.contentRadius}`);
+  if (sh.railTileWidths.some((w) => w > sh.railWidth - 8)) throw new Error(`Плитка канала шире рейла: ${sh.railTileWidths.join(', ')} при ${sh.railWidth}`);
+  if (new Set(sh.railTileWidths).size > 1) throw new Error(`Плитки каналов разного размера: ${sh.railTileWidths.join(', ')}`);
+  if (sh.popAnim !== 'none') throw new Error(`У плитки канала осталась анимация увеличения: ${sh.popAnim}`);
+  if (sh.popWidth !== sh.railTileWidths[0]) throw new Error(`Плитка канала меняет ширину при выборе: ${sh.railTileWidths[0]} → ${sh.popWidth}`);
   console.log('✔ стеклянный каркас: без щелей, висящих линий и обрезки');
   // ---------- Кнопки просмотра трансляции не заходят под кнопки окна ----------
   for (const [width, height] of [[1100, 720], [820, 620]]) {
