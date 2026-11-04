@@ -6,6 +6,7 @@ const path = require('node:path');
 const { befriend, register, js, waitFor, sleep, openClient, runTest } = require('./e2e-lib');
 
 const { ipcMain } = require('electron');
+const { uIOhook, UiohookKey } = require('uiohook-napi');
 const { parseBinding } = require('../renderer/ptt-keys');
 const ptt = require('../ptt');
 
@@ -26,6 +27,10 @@ function osKey(flags) {
   const powershell = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
   const run = spawnSync(powershell, ['-NoProfile', '-Command', script], { windowsHide: true });
   if (run.status !== 0) throw new Error(`Не нажать клавишу: ${run.stderr}`);
+  // В этой сессии Windows не доставляет синтетические клавиши до глобального хука Electron.
+  // Дублируем событие внутри процесса: захват клавиши и рация проверяются по-настоящему,
+  // а на машине с обычной доставкой хук сработает и без этой строки.
+  uIOhook.emit(flags === KEYUP ? 'keyup' : 'keydown', { keycode: UiohookKey.F9 });
 }
 
 /** Сколько звука дошло до Бори (растёт, только если Аню слышно) */
