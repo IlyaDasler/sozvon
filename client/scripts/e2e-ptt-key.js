@@ -2,6 +2,7 @@
 // Боря слышит Аню, только пока Аня держит клавишу. Запуск (сервер должен работать):
 //   node_modules/electron/dist/electron.exe scripts/e2e-ptt-key.js
 const { spawnSync } = require('child_process');
+const path = require('node:path');
 const { befriend, register, js, waitFor, sleep, openClient, runTest } = require('./e2e-lib');
 
 const { ipcMain } = require('electron');
@@ -22,7 +23,8 @@ const KEYUP = 2;
 /** Нажатие на уровне системы: так же, как с клавиатуры, в обход окна */
 function osKey(flags) {
   const script = `Add-Type -Name K -Namespace E2E -MemberDefinition '[DllImport("user32.dll")] public static extern void keybd_event(byte k, byte s, uint f, System.UIntPtr e);'; [E2E.K]::keybd_event(${F9}, 0, ${flags}, [UIntPtr]::Zero)`;
-  const run = spawnSync('powershell', ['-NoProfile', '-Command', script]);
+  const powershell = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  const run = spawnSync(powershell, ['-NoProfile', '-Command', script], { windowsHide: true });
   if (run.status !== 0) throw new Error(`Не нажать клавишу: ${run.stderr}`);
 }
 
