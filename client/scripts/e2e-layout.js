@@ -68,6 +68,33 @@ runTest(async () => {
   if (p.sideTop < p.barH || p.contentTop < p.barH) throw new Error('Панели залезли под полосу заголовка');
   console.log('✔ панели начинаются ниже полосы заголовка');
 
+  // ---------- Стеклянный каркас: одна поверхность, без щелей и висящих линий ----------
+  const shell = await js(win, `(() => {
+    const rail = document.querySelector('.rail').getBoundingClientRect();
+    const side = document.querySelector('.sidebar').getBoundingClientRect();
+    const content = document.querySelector('.content').getBoundingClientRect();
+    const main = document.querySelector('.main').getBoundingClientRect();
+    const divider = document.querySelector('.main-divider');
+    const tabs = document.querySelector('.friend-tabs');
+    return JSON.stringify({
+      railToSide: Math.round(side.left - rail.right),
+      sideToContent: Math.round(content.left - side.right),
+      mainHeight: Math.round(main.height),
+      innerHeight: window.innerHeight,
+      dividerShown: divider ? getComputedStyle(divider).display !== 'none' : false,
+      overflowX: document.documentElement.scrollWidth - innerWidth,
+      tabsOverflow: tabs ? tabs.scrollWidth - tabs.clientWidth : 0,
+    });
+  })()`);
+  const sh = JSON.parse(shell);
+  if (!near(sh.railToSide, 0)) throw new Error(`Щель между рейлом и списком: ${sh.railToSide}px`);
+  if (!near(sh.sideToContent, 0)) throw new Error(`Щель между списком и контентом: ${sh.sideToContent}px`);
+  if (sh.dividerShown) throw new Error('Линия-разделитель снова висит в зазоре');
+  if (sh.overflowX > 0) throw new Error(`Появилась горизонтальная прокрутка: ${sh.overflowX}px`);
+  if (sh.tabsOverflow > 0) throw new Error(`Вкладки друзей обрезаны: ${sh.tabsOverflow}px`);
+  if (sh.mainHeight < sh.innerHeight * 0.8) throw new Error('Каркас сжался по высоте');
+  console.log('✔ стеклянный каркас: без щелей, висящих линий и обрезки');
+
   // ---------- Композер: «плюс» и поле внутри пилюли ----------
   await js(win, `document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); openRoom(${room.id}); true`);
   await sleep(800);

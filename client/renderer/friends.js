@@ -141,14 +141,25 @@ function renderFriends() {
 
   const query = $('friend-search').value.trim().toLowerCase();
   const all = friendsOfTab(friendsTab);
+  const hasFriends = state.contacts.size > 0;
   const shown = all.filter((u) => !query || `${u.displayName} ${u.username}`.toLowerCase().includes(query));
   $('friends-list-title').textContent = `${FRIEND_TABS[friendsTab].title} — ${shown.length}`;
   const list = $('friends-list');
   list.replaceChildren(...shown.map((u) => friendRow(u, friendsTab)));
   const tab = FRIEND_TABS[friendsTab];
-  $('friends-empty').replaceChildren(all.length ? mascot('Никого не нашли', '', { small: true }) : mascot(tab.emptyTitle, tab.empty));
+  let empty;
+  if (query && all.length) empty = mascot('Никого не нашли', '', { small: true });
+  else if (!hasFriends)
+    empty = mascot(tab.emptyTitle, tab.empty, {
+      actions: [
+        { label: 'Добавить друга', primary: true, run: () => showFriendsTab('add') },
+        { label: 'Создать канал', run: () => $('rail-add').click() },
+      ],
+    });
+  else empty = mascot(tab.emptyTitle, tab.empty);
+  $('friends-empty').replaceChildren(empty);
   $('friends-empty').classList.toggle('hidden', shown.length > 0);
-  $('friend-search').classList.toggle('hidden', !all.length);
+  $('friend-search').classList.toggle('hidden', !hasFriends);
 }
 
 function showFriendsTab(tab) {

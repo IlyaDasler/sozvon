@@ -29,7 +29,7 @@ const SOVON_SVG = `<svg class="sovon" viewBox="0 0 160 160" aria-hidden="true">
 </svg>`;
 
 /** Пустое место с Совоном: картинка, заголовок и подсказка (small — для узких мест) */
-function mascot(title, text, { small = false } = {}) {
+function mascot(title, text, { small = false, actions = [] } = {}) {
   const box = document.createElement('div');
   box.className = `mascot${small ? ' small' : ''}`;
   box.innerHTML = SOVON_SVG;
@@ -42,6 +42,20 @@ function mascot(title, text, { small = false } = {}) {
     p.className = 'muted';
     p.textContent = text;
     box.append(p);
+  }
+  if (actions.length) {
+    const row = document.createElement('div');
+    row.className = 'mascot-actions';
+    for (const action of actions) {
+      const button = Object.assign(document.createElement('button'), {
+        type: 'button',
+        className: action.primary ? 'btn primary' : 'btn',
+        textContent: action.label,
+      });
+      button.onclick = action.run;
+      row.append(button);
+    }
+    box.append(row);
   }
   return box;
 }
