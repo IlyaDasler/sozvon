@@ -916,3 +916,11 @@ html[data-theme='glass'] .app-tip {
   border: 1px solid var(--pane-line-strong);
   box-shadow: 0 20px 50px rgba(2, 4, 10, 0.45);
 }
+
+/* Голосовая комната: подключение отдельной кнопкой, переписка открывается сразу */
+html[data-theme='glass'] .room-voice-join {
+  margin-top: 12px;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+}
