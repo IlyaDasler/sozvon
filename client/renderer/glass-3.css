@@ -245,10 +245,11 @@
   align-items: center;
   gap: 2px;
   padding: 3px;
-  border: 1px solid var(--pane-line);
+  /* Дорожка как «углубление», без рамки: её обводка читалась второй подсветкой рядом с активной вкладкой */
+  border: 0;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.035);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: transparent;
+  box-shadow: none;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -271,8 +272,9 @@
 [data-theme='glass'] .friend-tabs button:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
 [data-theme='glass'] .friend-tabs button.active {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.115);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.075);
+  /* Одна подсветка: мягкая заливка и тень. Внутренние обводки давали «двойной» вид */
+  background: rgba(255, 255, 255, 0.13) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
 }
 [data-theme='glass'] .friend-tabs .add-tab {
   color: #fff;

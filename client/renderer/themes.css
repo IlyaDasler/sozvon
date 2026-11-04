@@ -224,22 +224,7 @@
   border-bottom: 1px solid var(--line);
 }
 
-/* Сегментированный контрол вкладок, как в macOS */
-[data-theme='glass'] .friend-tabs {
-  gap: 2px;
-  padding: 3px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, calc(var(--glass-a) * .8));
-  border: 1px solid var(--line);
-}
-[data-theme='glass'] .friend-tabs button {
-  border-radius: 8px;
-  padding: 4px 10px;
-}
-[data-theme='glass'] .friend-tabs button.active {
-  background: rgba(255, 255, 255, calc(var(--glass-a) * 2.4));
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
-}
+/* Вкладки друзей в стеклянной теме описаны в glass-3.css: старый блок давал вторую подсветку активной вкладки. */
 
 /* Поле ввода — плавающая «пилюля» */
 [data-theme='glass'] .composer {
