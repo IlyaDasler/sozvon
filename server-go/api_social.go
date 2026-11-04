@@ -572,17 +572,10 @@ func (a *server) notifyRoom(roomID int64) {
 		return
 	}
 	body := a.roomJSON(room)
-	ids := make([]int64, 0)
-	if room.HubID != nil {
-		if hub, err := a.store.HubByID(*room.HubID); err == nil {
-			for _, member := range hub.Members {
-				ids = append(ids, member.User.ID)
-			}
-		}
-	} else {
-		for _, member := range room.Members {
-			ids = append(ids, member.User.ID)
-		}
+	// Слушатели комнаты — её участники: в канале это все, кого позвали, а в старой комнате — только приглашённые
+	ids := make([]int64, 0, len(room.Members))
+	for _, member := range room.Members {
+		ids = append(ids, member.User.ID)
 	}
 	for _, id := range ids {
 		a.hub.Send(id, map[string]any{"type": "room:updated", "room": body})
@@ -611,8 +604,52 @@ func (a *server) createRoom(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusBadRequest, "Название комнаты: от 1 до 40 символов").write(w)
 		return
 	}
+	// Старые версии не знают о каналах: их комната попадает в первый канал создателя,
+	// а участники — только создатель и позванные друзья.
 	if request.HubID == 0 {
-		fail(http.StatusBadRequest, "Не указан канал").write(w)
+		hubID := int64(0)
+		if hubs, err := a.store.HubsOf(user.ID); err == nil {
+			for _, hub := range hubs {
+				if hub.OwnerID == user.ID {
+					hubID = hub.ID
+					break
+				}
+			}
+		}
+		if hubID == 0 {
+			hubName := "Канал " + user.DisplayName
+			if runes := []rune(hubName); len(runes) > 40 {
+				hubName = string(runes[:40])
+			}
+			hub, err := a.store.CreateHub(user.ID, hubName, user.AvatarColor)
+			if err != nil {
+				fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+				return
+			}
+			hubID = hub.ID
+		}
+		for _, memberID := range request.MemberIDs {
+			if memberID == user.ID {
+				continue
+			}
+			if friends, err := a.store.AreFriends(user.ID, memberID); err != nil || !friends {
+				fail(http.StatusBadRequest, "Добавлять в комнату можно только своих друзей").write(w)
+				return
+			}
+		}
+		room, err := a.store.CreateLegacyRoom(hubID, user.ID, name, request.Kind, request.Private)
+		if err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+		for _, memberID := range request.MemberIDs {
+			if memberID != user.ID {
+				_ = a.store.AddRoomMember(room.ID, memberID)
+			}
+		}
+		a.broadcastHub(hubID)
+		a.notifyRoom(room.ID)
+		writeJSON(w, http.StatusOK, a.roomJSON(room))
 		return
 	}
 	member, err := a.store.IsHubMember(request.HubID, user.ID)

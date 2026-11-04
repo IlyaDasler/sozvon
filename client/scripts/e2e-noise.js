@@ -101,7 +101,7 @@ app.whenReady().then(async () => {
     // Живой микрофон: с шумоподавлением дорожка идёт через нейросеть, звук не пропадает
     const live = await js(`(async () => {
       const local = new LocalMedia(() => {});
-      await local.openMic({ micId: '', noiseSuppression: true });
+      await local.openMic({ micId: '', noiseLevel: 2 });
       const track = local.tracks.mic;
       const ctx = new AudioContext();
       const an = ctx.createAnalyser();
@@ -131,11 +131,11 @@ app.whenReady().then(async () => {
         ctx.close();
         return peak;
       };
-      await local.openMic({ micId: '', noiseSuppression: true });
+      await local.openMic({ micId: '', noiseLevel: 2 });
       const first = await peakOf();
-      await local.openMic({ micId: '', noiseSuppression: false });
+      await local.openMic({ micId: '', noiseLevel: 0 });
       const off = await peakOf();
-      await local.openMic({ micId: '', noiseSuppression: true });
+      await local.openMic({ micId: '', noiseLevel: 2 });
       const second = await peakOf();
       const state = local.tracks.mic.readyState;
       local.close();

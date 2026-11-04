@@ -111,10 +111,10 @@ func (s *Store) CreateHub(ownerID int64, name, iconColor string) (*HubRow, error
 		return nil, err
 	}
 	// Как в Node: при создании канала сразу появляются голосовая и общий чат
-	if _, err := createRoomTx(tx, hubID, ownerID, "Голосовая", "voice", false); err != nil {
+	if _, err := createRoomTx(tx, hubID, ownerID, "Голосовая", "voice", false, true); err != nil {
 		return nil, err
 	}
-	if _, err := createRoomTx(tx, hubID, ownerID, "Общий чат", "text", false); err != nil {
+	if _, err := createRoomTx(tx, hubID, ownerID, "Общий чат", "text", false, true); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -129,7 +129,7 @@ func (s *Store) CreateRoom(hubID, ownerID int64, name, kind string, private bool
 		return nil, err
 	}
 	defer tx.Rollback()
-	id, err := createRoomTx(tx, hubID, ownerID, name, kind, private)
+	id, err := createRoomTx(tx, hubID, ownerID, name, kind, private, true)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,24 @@ func (s *Store) CreateRoom(hubID, ownerID int64, name, kind string, private bool
 	return s.RoomByID(id)
 }
 
-func createRoomTx(tx *sql.Tx, hubID, ownerID int64, name, kind string, private bool) (int64, error) {
+// CreateLegacyRoom — комната старых версий: только создатель и позванные, без всех участников канала.
+func (s *Store) CreateLegacyRoom(hubID, ownerID int64, name, kind string, private bool) (*RoomRow, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	id, err := createRoomTx(tx, hubID, ownerID, name, kind, private, false)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return s.RoomByID(id)
+}
+
+func createRoomTx(tx *sql.Tx, hubID, ownerID int64, name, kind string, private bool, everyone bool) (int64, error) {
 	now := time.Now().UnixMilli()
 	var position int64
 	if err := tx.QueryRow(`SELECT COALESCE(MAX(position), 0) + 1 FROM rooms WHERE hub_id = ?`, hubID).Scan(&position); err != nil {
@@ -180,11 +197,13 @@ func createRoomTx(tx *sql.Tx, hubID, ownerID int64, name, kind string, private b
 		return 0, err
 	}
 	// Все участники канала сразу в комнате, как rooms.create(...,{everyone:true}) в Node
-	if _, err := tx.Exec(
-		`INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) SELECT ?, user_id, ? FROM hub_members WHERE hub_id = ?`,
-		roomID, now, hubID,
-	); err != nil {
-		return 0, err
+	if everyone {
+		if _, err := tx.Exec(
+			`INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) SELECT ?, user_id, ? FROM hub_members WHERE hub_id = ?`,
+			roomID, now, hubID,
+		); err != nil {
+			return 0, err
+		}
 	}
 	return roomID, nil
 }
