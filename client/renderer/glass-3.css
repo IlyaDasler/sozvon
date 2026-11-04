@@ -122,7 +122,7 @@
 /* ---------- 3. Список: вторая колонка, отделённая линией ---------- */
 
 [data-theme='glass'] .sidebar {
-  width: clamp(238px, 23vw, 286px) !important;
+  width: var(--sidebar-w, 248px) !important;
   background: linear-gradient(180deg, var(--pane-tint), transparent 46%), rgba(8, 12, 24, 0.14);
   border: 0;
   border-right: 1px solid var(--pane-line);
@@ -297,9 +297,10 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
-[data-theme='glass'] .friends-body { padding: 6px 0 0; }
+[data-theme='glass'] .friends-body { padding: 6px 18px 0; }
+[data-theme='glass'] .friend-row { margin: 0; padding: 10px 10px; border-radius: 10px; }
 [data-theme='glass'] .friends-head + .friends-body { border-top: 0; }
-[data-theme='glass'] .friends-body .list-title { padding: 14px 20px 8px; }
+[data-theme='glass'] .friends-body .list-title { padding: 14px 0 8px; }
 
 /* Пустое состояние: спокойная композиция, без «карточки в карточке» */
 [data-theme='glass'] .friends-view .empty,
@@ -501,14 +502,14 @@
   [data-theme='glass'] .friend-tabs button { padding: 0 9px; font-size: 12.2px; }
 }
 @media (max-width: 1180px) {
-  [data-theme='glass'] .sidebar { width: clamp(226px, 25vw, 252px) !important; }
+  [data-theme='glass'] .sidebar { width: var(--sidebar-w, 248px) !important; }
   [data-theme='glass'] .friends-head { padding: 0 12px 0 14px; gap: 8px; }
 }
 @media (max-width: 1000px) {
   [data-theme='glass'] .rail { width: 70px; }
   [data-theme='glass'] .rail-item { width: 70px; }
   [data-theme='glass'] .rail-tile { width: 44px; height: 44px; }
-  [data-theme='glass'] .sidebar { width: 232px !important; }
+  [data-theme='glass'] .sidebar { width: var(--sidebar-w, 248px) !important; }
   [data-theme='glass'] .friends-title b { font-size: 15px; }
   [data-theme='glass'] .friend-tabs button { padding: 0 9px; }
 }
@@ -517,7 +518,7 @@
   [data-theme='glass'] .rail { width: 64px; }
   [data-theme='glass'] .rail-item { width: 64px; }
   [data-theme='glass'] .rail-tile { width: 42px; height: 42px; border-radius: 13px; }
-  [data-theme='glass'] .sidebar { width: 216px !important; }
+  [data-theme='glass'] .sidebar { width: var(--sidebar-w, 248px) !important; }
   [data-theme='glass'] .sidebar-head { padding: 0 8px 0 12px; gap: 6px; }
   [data-theme='glass'] .sidebar-head .icon-btn { width: 26px; height: 26px; }
   [data-theme='glass'] .friends-head { height: 54px; padding: 0 10px 0 12px; }
@@ -551,7 +552,7 @@
 /* ---------- 9. Правая панель участников — та же поверхность, без отдельной карточки ---------- */
 
 html[data-theme='glass'] .members-panel {
-  width: 256px;
+  width: var(--members-w, 256px);
   margin-left: 0;
   border: 0;
   border-left: 1px solid var(--pane-line);
