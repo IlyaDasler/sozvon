@@ -389,8 +389,9 @@
 
 /* ---------- 10. Экран входа ---------- */
 
-[data-theme='glass'] .auth-card,
-[data-theme='glass'] .auth-panel {
+/* Стекло только у карточки формы. Панель справа — фон с тонким разделителем,
+   иначе получалась карточка в карточке: два скругления и две рамки подряд */
+[data-theme='glass'] .auth-card {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0) 42%),
     rgba(16, 20, 36, 0.62);
@@ -399,6 +400,15 @@
   border: 1px solid var(--hairline);
   border-radius: calc(var(--glass-radius) + 4px);
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+[data-theme='glass'] .auth-panel {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 0;
+  box-shadow: none;
 }
 [data-theme='glass'] .auth-pill,
 [data-theme='glass'] .oauth-btn {
