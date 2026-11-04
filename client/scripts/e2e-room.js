@@ -69,8 +69,20 @@ runTest(async () => {
   await waitFor(winC, `state.roomUnread.get(${roomId}) === 1`, 'непрочитанное у Вики');
   console.log('✔ сообщения в комнате доходят, непрочитанные считаются');
 
-  // Все трое заходят в голос — одним щелчком по комнате в списке
+  // Щелчок по голосовой комнате открывает переписку, но не подключает к голосу
   for (const [win] of all) await clickRoom(win, roomId);
+  for (const [win, u] of all) {
+    await waitFor(
+      win,
+      `state.selectedRoomId === ${roomId} && !state.room && document.querySelector('#room-messages')?.textContent.includes('Всем привет')`,
+      `${u.user.displayName}: переписка открыта без голоса`,
+      10000
+    );
+  }
+  console.log('✔ голосовая комната открывает переписку, не подключая к голосу');
+
+  // Явное подключение — кнопкой в комнате
+  for (const [win] of all) await js(win, `document.getElementById('room-voice-join').click(); true`);
   for (const [win, u] of all) {
     await waitFor(
       win,
@@ -79,7 +91,7 @@ runTest(async () => {
       20000
     );
   }
-  console.log('✔ щелчок по комнате подключает к голосу, каждый соединён с каждым');
+  console.log('✔ кнопка «Подключиться к голосу» соединяет всех с каждым');
 
   // Время разговора в панели и в списке комнат — одно и то же (плюс-минус секунда на тик)
   await sleep(2200);
@@ -352,18 +364,22 @@ runTest(async () => {
   await js(winA, `selectRoom(${roomId}); true`);
   console.log('✔ настройки и приглашение открываются кнопками у комнаты, роли с переключателями прав');
 
-  // Второй голосовой канал: Боря переходит туда одним щелчком и так же возвращается
+  // Второй голосовой канал: Боря открывает его переписку и подключается кнопкой
   const second = await js(
     winA,
     `Api.post('/rooms', { hubId: ${hub.id}, name: 'Второй', kind: 'voice' }).then((r) => { state.rooms.set(r.id, r); renderRooms(); return r.id; })`
   );
   await waitFor(winB, `state.rooms.has(${second})`, 'второй канал у Бори');
   await clickRoom(winB, second);
+  await waitFor(winB, `state.selectedRoomId === ${second} && document.getElementById('room-voice-join')`, 'переписка второго канала');
+  await js(winB, `document.getElementById('room-voice-join').click(); true`);
   await waitFor(winB, `state.room?.roomId === ${second} && state.room.joined`, 'Боря во втором канале');
   await waitFor(winA, `activeSession().peers.size === 1`, 'Боря ушёл из первого канала');
   await clickRoom(winB, roomId);
+  await waitFor(winB, `state.selectedRoomId === ${roomId} && document.getElementById('room-voice-join')`, 'переписка первого канала');
+  await js(winB, `document.getElementById('room-voice-join').click(); true`);
   await waitFor(winB, `state.room?.roomId === ${roomId} && activeSession().peers.size === 2`, 'Боря вернулся', 20000);
-  console.log('✔ переход между голосовыми каналами одним щелчком');
+  console.log('✔ переход между голосовыми каналами: переписка отдельно, подключение кнопкой');
 
   // Проверка звука: «Слушать себя» выводит микрофон в наушники
   await js(winB, 'openSettings()');

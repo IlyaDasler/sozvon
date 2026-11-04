@@ -177,7 +177,7 @@ runTest(async () => {
   await waitFor(winA, `[...state.rooms.values()].some((r) => r.name === 'Болталка')`, 'голосовая создана');
   const voiceId = await js(winA, `[...state.rooms.values()].find((r) => r.name === 'Болталка').id`);
   await waitFor(winB, `Boolean(roomById(${voiceId}))`, 'голосовая у Бори');
-  for (const w of [winA, winB]) await js(w, `openHub(${hubId}); document.querySelector('#room-list [data-room="${voiceId}"]').click(); true`);
+  for (const w of [winA, winB]) await js(w, `openHub(${hubId}); openRoom(${voiceId}); true`);
   for (const w of [winA, winB]) await waitFor(w, 'state.room?.joined && state.room.session?.peers.size === 1', 'оба в голосе', 20000);
   await js(winA, 'leaveRoomVoice(); true');
   await waitFor(winB, 'state.room?.session?.peers.size === 0', 'Боря видит, что Аня вышла', 10000);
