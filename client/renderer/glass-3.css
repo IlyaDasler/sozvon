@@ -235,7 +235,9 @@
 [data-theme='glass'] .friends-title svg { width: 20px; height: 20px; color: var(--muted); }
 [data-theme='glass'] .head-divider { width: 1px; height: 20px; background: var(--pane-line-strong); flex: none; opacity: 1; }
 
-/* Вкладки: одна стеклянная дорожка, которая прокручивается, а не обрезается */
+/* Вкладки: одна стеклянная дорожка, которая прокручивается, а не обрезается.
+   Без маски-затухания по краям: она делала первую вкладку («В сети») полупрозрачной,
+   хотя места хватает и прокручивать нечего */
 [data-theme='glass'] .friend-tabs {
   flex: 1 1 auto;
   min-width: 0;
@@ -250,8 +252,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
+  scroll-padding: 0 6px;
 }
 [data-theme='glass'] .friend-tabs::-webkit-scrollbar { display: none; }
 [data-theme='glass'] .friend-tabs button {
