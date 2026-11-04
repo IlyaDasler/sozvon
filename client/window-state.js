@@ -3,13 +3,16 @@
 
 const fs = require('node:fs');
 
-const GRIP = { width: 120, height: 32 }; // сколько полосы окна должно быть на экране, чтобы его можно было ухватить
+// Windows прибавляет к клиентским bounds рамку/тень окна; без запаса правый край
+// с кнопками «свернуть/развернуть/закрыть» уезжает за экран.
+const EDGE = process.platform === 'win32' ? 10 : 0;
 
 const isNum = (v) => Number.isFinite(v);
 
 /** Что вернуть окну: { x, y, width, height, maximized } или null — окно по умолчанию */
 function restoreBounds(saved, workAreas, min) {
   if (!saved || ![saved.x, saved.y, saved.width, saved.height].every(isNum)) return null;
+  if (!Array.isArray(workAreas) || !workAreas.length) return null;
   const bounds = {
     x: Math.round(saved.x),
     y: Math.round(saved.y),
@@ -17,11 +20,20 @@ function restoreBounds(saved, workAreas, min) {
     height: Math.max(min.height, Math.round(saved.height)),
     maximized: saved.maximized === true,
   };
-  const grabbable = workAreas.some((a) => {
-    const w = Math.min(bounds.x + bounds.width, a.x + a.width) - Math.max(bounds.x, a.x);
-    return w >= GRIP.width && bounds.y >= a.y && bounds.y + GRIP.height <= a.y + a.height;
-  });
-  return grabbable ? bounds : null;
+  // Берём экран с наибольшим пересечением и держим окно целиком в его рабочей области.
+  // Иначе сохранённое окно шире монитора оставляет кнопки окна за краем экрана.
+  const area = workAreas
+    .map((a) => ({
+      a,
+      overlap: Math.max(0, Math.min(bounds.x + bounds.width, a.x + a.width) - Math.max(bounds.x, a.x)) *
+        Math.max(0, Math.min(bounds.y + bounds.height, a.y + a.height) - Math.max(bounds.y, a.y)),
+    }))
+    .sort((p, q) => q.overlap - p.overlap)[0].a;
+  const width = Math.min(bounds.width, Math.max(min.width, area.width - EDGE * 2));
+  const height = Math.min(bounds.height, Math.max(min.height, area.height - EDGE * 2));
+  const x = Math.min(Math.max(bounds.x, area.x + EDGE), Math.max(area.x + EDGE, area.x + area.width - EDGE - width));
+  const y = Math.min(Math.max(bounds.y, area.y + EDGE), Math.max(area.y + EDGE, area.y + area.height - EDGE - height));
+  return { x, y, width, height, maximized: bounds.maximized };
 }
 
 function readState(file) {

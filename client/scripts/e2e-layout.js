@@ -95,6 +95,7 @@ runTest(async () => {
       mainFilter: getComputedStyle(mainEl).backdropFilter,
       contentFilter: contentCss.backdropFilter,
       contentRadius: contentCss.borderTopLeftRadius,
+      titlebarZ: getComputedStyle(document.getElementById('titlebar')).zIndex,
       railWidth: Math.round(rail.width),
       railTileWidths,
       popAnim,
@@ -113,6 +114,7 @@ runTest(async () => {
   if (sh.mainFilter !== 'none') throw new Error(`У полнооконного каркаса остался backdrop-filter: ${sh.mainFilter}`);
   if (sh.contentFilter !== 'none') throw new Error(`У контента остался backdrop-filter: ${sh.contentFilter}`);
   if (sh.contentRadius !== '0px') throw new Error(`Контент снова стал карточкой внутри окна: radius ${sh.contentRadius}`);
+  if (!Number.isFinite(Number(sh.titlebarZ)) || Number(sh.titlebarZ) < 2) throw new Error(`Полоса заголовка под фоновым слоем: z-index ${sh.titlebarZ}`);
   if (sh.railTileWidths.some((w) => w > sh.railWidth - 8)) throw new Error(`Плитка канала шире рейла: ${sh.railTileWidths.join(', ')} при ${sh.railWidth}`);
   if (new Set(sh.railTileWidths).size > 1) throw new Error(`Плитки каналов разного размера: ${sh.railTileWidths.join(', ')}`);
   if (sh.popAnim !== 'none') throw new Error(`У плитки канала осталась анимация увеличения: ${sh.popAnim}`);

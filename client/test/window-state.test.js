@@ -11,8 +11,25 @@ test('сохранённое окно на видимом экране возв�
   assert.deepEqual(restoreBounds(saved, screens, MIN), saved);
 });
 
-test('экран, где было окно, отключили — окно по умолчанию (по центру основного)', () => {
-  assert.equal(restoreBounds({ x: 2500, y: 100, width: 1200, height: 800 }, screens, MIN), null);
+test('экран, где было окно, отключили — окно влезает в основной экран', () => {
+  assert.deepEqual(restoreBounds({ x: 2500, y: 100, width: 1200, height: 800 }, screens, MIN), {
+    x: 710,
+    y: 100,
+    width: 1200,
+    height: 800,
+    maximized: false,
+  });
+});
+
+test('окно шире монитора не оставляет кнопки окна за краем экрана', () => {
+  const wide = [{ x: 0, y: 0, width: 3440, height: 1400 }];
+  assert.deepEqual(restoreBounds({ x: 1, y: 394, width: 3438, height: 999 }, wide, MIN), {
+    x: 10,
+    y: 391,
+    width: 3420,
+    height: 999,
+    maximized: false,
+  });
 });
 
 test('мусор и слишком маленькое окно — по умолчанию или не меньше допустимого', () => {

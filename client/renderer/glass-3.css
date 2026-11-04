@@ -1058,3 +1058,10 @@ html[data-theme='glass'] .rail-folder .rail-tile {
   html[data-theme='glass'] .rail-folder .rail-item { min-height: 42px; }
   html[data-theme='glass'] .rail-folder .rail-tile { width: 42px; height: 42px; }
 }
+
+/* Полоса заголовка и её кнопки — выше фонового слоя .lg-aurora.
+   Иначе фиксированный фон с z-index:0 перекрывал название и кнопки окна. */
+.titlebar {
+  position: relative;
+  z-index: 20;
+}
