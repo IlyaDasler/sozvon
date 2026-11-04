@@ -13,6 +13,7 @@ const openConv = () => (state.selectedId ? `dm:${state.selectedId}` : state.sele
 function noteOwnTyping(conv) {
   const now = Date.now();
   if (state.me.status === 'invisible') return;
+  if (state.me?.privacy?.typing === false) return;
   if (lastTypingSent.conv === conv && now - lastTypingSent.at < TYPING_SEND_EVERY_MS) return;
   lastTypingSent = { conv, at: now };
   const [kind, id] = conv.split(':');

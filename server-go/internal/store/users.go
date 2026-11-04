@@ -7,23 +7,28 @@ import (
 )
 
 type User struct {
-	ID           int64
-	Username     string
-	PasswordHash string
-	DisplayName  string
-	AvatarColor  string
-	CreatedAt    int64
-	Avatar       string
-	Email        string
-	EmailShown   string
-	Bio          string
-	BannerColor  string
-	Banner       string
-	Game         string
-	NameColor    string
-	Status       string
-	PublicKey    string
-	TotpSecret   string
+	ID             int64
+	Username       string
+	PasswordHash   string
+	DisplayName    string
+	AvatarColor    string
+	CreatedAt      int64
+	Avatar         string
+	Email          string
+	EmailShown     string
+	Bio            string
+	BannerColor    string
+	Banner         string
+	Game           string
+	NameColor      string
+	Status         string
+	PublicKey      string
+	TotpSecret     string
+	PrivacyTyping  bool
+	PrivacyRead    bool
+	PrivacyGame    bool
+	FriendRequests bool
+	InvitePolicy   string
 }
 
 type Session struct {
@@ -43,14 +48,18 @@ var ErrNotFound = errors.New("not found")
 
 // Только настоящие столбцы: строку подставляем и в одиночный SELECT, и в JOIN с префиксом
 const userColumns = `id, username, password_hash, display_name, avatar_color, created_at,
-	avatar, email, email_shown, bio, banner_color, banner, game, name_color, status, public_key, totp_secret`
+	avatar, email, email_shown, bio, banner_color, banner, game, name_color, status, public_key, totp_secret,
+	privacy_typing, privacy_read, privacy_game, friend_requests, invite_policy`
 
 // scanUserInto читает строку users с учётом NULL и добавляет поля из JOIN.
 func scanUserInto(row interface{ Scan(...any) error }, user *User, extra ...any) error {
 	var avatar, email, emailShown, bio, bannerColor, banner, game, nameColor, status, publicKey, totp sql.NullString
+	var invitePolicy sql.NullString
+	var privacyTyping, privacyRead, privacyGame, friendRequests sql.NullInt64
 	args := []any{
 		&user.ID, &user.Username, &user.PasswordHash, &user.DisplayName, &user.AvatarColor, &user.CreatedAt,
 		&avatar, &email, &emailShown, &bio, &bannerColor, &banner, &game, &nameColor, &status, &publicKey, &totp,
+		&privacyTyping, &privacyRead, &privacyGame, &friendRequests, &invitePolicy,
 	}
 	args = append(args, extra...)
 	if err := row.Scan(args...); err != nil {
@@ -73,6 +82,15 @@ func scanUserInto(row interface{ Scan(...any) error }, user *User, extra ...any)
 	}
 	user.PublicKey = publicKey.String
 	user.TotpSecret = totp.String
+	// До миграции 007 значения NULL — ведём себя как раньше, то есть всё включено
+	user.PrivacyTyping = !privacyTyping.Valid || privacyTyping.Int64 != 0
+	user.PrivacyRead = !privacyRead.Valid || privacyRead.Int64 != 0
+	user.PrivacyGame = !privacyGame.Valid || privacyGame.Int64 != 0
+	user.FriendRequests = !friendRequests.Valid || friendRequests.Int64 != 0
+	user.InvitePolicy = invitePolicy.String
+	if user.InvitePolicy != "friends" {
+		user.InvitePolicy = "all"
+	}
 	return nil
 }
 
@@ -308,5 +326,23 @@ func (s *Store) FindIdentity(provider, providerUserID string) (int64, string, bo
 
 func (s *Store) DeleteIdentity(userID int64, provider string) error {
 	_, err := s.db.Exec(`DELETE FROM identities WHERE user_id = ? AND provider = ?`, userID, provider)
+	return err
+}
+
+// SetPrivacy — настройки конфиденциальности, которые проверяет сервер, а не только клиент.
+func (s *Store) SetPrivacy(userID int64, typing, read, game, requests bool, invitePolicy string) error {
+	flag := func(value bool) int {
+		if value {
+			return 1
+		}
+		return 0
+	}
+	if invitePolicy != "friends" {
+		invitePolicy = "all"
+	}
+	_, err := s.db.Exec(`
+		UPDATE users SET privacy_typing = ?, privacy_read = ?, privacy_game = ?,
+			friend_requests = ?, invite_policy = ? WHERE id = ?`,
+		flag(typing), flag(read), flag(game), flag(requests), invitePolicy, userID)
 	return err
 }

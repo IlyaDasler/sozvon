@@ -106,6 +106,7 @@ func main() {
 			r.Use(app.requireAuth)
 			r.Get("/link-preview", app.linkPreview)
 			r.Get("/me", app.me)
+			r.Patch("/me/privacy", app.updatePrivacy)
 			r.Patch("/me", app.patchMe)
 			r.Put("/me/status", app.setMyStatus)
 			r.Put("/me/key", app.setMyKey)
@@ -274,6 +275,14 @@ type identityJSON struct {
 	Email    string `json:"email"`
 }
 
+type privacyJSON struct {
+	Typing         bool   `json:"typing"`
+	ReadReceipts   bool   `json:"readReceipts"`
+	GameActivity   bool   `json:"gameActivity"`
+	FriendRequests bool   `json:"friendRequests"`
+	InvitePolicy   string `json:"invitePolicy"`
+}
+
 type selfJSON struct {
 	ID           int64          `json:"id"`
 	Username     string         `json:"username"`
@@ -292,6 +301,7 @@ type selfJSON struct {
 	HasPassword  bool           `json:"hasPassword"`
 	TwoFactor    bool           `json:"twoFactor"`
 	Identities   []identityJSON `json:"identities"`
+	Privacy      privacyJSON    `json:"privacy"`
 }
 
 func optional(value string) *string {
@@ -321,6 +331,13 @@ func (a *server) self(user *store.User) (selfJSON, error) {
 		PublicKey:   optional(user.PublicKey),
 		NameColor:   optional(user.NameColor),
 		Game:        optional(user.Game),
+		Privacy: privacyJSON{
+			Typing:         user.PrivacyTyping,
+			ReadReceipts:   user.PrivacyRead,
+			GameActivity:   user.PrivacyGame,
+			FriendRequests: user.FriendRequests,
+			InvitePolicy:   user.InvitePolicy,
+		},
 	}
 	if user.Avatar != "" {
 		url := "/api/avatars/" + user.Avatar + ".webp"
