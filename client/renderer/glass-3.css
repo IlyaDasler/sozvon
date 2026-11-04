@@ -308,7 +308,7 @@
 
 /* Форма «Добавить в друзья»: поле и кнопка в том же стекле, без синего кольца */
 /* Форма заявки: во всю ширину колонки, без верхнего отступа — как поле поиска */
-[data-theme='glass'] .friend-add { max-width: none; }
+[data-theme='glass'] .friend-add { max-width: 460px; }
 [data-theme='glass'] .friend-add-row {
   margin: 0 0 12px;
   height: 42px;
