@@ -201,19 +201,45 @@ function openProfileCard(userId, anchor) {
   placeCard(card, anchor);
 }
 
-// Рядом с тем, по чему щёлкнули, но целиком в окне
-function placeCard(card, anchor) {
-  const r = anchor?.getBoundingClientRect?.();
+// Рядом с тем, по чему щёлкнули, но целиком в окне: справа, если хватает места,
+// иначе слева; в нижней половине окна карточка раскрывается вверх, чтобы не уезжать за край
+let cardAnchor = null;
+
+function placeCard(card, anchor = cardAnchor) {
+  if (anchor?.isConnected) cardAnchor = anchor;
+  const r = cardAnchor?.getBoundingClientRect?.();
   const w = card.offsetWidth;
   const h = card.offsetHeight;
-  let left = r ? r.right + 12 : (innerWidth - w) / 2;
-  let top = r ? r.top : (innerHeight - h) / 2;
-  if (left + w > innerWidth - 8) left = r ? r.left - w - 12 : innerWidth - w - 8;
-  left = Math.max(8, left);
-  top = Math.min(Math.max(8, top), innerHeight - h - 8);
-  card.style.left = `${left}px`;
-  card.style.top = `${top}px`;
+  const margin = 12;
+  const gap = 10;
+  if (!r) {
+    card.style.left = `${Math.max(margin, (innerWidth - w) / 2)}px`;
+    card.style.top = `${Math.max(margin, (innerHeight - h) / 2)}px`;
+    return;
+  }
+  const roomRight = innerWidth - r.right - gap - margin;
+  const roomLeft = r.left - gap - margin;
+  let left = roomRight >= w || roomRight >= roomLeft ? r.right + gap : r.left - w - gap;
+  left = Math.min(Math.max(margin, left), innerWidth - w - margin);
+
+  // Вверх — если карточка не помещается снизу, но помещается сверху
+  const below = r.top;
+  const above = r.bottom - h;
+  let top;
+  if (below + h + margin <= innerHeight) top = below;
+  else if (above >= margin) top = above;
+  else top = Math.min(Math.max(margin, below), innerHeight - h - margin);
+  top = Math.max(margin, top);
+
+  card.style.left = `${Math.round(left)}px`;
+  card.style.top = `${Math.round(top)}px`;
 }
+
+// Окно изменили — карточка остаётся рядом с якорем, а не уезжает в угол
+window.addEventListener('resize', () => {
+  const card = $('profile-card');
+  if (card && !card.classList.contains('hidden') && card.children.length) placeCard(card);
+}, { passive: true });
 
 function closeProfileCard() {
   $('profile-card').classList.add('hidden');

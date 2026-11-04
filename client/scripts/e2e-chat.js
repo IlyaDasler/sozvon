@@ -3,6 +3,8 @@
 const http = require('node:http');
 const { api, befriend, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
 
+const check = (condition, message) => { if (!condition) throw new Error(message); };
+
 // Последнее сообщение в открытом чате
 const lastMsg = `[...document.querySelectorAll('#messages .msg-text')].at(-1)`;
 
@@ -128,6 +130,9 @@ runTest(async () => {
   );
   await waitFor(winA, `state.me.bio === 'Играю в **CS2** по вечерам' && Boolean(state.me.bannerColor)`, 'профиль сохранён');
   await waitFor(winB, `state.contacts.get(${a.user.id})?.bio === 'Играю в **CS2** по вечерам'`, 'профиль Ани дошёл до Бори без перезахода');
+  await js(winB, `setTheme('glass'); true`);
+  await sleep(350);
+  const mainBefore = await js(winB, `document.querySelector('.main').getBoundingClientRect().height`);
   await js(winB, `[...document.querySelectorAll('#messages .msg:not(.cont) .avatar[data-profile]')].at(-1).click(); true`);
   await waitFor(
     winB,
@@ -140,6 +145,21 @@ runTest(async () => {
     'карточка Ани у Бори'
   );
   await js(winB, `(() => { const n = document.querySelector('.pc-note'); n.value = 'знакомы с универа'; n.dispatchEvent(new Event('input')); return true; })()`);
+  // Карточка — fixed-слой: не сжимает каркас окна и не вылезает за края
+  const cardLayout = await js(winB, `(() => {
+    const card = document.getElementById('profile-card');
+    const r = card.getBoundingClientRect();
+    return {
+      position: getComputedStyle(card).position,
+      main: document.querySelector('.main').getBoundingClientRect().height,
+      inside: r.left >= 8 && r.top >= 8 && r.right <= innerWidth - 8 && r.bottom <= innerHeight - 8,
+      opacity: getComputedStyle(card).opacity
+    };
+  })()`);
+  check(cardLayout.position === 'fixed', 'карточка выпала из fixed-слоя: ' + cardLayout.position);
+  check(Math.abs(cardLayout.main - mainBefore) < 1, `карточка сжала каркас: ${mainBefore} → ${cardLayout.main}`);
+  check(cardLayout.inside, 'карточка вышла за края окна');
+  check(cardLayout.opacity === '1', 'карточка осталась прозрачной');
   await screenshot(winB, 'profile-card');
   await js(winB, `document.body.click(); true`);
   await waitFor(winB, `document.getElementById('profile-card').classList.contains('hidden')`, 'карточка закрылась');

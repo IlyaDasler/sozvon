@@ -1,0 +1,761 @@
+/* ============================================================================
+   Созвон 3.0 — единый стеклянный каркас
+   Одна поверхность окна, а не три отдельные карточки: рейл, список и контент
+   живут внутри одного материала. Разделяют их только волосяные линии.
+   Этот файл подключается последним и перекрывает старые слои glass.css /
+   glass-system.css / glass-liquid.css для темы «Жидкое стекло».
+   ========================================================================== */
+
+[data-theme='glass'] {
+  --shell-radius: 26px;
+  --shell-gap: 10px;
+  --pane-line: rgba(255, 255, 255, 0.075);
+  --pane-line-strong: rgba(255, 255, 255, 0.13);
+  --pane-tint: rgba(255, 255, 255, 0.028);
+  --pane-tint-2: rgba(255, 255, 255, 0.045);
+  --text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+}
+
+/* ---------- 1. Каркас: одно стекло на всё окно ---------- */
+
+[data-theme='glass'] .main {
+  position: relative;
+  margin: 2px 10px 8px;
+  padding: 0;
+  gap: 0;
+  border-radius: var(--shell-radius);
+  border: 1px solid var(--pane-line-strong);
+  background:
+    radial-gradient(120% 130% at 6% -16%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 58%),
+    radial-gradient(90% 110% at 104% 112%, color-mix(in srgb, var(--accent-2) 13%, transparent), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012) 34%, transparent 68%),
+    rgba(10, 14, 28, 0.56);
+  -webkit-backdrop-filter: blur(30px) saturate(165%) brightness(1.03);
+  backdrop-filter: blur(30px) saturate(165%) brightness(1.03);
+  box-shadow:
+    0 30px 90px rgba(3, 6, 16, 0.62),
+    0 2px 10px rgba(3, 6, 16, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+  overflow: hidden;
+  isolation: isolate;
+}
+[data-theme='glass'] .main > * { position: relative; z-index: 1; }
+/* Глубина стекла: мягкий свет внутри поверхности, а не только снаружи окна */
+[data-theme='glass'] .main::before {
+  content: '';
+  position: absolute;
+  inset: -18%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 42% at 10% 2%, color-mix(in srgb, var(--accent) 32%, transparent), transparent 72%),
+    radial-gradient(30% 34% at 92% 12%, rgba(150, 190, 255, 0.14), transparent 72%),
+    radial-gradient(40% 44% at 88% 104%, color-mix(in srgb, var(--accent-2) 26%, transparent), transparent 74%);
+  filter: blur(18px) saturate(120%);
+  opacity: 0.9;
+}
+/* Линия в зазоре больше не нужна: панели разделяют собственные границы */
+[data-theme='glass'] .main-divider,
+[data-theme='glass'] .main > .main-divider { display: none !important; }
+
+/* Псевдослои старых тем: блики и кольца на каждой панели давали двойную кромку */
+[data-theme='glass'] .sidebar::before,
+[data-theme='glass'] .sidebar::after,
+[data-theme='glass'] .content::before,
+[data-theme='glass'] .content::after {
+  content: none !important;
+  display: none !important;
+}
+
+[data-theme='glass'] body {
+  background:
+    radial-gradient(110% 90% at 18% -20%, rgba(93, 124, 226, 0.20), transparent 55%),
+    radial-gradient(90% 80% at 92% 108%, rgba(150, 96, 224, 0.16), transparent 58%),
+    linear-gradient(180deg, #090c18 0%, #080b16 55%, #070a12 100%);
+}
+
+/* ---------- 2. Рейл: прозрачная колонка внутри стекла ---------- */
+
+[data-theme='glass'] .rail {
+  width: 78px;
+  padding: 12px 0 10px;
+  flex: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.008) 34%, transparent 70%);
+  border-right: 1px solid var(--pane-line);
+  border-radius: 0;
+}
+[data-theme='glass'] .rail-item { width: 78px; }
+[data-theme='glass'] .rail-tile {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+  transition: background-color 160ms ease, box-shadow 180ms ease, transform 160ms var(--spring), border-radius 200ms var(--spring);
+}
+[data-theme='glass'] .rail-tile:hover {
+  background: rgba(255, 255, 255, 0.105);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+    0 8px 22px rgba(3, 6, 16, 0.32);
+}
+[data-theme='glass'] .rail-item.active .rail-tile {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 82%, transparent), color-mix(in srgb, var(--accent-2) 62%, transparent));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 10px 26px color-mix(in srgb, var(--accent) 34%, transparent);
+}
+[data-theme='glass'] .rail-home { background: rgba(255, 255, 255, 0.07); }
+[data-theme='glass'] .rail-item.active .rail-home,
+[data-theme='glass'] .rail-home:hover {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 88%, transparent), color-mix(in srgb, var(--accent-2) 68%, transparent));
+}
+[data-theme='glass'] .rail-item::before {
+  display: none;
+  left: 0;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  opacity: 0;
+  transition: height 180ms var(--spring), opacity 180ms ease;
+}
+[data-theme='glass'] .rail-item.active::before { opacity: 1; height: 26px; }
+[data-theme='glass'] .rail-item:hover::before { opacity: .55; height: 14px; }
+[data-theme='glass'] .rail-sep { width: 30px; height: 1px; margin: 9px 0; background: var(--pane-line); }
+
+/* Кнопка «создать канал» — акцентная, но без кислотной заливки */
+[data-theme='glass'] .rail-add {
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px var(--pane-line);
+}
+[data-theme='glass'] .rail-add:hover {
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 72%, transparent);
+}
+
+/* ---------- 3. Список: вторая колонка, отделённая линией ---------- */
+
+[data-theme='glass'] .sidebar {
+  width: clamp(238px, 23vw, 286px) !important;
+  background: linear-gradient(180deg, var(--pane-tint), transparent 46%), rgba(8, 12, 24, 0.14);
+  border: 0;
+  border-right: 1px solid var(--pane-line);
+  border-radius: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+[data-theme='glass'] .sidebar-head {
+  height: 56px;
+  padding: 0 12px 0 16px;
+  gap: 8px;
+  border-bottom: 1px solid var(--pane-line);
+  background: rgba(255, 255, 255, 0.018);
+}
+[data-theme='glass'] .sidebar .head-home > span { display: block !important; }
+[data-theme='glass'] .head-home {
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-shadow: var(--text-shadow);
+}
+[data-theme='glass'] .sidebar-head .icon-btn { width: 30px; height: 30px; border-radius: 10px; }
+[data-theme='glass'] .conn-dot { width: 7px; height: 7px; box-shadow: 0 0 0 3px rgba(43, 196, 111, 0.12); }
+
+[data-theme='glass'] .sidebar-scroll { padding: 10px 8px 8px; }
+[data-theme='glass'] .friends-nav {
+  height: 38px;
+  margin: 0 4px 8px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: inset 0 0 0 1px var(--pane-line);
+  color: var(--text);
+  font-weight: 600;
+}
+[data-theme='glass'] .friends-nav:hover { background: rgba(255, 255, 255, 0.09); }
+[data-theme='glass'] .friends-nav.active {
+  background: rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 0 0 1px var(--pane-line-strong), 0 6px 18px rgba(3, 6, 16, 0.22);
+}
+[data-theme='glass'] .list-title {
+  padding: 12px 12px 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  color: color-mix(in srgb, var(--muted) 88%, transparent);
+}
+[data-theme='glass'] .contact-list { padding: 0 4px; }
+[data-theme='glass'] .contact {
+  min-height: 42px;
+  padding: 6px 8px;
+  margin: 1px 0;
+  border-radius: 12px;
+  gap: 10px;
+  transition: background 140ms ease, box-shadow 140ms ease, color 140ms ease;
+}
+[data-theme='glass'] .contact:hover { background: rgba(255, 255, 255, 0.055); box-shadow: inset 0 0 0 1px transparent; }
+[data-theme='glass'] .contact.active {
+  background: rgba(255, 255, 255, 0.085);
+  box-shadow: inset 0 0 0 1px var(--pane-line-strong);
+}
+[data-theme='glass'] .contact .avatar { width: 30px; height: 30px; }
+[data-theme='glass'] .contact .name > div:first-child { font-weight: 600; font-size: 13.5px; }
+
+/* Нижний док: свой профиль, микрофон, звук, настройки */
+[data-theme='glass'] .me-panel {
+  height: 58px;
+  margin: 0 8px 10px;
+  padding: 0 8px;
+  gap: 3px;
+  border-radius: 15px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.035));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px var(--pane-line);
+}
+[data-theme='glass'] .me-panel:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), inset 0 0 0 1px var(--pane-line-strong); }
+[data-theme='glass'] .me-panel .icon-btn { width: 28px; height: 28px; border-radius: 9px; color: var(--muted); }
+[data-theme='glass'] .me-panel .icon-btn:hover { color: var(--text); background: rgba(255, 255, 255, 0.08); }
+[data-theme='glass'] .me-info > div:first-child { font-size: 13px; letter-spacing: -0.005em; }
+[data-theme='glass'] .me-info > div:last-child { font-size: 11.5px; }
+
+/* ---------- 4. Контент: третья колонка, без собственной карточки ---------- */
+
+[data-theme='glass'] .content {
+  background: rgba(10, 14, 28, 0.04);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+[data-theme='glass'] .chat-head,
+[data-theme='glass'] .friends-head {
+  height: 56px;
+  gap: 10px;
+  padding: 0 14px 0 18px;
+  background: rgba(255, 255, 255, 0.018);
+  border-bottom: 1px solid var(--pane-line);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+[data-theme='glass'] .friends-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  text-shadow: var(--text-shadow);
+}
+[data-theme='glass'] .friends-title svg { width: 20px; height: 20px; color: var(--muted); }
+[data-theme='glass'] .head-divider { width: 1px; height: 20px; background: var(--pane-line-strong); flex: none; opacity: 1; }
+
+/* Вкладки: одна стеклянная дорожка, которая прокручивается, а не обрезается */
+[data-theme='glass'] .friend-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--pane-line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
+}
+[data-theme='glass'] .friend-tabs::-webkit-scrollbar { display: none; }
+[data-theme='glass'] .friend-tabs button {
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 9px;
+  border: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: transparent;
+  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+[data-theme='glass'] .friend-tabs button:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+[data-theme='glass'] .friend-tabs button.active {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.115);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.075);
+}
+[data-theme='glass'] .friend-tabs .add-tab {
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 78%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+[data-theme='glass'] .friend-tabs .add-tab:hover { background: color-mix(in srgb, var(--accent) 92%, transparent); }
+
+[data-theme='glass'] .friends-body { padding: 6px 0 0; }
+[data-theme='glass'] .friends-head + .friends-body { border-top: 0; }
+[data-theme='glass'] .friends-body .list-title { padding: 14px 20px 8px; }
+
+/* Пустое состояние: спокойная композиция, без «карточки в карточке» */
+[data-theme='glass'] .friends-view .empty,
+[data-theme='glass'] .empty {
+  max-width: 520px;
+  margin: auto;
+  padding: 28px 24px 40px;
+  text-align: center;
+}
+[data-theme='glass'] .empty img,
+[data-theme='glass'] .empty svg.mascot { width: 148px; height: 148px; }
+[data-theme='glass'] .empty h2 { margin: 18px 0 8px; font-size: 22px; letter-spacing: -0.02em; }
+[data-theme='glass'] .empty p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+
+/* ---------- 5. Контролы: одинаковый радиус и честные состояния ---------- */
+
+[data-theme='glass'] .btn,
+[data-theme='glass'] .icon-btn,
+[data-theme='glass'] .round-btn,
+[data-theme='glass'] .nav-btn {
+  border-radius: 11px;
+  border: 1px solid var(--pane-line);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  color: var(--text-2);
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 120ms var(--spring), box-shadow 140ms ease;
+}
+[data-theme='glass'] .btn:hover,
+[data-theme='glass'] .icon-btn:hover,
+[data-theme='glass'] .nav-btn:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: var(--pane-line-strong);
+  color: var(--text);
+}
+[data-theme='glass'] .btn:active,
+[data-theme='glass'] .icon-btn:active,
+[data-theme='glass'] .nav-btn:active { transform: scale(0.96); }
+[data-theme='glass'] .btn.primary {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 90%, transparent), color-mix(in srgb, var(--accent-2) 70%, transparent));
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 8px 22px color-mix(in srgb, var(--accent) 26%, transparent);
+  color: #fff;
+}
+[data-theme='glass'] .btn.success {
+  background: color-mix(in srgb, var(--ok) 80%, transparent);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+[data-theme='glass'] .icon-btn { width: 30px; height: 30px; }
+[data-theme='glass'] .icon-btn svg { width: 17px; height: 17px; }
+[data-theme='glass'] .btn:focus-visible,
+[data-theme='glass'] .icon-btn:focus-visible,
+[data-theme='glass'] .friend-tabs button:focus-visible,
+[data-theme='glass'] .rail-tile:focus-visible,
+[data-theme='glass'] .contact:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 72%, transparent);
+  outline-offset: 2px;
+}
+
+[data-theme='glass'] input:not([type='checkbox']):not([type='range']):not([type='radio']):not([type='color']),
+[data-theme='glass'] textarea,
+[data-theme='glass'] select {
+  border-radius: 11px;
+  border: 1px solid var(--pane-line);
+  background: rgba(6, 10, 22, 0.38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+[data-theme='glass'] input:focus,
+[data-theme='glass'] textarea:focus,
+[data-theme='glass'] select:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  outline: 0;
+}
+
+/* Поле поиска в друзьях и сообщениях */
+[data-theme='glass'] .search input,
+[data-theme='glass'] .friend-search input,
+[data-theme='glass'] .friends-search input {
+  height: 34px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+/* ---------- 6. Карточка профиля: рядом с якорем, без обрезки и скачков ---------- */
+
+/* .lens-surface (эффект линзы) ставит position: relative. Для плавающих слоёв это
+   ломало каркас: карточка профиля становилась flex-элементом body и сжимала окно,
+   меню и тосты уезжали в поток. Возвращаем каждому его настоящее позиционирование:
+   линза работает внутри поверхности и не меняет геометрию. */
+html[data-theme='glass'] .profile-card.lens-surface,
+html[data-theme='glass'] .popup-menu.lens-surface,
+html[data-theme='glass'] .gif-popover.lens-surface,
+html[data-theme='glass'] .toast.lens-surface,
+html[data-theme='glass'] .chat-theme-pop.lens-surface {
+  position: fixed !important;
+  isolation: isolate;
+}
+html[data-theme='glass'] .thread-panel.lens-surface {
+  position: absolute !important;
+  isolation: isolate;
+}
+html[data-theme='glass'] .notif-panel.lens-surface {
+  position: absolute !important;
+  isolation: isolate;
+}
+
+[data-theme='glass'] .profile-card {
+  width: 320px;
+  max-height: min(560px, calc(100vh - 24px));
+  border-radius: 20px;
+  border: 1px solid var(--pane-line-strong);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.012) 30%, transparent 60%),
+    linear-gradient(180deg, rgba(22, 28, 48, 0.86), rgba(13, 18, 34, 0.92));
+  -webkit-backdrop-filter: blur(38px) saturate(175%);
+  backdrop-filter: blur(38px) saturate(175%);
+  box-shadow:
+    0 34px 90px rgba(2, 4, 12, 0.62),
+    0 4px 16px rgba(2, 4, 12, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  opacity: 1;
+  transform: none;
+  animation: pc-rise 170ms cubic-bezier(0.22, 1.1, 0.36, 1);
+}
+@keyframes pc-rise {
+  from { transform: translateY(5px) scale(0.985); }
+  to { transform: none; }
+}
+[data-theme='glass'] .profile-card .pc-banner {
+  height: 96px;
+  border-radius: 19px 19px 0 0;
+  background:
+    radial-gradient(120% 140% at 18% -30%, rgba(255, 255, 255, 0.35), transparent 55%),
+    linear-gradient(135deg, color-mix(in srgb, var(--banner) 82%, var(--accent)), color-mix(in srgb, var(--banner) 46%, #0b1020));
+}
+[data-theme='glass'] .profile-card .pc-avatar.avatar {
+  top: 46px;
+  left: 18px;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 5px #10142a, 0 10px 26px rgba(0, 0, 0, 0.4);
+}
+[data-theme='glass'] .profile-card .pc-avatar .status { width: 26px; height: 26px; border: 4px solid #10142a; }
+[data-theme='glass'] .pc-body {
+  margin: 46px 12px 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+}
+[data-theme='glass'] .pc-name { font-size: 20px; letter-spacing: -0.02em; }
+[data-theme='glass'] .pc-login { color: var(--muted); }
+[data-theme='glass'] .pc-note {
+  width: 100%;
+  min-height: 62px;
+  border-radius: 10px;
+  background: rgba(4, 8, 18, 0.38);
+}
+[data-theme='glass'] .pc-actions { gap: 8px; margin-top: 14px; }
+[data-theme='glass'] .pc-actions .btn { flex: 1; height: 34px; }
+
+/* ---------- 7. Заголовок окна и мелкие детали ---------- */
+
+[data-theme='glass'] .titlebar {
+  height: 36px;
+  padding: 0 10px;
+  gap: 6px;
+  background: transparent;
+  border-bottom: 0;
+  color: var(--muted);
+}
+[data-theme='glass'] .nav-btn {
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border-radius: 9px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: transparent;
+}
+[data-theme='glass'] .nav-btn:hover { background: rgba(255, 255, 255, 0.09); color: var(--text); }
+[data-theme='glass'] .nav-btn:disabled { opacity: 0.35; }
+.titlebar-brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  -webkit-app-region: drag;
+  user-select: none;
+}
+.titlebar-brand b {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--accent) 80%, #fff);
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+[data-theme='glass'] .win-btn { color: var(--muted); }
+[data-theme='glass'] .win-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+[data-theme='glass'] .win-btn.close:hover { background: #d93a3f; color: #fff; }
+
+/* Скроллбары: тонкие, без светлой полосы на всю панель */
+[data-theme='glass'] * { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.20) transparent; }
+[data-theme='glass'] ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.20); }
+[data-theme='glass'] ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.30); }
+
+/* ---------- 8. Адаптив: ничего не обрезается и не наезжает ---------- */
+
+@media (max-width: 1100px) {
+  [data-theme='glass'] .friend-tabs { gap: 1px; }
+  [data-theme='glass'] .friend-tabs button { padding: 0 9px; font-size: 12.2px; }
+}
+@media (max-width: 1180px) {
+  [data-theme='glass'] .sidebar { width: clamp(226px, 25vw, 252px) !important; }
+  [data-theme='glass'] .friends-head { padding: 0 12px 0 14px; gap: 8px; }
+}
+@media (max-width: 1000px) {
+  [data-theme='glass'] .rail { width: 70px; }
+  [data-theme='glass'] .rail-item { width: 70px; }
+  [data-theme='glass'] .rail-tile { width: 44px; height: 44px; }
+  [data-theme='glass'] .sidebar { width: 232px !important; }
+  [data-theme='glass'] .friends-title b { font-size: 15px; }
+  [data-theme='glass'] .friend-tabs button { padding: 0 9px; }
+}
+@media (max-width: 900px) {
+  [data-theme='glass'] .main { margin: 0 8px 8px; border-radius: 22px; }
+  [data-theme='glass'] .rail { width: 64px; }
+  [data-theme='glass'] .rail-item { width: 64px; }
+  [data-theme='glass'] .rail-tile { width: 42px; height: 42px; border-radius: 13px; }
+  [data-theme='glass'] .sidebar { width: 216px !important; }
+  [data-theme='glass'] .sidebar-head { padding: 0 8px 0 12px; gap: 6px; }
+  [data-theme='glass'] .sidebar-head .icon-btn { width: 26px; height: 26px; }
+  [data-theme='glass'] .friends-head { height: 54px; padding: 0 10px 0 12px; }
+  [data-theme='glass'] .friends-title svg { width: 18px; height: 18px; }
+  [data-theme='glass'] .friends-title b { font-size: 14px; }
+  [data-theme='glass'] .friend-tabs button { height: 28px; padding: 0 8px; font-size: 12px; }
+}
+@media (max-width: 760px) {
+  /* Как и раньше, узкое окно отдаёт всё место разговору */
+  [data-theme='glass'] .main { margin: 0 6px 6px; border-radius: 20px; }
+  [data-theme='glass'] .content { width: 100%; }
+  [data-theme='glass'] .friends-head { padding: 0 10px; }
+  [data-theme='glass'] .friends-title { font-size: 15px; }
+  [data-theme='glass'] .chat-head { padding: 0 10px; }
+}
+@media (max-height: 640px) {
+  [data-theme='glass'] .profile-card { max-height: calc(100vh - 16px); }
+  [data-theme='glass'] .sidebar-head,
+  [data-theme='glass'] .chat-head,
+  [data-theme='glass'] .friends-head { height: 50px; }
+  [data-theme='glass'] .me-panel { height: 52px; }
+}
+
+/* Слабое железо: без размытия, но с тем же ритмом */
+[data-gfx='low'][data-theme='glass'] .main {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: #0c1020;
+}
+
+/* ---------- 9. Правая панель участников — та же поверхность, без отдельной карточки ---------- */
+
+html[data-theme='glass'] .members-panel {
+  width: 256px;
+  margin-left: 0;
+  border: 0;
+  border-left: 1px solid var(--pane-line);
+  border-radius: 0;
+  background: linear-gradient(180deg, var(--pane-tint), transparent 40%), rgba(8, 12, 24, 0.24);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html[data-theme='glass'] .members-head {
+  height: 56px;
+  margin: 0;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--pane-line);
+  background: rgba(255, 255, 255, 0.018);
+}
+[data-theme='glass'] .members-scroll { padding: 6px 8px 14px; }
+[data-theme='glass'] .members-group {
+  padding: 14px 8px 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+}
+[data-theme='glass'] .member-item {
+  min-height: 38px;
+  padding: 5px 8px;
+  border-radius: 11px;
+  transition: background 130ms ease;
+}
+[data-theme='glass'] .member-item:hover { background: rgba(255, 255, 255, 0.06); }
+[data-theme='glass'] .member-item .avatar { width: 28px; height: 28px; }
+[data-theme='glass'] .member-item.offline { opacity: 0.55; }
+
+/* Тред — плавающая карточка, но из того же материала */
+[data-theme='glass'] .thread-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.012) 32%, transparent 62%),
+    rgba(14, 19, 36, 0.92);
+  -webkit-backdrop-filter: blur(34px) saturate(175%);
+  backdrop-filter: blur(34px) saturate(175%);
+  border: 1px solid var(--pane-line-strong);
+  border-radius: 18px;
+  box-shadow: 0 28px 72px rgba(2, 4, 12, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+[data-theme='glass'] .thread-head {
+  height: 52px;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--pane-line);
+}
+
+/* ---------- 10. Лента сообщений и поле ввода ---------- */
+
+[data-theme='glass'] .messages { padding: 10px clamp(14px, 3.2vw, 34px) 8px; }
+[data-theme='glass'] .msg { max-width: min(820px, 100%); }
+[data-theme='glass'] .new-line {
+  margin: 12px 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 78%, #fff);
+}
+[data-theme='glass'] .new-line::after {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 46%, transparent), transparent);
+  opacity: 1;
+}
+[data-theme='glass'] .composer {
+  margin: 0;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--pane-line);
+  background: rgba(255, 255, 255, 0.015);
+}
+[data-theme='glass'] #message-input,
+[data-theme='glass'] #room-message-input,
+[data-theme='glass'] #thread-input,
+[data-theme='glass'] #message-form textarea,
+[data-theme='glass'] #room-message-form textarea {
+  resize: none;
+  overflow: hidden;
+  scrollbar-width: none;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 14px;
+}
+[data-theme='glass'] #message-input::-webkit-scrollbar,
+[data-theme='glass'] #room-message-input::-webkit-scrollbar { display: none; }
+[data-theme='glass'] #message-input:focus,
+[data-theme='glass'] #room-message-input:focus { box-shadow: none; }
+[data-theme='glass'] .composer-btn {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  transition: background 130ms ease, color 130ms ease, border-color 130ms ease;
+}
+[data-theme='glass'] .composer-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--pane-line);
+}
+[data-theme='glass'] .composer-btn.gif b { font-size: 10px; letter-spacing: 0.04em; }
+[data-theme='glass'] .composer-btn.send {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: #fff;
+}
+[data-theme='glass'] .composer-btn.send:hover {
+  background: color-mix(in srgb, var(--accent) 42%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 58%, transparent);
+}
+[data-theme='glass'] .composer-btn.send svg { width: 16px; height: 16px; }
+
+/* Призыв к звонку — спокойнее, чем сплошная зелёная плашка */
+[data-theme='glass'] .btn.success {
+  background: color-mix(in srgb, var(--ok) 16%, rgba(255, 255, 255, 0.03));
+  border-color: color-mix(in srgb, var(--ok) 34%, transparent);
+  color: color-mix(in srgb, var(--ok) 82%, #fff);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+[data-theme='glass'] .btn.success:hover {
+  background: color-mix(in srgb, var(--ok) 28%, rgba(255, 255, 255, 0.04));
+  border-color: color-mix(in srgb, var(--ok) 48%, transparent);
+}
+
+/* Рейл не должен показывать горизонтальную полоску-скроллбар */
+[data-theme='glass'] .rail { overflow-x: hidden; }
+[data-theme='glass'] .rail-list { overflow-x: hidden; scrollbar-width: none; }
+[data-theme='glass'] .rail-list::-webkit-scrollbar { display: none; }
+
+/* Окна настроек и диалогов — чуть светлее и мягче */
+[data-theme='glass'] .modal-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.012) 34%, transparent 62%),
+    rgba(18, 24, 42, 0.82);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  backdrop-filter: blur(36px) saturate(180%);
+  border: 1px solid var(--pane-line-strong);
+  border-radius: 22px;
+  box-shadow: 0 40px 100px rgba(2, 4, 12, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+/* Пустое состояние с действиями: один основной путь и один запасной */
+.mascot-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+.mascot-actions .btn { height: 36px; padding: 0 16px; }
+
+/* Вкладки не обрезаются ни на одной ширине: сначала плотнее, затем — вторая строка */
+@media (max-width: 1000px) {
+  [data-theme='glass'] .friend-tabs { gap: 0; }
+  [data-theme='glass'] .friend-tabs button { padding: 0 7px; font-size: 12px; }
+}
+@media (max-width: 920px) {
+  [data-theme='glass'] .friends-head {
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding: 8px 12px;
+  }
+  [data-theme='glass'] .friends-title { flex: 0 0 auto; }
+  [data-theme='glass'] .friend-tabs {
+    order: 5;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  [data-theme='glass'] .friend-tabs button { height: 28px; }
+}
