@@ -2615,3 +2615,34 @@ input[type='range'] {
   border-bottom-left-radius: var(--panel-radius, 16px);
   border-bottom-right-radius: var(--panel-radius, 16px);
 }
+
+/* Просмотр трансляции: кнопки не должны уходить под системные кнопки окна.
+   На Windows резервируем и верхнюю полосу, и правый угол; на узком окне
+   оставляем только иконки, чтобы три действия не наезжали друг на друга. */
+.fullview-bar { flex-wrap: wrap; row-gap: 8px; }
+.fullview-bar .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.fullview-bar .btn svg {
+  width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+html.is-win .fullview-bar { padding-top: 44px; }
+html.is-mac .fullview-bar { padding-top: 44px; }
+
+@media (max-width: 900px) {
+  .fullview-bar { gap: 6px; padding-left: 10px; padding-right: 10px; }
+  .fullview-bar .btn { width: 34px; height: 32px; padding: 0; }
+  .fullview-bar .btn .label { display: none; }
+}
+html.is-win .fullview-bar { padding-right: 148px; }
+@media (max-width: 900px) {
+  html.is-win .fullview-bar { padding-right: 148px; }
+}
+
+/* Прокрутка не должна менять ширину списка: иначе контент дёргается,
+   когда полоса появляется при загрузке истории или сообщений. */
+.messages,
+.friends-body,
+.room-list,
+.rail-list,
+.members-list,
+.set-body { scrollbar-gutter: stable; }
