@@ -310,7 +310,8 @@
 /* Форма заявки: во всю ширину колонки, без верхнего отступа — как поле поиска */
 [data-theme='glass'] .friend-add { max-width: 460px; }
 
-/* Пустые состояния: кнопки в том же стекле, что и остальное в теме */
+/* Кнопки пустых состояний (.mascot-actions) в том же стекле, что и остальное в теме */
+[data-theme='glass'] .mascot-actions .btn.primary,
 [data-theme='glass'] .empty .btn.primary {
   background:
     linear-gradient(180deg, rgba(122, 167, 255, 0.34), rgba(197, 139, 255, 0.20)),
@@ -319,18 +320,21 @@
   border: 1px solid rgba(154, 163, 255, 0.50);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
+[data-theme='glass'] .mascot-actions .btn.primary:hover,
 [data-theme='glass'] .empty .btn.primary:hover {
   background:
     linear-gradient(180deg, rgba(122, 167, 255, 0.48), rgba(197, 139, 255, 0.28)),
     rgba(11, 14, 28, 0.42);
   border-color: rgba(176, 184, 255, 0.62);
 }
+[data-theme='glass'] .mascot-actions .btn:not(.primary),
 [data-theme='glass'] .empty .btn:not(.primary) {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-2);
   border: 1px solid var(--pane-line);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
+[data-theme='glass'] .mascot-actions .btn:not(.primary):hover,
 [data-theme='glass'] .empty .btn:not(.primary):hover {
   background: rgba(255, 255, 255, 0.09);
   color: var(--text);
