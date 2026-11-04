@@ -1,5 +1,5 @@
-// Preview Card: карточка профиля показывается по наведению, как в референсе liqui.
-// Нажатие и контекстное меню продолжают работать — карточка открывается тем же кодом.
+// Hover no longer opens the card: profile opens on click on name or avatar
+// Hover no longer opens the card: profile opens on click on name or avatar
 (() => {
   const SELECTOR = '[data-profile], [data-voice-user], [data-user], [data-contact], .contact[data-contact]';
   const OPEN_DELAY = 550;
@@ -37,30 +37,7 @@
     }, CLOSE_DELAY);
   }
 
-  document.addEventListener('pointerover', (event) => {
-    const target = event.target.closest?.(SELECTOR);
-    if (!target) return;
-    if (event.relatedTarget && target.contains(event.relatedTarget)) return;
-    const id = idOf(target);
-    if (!id) return;
-    cancelOpen();
-    cancelClose();
-    openTimer = setTimeout(() => {
-      // Если карточка уже открыта — не пересоздаём её на каждом движении курсора
-      if (shownCard()) return;
-      openProfileCard(id, target);
-    }, OPEN_DELAY);
-  });
-
-  document.addEventListener('pointerout', (event) => {
-    const target = event.target.closest?.(SELECTOR);
-    if (!target) return;
-    if (event.relatedTarget && target.contains(event.relatedTarget)) return;
-    cancelOpen();
-    scheduleClose();
-  });
-
-  // Курсор внутри карточки — держим её открытой
+// Hover no longer opens the card: profile opens on click on name or avatar
   document.addEventListener('pointerover', (event) => {
     if (event.target.closest?.('.profile-card')) cancelClose();
   });
