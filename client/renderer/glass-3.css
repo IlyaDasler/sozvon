@@ -862,6 +862,32 @@ html[data-theme='glass'] .btn.primary {
 html[data-theme='glass'] .btn.primary:hover {
   background: color-mix(in srgb, var(--lq-accent, var(--accent)) 88%, #fff);
 }
+
+/* Главная кнопка на экране входа — стеклянная и в палитре темы (голубой + сиреневый),
+   а не плотная синяя плашка: так она читается как часть той же поверхности.
+   Селектор с #auth, иначе побеждает #auth .btn.primary.wide из styles.css */
+[data-theme='glass'] #auth .btn.primary.wide {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, #7aa7ff 36%, transparent), color-mix(in srgb, #c58bff 22%, transparent)),
+    color-mix(in srgb, #0b0e1c 52%, transparent);
+  color: #f4f6ff;
+  border: 1px solid color-mix(in srgb, #7aa7ff 52%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 10px 26px rgba(122, 167, 255, 0.22);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: blur(12px) saturate(150%);
+}
+[data-theme='glass'] #auth .btn.primary.wide:hover {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, #7aa7ff 52%, transparent), color-mix(in srgb, #c58bff 30%, transparent)),
+    color-mix(in srgb, #0b0e1c 40%, transparent);
+  border-color: color-mix(in srgb, #9ec3ff 70%, transparent);
+}
+[data-theme='glass'] #auth .btn.primary.wide:active {
+  transform: translateY(1px);
+  filter: brightness(0.97);
+}
 html[data-theme='glass'] .btn.success {
   background: color-mix(in srgb, var(--ok) 88%, #0a1018);
   color: #f4fff8;
