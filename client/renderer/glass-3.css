@@ -1065,3 +1065,27 @@ html[data-theme='glass'] .rail-folder .rail-tile {
   position: relative;
   z-index: 20;
 }
+
+/* Подсказка рейла — фиксированный слой, а не flex-ребёнок каркаса.
+   Иначе `.main > *` растягивал её на всю высоту и она чёрной полосой
+   накрывала список каналов. */
+html[data-theme='glass'] .main > * {
+  position: relative;
+  z-index: 1;
+}
+html[data-theme='glass'] .main > .rail-tip {
+  position: fixed !important;
+  z-index: 80;
+  height: auto !important;
+  align-self: auto !important;
+  max-height: none;
+}
+
+/* «Добавить в друзья» — действие справа, а не ещё одна вкладка в середине */
+html[data-theme='glass'] .friend-tabs .add-tab {
+  margin-left: auto;
+}
+
+/* Плитка канала не меняет геометрию ни в одном состоянии */
+html[data-theme='glass'] .rail-tile { transform: none !important; }
+
