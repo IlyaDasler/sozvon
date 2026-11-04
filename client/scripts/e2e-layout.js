@@ -77,6 +77,8 @@ runTest(async () => {
     const main = mainEl.getBoundingClientRect();
     const divider = document.querySelector('.main-divider');
     const tabs = document.querySelector('.friend-tabs');
+    const addTab = document.querySelector('.friend-tabs .add-tab');
+    const blockedTab = document.querySelector('.friend-tabs [data-tab="blocked"]');
     const railTiles = [...document.querySelectorAll('#rail-list .rail-tile')].filter((t) => t.getClientRects().length);
     const railTileWidths = railTiles.map((t) => Math.round(t.getBoundingClientRect().width));
     const contentEl = document.querySelector('.content');
@@ -102,6 +104,12 @@ runTest(async () => {
       popWidth,
       overflowX: document.documentElement.scrollWidth - innerWidth,
       tabsOverflow: tabs ? tabs.scrollWidth - tabs.clientWidth : 0,
+      addTab: addTab && tabs ? {
+        right: Math.round(addTab.getBoundingClientRect().right),
+        tabsRight: Math.round(tabs.getBoundingClientRect().right),
+        left: Math.round(addTab.getBoundingClientRect().left),
+        blockedRight: blockedTab ? Math.round(blockedTab.getBoundingClientRect().right) : 0,
+      } : null,
     });
   })()`);
   const sh = JSON.parse(shell);
@@ -110,6 +118,9 @@ runTest(async () => {
   if (sh.dividerShown) throw new Error('Линия-разделитель снова висит в зазоре');
   if (sh.overflowX > 0) throw new Error(`Появилась горизонтальная прокрутка: ${sh.overflowX}px`);
   if (sh.tabsOverflow > 0) throw new Error(`Вкладки друзей обрезаны: ${sh.tabsOverflow}px`);
+  if (sh.addTab) {
+    if (sh.addTab.tabsRight - sh.addTab.right > 12) throw new Error(`«Добавить в друзья» не прижата к правому краю: ${sh.addTab.tabsRight - sh.addTab.right}px`);
+  }
   if (sh.mainHeight < sh.innerHeight * 0.8) throw new Error('Каркас сжался по высоте');
   if (sh.mainFilter !== 'none') throw new Error(`У полнооконного каркаса остался backdrop-filter: ${sh.mainFilter}`);
   if (sh.contentFilter !== 'none') throw new Error(`У контента остался backdrop-filter: ${sh.contentFilter}`);
@@ -120,6 +131,25 @@ runTest(async () => {
   if (sh.popAnim !== 'none') throw new Error(`У плитки канала осталась анимация увеличения: ${sh.popAnim}`);
   if (sh.popWidth !== sh.railTileWidths[0]) throw new Error(`Плитка канала меняет ширину при выборе: ${sh.railTileWidths[0]} → ${sh.popWidth}`);
   console.log('✔ стеклянный каркас: без щелей, висящих линий и обрезки');
+  // Tooltip рейла не должен становиться flex-ребёнком и растягиваться на всю высоту
+  const railTip = await js(win, `(() => {
+    const tile = document.querySelector('#rail-list .rail-tile[data-tip], .rail-tile[data-tip]');
+    if (!tile) return 'none';
+    tile.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, clientX: 10, clientY: 10 }));
+    const tip = document.getElementById('rail-tip');
+    const c = getComputedStyle(tip);
+    const r = tip.getBoundingClientRect();
+    const out = { pos: c.position, h: Math.round(r.height), w: Math.round(r.width), text: tip.textContent.slice(0, 30) };
+    tip.classList.add('hidden');
+    return JSON.stringify(out);
+  })()`);
+  if (railTip !== 'none') {
+    const rt = JSON.parse(railTip);
+    if (rt.pos !== 'fixed') throw new Error(`Подсказка рейла снова в потоке: ${rt.pos}`);
+    if (rt.h > 100) throw new Error(`Подсказка рейла растянута на ${rt.h}px`);
+    if (rt.w > 260) throw new Error(`Подсказка рейла слишком широкая: ${rt.w}px`);
+  }
+  console.log('✔ подсказка рейла — компактный фиксированный слой');
   // ---------- Кнопки просмотра трансляции не заходят под кнопки окна ----------
   for (const [width, height] of [[1100, 720], [820, 620]]) {
     await js(win, `document.documentElement.style.setProperty('--audit-width','${width}px'); true`);
