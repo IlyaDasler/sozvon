@@ -23,13 +23,53 @@ const canManageHub = (hub) => Boolean(hub) && hubRank(hub) >= 2;
 const hubInitials = (name) =>
   name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
 
+const hubIconState = new Map(); // url -> 'ok' | 'fail', чтобы не мигать инициалами при каждом рендере
+
+const HUB_ICON_RE = /^\/api\/hubs\/\d+\/icon(?:\?\d+)?$/;
+
 function fillHubIcon(tile, hub) {
   tile.style.setProperty('--hub-color', hub.iconColor);
-  const hasImage = AVATAR_URL_RE.test(hub.iconUrl || '');
+  const hasImage = HUB_ICON_RE.test(hub.iconUrl || '') || AVATAR_URL_RE.test(hub.iconUrl || '');
   tile.classList.add('hub-tile');
-  tile.classList.toggle('has-image', hasImage);
-  tile.style.backgroundImage = hasImage ? `url("${Api.base}${hub.iconUrl}")` : '';
-  tile.textContent = hasImage ? '' : hubInitials(hub.name);
+  if (!hasImage) {
+    tile.classList.remove('has-image');
+    tile.style.backgroundImage = '';
+    tile.textContent = hubInitials(hub.name);
+    return;
+  }
+  // Битая или ещё не загруженная картинка не должна оставлять пустой чёрный квадрат:
+  // показываем инициалы, а фото подставляем только после успешной загрузки.
+  const url = `${Api.base}${hub.iconUrl}`;
+  const known = hubIconState.get(url);
+  if (known === 'ok') {
+    tile.classList.add('has-image');
+    tile.style.backgroundImage = `url("${url}")`;
+    tile.textContent = '';
+    return;
+  }
+  if (known === 'fail') {
+    tile.classList.remove('has-image');
+    tile.style.backgroundImage = '';
+    tile.textContent = hubInitials(hub.name);
+    return;
+  }
+  const probe = new Image();
+  probe.onload = () => {
+    hubIconState.set(url, 'ok');
+    tile.classList.add('has-image');
+    tile.style.backgroundImage = `url("${url}")`;
+    tile.textContent = '';
+  };
+  probe.onerror = () => {
+    hubIconState.set(url, 'fail');
+    tile.classList.remove('has-image');
+    tile.style.backgroundImage = '';
+    tile.textContent = hubInitials(hub.name);
+  };
+  probe.src = url;
+  tile.classList.remove('has-image');
+  tile.style.backgroundImage = '';
+  tile.textContent = hubInitials(hub.name);
 }
 
 // ---------- Данные ----------

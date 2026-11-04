@@ -81,6 +81,34 @@ runTest(async () => {
   }
   console.log('✔ голосовая комната открывает переписку, не подключая к голосу');
 
+  // Одно окно: полоса ввода во всю ширину, без плавающей пилюли и стеклянной карточки
+  const material = JSON.parse(await js(winA, `(() => {
+    const content = document.querySelector('.content');
+    const form = document.querySelector('#room-view .composer');
+    const bar = document.querySelector('#room-view .composer-bar');
+    const cs = getComputedStyle(content);
+    const bs = getComputedStyle(bar);
+    const cr = content.getBoundingClientRect();
+    const br = bar.getBoundingClientRect();
+    return JSON.stringify({
+      contentFilter: cs.backdropFilter,
+      contentRadius: cs.borderTopLeftRadius,
+      barRadius: bs.borderTopLeftRadius,
+      barWidth: Math.round(br.width),
+      contentWidth: Math.round(cr.width),
+      barBottom: Math.round(br.bottom),
+      contentBottom: Math.round(cr.bottom),
+      formWidth: Math.round(form.getBoundingClientRect().width),
+    });
+  })()`));
+  if (material.contentFilter !== 'none') throw new Error(`У чата остался backdrop-filter: ${material.contentFilter}`);
+  if (material.contentRadius !== '0px') throw new Error(`Чат снова карточка внутри окна: radius ${material.contentRadius}`);
+  if (material.barRadius !== '0px') throw new Error(`Поле ввода снова плавающая пилюля: radius ${material.barRadius}`);
+  if (Math.abs(material.barWidth - material.contentWidth) > 2) throw new Error(`Поле ввода не во всю ширину: ${material.barWidth} из ${material.contentWidth}`);
+  if (Math.abs(material.barBottom - material.contentBottom) > 2) throw new Error('Поле ввода не прижато к низу окна');
+  if (Math.abs(material.formWidth - material.contentWidth) > 2) throw new Error('Форма ввода не совпадает с шириной чата');
+  console.log('✔ чат — одно окно: полоса ввода во всю ширину, без карточки');
+
   // Явное подключение — кнопкой в комнате
   for (const [win] of all) await js(win, `document.getElementById('room-voice-join').click(); true`);
   for (const [win, u] of all) {
