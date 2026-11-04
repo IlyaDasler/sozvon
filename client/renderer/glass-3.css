@@ -267,14 +267,15 @@
   font-weight: 600;
   white-space: nowrap;
   background: transparent;
-  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+  /* Без анимации тени: при переключении она «догоняла» плашку и выглядела как фриз */
+  transition: background-color 90ms linear, color 90ms linear;
 }
 [data-theme='glass'] .friend-tabs button:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
 [data-theme='glass'] .friend-tabs button.active {
   color: var(--text);
-  /* Одна подсветка: мягкая заливка и тень. Внутренние обводки давали «двойной» вид */
-  background: rgba(255, 255, 255, 0.13) !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  /* Glassy pill: translucent fill + thin light ring, no shadow */
+  background: rgba(255, 255, 255, 0.085) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
 }
 [data-theme='glass'] .friend-tabs .add-tab {
   color: #fff;
