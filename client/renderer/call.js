@@ -282,7 +282,7 @@ function nativeScreenTrack(id) {
   return track;
 }
 
-const SCREEN_CODECS = ['video/VP9', 'video/H264', 'video/VP8'];
+const SCREEN_CODECS = ['video/H264', 'video/VP9', 'video/VP8'];
 function preferScreenCodecs(transceiver) {
   const caps = RTCRtpReceiver.getCapabilities?.('video');
   if (!caps || !transceiver.setCodecPreferences) return;
