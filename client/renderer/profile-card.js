@@ -213,10 +213,11 @@ function openProfileCard(userId, anchor) {
   }
   card.append(body);
 
-  // Прокрутка внутри карточки: полоса короче карточки и не выходит за скругления
+  // Прокручиваем только содержимое: баннер и аватар остаются на месте,
+  // а полоса скролла живёт в нижней части карточки и не задевает углы
   const scrollBox = document.createElement('div');
   scrollBox.className = 'pc-scroll';
-  while (card.firstChild) scrollBox.append(card.firstChild);
+  scrollBox.append(body);
   card.append(scrollBox);
 
   card.classList.remove('hidden');
