@@ -118,15 +118,21 @@ runTest(async () => {
     }
     await shot(`theme-${t}`);
   }
-  // Все темы доступны в «Оформлении», включая Ferrari
+  // Все темы доступны в «Оформлении», разбитые на «Классические темы» и «Новые темы»
   await js(win, `openSettings('look'); true`);
   await sleep(300);
   const picker = JSON.parse(await js(win, `(() => {
-    const cards = [...document.querySelectorAll('#theme-grid .theme-card')];
-    return JSON.stringify({ count: cards.length, ferrari: Boolean(document.querySelector('[data-pick="ferrari"]')) });
+    const groups = [...document.querySelectorAll('#theme-grid .theme-group')].map((g) => ({
+      title: g.querySelector('h4')?.textContent.trim(),
+      ids: [...g.querySelectorAll('.theme-card')].map((c) => c.dataset.pick),
+    }));
+    return JSON.stringify(groups);
   })()`));
-  if (picker.count !== 7) throw new Error(`В оформлении ${picker.count} тем вместо 7`);
-  if (!picker.ferrari) throw new Error('Тема «Феррари» отсутствует в оформлении');
+  const expectedGroups = [
+    { title: 'Классические темы', ids: ['sozvon', 'midnight', 'light', 'forest', 'dusk'] },
+    { title: 'Новые темы', ids: ['ferrari', 'glass'] },
+  ];
+  if (JSON.stringify(picker) !== JSON.stringify(expectedGroups)) throw new Error(`Группы тем в оформлении: ${JSON.stringify(picker)}`);
   await js(win, `document.querySelector('[data-pick="ferrari"]').click(); true`);
   await sleep(350);
   if ((await js(win, `document.documentElement.dataset.theme`)) !== 'ferrari') throw new Error('«Феррари» не выбирается из оформления');

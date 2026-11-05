@@ -186,15 +186,21 @@ function placeNotifPanel() {
   if (!panel || !btn) return;
   const r = btn.getBoundingClientRect();
   const width = Math.min(360, window.innerWidth - 32);
-  // Панель прижата к правому краю окна, а не к левой колонке — так она
-  // не уезжает под список чатов и не обрезается.
-  const left = Math.max(8, window.innerWidth - width - 16);
+  // Панель выпадает из-под колокольчика, прижатая к левому краю списка чатов —
+  // не улетает к правому краю окна
+  const side = document.querySelector('.sidebar')?.getBoundingClientRect();
+  const anchor = side ? side.left + 8 : r.right - width;
+  const left = Math.max(8, Math.min(anchor, window.innerWidth - width - 8));
   const top = Math.max(48, r.bottom + 8);
   panel.style.position = 'fixed';
+  panel.style.right = 'auto';
   panel.style.width = `${width}px`;
   panel.style.left = `${Math.round(left)}px`;
   panel.style.top = `${Math.round(top)}px`;
   panel.style.maxHeight = `${Math.max(180, Math.round(window.innerHeight - top - 16))}px`;
+  // Хвостик панели — точно под колокольчиком
+  const tail = Math.round(Math.min(width - 30, Math.max(14, r.left + r.width / 2 - left - 6)));
+  panel.style.setProperty('--notif-tail', `${tail}px`);
 }
 
 function openNotifPanel() {
