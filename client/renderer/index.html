@@ -387,8 +387,12 @@
     </header>
     <div class="thread-list" id="thread-list"></div>
     <form class="thread-form" id="thread-form">
+      <button type="button" class="composer-btn" id="thread-attach" title="Прикрепить файл"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg></button>
       <textarea id="thread-input" rows="1" placeholder="Ответить в треде"></textarea>
-      <button type="submit" class="btn primary" id="thread-send">Ответить</button>
+      <button type="button" class="composer-btn" id="thread-gif" title="Мои гифки"><b>GIF</b></button>
+      <button type="button" class="composer-btn" id="thread-emoji" title="Смайлики"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg></button>
+      <button type="submit" class="composer-btn send" id="thread-send" title="Отправить"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></button>
+      <input type="file" id="thread-file" multiple hidden>
     </form>
   </aside>
         <header class="chat-head">
