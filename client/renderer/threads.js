@@ -62,6 +62,14 @@
     listEl().innerHTML = '<div class="thread-empty muted small">Загружаем тред…</div>';
     try {
       const rows = await Api.get(`/rooms/${roomId}/messages/${rootId}/thread`);
+      const known = new Map((state.roomHistory.get(roomId) || []).map((m) => [m.id, m]));
+      for (const m of rows) {
+        const cached = known.get(m.id);
+        if (cached?.plain && !m.plain) { m.plain = cached.plain; m.enc = false; }
+      }
+      if (typeof decryptMessages === 'function' && typeof roomConvOf === 'function') {
+        try { await decryptMessages(rows, roomConvOf(roomId)); } catch {}
+      }
       paint(rows, roomId);
       thread.unsupported = false;
       setComposerEnabled(true);
