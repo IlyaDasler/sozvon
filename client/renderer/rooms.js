@@ -779,7 +779,7 @@ function handleRoomEvent(msg) {
     case 'room:message':
       return addRoomMessage(msg.message);
     case 'room:thread:new':
-      bumpThreadReplies(msg.rootId, msg.roomId);
+      bumpThreadReplies(msg.rootId, msg.roomId, { replies: msg.replies, participants: msg.participants });
       return;
     case 'room:message:deleted':
       if (dropMessage(state.roomHistory, msg.roomId, msg.id) && msg.roomId === state.selectedRoomId) renderRoomMessages();

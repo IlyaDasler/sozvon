@@ -1905,7 +1905,11 @@ export function createApi() {
       const before = Number(req.query.before) || undefined;
       const list = withMessageMeta(roomMessages.list(room.id, before).map(toRoomMessage), 'room', room.id, req.user.id);
       const counts = roomMessages.replyCounts(room.id);
-      return list.map((m) => ({ ...m, replies: counts.get(m.id) || 0 }));
+      return list.map((m) => {
+      const replies = counts.get(m.id) || 0;
+      const users = replies ? roomMessages.participants(m.id) : [];
+      return { ...m, replies, threadUsers: users.slice(0, 5), threadUserCount: users.length };
+    });
     })
   );
 
@@ -2098,7 +2102,14 @@ export function createApi() {
         // иначе ответ из треда появляется в общем чате
         const root = roomMessages.byId(threadRoot);
         for (const m of rooms.members(room.id)) {
-          hub.send(m.id, { type: 'room:thread:new', roomId: room.id, rootId: threadRoot, message });
+          hub.send(m.id, {
+            type: 'room:thread:new',
+            roomId: room.id,
+            rootId: threadRoot,
+            message,
+            participants: roomMessages.participants(threadRoot),
+            replies: roomMessages.thread(threadRoot).length,
+          });
         }
         return { ...message, threadRoot, replies: roomMessages.thread(threadRoot).length, rootFrom: root?.from_id ?? null };
       }
