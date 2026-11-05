@@ -1570,3 +1570,28 @@ html[data-theme='glass'] #thread-input {
   line-height: 22px;
   overflow-y: auto;
 }
+
+/* ---------- 113. Полоса ввода растёт вверх, а не вниз ---------- */
+html[data-theme='glass'] .content,
+html[data-theme='glass'] .chat {
+  min-height: 0;
+}
+html[data-theme='glass'] .chat {
+  overflow: hidden;
+}
+html[data-theme='glass'] .messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+html[data-theme='glass'] #message-input,
+html[data-theme='glass'] #room-message-input,
+html[data-theme='glass'] #thread-input {
+  height: auto;
+  min-height: 32px;
+  max-height: 160px;
+  field-sizing: content;
+  padding: 5px 0;
+  line-height: 22px;
+  overflow-y: auto;
+}
