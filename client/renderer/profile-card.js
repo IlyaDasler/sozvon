@@ -10,10 +10,12 @@ if (profileCardEl && profileCardEl.parentElement !== document.body) document.bod
 // Подсказка «ниже есть ещё» исчезает, когда список доскроллен до конца
 if (profileCardEl) {
   const syncEnd = () => {
-    const atEnd = profileCardEl.scrollTop + profileCardEl.clientHeight >= profileCardEl.scrollHeight - 4;
+    const box = profileCardEl.querySelector('.pc-scroll');
+    if (!box) return;
+    const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 4;
     profileCardEl.classList.toggle('at-end', atEnd);
   };
-  profileCardEl.addEventListener('scroll', syncEnd, { passive: true });
+  profileCardEl.addEventListener('scroll', syncEnd, { passive: true, capture: true });
   new MutationObserver(syncEnd).observe(profileCardEl, { childList: true, subtree: true });
 }
 
@@ -210,6 +212,12 @@ function openProfileCard(userId, anchor) {
     body.append(actions);
   }
   card.append(body);
+
+  // Прокрутка внутри карточки: полоса короче карточки и не выходит за скругления
+  const scrollBox = document.createElement('div');
+  scrollBox.className = 'pc-scroll';
+  while (card.firstChild) scrollBox.append(card.firstChild);
+  card.append(scrollBox);
 
   card.classList.remove('hidden');
   placeCard(card, anchor);
