@@ -1847,3 +1847,9 @@ html[data-theme='glass'] .notif-panel {
     0 18px 44px rgba(2, 4, 10, 0.50),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
+
+/* Боковые отступы полосы ввода */
+html[data-theme='glass'] .composer-bar {
+  padding-left: 18px;
+  padding-right: 18px;
+}
