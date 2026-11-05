@@ -2065,13 +2065,13 @@ html[data-theme='glass'] .msg-tools {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 10px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0) 100%),
-    rgba(18, 23, 38, 0.56);
-  -webkit-backdrop-filter: blur(6px) saturate(140%);
-  backdrop-filter: blur(6px) saturate(140%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015) 50%, rgba(255, 255, 255, 0) 100%),
+    rgba(18, 23, 38, 0.38);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  backdrop-filter: blur(8px) saturate(140%);
   box-shadow:
-    0 10px 30px rgba(2, 4, 10, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    0 10px 30px rgba(2, 4, 10, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 html[data-theme='glass'] .msg-tool {
   background: transparent;
