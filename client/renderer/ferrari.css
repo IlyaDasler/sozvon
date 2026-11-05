@@ -88,3 +88,117 @@ html[data-theme='ferrari'] {
   --accent-2: #f2c200 !important;
   --accent-hover: #c40500 !important;
 }
+
+/* ---------- Сцена: F1 на трассе, панели — полупрозрачное стекло ---------- */
+
+[data-theme='ferrari'] body {
+  background:
+    linear-gradient(90deg, rgba(5, 5, 6, 0.84) 0%, rgba(5, 5, 6, 0.48) 34%, rgba(5, 5, 6, 0.14) 68%, rgba(5, 5, 6, 0.04) 100%),
+    url("ferrari-scene.svg") center / cover fixed no-repeat,
+    var(--bg-deep);
+}
+
+[data-theme='ferrari'] .main {
+  background:
+    linear-gradient(90deg, rgba(5, 5, 6, 0.60) 0%, rgba(5, 5, 6, 0.22) 52%, rgba(5, 5, 6, 0.04) 100%);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 46%, transparent),
+    0 30px 90px rgba(0, 0, 0, 0.52);
+}
+
+[data-theme='ferrari'] .titlebar,
+[data-theme='ferrari'] .sidebar,
+[data-theme='ferrari'] .members-panel,
+[data-theme='ferrari'] .chat-head,
+[data-theme='ferrari'] .friends-head,
+[data-theme='ferrari'] .composer,
+[data-theme='ferrari'] .modal-card,
+[data-theme='ferrari'] .popup-menu,
+[data-theme='ferrari'] .profile-card,
+[data-theme='ferrari'] .notif-panel,
+[data-theme='ferrari'] .toast,
+[data-theme='ferrari'] .gif-popover,
+[data-theme='ferrari'] .chat-theme-pop,
+[data-theme='ferrari'] .rail-tip {
+  -webkit-backdrop-filter: blur(18px) saturate(118%);
+  backdrop-filter: blur(18px) saturate(118%);
+}
+
+[data-theme='ferrari'] .titlebar {
+  background: rgba(5, 5, 6, 0.46);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+[data-theme='ferrari'] .rail {
+  background: transparent;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+[data-theme='ferrari'] .sidebar {
+  background: linear-gradient(180deg, rgba(7, 7, 9, 0.50), rgba(7, 7, 9, 0.30));
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='ferrari'] .content {
+  background: linear-gradient(90deg, rgba(5, 5, 6, 0.26), rgba(5, 5, 6, 0.06));
+}
+
+[data-theme='ferrari'] #chat,
+[data-theme='ferrari'] #room-view,
+[data-theme='ferrari'] .friends-body {
+  background: transparent;
+}
+
+[data-theme='ferrari'] .chat-head,
+[data-theme='ferrari'] .friends-head {
+  background: rgba(5, 5, 6, 0.38);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='ferrari'] .members-panel {
+  background: rgba(6, 6, 8, 0.46);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='ferrari'] .composer {
+  background: rgba(5, 5, 6, 0.44);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='ferrari'] .modal {
+  background: rgba(3, 3, 4, 0.50);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+[data-theme='ferrari'] .modal-card {
+  background: rgba(8, 7, 9, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.58);
+}
+
+[data-theme='ferrari'] .popup-menu,
+[data-theme='ferrari'] .profile-card,
+[data-theme='ferrari'] .notif-panel,
+[data-theme='ferrari'] .toast,
+[data-theme='ferrari'] .gif-popover,
+[data-theme='ferrari'] .chat-theme-pop {
+  background: rgba(8, 7, 9, 0.82);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Плитка темы в настройках тоже показывает машину, а не только цвет */
+.theme-preview[data-theme='ferrari'] {
+  background:
+    linear-gradient(180deg, rgba(5, 5, 6, 0.18), rgba(5, 5, 6, 0.62)),
+    url("ferrari-scene.svg") center / cover no-repeat;
+}
+
+@media (max-width: 760px) {
+  [data-theme='ferrari'] .sidebar,
+  [data-theme='ferrari'] .members-panel {
+    -webkit-backdrop-filter: blur(20px) saturate(120%);
+    backdrop-filter: blur(20px) saturate(120%);
+  }
+}

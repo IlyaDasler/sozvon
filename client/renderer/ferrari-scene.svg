@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050506"/>
+      <stop offset=".52" stop-color="#080609"/>
+      <stop offset="1" stop-color="#120708"/>
+    </linearGradient>
+    <radialGradient id="redGlow" cx="72%" cy="66%" r="58%">
+      <stop offset="0" stop-color="#e10600" stop-opacity=".38"/>
+      <stop offset=".42" stop-color="#9c0505" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#e10600" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="warm" cx="50%" cy="100%" r="80%">
+      <stop offset="0" stop-color="#f2c200" stop-opacity=".10"/>
+      <stop offset="1" stop-color="#f2c200" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff2a20"/>
+      <stop offset=".36" stop-color="#d70804"/>
+      <stop offset=".78" stop-color="#9e0503"/>
+      <stop offset="1" stop-color="#600202"/>
+    </linearGradient>
+    <linearGradient id="bodyLight" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff5a4d" stop-opacity=".9"/>
+      <stop offset=".5" stop-color="#c90905" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#5c0202" stop-opacity=".1"/>
+    </linearGradient>
+    <linearGradient id="tyre" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#202023"/>
+      <stop offset=".5" stop-color="#0c0c0e"/>
+      <stop offset="1" stop-color="#1b1b1e"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#171113"/>
+      <stop offset="1" stop-color="#050505"/>
+    </linearGradient>
+    <linearGradient id="track" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#09090b"/>
+      <stop offset=".48" stop-color="#130d0e"/>
+      <stop offset="1" stop-color="#080708"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="28"/></filter>
+    <filter id="softSmall" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="6"/></filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#night)"/>
+  <rect width="1920" height="1080" fill="url(#redGlow)"/>
+  <rect y="760" width="1920" height="320" fill="url(#warm)"/>
+
+  <!-- Трибуны и свет трассы: едва читаемая глубина, не отвлекает от интерфейса -->
+  <g opacity=".44">
+    <path d="M0 612 L1920 498 L1920 760 L0 840Z" fill="#0a090b"/>
+    <path d="M0 655 L1920 548" stroke="#2a2225" stroke-width="2"/>
+    <path d="M0 706 L1920 606" stroke="#211b1d" stroke-width="2"/>
+    <path d="M0 760 L1920 668" stroke="#2f2527" stroke-width="3"/>
+    <g fill="#d8cfc6" opacity=".22">
+      <rect x="118" y="640" width="5" height="3"/><rect x="162" y="638" width="5" height="3"/><rect x="240" y="632" width="5" height="3"/>
+      <rect x="319" y="627" width="5" height="3"/><rect x="390" y="622" width="5" height="3"/><rect x="465" y="618" width="5" height="3"/>
+      <rect x="538" y="612" width="5" height="3"/><rect x="616" y="606" width="5" height="3"/><rect x="690" y="601" width="5" height="3"/>
+    </g>
+    <g fill="#f2c200" opacity=".26">
+      <circle cx="1440" cy="586" r="2"/><circle cx="1488" cy="582" r="2"/><circle cx="1536" cy="579" r="2"/>
+    </g>
+  </g>
+
+  <!-- Асфальт и разметка -->
+  <path d="M0 840 C380 780 720 748 1050 738 C1400 728 1680 714 1920 690 L1920 1080 L0 1080Z" fill="url(#track)"/>
+  <g opacity=".3" stroke="#5a484a" stroke-width="2">
+    <path d="M0 1010 C520 940 1040 880 1920 812"/>
+    <path d="M0 928 C530 868 1100 820 1920 756"/>
+  </g>
+  <g fill="#d9d2ca" opacity=".13">
+    <rect x="70" y="884" width="104" height="7" rx="2" transform="rotate(-4 70 884)"/>
+    <rect x="250" y="864" width="104" height="7" rx="2" transform="rotate(-4 250 864)"/>
+    <rect x="430" y="846" width="104" height="7" rx="2" transform="rotate(-4 430 846)"/>
+    <rect x="610" y="828" width="104" height="7" rx="2" transform="rotate(-4 610 828)"/>
+  </g>
+
+  <!-- Машина: оригинальная плоская иллюстрация F1, без логотипов и копирования фотографий -->
+  <g transform="translate(888 318) scale(1.08)">
+    <ellipse cx="425" cy="514" rx="390" ry="38" fill="#000" opacity=".62" filter="url(#softSmall)"/>
+
+    <!-- шлейф скорости -->
+    <g fill="none" stroke-linecap="round" opacity=".5">
+      <path d="M-260 312 C-120 300 -20 306 88 326" stroke="#e10600" stroke-width="7"/>
+      <path d="M-300 352 C-170 338 -60 344 58 362" stroke="#f2c200" stroke-width="3" opacity=".55"/>
+      <path d="M-240 400 C-135 390 -52 396 34 412" stroke="#8c7e80" stroke-width="2" opacity=".5"/>
+      <path d="M-340 260 C-210 250 -105 260 18 286" stroke="#8c7e80" stroke-width="2" opacity=".28"/>
+    </g>
+
+    <!-- заднее антикрыло -->
+    <g>
+      <path d="M16 158 C40 146 98 144 126 156 L120 190 L28 196 Z" fill="#1a0d0f"/>
+      <path d="M24 164 L116 158 L112 182 L34 188 Z" fill="#b80503"/>
+      <path d="M34 168 L110 164" stroke="#f2c200" stroke-width="3"/>
+      <path d="M30 150 L58 146 L52 302 L18 300 Z" fill="#0c0809"/>
+      <path d="M102 148 L138 152 L142 296 L108 300 Z" fill="#130a0c"/>
+      <path d="M32 154 L48 152 L44 296 L24 296 Z" fill="#6f0302"/>
+      <path d="M112 154 L128 156 L130 294 L114 296 Z" fill="#6f0302"/>
+    </g>
+
+    <!-- корпус и боковой понтон -->
+    <path d="M96 326 C110 282 176 252 260 246 L352 244 L398 266 L424 318 L394 352 L266 372 L140 374 C112 368 100 350 96 326Z" fill="url(#body)"/>
+    <path d="M146 304 C188 280 250 264 312 260 L360 260 L384 286 L366 318 L270 334 L164 340 Z" fill="url(#bodyLight)" opacity=".60"/>
+    <path d="M98 342 C200 330 306 328 390 340 L404 376 L252 396 L126 392 C108 378 100 360 98 342Z" fill="#170d0f"/>
+    <path d="M166 290 C226 270 300 262 354 264 L374 288 L342 302 L234 316 L174 316 Z" fill="#0d0809" opacity=".85"/>
+    <path d="M214 302 L326 292 L332 322 L252 330 Z" fill="#0b0708" opacity=".82"/>
+
+    <!-- кокпит и halo -->
+    <path d="M352 248 C376 226 430 220 470 232 L492 274 L462 304 L388 306 L354 286Z" fill="#120a0c"/>
+    <path d="M375 245 C408 236 438 236 459 246" stroke="#4d3a3d" stroke-width="5" fill="none"/>
+    <path d="M455 237 C500 236 522 260 526 288" stroke="#0b0809" stroke-width="10" fill="none"/>
+    <path d="M467 224 C506 220 538 245 544 279" stroke="#2c2023" stroke-width="5" fill="none"/>
+    <circle cx="430" cy="261" r="23" fill="#e10600"/>
+    <path d="M409 256 C416 244 444 242 453 256 C446 274 420 278 409 256Z" fill="#f2c200"/>
+    <path d="M415 257 C423 250 440 250 447 257" stroke="#8f6b00" stroke-width="3" fill="none"/>
+
+    <!-- нос и переднее крыло -->
+    <path d="M466 298 C548 286 642 300 722 330 L780 350 L754 382 L642 376 L520 354 L466 336Z" fill="url(#body)"/>
+    <path d="M482 302 C568 296 638 312 704 336" stroke="#ff6b5c" stroke-width="4" opacity=".6" fill="none"/>
+    <path d="M738 344 L826 352 L856 366 L846 392 L748 382Z" fill="#a70402"/>
+    <path d="M744 352 L830 360 L842 374 L748 372Z" fill="#e10600"/>
+    <path d="M726 330 L744 330 L744 406 L722 406Z" fill="#160c0e"/>
+    <path d="M804 346 L862 348 L872 360 L860 404 L806 404Z" fill="#0e090a"/>
+    <path d="M812 354 L856 356 L860 366 L814 394Z" fill="#f2c200" opacity=".9"/>
+    <path d="M478 318 L520 318 L516 338 L482 336Z" fill="#f2c200"/>
+    <path d="M492 322 L507 322" stroke="#1a1008" stroke-width="4"/>
+
+    <!-- днище и диффузор -->
+    <path d="M126 376 L228 392 L404 388 L708 374 L760 390 L706 420 L230 432 L144 410Z" fill="url(#floor)"/>
+    <path d="M144 410 L230 432 L706 420 L760 390" stroke="#3b2a2d" stroke-width="3" fill="none"/>
+    <g fill="#100c0e">
+      <path d="M146 376 L168 378 L164 412 L142 408Z"/><path d="M190 380 L214 382 L210 416 L188 412Z"/>
+      <path d="M658 374 L682 374 L690 408 L664 410Z"/><path d="M702 374 L728 374 L738 402 L708 406Z"/>
+    </g>
+
+    <!-- колёса -->
+    <g>
+      <circle cx="214" cy="398" r="112" fill="#070708"/>
+      <circle cx="214" cy="398" r="101" fill="url(#tyre)"/>
+      <circle cx="214" cy="398" r="66" fill="#0b0b0c" stroke="#3a3032" stroke-width="4"/>
+      <circle cx="214" cy="398" r="52" fill="#161315" stroke="#8c777a" stroke-width="2"/>
+      <g stroke="#6e5b5e" stroke-width="4">
+        <path d="M214 356 L214 440"/><path d="M172 398 L256 398"/><path d="M184 368 L244 428"/><path d="M184 428 L244 368"/>
+      </g>
+      <circle cx="214" cy="398" r="9" fill="#e10600"/>
+      <path d="M140 346 A112 112 0 0 1 214 286" stroke="#f2c200" stroke-width="4" opacity=".85" fill="none"/>
+    </g>
+    <g>
+      <circle cx="674" cy="404" r="105" fill="#070708"/>
+      <circle cx="674" cy="404" r="94" fill="url(#tyre)"/>
+      <circle cx="674" cy="404" r="61" fill="#0b0b0c" stroke="#3a3032" stroke-width="4"/>
+      <circle cx="674" cy="404" r="47" fill="#161315" stroke="#8c777a" stroke-width="2"/>
+      <g stroke="#6e5b5e" stroke-width="4">
+        <path d="M674 365 L674 443"/><path d="M635 404 L713 404"/><path d="M646 376 L702 432"/><path d="M646 432 L702 376"/>
+      </g>
+      <circle cx="674" cy="404" r="8" fill="#e10600"/>
+      <path d="M606 357 A105 105 0 0 1 674 299" stroke="#f2c200" stroke-width="4" opacity=".75" fill="none"/>
+    </g>
+
+    <!-- несколько бликов на карбоне: свет, а не «глянец интерфейса» -->
+    <path d="M180 264 C246 250 316 246 362 250" stroke="#ff887c" stroke-width="2" opacity=".42" fill="none"/>
+    <path d="M186 350 C280 340 354 338 400 344" stroke="#ff7768" stroke-width="2" opacity=".28" fill="none"/>
+    <path d="M512 308 C580 304 636 314 686 330" stroke="#ff9b8e" stroke-width="2" opacity=".34" fill="none"/>
+  </g>
+
+  <!-- красный сигнал на выходе из поворота -->
+  <g opacity=".75" filter="url(#soft)">
+    <circle cx="1712" cy="760" r="24" fill="#e10600"/>
+    <circle cx="1712" cy="760" r="6" fill="#ffb0a6"/>
+  </g>
+</svg>
