@@ -1552,12 +1552,15 @@ html[data-theme='glass'] .me-panel {
 }
 html[data-theme='glass'] .composer {
   box-sizing: border-box;
+  height: 48px;
   min-height: 48px;
-  padding: 0 14px 9px;   /* 38 поля + 9 отступа + 1 линия = 48, как у профиля */
+  padding: 0 14px;
+  margin: 0 0 10px;   /* такой же отступ снизу, как у профиля */
   align-items: center;
 }
 html[data-theme='glass'] #message-input,
 html[data-theme='glass'] #room-message-input,
 html[data-theme='glass'] #thread-input {
   height: 32px;
+  min-height: 32px;
 }
