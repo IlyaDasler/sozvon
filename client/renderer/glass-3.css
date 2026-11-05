@@ -2016,3 +2016,8 @@ html[data-theme='glass'] .profile-card .pc-scroll {
   margin: 0 0 2px;
   padding-right: 2px;
 }
+
+/* Тело начинается ниже закреплённого аватара */
+html[data-theme='glass'] .profile-card .pc-scroll > .pc-body:first-child {
+  margin-top: 52px;
+}
