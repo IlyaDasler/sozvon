@@ -677,7 +677,8 @@ html[data-theme='glass'] .members-head {
   margin: 0;
   padding: 0 14px;
   border-bottom: 1px solid var(--pane-line);
-  background: rgba(255, 255, 255, 0.018);
+  /* Без светлой плашки: шапка участников — та же поверхность, что и панель */
+  background: transparent;
 }
 [data-theme='glass'] .members-scroll { padding: 6px 8px 14px; }
 [data-theme='glass'] .members-group {
