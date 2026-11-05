@@ -3,12 +3,33 @@
 // уведомления уходят только участникам треда, @all расширяет рассылку на всех.
 (() => {
   let thread = null; // { rootId, roomId }
+  let editing = null; // правка сообщения прямо в треде
 
   const panel = () => document.getElementById('thread-panel');
   const listEl = () => document.getElementById('thread-list');
   const headEl = () => document.getElementById('thread-title');
   const form = () => document.getElementById('thread-form');
   const input = () => document.getElementById('thread-input');
+
+  /** Правка сообщения в треде: текст уходит в поле ответа, кнопка меняется на «Сохранить» */
+  function editThreadMessage(m, chat) {
+    editing = { m, chat };
+    const area = input();
+    if (!area) return;
+    area.value = m.plain?.text || '';
+    area.focus();
+    const btn = document.getElementById('thread-send');
+    if (btn) btn.textContent = '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c';
+    setComposerEnabled(true);
+  }
+
+  function cancelThreadEdit() {
+    if (!editing) return;
+    editing = null;
+    const area = input(); if (area) area.value = '';
+    const btn = document.getElementById('thread-send');
+    if (btn) btn.textContent = '\u041e\u0442\u0432\u0435\u0442\u0438\u0442\u044c';
+  }
 
   function threadActions(roomId) {
     return (
@@ -103,6 +124,23 @@
     if (!thread) return;
     const area = input();
     const text = area.value.trim();
+    if (editing) {
+      const next = area.value.trim();
+      if (!next) return;
+      const target = editing;
+      editing = null;
+      const sendBtn = document.getElementById('thread-send');
+      if (sendBtn) sendBtn.textContent = '\u041e\u0442\u0432\u0435\u0442\u0438\u0442\u044c';
+      try {
+        await saveEdit(target.m, target.chat, next);
+        area.value = '';
+        await openThread({ id: thread.rootId, threadRoot: thread.rootId }, { roomId: thread.roomId });
+        if (typeof renderRoomMessages === 'function') renderRoomMessages();
+      } catch (err) {
+        toast(err.message);
+      }
+      return;
+    }
     if (!text) return;
     area.value = '';
     area.style.height = '';
@@ -136,7 +174,7 @@
         e.preventDefault();
         sendReply();
       }
-      if (e.key === 'Escape') closeThread();
+      if (e.key === 'Escape') { if (editing) cancelThreadEdit(); else closeThread(); }
     });
   }
 
@@ -160,6 +198,7 @@
 
   window.openThread = openThread;
   window.closeThread = closeThread;
+  window.editThreadMessage = editThreadMessage;
   window.bumpThreadReplies = bumpReplies;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
