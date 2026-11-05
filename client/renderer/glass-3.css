@@ -1464,3 +1464,22 @@ html[data-theme='glass'] .modal-card {
     0 36px 90px rgba(2, 4, 10, 0.60),
     inset 0 1px 0 rgba(255, 255, 255, 0.10);
 }
+
+/* ---------- 108. Шапки панелей на одной линии ---------- */
+html[data-theme='glass'] .chat-head,
+html[data-theme='glass'] .friends-head,
+html[data-theme='glass'] .members-head {
+  box-sizing: border-box;
+  height: 50px;
+  min-height: 50px;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  background: transparent;
+  border-top: 0;
+  border-bottom: 1px solid var(--pane-line);
+}
+html[data-theme='glass'] .members-panel {
+  border-top: 0;
+  padding-top: 0;
+}
