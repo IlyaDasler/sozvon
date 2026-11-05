@@ -63,7 +63,7 @@ function migratedAudioSettings() {
   const saved = store.get('audio', {}) || {};
   if ('noiseLevel' in saved) return saved;
   const { noiseSuppression, ...rest } = saved;
-  return { ...rest, noiseLevel: noiseSuppression === false ? 0 : 2 };
+  return { ...rest, noiseLevel: noiseSuppression === false ? 0 : 3 };
 }
 
 /** Текущий уровень шумоподавления: 0…3 */
@@ -94,7 +94,7 @@ const state = {
   deafened: store.get('deafened', false),
   // noiseLevel: 0 — выкл, 1 — мягкое, 2 — среднее, 3 — сильное. Старая галочка noiseSuppression
   // превращается в «среднее», чтобы у людей не поменялось поведение после обновления
-  settings: { micId: '', speakerId: '', camId: '', noiseLevel: 2, ...migratedAudioSettings() },  registerMode: false,
+  settings: { micId: '', speakerId: '', camId: '', noiseLevel: 3, ...migratedAudioSettings() },  registerMode: false,
   providers: [], // способы входа, включённые на сервере: [{ id, name }]
   inviteRequired: true, // требует ли сервер код приглашения при регистрации
   pendingSignup: null, // { ticket } — аккаунт сервиса подтверждён, ждём код приглашения

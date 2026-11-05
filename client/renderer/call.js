@@ -183,7 +183,7 @@ async function denoiseTrack(raw, level = 2) {
     source.connect(hp);
     // Интенсивность — доля очищенного звука в миксе. Среднее и сильное уже
     // почти полностью нейросетевые: раньше 30% сырого фона шло в эфир.
-    const wetAmount = level >= 3 ? 1 : level === 2 ? 0.92 : 0.7;
+    const wetAmount = level >= 2 ? 1 : 0.75;
     if (wetAmount >= 1) {
       hp.connect(node).connect(dest);
     } else {
@@ -218,8 +218,9 @@ function micConstraints(settings) {
       echoCancellation: true,
       // Нейросеть и встроенное шумоподавление одновременно не нужны: портят голос дважды.
       // Встроенное включаем только как запасной путь, если нейросеть не загрузилась
-      noiseSuppression: Boolean(settings.browserNoise),
+      noiseSuppression: true,
       autoGainControl: true,
+      voiceIsolation: true,
     },
   };
 }
