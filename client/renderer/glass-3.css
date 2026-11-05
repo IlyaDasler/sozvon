@@ -2317,3 +2317,11 @@ html[data-theme='glass'] #room-view.has-bg {
 html[data-theme='glass'] #room-view.has-bg .call-panel {
   background: transparent;
 }
+
+/* Подсветка сообщения при наведении — заметнее, чем тёмная подложка */
+html[data-theme='glass'] .msg:hover {
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
