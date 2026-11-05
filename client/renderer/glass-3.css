@@ -1222,3 +1222,33 @@ html[data-theme='glass'] .rail-folder .rail-tile {
   position: relative;
   z-index: 20;
 }
+
+/* ---------- 99. Все главные кнопки — как «Создать канал»: нейтральное стекло ----------
+   В теме «Жидкое стекло» нет заливки акцентом: кнопка читается рамкой,
+   светлой гранью и тенью, как вторичная. Это правило идёт последним и
+   перекрывает акцентные варианты на экране входа, в заявке и пустых состояниях */
+html[data-theme='glass'] .btn.primary,
+[data-theme='glass'] #auth .btn.primary.wide,
+[data-theme='glass'] .friend-add-row .btn.primary,
+[data-theme='glass'] .mascot-actions .btn.primary,
+[data-theme='glass'] .empty .btn.primary {
+  background: rgba(18, 22, 30, 0.55);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+html[data-theme='glass'] .btn.primary:hover,
+[data-theme='glass'] #auth .btn.primary.wide:hover,
+[data-theme='glass'] .friend-add-row .btn.primary:hover,
+[data-theme='glass'] .mascot-actions .btn.primary:hover,
+[data-theme='glass'] .empty .btn.primary:hover {
+  background: rgba(28, 33, 43, 0.65);
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.20);
+}
+html[data-theme='glass'] .btn.primary:active,
+[data-theme='glass'] #auth .btn.primary.wide:active,
+[data-theme='glass'] .friend-add-row .btn.primary:active,
+[data-theme='glass'] .mascot-actions .btn.primary:active {
+  background: rgba(22, 26, 35, 0.70);
+}
