@@ -2146,3 +2146,17 @@ html[data-theme='glass'] .status-item.active {
   background: rgba(255, 255, 255, 0.10);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.10);
 }
+
+/* Иконки в кнопках растут при наведении */
+html[data-theme='glass'] .icon-btn svg {
+  display: block;
+  transition: transform 150ms cubic-bezier(.22, 1.15, .36, 1), color 150ms ease;
+}
+html[data-theme='glass'] .icon-btn:hover:not(:disabled) svg {
+  transform: scale(1.14);
+}
+html[data-theme='glass'] .sidebar-head .icon-btn svg,
+html[data-theme='glass'] .me-panel .icon-btn svg,
+html[data-theme='glass'] .list-title .icon-btn svg {
+  transform-origin: center;
+}
