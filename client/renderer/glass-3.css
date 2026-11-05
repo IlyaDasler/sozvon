@@ -1857,3 +1857,14 @@ html[data-theme='glass'] .composer-bar {
   padding-left: 18px;
   padding-right: 18px;
 }
+
+/* Поле ввода с боковыми отступами: линии и фон — у самой полосы, а не во всю ширину */
+html[data-theme='glass'] .composer {
+  box-shadow: none;
+}
+html[data-theme='glass'] .composer-bar {
+  border-top: 1px solid var(--pane-line);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
