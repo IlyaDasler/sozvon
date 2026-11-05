@@ -2337,3 +2337,25 @@ html[data-theme='glass'] .msg.cont {
 html[data-theme='glass'] .msg:not(.cont) {
   margin-top: 8px;
 }
+
+/* Приглашение в канал — стеклянные строки */
+html[data-theme='glass'] #hub-invite .modal-card {
+  width: min(540px, calc(100% - 32px));
+}
+html[data-theme='glass'] #hub-invite .member-row {
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background-color 130ms ease, border-color 130ms ease;
+}
+html[data-theme='glass'] #hub-invite .member-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+html[data-theme='glass'] #hub-invite .member-row .muted.small {
+  font-size: 12px;
+}
+html[data-theme='glass'] #hub-invite .friend-search {
+  margin-top: 4px;
+}
