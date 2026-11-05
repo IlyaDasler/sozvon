@@ -2166,10 +2166,10 @@ html[data-theme='glass'] .chat-theme-pop {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 14px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015) 50%, rgba(255, 255, 255, 0) 100%),
-    rgba(18, 23, 38, 0.40);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
-  backdrop-filter: blur(10px) saturate(140%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.012) 50%, rgba(255, 255, 255, 0) 100%),
+    rgba(18, 23, 38, 0.26);
+  -webkit-backdrop-filter: blur(4px) saturate(130%);
+  backdrop-filter: blur(4px) saturate(130%);
   box-shadow:
     0 18px 44px rgba(2, 4, 10, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
