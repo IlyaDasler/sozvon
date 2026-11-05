@@ -1286,7 +1286,7 @@ html[data-theme='glass'] .btn.primary:active,
    Слева линия рисовалась дважды: у столбца каналов и у панели чатов.
    Оставляем по одной волосяной линии на каждой границе — как у центральной панели */
 [data-theme='glass'] .rail {
-  border-right: 0;
+  border-right: 1px solid var(--pane-line);
 }
 [data-theme='glass'] .sidebar {
   border-right: 1px solid var(--pane-line);
@@ -1303,13 +1303,13 @@ html[data-theme='glass'] .btn.primary:active,
 /* ---------- 102. Группа каналов: нейтральная папка и общая рамка ---------- */
 html[data-theme='glass'] .rail-folder .folder-tile {
   background: rgba(255, 255, 255, 0.055);
-  color: color-mix(in srgb, var(--folder-color, var(--accent)) 55%, var(--text-2));
+  color: var(--text-2);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 html[data-theme='glass'] .rail-folder .folder-tile svg {
-  fill: color-mix(in srgb, var(--folder-color, var(--accent)) 40%, transparent);
+  fill: rgba(255, 255, 255, 0.22);
 }
 
 /* Раскрытая группа — одна стеклянная рамка вокруг каналов */
