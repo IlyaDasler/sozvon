@@ -1604,6 +1604,7 @@ function renderHubInvite() {
 
 $('hi-search').oninput = renderHubInvite;
 $('hi-close').onclick = () => $('hub-invite').classList.add('hidden');
+  $('hi-x').onclick = () => $('hub-invite').classList.add('hidden');
 
 // ---------- Приглашение мне: вступить или отказаться ----------
 
