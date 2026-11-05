@@ -1340,14 +1340,14 @@ html[data-theme='glass'] .notif-panel {
   top: 56px;
   width: min(320px, calc(100vw - 96px));
   max-height: min(70vh, calc(100vh - 120px));
-  background: linear-gradient(180deg, rgba(21, 25, 37, 0.97), rgba(12, 15, 24, 0.97));
+  background: linear-gradient(180deg, rgba(30, 36, 54, 0.88), rgba(16, 20, 33, 0.90));
   -webkit-backdrop-filter: blur(18px) saturate(120%);
   backdrop-filter: blur(18px) saturate(120%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
   box-shadow:
-    0 18px 46px rgba(2, 4, 10, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    0 18px 46px rgba(2, 4, 10, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
   overflow: hidden;
 }
 html[data-theme='glass'] .notif-list {
