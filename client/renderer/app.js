@@ -1285,7 +1285,7 @@ function messageRow(m, prev, list, actions, shown, fresh) {
       strip.className = 'thread-people';
       for (const uid of m.threadUsers) {
         const u = typeof userById === 'function' ? userById(uid) : null;
-        if (u && typeof makeAvatar === 'function') strip.append(makeAvatar(u, 'small'));
+        if (u && typeof makeAvatar === 'function') strip.append(makeAvatar(u, typeof presenceOf === 'function' ? presenceOf(u) : undefined, 'small'));
       }
       if (m.threadUserCount > m.threadUsers.length) {
         const more = document.createElement('span');
