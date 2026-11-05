@@ -148,6 +148,7 @@ function showScreen(name) {
   $('main').classList.toggle('hidden', name !== 'main');
   // На экране входа окно фиксированное, после входа — свободное
   window.desktop?.window?.authMode?.(name === 'auth');
+  document.documentElement.classList.toggle('auth-screen', name === 'auth');
 }
 
 const formatTime = (ts) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
