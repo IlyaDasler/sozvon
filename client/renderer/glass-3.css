@@ -2814,3 +2814,11 @@ html[data-theme='glass'] #settings .set-nav .rs-sep {
 
 
 
+
+/* Читаемость белого текста на светлом дневном фоне */
+html[data-theme='glass'] .empty h3,
+html[data-theme='glass'] .empty p,
+html[data-theme='glass'] .friends-empty,
+html[data-theme='glass'] .thread-empty {
+  text-shadow: 0 2px 14px rgba(2, 6, 12, 0.72);
+}

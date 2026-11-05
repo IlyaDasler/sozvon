@@ -17,17 +17,17 @@ html[data-theme='glass'] .lg-aurora { display: block; }
 
 html[data-theme='glass'][data-daypart='dawn'] .lg-aurora {
   background:
-    linear-gradient(180deg, rgba(22, 18, 38, 0.10), rgba(24, 16, 30, 0.20)),
+    linear-gradient(180deg, rgba(22, 18, 38, 0.03), rgba(24, 16, 30, 0.06)),
     url("glass-dawn.svg") center / cover no-repeat;
 }
 html[data-theme='glass'][data-daypart='day'] .lg-aurora {
   background:
-    linear-gradient(180deg, rgba(5, 14, 24, 0.62), rgba(5, 14, 24, 0.46)),
+    linear-gradient(180deg, rgba(5, 14, 24, 0.02), rgba(5, 14, 24, 0.0)),
     url("glass-noon.svg") center / cover no-repeat;
 }
 html[data-theme='glass'][data-daypart='sunset'] .lg-aurora {
   background:
-    linear-gradient(180deg, rgba(30, 15, 30, 0.10), rgba(26, 12, 20, 0.22)),
+    linear-gradient(180deg, rgba(30, 15, 30, 0.03), rgba(26, 12, 20, 0.06)),
     url("glass-sunset.svg") center / cover no-repeat;
 }
 html[data-theme='glass'][data-daypart='night'] .lg-aurora {
