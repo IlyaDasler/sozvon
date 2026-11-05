@@ -4,6 +4,7 @@
 (() => {
   let thread = null; // { rootId, roomId }
   let editing = null; // правка сообщения прямо в треде
+  let savedWidth = ''; // ширина треда до разворота
 
   const panel = () => document.getElementById('thread-panel');
   const listEl = () => document.getElementById('thread-list');
@@ -168,6 +169,8 @@
     const p = panel();
     if (!p) return;
     const full = p.classList.toggle('thread-full');
+    if (full) { savedWidth = p.style.width; p.style.width = ''; }
+    else if (savedWidth) { p.style.width = savedWidth; savedWidth = ''; }
     const btn = document.getElementById('thread-expand');
     if (btn) {
       btn.title = full ? 'Свернуть' : 'Развернуть на весь чат';
@@ -191,6 +194,31 @@
       }
       if (e.key === 'Escape') { if (editing) cancelThreadEdit(); else closeThread(); }
     });
+
+    // Ручка ширины у левого края треда
+    const p = panel();
+    if (p && !p.querySelector('.thread-resize')) {
+      const grip = document.createElement('div');
+      grip.className = 'thread-resize';
+      grip.addEventListener('pointerdown', (e) => {
+        if (p.classList.contains('thread-full')) return;
+        e.preventDefault();
+        const startX = e.clientX;
+        const startW = p.getBoundingClientRect().width;
+        const maxW = Math.max(320, (p.parentElement?.clientWidth || window.innerWidth) - 24);
+        const move = (ev) => {
+          const w = Math.min(maxW, Math.max(300, startW + (startX - ev.clientX)));
+          p.style.width = `${w}px`;
+        };
+        const up = () => {
+          window.removeEventListener('pointermove', move);
+          window.removeEventListener('pointerup', up);
+        };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);
+      });
+      p.append(grip);
+    }
   }
 
   // Счётчик ответов обновляем по событию сервера

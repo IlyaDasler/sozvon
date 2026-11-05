@@ -2610,3 +2610,24 @@ html[data-theme='glass'] .thread-panel.thread-full {
   left: 12px;
   width: auto;
 }
+
+/* Кнопка разворота — у крестика, ручка ширины — у левого края */
+html[data-theme='glass'] #thread-expand {
+  margin-left: auto;
+}
+html[data-theme='glass'] .thread-resize {
+  position: absolute;
+  left: -4px;
+  top: 12px;
+  bottom: 12px;
+  width: 8px;
+  border-radius: 6px;
+  cursor: col-resize;
+  z-index: 2;
+}
+html[data-theme='glass'] .thread-resize:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+html[data-theme='glass'] .thread-panel.thread-full .thread-resize {
+  display: none;
+}
