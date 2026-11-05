@@ -2213,3 +2213,24 @@ html[data-theme='glass'] #room-lobby .room-voice-join {
   font-size: 12px;
   border-radius: 9px;
 }
+
+/* Инструменты комнаты: ширина по числу кнопок, иконка чата не обрезается */
+html[data-theme='glass'] .room-tools {
+  width: auto;
+  gap: 3px;
+}
+html[data-theme='glass'] .room-tool {
+  width: 24px;
+  height: 24px;
+}
+html[data-theme='glass'] .room-tool svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 150ms cubic-bezier(.22, 1.15, .36, 1);
+}
+html[data-theme='glass'] .room-tool:hover svg {
+  transform: scale(1.14);
+}
+html[data-theme='glass'] .room-tool.chat {
+  color: var(--text-2);
+}
