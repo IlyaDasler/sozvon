@@ -1,16 +1,29 @@
-// Время суток для фона «Жидкое стекло»: рассвет, полдень, закат, ночь.
+// Время суток для фона «Жидкое стекло»: утро, день, вечер, ночь.
 // Часы берём у сервера (а не у компьютера пользователя), часовой пояс — из
-// Intl пользователя. Так переведённые/сбитые часы на ПК не переключают сцену.
+// Intl пользователя. При смене — мягкое перекрёстное затухание двух слоёв.
 (() => {
   const root = document.documentElement;
-  const HOUR = 3600_000;
+  const scenes = {
+    dawn: 'glass-morning.jpg',
+    day: 'glass-day.jpg',
+    sunset: 'glass-evening.jpg',
+    night: 'glass-night.jpg',
+  };
+  const first = document.querySelector('.lg-aurora');
+  if (!first) return;
+  const second = document.createElement('div');
+  second.className = 'lg-aurora';
+  second.setAttribute('aria-hidden', 'true');
+  document.body.append(second);
+  const layers = [first, second];
+  let active = 0;
+  let current = '';
+  let serial = 0;
 
-  function zone() {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-    } catch {
-      return 'UTC';
-    }
+  // Заранее прогреваем все четыре кадра, чтобы смена не показывала пустоту.
+  for (const src of Object.values(scenes)) {
+    const img = new Image();
+    img.src = src;
   }
 
   function phaseAt(ms, timeZone) {
@@ -32,13 +45,54 @@
     return 'night';
   }
 
+  function zone() {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    } catch {
+      return 'UTC';
+    }
+  }
+
+  function show(phase) {
+    if (current === phase) return;
+    const next = layers[1 - active];
+    const prev = layers[active];
+    const token = ++serial;
+    const src = scenes[phase];
+    const commit = () => {
+      if (token !== serial) return;
+      next.style.backgroundImage = `url("${src}")`;
+      void next.offsetWidth;
+      next.classList.add('is-visible');
+      prev.classList.remove('is-visible');
+      active = 1 - active;
+      current = phase;
+      root.dataset.daypart = phase;
+    };
+    // Сначала декодируем кадр, потом плавно проявляем слой поверх старого.
+    const img = new Image();
+    img.src = src;
+    if (typeof img.decode === 'function') {
+      img.decode().then(commit).catch(commit);
+    } else {
+      commit();
+    }
+  }
+
   function paint(ms = Date.now()) {
     const next = phaseAt(ms, zone());
-    if (root.dataset.daypart !== next) root.dataset.daypart = next;
+    if (current === '') {
+      layers[0].style.backgroundImage = `url("${scenes[next]}")`;
+      layers[0].classList.add('is-visible');
+      current = next;
+      root.dataset.daypart = next;
+    } else {
+      show(next);
+    }
     root.dataset.daypartZone = zone();
   }
 
-  // Часы сервера. Если сети нет — остаётся локальное время, но сцена продолжает работать.
+  // Часы сервера. Если сети нет — остаётся локальное время, сцена продолжает работать.
   async function sync() {
     try {
       const controller = new AbortController();
@@ -46,7 +100,7 @@
       const base = (typeof Api !== 'undefined' && Api.base) || `${location.protocol}//${location.host}`;
       const res = await fetch(`${base}/api/time`, {
         signal: controller.signal,
-        headers: { 'X-Client-Version': (typeof window.desktop?.version === 'string' && window.desktop.version) || '3.3.0' },
+        headers: { 'X-Client-Version': (typeof window.desktop?.version === 'string' && window.desktop.version) || '3.3.1' },
       });
       clearTimeout(timer);
       if (res.ok) {
@@ -56,6 +110,9 @@
     } catch {}
     paint();
   }
+
+  // Ручной выбор фазы для превью и UI-кита; на реальную работу не влияет.
+  window.sozvonDaypart = { show(phase) { if (scenes[phase]) show(phase); } };
 
   paint();
   sync();
