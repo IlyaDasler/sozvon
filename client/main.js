@@ -87,8 +87,29 @@ function createWindow({ show = true } = {}) {
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   // Кнопки окна рисует страница: нативных Windows-кнопок больше нет
   ipcMain.on('window:minimize', () => win.minimize());
-  ipcMain.on('window:toggle-maximize', () => (win.isMaximized() ? win.unmaximize() : win.maximize()));
+  ipcMain.on('window:toggle-maximize', () => {
+    // На экране входа разворачивать нельзя
+    if (!win.isResizable()) return;
+    win.isMaximized() ? win.unmaximize() : win.maximize();
+  });
   ipcMain.on('window:close', () => win.close());
+  // До входа окно фиксированное: размер «как при запуске», без растягивания и во весь экран.
+  // После входа — обычное окно: тянется за край, разворачивается, работает полный экран
+  ipcMain.on('window:auth-mode', (_event, locked) => {
+    if (!win) return;
+    if (locked) {
+      if (win.isFullScreen()) win.setFullScreen(false);
+      if (win.isMaximized()) win.unmaximize();
+      win.setFullScreenable(false);
+      win.setMaximizable(false);
+      win.setResizable(false);
+    } else {
+      win.setResizable(true);
+      win.setMaximizable(true);
+      win.setFullScreenable(true);
+    }
+    sendWindowState();
+  });
   const sendWindowState = () => win.webContents.send('window:state', { maximized: win.isMaximized() });
   win.on('maximize', sendWindowState);
   win.on('unmaximize', sendWindowState);
