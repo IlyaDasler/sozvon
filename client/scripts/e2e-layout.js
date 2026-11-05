@@ -205,44 +205,29 @@ runTest(async () => {
   if (f.isWin && f.padRight < 120) throw new Error(`Панель трансляции налезет на кнопки окна: отступ ${f.padRight}px`);
   console.log('✔ панель трансляции не пересекается с кнопками окна');
 
-  // ---------- Жидкий индикатор вкладок: перетекает под активную кнопку ----------
+  // ---------- Вкладки: новая стеклянная плашка вместо перетекающей подложки ----------
   await js(win, `document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); showScreen('main'); true`);
   await sleep(600);
-  const pill = await js(win, `(async () => {
+  const tabsState = JSON.parse(await js(win, `(async () => {
     const root = document.getElementById('friend-tabs');
-    const pill = root?.querySelector('.liquid-pill');
-    if (!pill) return JSON.stringify({ error: 'нет индикатора' });
-    const second = root.querySelectorAll('button')[1];
-    second.click();
-    // Ждём окончания анимации подложки (320 мс), иначе замер попадает в середину перехода
-    for (let i = 0; i < 20; i++) {
-      await new Promise((r) => setTimeout(r, 60));
-      const b = root.getBoundingClientRect();
-      const a = root.querySelector('button.active').getBoundingClientRect();
-      const pr = pill.getBoundingClientRect();
-      if (Math.abs(pr.left - a.left) < 2 && Math.abs(pr.width - a.width) < 2) break;
-    }
-    const box = root.getBoundingClientRect();
-    const active = root.querySelector('button.active');
-    const r = active.getBoundingClientRect();
-    const pr = pill.getBoundingClientRect();
+    const oldPill = root?.querySelector('.liquid-pill');
+    const second = root?.querySelectorAll('button')[1];
+    second?.click();
+    await new Promise((r) => setTimeout(r, 320));
+    const active = root?.querySelector('button.active');
     return JSON.stringify({
-      pillLeft: Math.round(pr.left - box.left),
-      activeLeft: Math.round(r.left - box.left),
-      pillW: Math.round(pr.width),
-      activeW: Math.round(r.width),
-      activeBg: getComputedStyle(active).backgroundColor,
+      oldPill: Boolean(oldPill),
+      activeText: active?.textContent || '',
+      activeBg: active ? getComputedStyle(active).backgroundColor : '',
+      activeBox: active ? Math.round(active.getBoundingClientRect().width) : 0,
     });
-  })()`);
-  const tab = JSON.parse(pill);
-  if (tab.error) throw new Error(`Вкладки: ${tab.error}`);
-  if (Math.abs(tab.pillLeft - tab.activeLeft) > 2)
-    throw new Error(`Индикатор вкладки не совпал: ${tab.pillLeft} против ${tab.activeLeft}`);
-  if (Math.abs(tab.pillW - tab.activeW) > 3)
-    throw new Error(`Индикатор вкладки не по ширине: ${tab.pillW} против ${tab.activeW}`);
-  if (tab.activeBg !== 'rgba(0, 0, 0, 0)' && tab.activeBg !== 'transparent')
-    throw new Error(`У активной вкладки свой фон поверх индикатора: ${tab.activeBg}`);
-  console.log('✔ жидкий индикатор вкладок на месте');
+  })()`));
+  if (tabsState.oldPill) throw new Error('Вкладки: вернулась перетекающая подложка, её убрали в 3.0');
+  if (!tabsState.activeText) throw new Error('Вкладки: нет активной вкладки');
+  if (!tabsState.activeBox) throw new Error('Вкладки: активная вкладка схлопнулась');
+  if (tabsState.activeBg === 'rgba(0, 0, 0, 0)' || tabsState.activeBg === 'transparent')
+    throw new Error('У активной вкладки нет стеклянной плашки');
+  console.log('✔ новая плашка активной вкладки на месте');
 
   // ---------- Радиокнопки: круг 18 px, текст не наезжает ----------
   await js(win, `document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); selectContact(${b.user.id}); true`);
@@ -293,7 +278,7 @@ runTest(async () => {
   })()`);
   const th = JSON.parse(themes);
   if (th.pillOnDefault) throw new Error('Жидкая подложка осталась в обычной теме');
-  if (!th.pillOnGlass) throw new Error('В теме стекла пропала жидкая подложка вкладок');
+  if (th.pillOnGlass) throw new Error('В теме стекла вернулась старая перетекающая подложка вкладок');
   if (th.itemBorder !== '0px') throw new Error(`У обёртки канала рамка ${th.itemBorder} — она выезжает за аватарку`);
   if (th.itemBg !== 'rgba(0, 0, 0, 0)') throw new Error(`У обёртки канала свой фон: ${th.itemBg}`);
   if (th.tileInside === false) throw new Error('Плитка канала вылезает за обёртку');

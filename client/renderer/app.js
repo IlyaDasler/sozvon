@@ -383,15 +383,16 @@ async function loadProviders(base) {
   let inviteRequired = true;
   let emailCodes = false;
   // В приложении ответ принимает Electron, в браузере — сервер (переадресация), поэтому список нужен везде
+  const versionHeaders = Api.versionHeaders?.() || {};
   if (base && (window.desktop?.oauth || isWeb)) {
     try {
-      const res = await fetch(`${base}/api/oauth/providers`, { signal: AbortSignal.timeout(5000) });
+      const res = await fetch(`${base}/api/oauth/providers`, { headers: versionHeaders, signal: AbortSignal.timeout(5000) });
       if (res.ok) providers = await res.json();
     } catch {}
   }
   // Требует ли сервер код приглашения: если нет, поле кода не показываем
   try {
-    const res = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`${base}/api/health`, { headers: versionHeaders, signal: AbortSignal.timeout(5000) });
     if (res.ok) {
       const health = await res.json();
       inviteRequired = health.inviteRequired !== false;

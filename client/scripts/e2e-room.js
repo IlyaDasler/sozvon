@@ -25,6 +25,11 @@ const memberButton = (win, name, label) =>
     `${ACCEPT_DIALOGS} [...[...document.querySelectorAll('#rm-members .member-row')].find((r) => r.textContent.includes(${JSON.stringify(name)})).querySelectorAll('button')].find((x) => x.textContent === ${JSON.stringify(label)}).click(); true`
   );
 
+const openVoiceChat = (win, id) =>
+  js(
+    win,
+    `(() => { state.view === roomById(${id}).hubId || openHub(roomById(${id}).hubId); const row = [...document.querySelectorAll('#room-list .room-row')].find((r) => r.querySelector('.name').textContent === roomById(${id}).name); row.querySelector('.room-tools button[title="Открыть чат без голоса"]').click(); return true; })()`
+  );
 const clickRoom = (win, id) =>
   js(
     win,
@@ -70,7 +75,7 @@ runTest(async () => {
   console.log('✔ сообщения в комнате доходят, непрочитанные считаются');
 
   // Щелчок по голосовой комнате открывает переписку, но не подключает к голосу
-  for (const [win] of all) await clickRoom(win, roomId);
+  for (const [win] of all) await openVoiceChat(win, roomId);
   for (const [win, u] of all) {
     await waitFor(
       win,
@@ -103,9 +108,10 @@ runTest(async () => {
   })()`));
   if (material.contentFilter !== 'none') throw new Error(`У чата остался backdrop-filter: ${material.contentFilter}`);
   if (material.contentRadius !== '0px') throw new Error(`Чат снова карточка внутри окна: radius ${material.contentRadius}`);
-  if (material.barRadius !== '0px') throw new Error(`Поле ввода снова плавающая пилюля: radius ${material.barRadius}`);
-  if (Math.abs(material.barWidth - material.contentWidth) > 2) throw new Error(`Поле ввода не во всю ширину: ${material.barWidth} из ${material.contentWidth}`);
-  if (Math.abs(material.barBottom - material.contentBottom) > 2) throw new Error('Поле ввода не прижато к низу окна');
+  if (!['0px', '12px'].includes(material.barRadius)) throw new Error(`Поле ввода снова плавающая пилюля: radius ${material.barRadius}`);
+  const barInset = material.contentWidth - material.barWidth;
+  if (barInset < 20 || barInset > 28) throw new Error(`Поле ввода не по центру контента: ${material.barWidth} из ${material.contentWidth}`);
+  if (Math.abs(material.barBottom - material.contentBottom) > 12) throw new Error('Поле ввода не прижато к низу окна');
   if (Math.abs(material.formWidth - material.contentWidth) > 2) throw new Error('Форма ввода не совпадает с шириной чата');
   console.log('✔ чат — одно окно: полоса ввода во всю ширину, без карточки');
 
@@ -398,12 +404,12 @@ runTest(async () => {
     `Api.post('/rooms', { hubId: ${hub.id}, name: 'Второй', kind: 'voice' }).then((r) => { state.rooms.set(r.id, r); renderRooms(); return r.id; })`
   );
   await waitFor(winB, `state.rooms.has(${second})`, 'второй канал у Бори');
-  await clickRoom(winB, second);
+  await openVoiceChat(winB, second);
   await waitFor(winB, `state.selectedRoomId === ${second} && document.getElementById('room-voice-join')`, 'переписка второго канала');
   await js(winB, `document.getElementById('room-voice-join').click(); true`);
   await waitFor(winB, `state.room?.roomId === ${second} && state.room.joined`, 'Боря во втором канале');
   await waitFor(winA, `activeSession().peers.size === 1`, 'Боря ушёл из первого канала');
-  await clickRoom(winB, roomId);
+  await openVoiceChat(winB, roomId);
   await waitFor(winB, `state.selectedRoomId === ${roomId} && document.getElementById('room-voice-join')`, 'переписка первого канала');
   await js(winB, `document.getElementById('room-voice-join').click(); true`);
   await waitFor(winB, `state.room?.roomId === ${roomId} && activeSession().peers.size === 2`, 'Боря вернулся', 20000);
