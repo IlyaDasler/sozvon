@@ -3,7 +3,7 @@
 // Запуск (сервер должен работать): E2E_SHOTS=папка npx electron scripts/e2e-look.js [адрес сервера]
 const { api, befriend, register, js, waitFor, openClient, screenshot, sleep, runTest } = require('./e2e-lib');
 
-const THEMES = ['sozvon', 'midnight', 'light', 'forest', 'dusk'];
+const THEMES = ['sozvon', 'midnight', 'light', 'forest', 'dusk', 'ferrari', 'glass'];
 const SIZES = [
   [1280, 800],
   [940, 640],
@@ -104,8 +104,31 @@ runTest(async () => {
   await js(win, `selectRoom(${text.id}); true`);
   for (const t of THEMES) {
     await js(win, `setTheme('${t}'); true`);
+    if (t === 'ferrari') {
+      const f = JSON.parse(await js(win, `(() => {
+        const cs = getComputedStyle(document.documentElement);
+        const add = getComputedStyle(document.querySelector('.friend-tabs .add-tab'));
+        return JSON.stringify({ accent: cs.getPropertyValue('--accent').trim(), add: add.backgroundColor });
+      })()`));
+      if (f.accent !== '#e10600') throw new Error(`Феррари: неверный акцент ${f.accent}`);
+      if (f.add !== 'rgb(242, 194, 0)') throw new Error(`Феррари: неверное действие «Добавить в друзья» ${f.add}`);
+    }
     await shot(`theme-${t}`);
   }
+  // Все темы доступны в «Оформлении», включая Ferrari
+  await js(win, `openSettings('look'); true`);
+  await sleep(300);
+  const picker = JSON.parse(await js(win, `(() => {
+    const cards = [...document.querySelectorAll('#theme-grid .theme-card')];
+    return JSON.stringify({ count: cards.length, ferrari: Boolean(document.querySelector('[data-pick="ferrari"]')) });
+  })()`));
+  if (picker.count !== 7) throw new Error(`В оформлении ${picker.count} тем вместо 7`);
+  if (!picker.ferrari) throw new Error('Тема «Феррари» отсутствует в оформлении');
+  await js(win, `document.querySelector('[data-pick="ferrari"]').click(); true`);
+  await sleep(350);
+  if ((await js(win, `document.documentElement.dataset.theme`)) !== 'ferrari') throw new Error('«Феррари» не выбирается из оформления');
+  await js(win, `closeSettings(); true`);
+  console.log('✔ все 7 тем в оформлении, «Феррари» выбирается');
   await js(win, `leaveRoomVoice(); setTheme('sozvon'); true`);
   await js(winB, `leaveRoomVoice(); true`);
 

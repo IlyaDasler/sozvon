@@ -1,0 +1,82 @@
+/* Феррари: гоночный минимализм.
+   Тёмный карбон, алый Rosso Corsa, тонкая красная линия и жёлтый только
+   для редких действий. Никаких градиентных бликов, хрома и логотипов. */
+
+[data-theme='ferrari'] body {
+  background: var(--bg-deep);
+}
+
+[data-theme='ferrari'] .main {
+  background: var(--bg-deep);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 46%, transparent);
+}
+
+[data-theme='ferrari'] .titlebar {
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
+[data-theme='ferrari'] .titlebar-brand b {
+  color: #fff;
+  background: var(--accent);
+  border-color: transparent;
+}
+
+/* Главная кнопка — сплошной Rosso Corsa, без свечения и перелива */
+[data-theme='ferrari'] .btn.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: none;
+}
+[data-theme='ferrari'] .btn.primary:hover {
+  background: var(--accent-hover);
+  filter: none;
+  box-shadow: none;
+}
+[data-theme='ferrari'] .btn.primary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Активная вкладка — красная линия, а не заливка */
+[data-theme='ferrari'] .friend-tabs button.active {
+  background: var(--bg-4);
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* Добавление друга — единственное жёлтое действие в теме */
+[data-theme='ferrari'] .friend-tabs .add-tab {
+  background: var(--accent-2);
+  color: #151008;
+}
+[data-theme='ferrari'] .friend-tabs .add-tab:hover,
+[data-theme='ferrari'] .friend-tabs .add-tab:focus-visible {
+  background: color-mix(in srgb, var(--accent-2) 86%, #fff);
+  color: #151008;
+  filter: none;
+}
+[data-theme='ferrari'] .friend-tabs .add-tab.active {
+  background: none;
+  color: var(--accent-2);
+  box-shadow: inset 0 -2px 0 var(--accent-2);
+}
+
+[data-theme='ferrari'] .set-nav button.active {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+[data-theme='ferrari'] .rail-item.active .rail-home {
+  background: var(--accent);
+  color: #fff;
+}
+[data-theme='ferrari'] .rail-item.active .rail-tile {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+[data-theme='ferrari'] .theme-card.selected {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Фокус остаётся заметным на карбоне */
+[data-theme='ferrari'] :focus-visible {
+  outline-color: color-mix(in srgb, var(--accent) 80%, transparent);
+}

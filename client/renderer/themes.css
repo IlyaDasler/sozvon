@@ -119,6 +119,35 @@
   --on-accent: #ffffff;
   --link: #8fc9ff;
 }
+/* Феррари: карбон, алый Rosso Corsa и гоночный жёлтый.
+   Только плоские поверхности и тонкие линии — без хрома, логотипов и «объёма». */
+[data-theme='ferrari'] {
+  --bg-deep: #060506;
+  --bg: #0d0c0d;
+  --bg-2: #080708;
+  --bg-3: #161315;
+  --bg-4: #211d1f;
+  --bg-5: #2d2729;
+  --line: #2a2325;
+  --line-strong: #44383b;
+  --text: #f6f1ea;
+  --text-2: #d9d0c7;
+  --muted: #9a8f88;
+  --accent: #e10600;
+  --accent-2: #f2c200;
+  --accent-hover: #c40500;
+  --on-accent: #ffffff;
+  --link: #ffb4a8;
+  --ok: #2fbf71;
+  --idle: #f2c200;
+  --warn: #f2c200;
+  --danger: #ff3b30;
+  --danger-hover: #e12d22;
+  --glow: color-mix(in srgb, var(--accent) 30%, transparent);
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --header-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+  color-scheme: dark;
+}
 /* ---------- Жидкое стекло: полупрозрачные панели поверх мягкого фона, как в iOS и macOS ---------- */
 /* Размытие делает GPU; на слабых машинах его отключает настройка «меньше эффектов» (см. data-gfx) */
 [data-theme='glass'] {
