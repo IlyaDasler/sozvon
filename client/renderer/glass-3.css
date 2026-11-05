@@ -37,6 +37,11 @@
   isolation: isolate;
 }
 [data-theme='glass'] .main > * { position: relative; z-index: 1; }
+/* Подсказка столбца каналов — fixed, иначе правило выше растягивало её на весь .main */
+[data-theme='glass'] .main > .rail-tip {
+  position: fixed;
+  z-index: 60;
+}
 /* Внутренних цветных бликов нет: материал читается рамкой и преломлением */
 [data-theme='glass'] .main::before { content: none !important; display: none !important; }
 /* Линия в зазоре больше не нужна: панели разделяют собственные границы */
