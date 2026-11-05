@@ -2306,3 +2306,14 @@ html[data-theme='glass'] .call-panel {
 html[data-theme='glass'] .call-panel::after {
   content: none;
 }
+
+/* Комната с фоном: панель звонка прозрачна, рисунок фона виден */
+html[data-theme='glass'] #room-view.has-bg {
+  background:
+    linear-gradient(rgba(10, 12, 18, 0.35), rgba(10, 12, 18, 0.50)),
+    var(--room-bg) center / cover no-repeat,
+    var(--bg);
+}
+html[data-theme='glass'] #room-view.has-bg .call-panel {
+  background: transparent;
+}
