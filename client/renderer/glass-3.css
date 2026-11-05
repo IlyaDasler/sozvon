@@ -2822,3 +2822,11 @@ html[data-theme='glass'] .friends-empty,
 html[data-theme='glass'] .thread-empty {
   text-shadow: 0 2px 14px rgba(2, 6, 12, 0.72);
 }
+/* Стеклянные панели на светлом пейзаже: лёгкий тёмный тон, чтобы текст не терялся */
+html[data-theme='glass'] .sidebar,
+html[data-theme='glass'] .content,
+html[data-theme='glass'] .chat {
+  background: rgba(6, 10, 18, 0.18);
+}
+html[data-theme='glass'] .empty h3,
+html[data-theme='glass'] .empty p { text-shadow: 0 2px 16px rgba(2,6,12,.8); }
