@@ -42,22 +42,49 @@
 
 
 
-  <!-- Совиный дом: дупло в старом дубе, ветка и сова на ней -->
+
+
+  <!-- Совиный лес: сова сидит на ветке перед дуплом, а не внутри ствола -->
   <g>
-    <path d="M1140 1000 L1160 470 Q1166 430 1200 410 L1350 370" stroke="#101820" stroke-width="30" fill="none" stroke-linecap="round"/>
-    <path d="M1160 520 Q1260 500 1370 525 M1160 560 Q1050 540 960 570" stroke="#101820" stroke-width="13" fill="none" stroke-linecap="round"/>
-    <ellipse cx="1190" cy="420" rx="32" ry="46" fill="#0a1017"/>
-    <ellipse cx="1190" cy="420" rx="20" ry="32" fill="#1b2630"/>
-    <path d="M1216 430 Q1240 370 1290 370 Q1330 370 1340 410 Q1350 455 1300 475 Q1250 495 1220 460Z" fill="#111922"/>
-    <ellipse cx="1262" cy="470" rx="46" ry="62" fill="#111922"/>
-    <circle cx="1262" cy="408" r="42" fill="#141d27"/>
-    <path d="M1230 380 L1222 352 L1248 370Z M1294 378 L1302 350 L1276 370Z" fill="#141d27"/>
-    <circle cx="1248" cy="403" r="10" fill="#ffd36b"/><circle cx="1278" cy="403" r="10" fill="#ffd36b"/>
-    <circle cx="1248" cy="403" r="3.5" fill="#20160d"/><circle cx="1278" cy="403" r="3.5" fill="#20160d"/>
-    <path d="M1258 421 L1264 430 L1270 421Z" fill="#d39a58"/>
-    <path d="M1242 510 L1236 530 M1282 510 L1288 530" stroke="#d39a58" stroke-width="3" stroke-linecap="round"/>
-    <path d="M1048 862 Q1028 830 1008 862 Q1002 880 1026 880 L1070 880 Q1090 878 1084 860 Q1068 830 1048 862Z" fill="#2b2a2c"/>
-    <path d="M1026 880 L1046 912 L1066 880Z" fill="#3a3033"/>
-    <circle cx="1016" cy="874" r="3" fill="#e7c8a0"/><circle cx="1082" cy="870" r="2.5" fill="#e7c8a0"/>
+    <!-- дальние ели и кусты: лес живой, а не одинокий ствол -->
+    <g fill="#0b141b" opacity=".9">
+      <path d="M70 760 L112 500 L154 760Z"/><path d="M115 780 L155 560 L195 780Z"/>
+      <path d="M250 770 L282 610 L314 770Z"/><path d="M300 790 L334 650 L368 790Z"/>
+      <path d="M600 780 L638 560 L676 780Z"/><path d="M650 800 L688 630 L726 800Z"/>
+      <path d="M860 790 L895 600 L930 790Z"/><path d="M910 805 L945 660 L980 805Z"/>
+      <path d="M1510 780 L1548 560 L1586 780Z"/><path d="M1560 800 L1596 630 L1632 800Z"/>
+    </g>
+    <g fill="#101c22" opacity=".8">
+      <path d="M0 790 Q90 740 180 790 Q270 735 360 790 Q450 745 540 795 Q630 750 720 800 Q810 750 900 800 Q990 755 1080 805 Q1170 760 1260 805 Q1350 760 1440 805 Q1530 760 1600 800 L1600 1000 L0 1000Z"/>
+      <path d="M0 850 Q120 810 240 850 Q360 815 480 855 Q600 820 720 860 Q840 825 960 862 Q1080 830 1200 865 Q1320 830 1440 862 Q1560 835 1600 850 L1600 1000 L0 1000Z"/>
+    </g>
+    <g>
+      <path d="M1100 1000 L1125 470 Q1132 430 1170 410 L1340 365" stroke="#0d151d" stroke-width="31" fill="none" stroke-linecap="round"/>
+      <path d="M1125 535 Q1260 515 1450 545 M1125 585 Q1010 565 920 600" stroke="#0d151d" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <path d="M1118 1000 Q1060 940 1010 890 M1135 1000 Q1190 930 1250 885" stroke="#0d151d" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <ellipse cx="1152" cy="425" rx="31" ry="43" fill="#080d12"/>
+      <ellipse cx="1152" cy="425" rx="19" ry="30" fill="#26323a"/>
+      <circle cx="1152" cy="425" r="7" fill="#e4b06a" opacity=".55"/>
+      <!-- сова на ветке, полностью перед стволом -->
+      <g transform="translate(1370 475)">
+        <ellipse cx="0" cy="45" rx="45" ry="58" fill="#111a22"/>
+        <path d="M-35 20 Q-62 55 -45 98 Q-20 118 0 112 Q20 118 45 98 Q62 55 35 20Z" fill="#1b2730"/>
+        <circle cx="0" cy="-38" r="44" fill="#18232c"/>
+        <path d="M-32 -58 L-44 -88 L-12 -70Z M32 -58 L44 -88 L12 -70Z" fill="#18232c"/>
+        <circle cx="-17" cy="-35" r="10" fill="#ffd36b"/><circle cx="17" cy="-35" r="10" fill="#ffd36b"/>
+        <circle cx="-17" cy="-35" r="3.5" fill="#22170d"/><circle cx="17" cy="-35" r="3.5" fill="#22170d"/>
+        <path d="M-4 -17 L0 -9 L4 -17Z" fill="#d39a58"/>
+        <path d="M-14 95 L-20 112 M14 95 L20 112" stroke="#d39a58" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <g fill="#2d3034">
+        <path d="M880 900 Q864 870 848 900 Q844 918 865 918 L900 918 Q916 916 910 900 Q898 870 880 900Z"/>
+        <path d="M862 918 L880 948 L898 918Z" fill="#3c3335"/>
+        <circle cx="850" cy="908" r="3" fill="#e7c8a0"/><circle cx="906" cy="904" r="2.5" fill="#e7c8a0"/>
+      </g>
+    </g>
+    <g fill="#9fe7c2" opacity=".5">
+      <circle cx="420" cy="650" r="2"/><circle cx="560" cy="730" r="1.4"/><circle cx="740" cy="680" r="1.8"/>
+      <circle cx="1010" cy="760" r="1.2"/><circle cx="1210" cy="700" r="1.5"/><circle cx="1470" cy="740" r="1.3"/>
+    </g>
   </g>
 </svg>
