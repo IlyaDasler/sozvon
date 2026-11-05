@@ -174,7 +174,9 @@ function placeNotifPanel() {
   if (!panel || !btn) return;
   const r = btn.getBoundingClientRect();
   const width = Math.min(320, window.innerWidth - 16);
-  const left = Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8));
+  const side = document.querySelector('.sidebar')?.getBoundingClientRect();
+  const anchor = side ? side.left + 8 : r.right - width;
+  const left = Math.max(8, Math.min(anchor, window.innerWidth - width - 8));
   const top = Math.max(48, r.bottom + 8);
   panel.style.position = 'fixed';
   panel.style.width = `${width}px`;
