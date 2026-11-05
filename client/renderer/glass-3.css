@@ -1687,3 +1687,45 @@ html[data-theme='glass'] .composer-btn.send:active {
   border-color: transparent;
   box-shadow: none;
 }
+
+/* ---------- 117. Смайлики и гифки: стекло в стиле темы ---------- */
+html[data-theme='glass'] .emoji-popover,
+html[data-theme='glass'] .gif-popover {
+  background: linear-gradient(180deg, rgba(32, 38, 57, 0.86), rgba(16, 20, 33, 0.90));
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  backdrop-filter: blur(18px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow:
+    0 18px 44px rgba(2, 4, 10, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+html[data-theme='glass'] .emoji-tabs {
+  background: transparent;
+  border-bottom: 1px solid var(--pane-line);
+  padding: 6px;
+}
+html[data-theme='glass'] .emoji-tab {
+  background: transparent;
+  filter: grayscale(1);
+  opacity: 0.65;
+}
+html[data-theme='glass'] .emoji-tab:hover,
+html[data-theme='glass'] .emoji-tab.active {
+  background: rgba(255, 255, 255, 0.08);
+  filter: none;
+  opacity: 1;
+}
+html[data-theme='glass'] .gif-item,
+html[data-theme='glass'] .gif-add {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+html[data-theme='glass'] .gif-add {
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+}
+html[data-theme='glass'] .gif-add:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.32);
+}
