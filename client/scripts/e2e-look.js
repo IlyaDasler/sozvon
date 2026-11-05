@@ -103,15 +103,18 @@ runTest(async () => {
   // Темы на странице комнаты
   await js(win, `selectRoom(${text.id}); true`);
   for (const t of THEMES) {
+    if (t === 'ferrari') await js(win, `document.documentElement.style.setProperty('--accent', '#3f3f3f'); document.documentElement.style.setProperty('--accent-2', '#3f3f3f'); true`);
     await js(win, `setTheme('${t}'); true`);
     if (t === 'ferrari') {
+      await sleep(450);
       const f = JSON.parse(await js(win, `(() => {
         const cs = getComputedStyle(document.documentElement);
         const add = getComputedStyle(document.querySelector('.friend-tabs .add-tab'));
         return JSON.stringify({ accent: cs.getPropertyValue('--accent').trim(), add: add.backgroundColor });
       })()`));
-      if (f.accent !== '#e10600') throw new Error(`Феррари: неверный акцент ${f.accent}`);
+      if (f.accent !== '#e10600') throw new Error(`Феррари: системный акцент перекрыл красный (${f.accent})`);
       if (f.add !== 'rgb(242, 194, 0)') throw new Error(`Феррари: неверное действие «Добавить в друзья» ${f.add}`);
+      await js(win, `document.documentElement.style.removeProperty('--accent'); document.documentElement.style.removeProperty('--accent-2'); true`);
     }
     await shot(`theme-${t}`);
   }
