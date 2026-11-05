@@ -1930,6 +1930,7 @@ html[data-theme='glass'] .profile-card {
   overflow-y: auto;
 }
 html[data-theme='glass'] .profile-card .pc-banner {
+  flex: 0 0 92px;
   height: 92px;
   border-radius: 16px 16px 0 0;
   background-image:
