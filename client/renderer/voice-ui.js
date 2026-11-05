@@ -878,7 +878,7 @@ const NOISE_LEVELS = [
   { value: 2, name: 'Среднее' },
   { value: 3, name: 'Сильное' },
 ];
-let lastNoiseLevel = 2; // что включить, если человек выключил и снова нажал
+let lastNoiseLevel = 3; // что включить, если человек выключил и снова нажал
 
 function renderNoiseButton() {
   const level = noiseLevelOf();

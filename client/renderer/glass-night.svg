@@ -35,18 +35,30 @@
     <path d="M1380 795 L1425 510 L1470 795Z"/><path d="M1450 805 L1490 600 L1530 805Z"/>
   </g>
   <path fill="url(#nightMeadow)" d="M0 815 Q300 770 600 820 T1200 810 T1600 825 L1600 1000 L0 1000Z"/>
-  <g>
-    <path d="M1080 1000 L1110 420 Q1120 382 1170 360 L1280 325" stroke="#071018" stroke-width="26" fill="none" stroke-linecap="round"/>
-    <path d="M1110 470 Q990 425 920 355 M1140 500 Q1260 470 1345 400" stroke="#071018" stroke-width="14" fill="none" stroke-linecap="round"/>
-    <path d="M1140 310 Q1200 240 1280 260 Q1340 280 1320 350 Q1290 420 1200 410 Q1130 395 1140 310Z" fill="#101b22"/>
-    <ellipse cx="1215" cy="335" rx="42" ry="58" fill="#18262a"/>
-    <circle cx="1200" cy="320" r="11" fill="#ffd36b"/><circle cx="1232" cy="320" r="11" fill="#ffd36b"/>
-    <circle cx="1200" cy="320" r="4" fill="#1b140c"/><circle cx="1232" cy="320" r="4" fill="#1b140c"/>
-    <circle cx="1200" cy="320" r="18" fill="#ffcb5e" opacity=".18"/><circle cx="1232" cy="320" r="18" fill="#ffcb5e" opacity=".18"/>
-    <path d="M1212 342 L1220 352 L1228 342Z" fill="#e0a75e"/>
-  </g>
+
   <g fill="#8dffcf" opacity=".55">
     <circle cx="520" cy="650" r="2"/><circle cx="690" cy="730" r="1.4"/><circle cx="930" cy="680" r="1.8"/>
     <circle cx="1040" cy="760" r="1.3"/><circle cx="360" cy="740" r="1.4"/><circle cx="1460" cy="700" r="1.2"/>
+  </g>
+
+
+
+  <!-- Совиный дом: дупло в старом дубе, ветка и сова на ней -->
+  <g>
+    <path d="M1140 1000 L1160 470 Q1166 430 1200 410 L1350 370" stroke="#101820" stroke-width="30" fill="none" stroke-linecap="round"/>
+    <path d="M1160 520 Q1260 500 1370 525 M1160 560 Q1050 540 960 570" stroke="#101820" stroke-width="13" fill="none" stroke-linecap="round"/>
+    <ellipse cx="1190" cy="420" rx="32" ry="46" fill="#0a1017"/>
+    <ellipse cx="1190" cy="420" rx="20" ry="32" fill="#1b2630"/>
+    <path d="M1216 430 Q1240 370 1290 370 Q1330 370 1340 410 Q1350 455 1300 475 Q1250 495 1220 460Z" fill="#111922"/>
+    <ellipse cx="1262" cy="470" rx="46" ry="62" fill="#111922"/>
+    <circle cx="1262" cy="408" r="42" fill="#141d27"/>
+    <path d="M1230 380 L1222 352 L1248 370Z M1294 378 L1302 350 L1276 370Z" fill="#141d27"/>
+    <circle cx="1248" cy="403" r="10" fill="#ffd36b"/><circle cx="1278" cy="403" r="10" fill="#ffd36b"/>
+    <circle cx="1248" cy="403" r="3.5" fill="#20160d"/><circle cx="1278" cy="403" r="3.5" fill="#20160d"/>
+    <path d="M1258 421 L1264 430 L1270 421Z" fill="#d39a58"/>
+    <path d="M1242 510 L1236 530 M1282 510 L1288 530" stroke="#d39a58" stroke-width="3" stroke-linecap="round"/>
+    <path d="M1048 862 Q1028 830 1008 862 Q1002 880 1026 880 L1070 880 Q1090 878 1084 860 Q1068 830 1048 862Z" fill="#2b2a2c"/>
+    <path d="M1026 880 L1046 912 L1066 880Z" fill="#3a3033"/>
+    <circle cx="1016" cy="874" r="3" fill="#e7c8a0"/><circle cx="1082" cy="870" r="2.5" fill="#e7c8a0"/>
   </g>
 </svg>

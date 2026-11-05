@@ -1501,6 +1501,17 @@ html[data-theme='glass'] .modal:not(.hidden) .modal-card {
   animation: none;
   opacity: 1;
 }
+/* Выбор экрана/камеры — непрозрачная карточка поверх звонка: он не должен
+   просвечивать сквозь неё и мешать нажимать список источников. */
+#screen-picker {
+  background: rgba(2, 5, 10, 0.72) !important;
+  pointer-events: auto !important;
+}
+#screen-picker .modal-card {
+  background: #121722 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
 html[data-theme='glass'] .modal-card {
   background: linear-gradient(180deg, rgba(30, 35, 50, 0.985), rgba(16, 20, 32, 0.985));
   -webkit-backdrop-filter: blur(18px) saturate(125%);

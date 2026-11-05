@@ -24,7 +24,10 @@ class SfuSession extends MediaSession {
   /** grant — { url, token } от нашего сервера; key — ключ шифрования (base64) или null */
   async connect(grant, key) {
     const LK = LivekitClient;
-    const options = { adaptiveStream: true, dynacast: true, disconnectOnPageLeave: true };
+    // adaptiveStream сам опускает качество до размера маленькой плитки (часто 640p),
+    // поэтому 1440p-трансляция у зрителя выглядела размытой. Для экрана держим
+    // полное разрешение; камеры по-прежнему экономят через dynacast.
+    const options = { adaptiveStream: false, dynacast: true, disconnectOnPageLeave: true };
     if (key) {
       this.keyProvider = new LK.ExternalE2EEKeyProvider();
       await this.keyProvider.setKey(E2EE.fromB64(key).buffer);
