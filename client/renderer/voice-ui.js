@@ -747,30 +747,8 @@ async function openScreenPicker({ change = false } = {}) {
   for (const r of document.querySelectorAll('input[name="screen-mode"]')) r.checked = r.value === savedMode;
   $('screen-text').checked = store.get('screenText', true);
   $('screen-picker').classList.remove('hidden');
-  // Окно выбора не должно оказаться под панелью звонка ни в одной теме.
+  // Окно выбора — обычный top-layer dialog, как у камеры.
   const picker = $('screen-picker');
-  Object.assign(picker.style, {
-    position: 'fixed',
-    inset: '0',
-    zIndex: '2147483647',
-    display: 'grid',
-    placeItems: 'center',
-    opacity: '1',
-    visibility: 'visible',
-    transform: 'none',
-    background: 'rgba(2, 5, 10, 0.82)',
-    pointerEvents: 'auto',
-  });
-  const pickerCard = picker.querySelector('.modal-card');
-  if (pickerCard) {
-    Object.assign(pickerCard.style, {
-      background: '#121722',
-      color: '#f2f5ff',
-      opacity: '1',
-      visibility: 'visible',
-      transform: 'none',
-    });
-  }
   // <dialog> выводит окно в top layer: его не перекрывают ни панель звонка,
   // ни стеклянные слои с backdrop-filter.
   if (typeof picker.showModal === 'function' && !picker.open) {

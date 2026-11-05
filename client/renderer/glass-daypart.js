@@ -65,9 +65,4 @@
     if (!document.hidden) sync();
   });
   window.addEventListener('focus', () => sync());
-
-  // Выбор экрана/камеры не должен жить внутри прокручиваемой панели:
-  // иначе fixed-окно обрезается её overflow и выглядит пустой плашкой.
-  const picker = document.getElementById('screen-picker');
-  if (picker && picker.parentElement !== document.body) document.body.append(picker);
 })();

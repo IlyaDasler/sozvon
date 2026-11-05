@@ -1503,28 +1503,6 @@ html[data-theme='glass'] .modal:not(.hidden) .modal-card {
 }
 /* Выбор экрана/камеры — непрозрачная карточка поверх звонка: он не должен
    просвечивать сквозь неё и мешать нажимать список источников. */
-#screen-picker {
-  background: rgba(2, 5, 10, 0.72) !important;
-  pointer-events: auto !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-}
-#screen-picker .modal-card {
-  background: #121722 !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-}
-/* Выбор камеры/экрана: содержимое не должно растворяться в стекле */
-#screen-picker .modal-card,
-#screen-picker .modal-card * {
-  color: var(--text) !important;
-}
-#screen-picker .modal-card > * {
-  opacity: 1 !important;
-  visibility: visible !important;
-}
 html[data-theme='glass'] .modal-card {
   background: linear-gradient(180deg, rgba(30, 35, 50, 0.985), rgba(16, 20, 32, 0.985));
   -webkit-backdrop-filter: blur(18px) saturate(125%);

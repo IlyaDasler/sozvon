@@ -2013,6 +2013,14 @@ async function fillDeviceSelect(select, kind, selected) {
     select.append(new Option(d.label || (kind === 'videoinput' ? `Камера ${n}` : 'Устройство'), d.deviceId));
   }
   select.value = [...select.options].some((o) => o.value === selected) ? selected : '';
+  if (select.id === 'set-cam') updateCamLabel();
+}
+
+function updateCamLabel() {
+  const select = $('set-cam');
+  const btn = $('cam-picker-btn');
+  if (!select || !btn) return;
+  btn.textContent = select.selectedOptions[0]?.textContent || 'По умолчанию';
 }
 
 /** Ряд кружков с цветами; null — «как у аватара» */
@@ -2589,28 +2597,86 @@ async function recordMicTest() {
 
 let camPreview = null;
 
-async function toggleCamPreview() {
-  if (camPreview) return stopCamPreview();
+async function startCameraPreview(deviceId = '') {
+  if (camPreview) {
+    camPreview.getTracks().forEach((t) => t.stop());
+    camPreview = null;
+  }
+  $('camera-error').textContent = '';
   try {
-    camPreview = await navigator.mediaDevices.getUserMedia(cameraConstraints({ camId: $('set-cam').value }));
-    if (!settingsOpen()) return stopCamPreview();
-    $('cam-preview').srcObject = camPreview;
-    $('cam-preview').classList.remove('hidden');
-    $('cam-test-btn').textContent = 'Выключить';
-    // Теперь у камер есть названия
-    fillDeviceSelect($('set-cam'), 'videoinput', $('set-cam').value).catch(() => {});
+    camPreview = await navigator.mediaDevices.getUserMedia(cameraConstraints({ camId: deviceId }));
+    for (const id of ['cam-preview', 'camera-preview']) {
+      const el = $(id);
+      if (!el) continue;
+      el.srcObject = camPreview;
+      el.classList.remove('hidden');
+    }
+    $('cam-test-btn').textContent = 'Закрыть камеру';
   } catch (err) {
     camPreview = null;
-    $('mic-test-hint').textContent = mediaErrorText(err, 'камера');
+    $('camera-error').textContent = mediaErrorText(err, 'камера');
+    $('camera-hint').textContent = 'Камера недоступна. Проверьте, что она не занята другим приложением и разрешение выдано.';
   }
 }
 
 function stopCamPreview() {
   camPreview?.getTracks().forEach((t) => t.stop());
   camPreview = null;
-  $('cam-preview').srcObject = null;
-  $('cam-preview').classList.add('hidden');
+  for (const id of ['cam-preview', 'camera-preview']) {
+    const el = $(id);
+    if (el) { el.srcObject = null; el.classList.add('hidden'); }
+  }
   $('cam-test-btn').textContent = 'Проверить камеру';
+}
+
+async function renderCameraList() {
+  const select = $('set-cam');
+  const list = $('camera-list');
+  if (!select || !list) return;
+  list.replaceChildren();
+  const options = [...select.options];
+  for (const option of options) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'camera-option' + (option.value === select.value ? ' active' : '');
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    const label = document.createElement('span');
+    label.textContent = option.textContent;
+    button.append(dot, label);
+    button.onclick = async () => {
+      select.value = option.value;
+      updateCamLabel();
+      await renderCameraList();
+      await startCameraPreview(option.value);
+    };
+    list.append(button);
+  }
+  $('camera-hint').textContent = options.length <= 1
+    ? 'Камеры не найдены — проверьте подключение и разрешение Windows/macOS.'
+    : 'Выберите камеру — картинка обновится сразу.';
+}
+
+async function openCameraPicker() {
+  const dialog = $('camera-picker');
+  dialog.classList.remove('hidden');
+  if (typeof dialog.showModal === 'function' && !dialog.open) {
+    try { dialog.showModal(); } catch { /* уже открыт */ }
+  }
+  await fillDeviceSelect($('set-cam'), 'videoinput', $('set-cam').value).catch(() => {});
+  await renderCameraList();
+  await startCameraPreview($('set-cam').value);
+}
+
+function closeCameraPicker() {
+  const dialog = $('camera-picker');
+  if (dialog.open) dialog.close();
+  dialog.classList.add('hidden');
+  stopCamPreview();
+}
+
+async function toggleCamPreview() {
+  await openCameraPicker();
 }
 
 $('set-mic').onchange = startMicMeter;
@@ -2626,11 +2692,16 @@ $('set-speaker').onchange = () => micMonitor && startMicMonitor();
 $('mic-monitor-btn').onclick = toggleMicMonitor;
 $('mic-test-btn').onclick = recordMicTest;
 $('speaker-test-btn').onclick = () => tone.blip('test', $('set-speaker').value, 0.15);
-$('cam-test-btn').onclick = toggleCamPreview;
-$('set-cam').onchange = () => {
-  if (!camPreview) return;
+$('cam-test-btn').onclick = openCameraPicker;
+$('cam-picker-btn').onclick = openCameraPicker;
+$('camera-close').onclick = closeCameraPicker;
+$('camera-picker').addEventListener('close', () => {
+  $('camera-picker').classList.add('hidden');
   stopCamPreview();
-  toggleCamPreview();
+});
+$('set-cam').onchange = () => {
+  updateCamLabel();
+  if (!$('camera-picker').classList.contains('hidden')) startCameraPreview($('set-cam').value);
 };
 
 $('settings-form').onsubmit = async (e) => {
