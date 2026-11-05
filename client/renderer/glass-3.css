@@ -1257,3 +1257,27 @@ html[data-theme='glass'] .btn.primary:active,
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
+
+/* ---------- 100. Центровка иконок и плашки версии ---------- */
+[data-theme='glass'] .titlebar-brand { align-items: center; }
+[data-theme='glass'] .titlebar-brand b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  padding: 0 6px;
+  line-height: 1;
+}
+[data-theme='glass'] .icon-btn,
+[data-theme='glass'] .round-btn,
+[data-theme='glass'] .win-btn,
+[data-theme='glass'] .nav-btn {
+  line-height: 0;
+}
+[data-theme='glass'] .icon-btn svg,
+[data-theme='glass'] .round-btn svg,
+[data-theme='glass'] .win-btn svg,
+[data-theme='glass'] .nav-btn svg {
+  display: block;
+  margin: auto;
+}
