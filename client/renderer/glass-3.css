@@ -1677,3 +1677,13 @@ html[data-theme='glass'] .composer-btn:hover:not(:disabled) b,
 html[data-theme='glass'] .composer-btn:hover:not(:disabled) > span {
   transform: scale(1.14);
 }
+
+/* Кнопка «отправить»: при наведении тоже без рамки — подсвечивается только стрелка */
+html[data-theme='glass'] .composer-btn.send:hover,
+html[data-theme='glass'] .composer-btn.send:focus,
+html[data-theme='glass'] .composer-btn.send:focus-visible,
+html[data-theme='glass'] .composer-btn.send:active {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
