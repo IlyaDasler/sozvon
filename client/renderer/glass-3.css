@@ -1532,3 +1532,32 @@ html[data-theme='glass'] .day::after {
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
 }
+
+/* ---------- 112. Нижний ряд: кнопка канала, профиль и поле ввода одной высоты ---------- */
+html[data-theme='glass'] {
+  --dock-h: 48px;
+  --dock-gap: 10px;
+}
+html[data-theme='glass'] .rail {
+  padding-bottom: 10px;
+}
+html[data-theme='glass'] .rail-add {
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+}
+html[data-theme='glass'] .me-panel {
+  height: 48px;
+  margin: 0 8px 10px;
+}
+html[data-theme='glass'] .composer {
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 14px 9px;   /* 38 поля + 9 отступа + 1 линия = 48, как у профиля */
+  align-items: center;
+}
+html[data-theme='glass'] #message-input,
+html[data-theme='glass'] #room-message-input,
+html[data-theme='glass'] #thread-input {
+  height: 32px;
+}
