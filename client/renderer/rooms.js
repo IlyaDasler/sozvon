@@ -433,7 +433,7 @@ function roomItem(room) {
   }
   // Голосовая комната: щелчок открывает переписку, в голос — кнопкой с микрофоном
   row.onclick = () => (room.kind === 'voice' ? openRoom(room.id) : openRoomChat(room.id));
-  if (room.kind === 'voice') row.title = 'Открыть текстовый чат комнаты — голос подключается отдельно';
+  row.title = `Подключиться к каналу «${room.name}»`;
   li.append(row);
 
   // Кто сейчас в голосовом канале
