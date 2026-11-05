@@ -174,10 +174,11 @@
 .collapse-body {
   display: grid;
   grid-template-rows: 1fr;
+  overflow: hidden;
   transition: grid-template-rows 240ms cubic-bezier(.22, 1.1, .36, 1), opacity 180ms ease;
   opacity: 1;
 }
-.collapse-body > * { min-height: 0; }
+.collapse-body > .collapse-inner { min-height: 0; }
 .set-block.is-collapsed .collapse-body { grid-template-rows: 0fr; opacity: 0; }
 .set-block.is-collapsed .collapse-head { margin-bottom: 0; }
 

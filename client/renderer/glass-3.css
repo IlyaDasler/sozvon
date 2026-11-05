@@ -37,6 +37,11 @@
   isolation: isolate;
 }
 [data-theme='glass'] .main > * { position: relative; z-index: 1; }
+/* Окна поверх панели звонка: иначе выбор экрана/камеры прячется под content */
+[data-theme='glass'] .main > .modal,
+[data-theme='glass'] .modal {
+  z-index: 100;
+}
 /* Подсказка столбца каналов — fixed, иначе правило выше растягивало её на весь .main */
 [data-theme='glass'] .main > .rail-tip {
   position: fixed;
@@ -112,9 +117,15 @@
   background-position: center;
 }
 [data-theme='glass'] .rail-home { background: rgba(255, 255, 255, 0.07); }
+[data-theme='glass'] .rail-home img { width: 30px; height: 30px; display: block; }
 [data-theme='glass'] .rail-item.active .rail-home,
 [data-theme='glass'] .rail-home:hover {
-  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 88%, transparent), color-mix(in srgb, var(--accent-2) 68%, transparent));
+  background: rgba(255, 255, 255, 0.10);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30),
+    0 8px 20px rgba(3, 6, 16, 0.35);
 }
 [data-theme='glass'] .rail-item::before {
   display: none;
@@ -684,15 +695,15 @@ html[data-theme='glass'] .members-head {
   /* Без светлой плашки: шапка участников — та же поверхность, что и панель */
   background: transparent;
 }
-[data-theme='glass'] .members-scroll { padding: 6px 8px 14px; }
+[data-theme='glass'] .members-scroll { padding: 4px 6px 10px; }
 [data-theme='glass'] .members-group {
-  padding: 14px 8px 6px;
+  padding: 10px 8px 3px;
   font-size: 10.5px;
   letter-spacing: 0.08em;
 }
 [data-theme='glass'] .member-item {
-  min-height: 38px;
-  padding: 5px 8px;
+  min-height: 34px;
+  padding: 4px 8px;
   border-radius: 11px;
   transition: background 130ms ease;
 }
@@ -1364,9 +1375,10 @@ html[data-theme='glass'] .rail-folder.open .rail-tile {
    а ширина 340px вылезала за узкую панель. Делаем плотное стекло,
    держим внутри окна и даём списку свою прокрутку */
 html[data-theme='glass'] .notif-panel {
-  left: 8px;
-  top: 56px;
-  width: min(320px, calc(100vw - 96px));
+  left: auto;
+  right: 16px;
+  top: 54px;
+  width: min(360px, calc(100vw - 32px));
   max-height: min(70vh, calc(100vh - 120px));
   background: linear-gradient(180deg, rgba(30, 36, 54, 0.88), rgba(16, 20, 33, 0.90));
   -webkit-backdrop-filter: blur(18px) saturate(120%);
@@ -1376,7 +1388,7 @@ html[data-theme='glass'] .notif-panel {
   box-shadow:
     0 18px 46px rgba(2, 4, 10, 0.50),
     inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  overflow: hidden;
+  overflow: visible;
 }
 html[data-theme='glass'] .notif-list {
   overflow-y: auto;
@@ -1481,6 +1493,13 @@ html[data-theme='glass'] .cal-day.today {
 /* ---------- 107. Окна и события: плотное стекло и затемнение ---------- */
 html[data-theme='glass'] .modal {
   background: rgba(4, 6, 12, 0.55);
+}
+/* Не оставляем окно полупрозрачным на старте анимации: выбор экрана/камеры
+   должен быть виден сразу, а не «пустой стеклянной плашкой». */
+html[data-theme='glass'] .modal:not(.hidden),
+html[data-theme='glass'] .modal:not(.hidden) .modal-card {
+  animation: none;
+  opacity: 1;
 }
 html[data-theme='glass'] .modal-card {
   background: linear-gradient(180deg, rgba(30, 35, 50, 0.985), rgba(16, 20, 32, 0.985));
@@ -2684,3 +2703,84 @@ html[data-theme='glass'] .msg {
 html[data-theme='glass'] .chat:has(> #thread-panel:not(.hidden):not(.thread-full)) > .messages {
   padding-right: calc(min(380px, 92%) + 24px);
 }
+
+html.is-mac[data-theme='glass'] .titlebar {
+  /* macOS: системные «светофоры» занимают левый верхний угол */
+  padding-left: 96px;
+}
+html.is-mac[data-theme='glass'] .titlebar .nav-btn:first-of-type {
+  margin-left: 4px;
+}
+
+/* 3.3: в стекле иконки-кнопки — круги, как в macOS/iOS.
+   Текстовые кнопки и поля не трогаем: круглым остаётся только действие-иконка. */html[data-theme='glass'] .icon-btn,
+html[data-theme='glass'] .composer-btn,
+html[data-theme='glass'] .msg-tool,
+html[data-theme='glass'] .tile-btn,
+html[data-theme='glass'] .tile-full,
+html[data-theme='glass'] .tile-unwatch,
+html[data-theme='glass'] .tile-pip,
+html[data-theme='glass'] .members-head .icon-btn,
+html[data-theme='glass'] .rs-head .icon-btn {
+  border-radius: 50% !important;
+}
+html[data-theme='glass'] .icon-btn:hover,
+html[data-theme='glass'] .composer-btn:hover,
+html[data-theme='glass'] .msg-tool:hover,
+html[data-theme='glass'] .tile-btn:hover {
+  background-color: rgba(255, 255, 255, 0.10);
+}
+html[data-theme='glass'] .tile-btn {
+  width: 28px; height: 28px; padding: 0; justify-content: center;
+}
+html[data-theme='glass'] .msg-tool {
+  width: 30px; height: 30px; padding: 0; justify-content: center;
+}
+
+
+/* 3.3: баннеры в стекле — мягкий цветной свет из выбранного оттенка,
+   а не плоская заливка. Фото-баннер по-прежнему перекрывает градиент. */
+html[data-theme='glass'] .profile-card .pc-banner,
+html[data-theme='glass'] .banner-peek .pc-banner {
+  background-color: color-mix(in srgb, var(--banner) 62%, #0b1020);
+  background-image:
+    radial-gradient(90% 130% at 16% -20%, rgba(255, 255, 255, 0.34), transparent 58%),
+    radial-gradient(70% 90% at 92% 120%, color-mix(in srgb, var(--banner) 82%, transparent), transparent 64%),
+    linear-gradient(135deg, color-mix(in srgb, var(--banner) 80%, var(--accent)), color-mix(in srgb, var(--banner) 42%, #0b1020));
+}
+html[data-theme='glass'] .banner-peek .pc-banner {
+  height: 84px;
+  border-radius: 12px 12px 0 0;
+}
+
+/* 3.3: панель «В голосе» — та же форма и закругление, что у профиля снизу */
+html[data-theme='glass'] .voice-panel {
+  margin: 0 8px 6px;
+  padding: 7px 8px 7px 12px;
+  border-radius: 15px;
+  background: linear-gradient(180deg, rgba(52, 108, 82, 0.24), rgba(20, 38, 32, 0.34));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(108, 221, 159, 0.18);
+}
+html[data-theme='glass'] .voice-panel .icon-btn {
+  border-radius: 50%;
+}
+
+/* 3.3: настройки — ровные паддинги и подменю без слипания */
+html[data-theme='glass'] #settings .set-nav {
+  gap: 4px;
+  padding: 16px 10px 14px;
+}
+html[data-theme='glass'] #settings .set-nav > button {
+  min-height: 36px;
+}
+html[data-theme='glass'] #settings .set-nav .rs-room {
+  padding: 0 10px 6px;
+}
+html[data-theme='glass'] #settings .set-nav .rs-sep {
+  margin: 8px 6px;
+}
+
+
+

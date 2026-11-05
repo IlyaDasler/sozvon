@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sunsetSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b1b33"/><stop offset=".35" stop-color="#553557"/>
+      <stop offset=".6" stop-color="#b45460"/><stop offset=".76" stop-color="#ff8a5c"/>
+      <stop offset=".86" stop-color="#ffc07b"/><stop offset="1" stop-color="#3a2836"/>
+    </linearGradient>
+    <radialGradient id="sunsetSun" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ffe7b0"/><stop offset=".45" stop-color="#ffb56b"/>
+      <stop offset="1" stop-color="#ff7a4d" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sunsetHill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b2939"/><stop offset="1" stop-color="#17131f"/>
+    </linearGradient>
+    <linearGradient id="sunsetMeadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2230"/><stop offset="1" stop-color="#100d16"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#sunsetSky)"/>
+  <circle cx="800" cy="720" r="280" fill="url(#sunsetSun)" opacity=".95"/>
+  <circle cx="800" cy="720" r="64" fill="#ffd49a" opacity=".9"/>
+  <g fill="#ffd9a8" opacity=".25">
+    <ellipse cx="520" cy="260" rx="180" ry="26"/><ellipse cx="1120" cy="310" rx="220" ry="30"/>
+  </g>
+  <path fill="url(#sunsetHill)" opacity=".9" d="M0 650 L140 580 L280 635 L420 550 L560 640 L700 575 L840 650 L980 560 L1120 645 L1260 580 L1400 650 L1520 590 L1600 630 L1600 1000 L0 1000Z"/>
+  <path fill="#1b1722" opacity=".95" d="M0 740 L120 705 L240 745 L360 695 L480 745 L600 705 L740 755 L880 715 L1030 760 L1180 710 L1320 755 L1460 715 L1600 755 L1600 1000 L0 1000Z"/>
+  <g fill="#100d14">
+    <path d="M130 785 L175 505 L220 785Z"/><path d="M195 795 L238 575 L280 795Z"/>
+    <path d="M400 800 L445 535 L490 800Z"/><path d="M465 805 L505 625 L545 805Z"/>
+    <path d="M1100 790 L1145 520 L1190 790Z"/><path d="M1170 800 L1210 590 L1250 800Z"/>
+    <path d="M1390 790 L1435 525 L1480 790Z"/><path d="M1460 800 L1500 620 L1540 800Z"/>
+  </g>
+  <path fill="url(#sunsetMeadow)" d="M0 815 Q300 765 600 815 T1200 805 T1600 820 L1600 1000 L0 1000Z"/>
+  <g>
+    <path d="M1030 1000 L1060 420 Q1070 382 1120 360 L1230 325" stroke="#151018" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <path d="M1060 470 Q940 425 870 355 M1090 500 Q1210 470 1295 400" stroke="#151018" stroke-width="14" fill="none" stroke-linecap="round"/>
+    <path d="M1090 310 Q1150 240 1230 260 Q1290 280 1270 350 Q1240 420 1150 410 Q1080 395 1090 310Z" fill="#1c1821"/>
+    <ellipse cx="1165" cy="335" rx="42" ry="58" fill="#2a2330"/>
+    <circle cx="1150" cy="320" r="10" fill="#ffbd63"/><circle cx="1182" cy="320" r="10" fill="#ffbd63"/>
+    <circle cx="1150" cy="320" r="4" fill="#2a1b12"/><circle cx="1182" cy="320" r="4" fill="#2a1b12"/>
+    <path d="M1162 342 L1170 352 L1178 342Z" fill="#c77d46"/>
+  </g>
+  <g fill="#ffd18a" opacity=".5">
+    <circle cx="560" cy="660" r="2"/><circle cx="700" cy="730" r="1.5"/><circle cx="900" cy="690" r="1.8"/>
+    <circle cx="1020" cy="760" r="1.3"/><circle cx="360" cy="740" r="1.4"/><circle cx="1420" cy="700" r="1.2"/>
+  </g>
+</svg>

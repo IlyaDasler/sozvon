@@ -10,6 +10,8 @@ const SAME_SERVER_OLD = 'http://135.106.226.12:3000';
 const LEGACY_SERVERS = ['http://localhost:3000', 'http://95.173.207.169:3000', 'http://92.241.13.52:3000'];
 
 const COLORS = ['#e5484d', '#f76b15', '#ffc53d', '#30a46c', '#12a594', '#0090ff', '#6e56cf', '#d6409f'];
+// Баннеры — мягкие светящиеся оттенки, а не те же кислотные цвета аватаров
+const BANNER_COLORS = ['#6d8ee8', '#8f7bf0', '#c47ac8', '#d9899a', '#e0a775', '#73b39d', '#6aa9c9', '#b48ad9'];
 
 const ICONS = {
   mic: '<svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/></svg>',
@@ -1992,11 +1994,13 @@ let pickedName = null;
 
 async function fillDeviceSelect(select, kind, selected) {
   let devices = await navigator.mediaDevices.enumerateDevices();
-  // Без разрешения на микрофон названия устройств пустые — запрашиваем его один раз.
-  // Камеру ради названий не включаем: они появятся после «Проверить камеру»
-  if (kind !== 'videoinput' && devices.some((d) => d.kind === kind && !d.label)) {
+  // Без разрешения названия устройств пустые. Для камеры тоже просим доступ:
+  // иначе в списке нет нормальных имён, а «Проверить камеру» молча падает.
+  if (devices.some((d) => d.kind === kind && !d.label)) {
     try {
-      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const s = await navigator.mediaDevices.getUserMedia(
+        kind === 'videoinput' ? { video: true } : { audio: true }
+      );
       s.getTracks().forEach((t) => t.stop());
       devices = await navigator.mediaDevices.enumerateDevices();
     } catch {}
@@ -2128,7 +2132,7 @@ function renderColorPicker() {
     pickedColor = color;
     renderColorPicker();
   });
-  colorChoices($('banner-picker'), [null, ...COLORS], pickedBanner, (color) => {
+  colorChoices($('banner-picker'), [null, ...BANNER_COLORS], pickedBanner, (color) => {
     pickedBanner = color;
     renderColorPicker();
   });
@@ -2455,6 +2459,7 @@ async function openSettings(tab) {
   $('set-bio').value = state.me.bio || '';
   renderColorPicker();
   $('set-ns-level').value = String(noiseLevelOf());
+  if ($('set-ns-value')) $('set-ns-value').textContent = NOISE_LEVELS.find((l) => l.value === noiseLevelOf())?.name || '';
   $('mic-test-btn').textContent = 'Проверить микрофон';
   $('mic-test-btn').disabled = false;
   $('set-cur-pass').value = '';
@@ -2610,6 +2615,9 @@ function stopCamPreview() {
 
 $('set-mic').onchange = startMicMeter;
 // Шумоподавление переключается сразу — и в разговоре тоже
+$('set-ns-level').oninput = () => {
+  if ($('set-ns-value')) $('set-ns-value').textContent = NOISE_LEVELS.find((l) => l.value === Number($('set-ns-level').value))?.name || '';
+};
 $('set-ns-level').onchange = () => {
   setNoiseLevel(Number($('set-ns-level').value));
   startMicMeter();

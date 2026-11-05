@@ -2,16 +2,21 @@
 // (theme-boot.js ставит её до отрисовки при следующем запуске)
 
 const THEMES = [
-  { id: 'sozvon', name: 'Тёмная', hint: 'Глубокая тёмная с фиолетовым — по умолчанию' },
+  { id: 'sozvon', name: 'Тёмная', hint: 'Глубокая тёмная с фиолетовым' },
   { id: 'midnight', name: 'Полночь', hint: 'Чёрная, для OLED' },
   { id: 'light', name: 'Светлая', hint: 'Для дня' },
   { id: 'forest', name: 'Лес', hint: 'Тёмно-зелёная' },
   { id: 'dusk', name: 'Сумерки', hint: 'Тёплая фиолетовая' },
   { id: 'ferrari', name: 'Феррари', hint: 'Карбон, алый Rosso Corsa и гоночный жёлтый' },
-  { id: 'glass', name: 'Жидкое стекло', hint: 'Полупрозрачные панели с размытием, как в iOS и macOS' },
+  { id: 'glass', name: 'Жидкое стекло', hint: 'Стекло, размытие и мягкий свет — тема по умолчанию' },
 ];
 
-const currentTheme = () => document.documentElement.dataset.theme || 'sozvon';
+const THEME_GROUPS = [
+  { title: 'Классические темы', ids: ['sozvon', 'midnight', 'light', 'forest', 'dusk'] },
+  { title: 'Новые темы', ids: ['ferrari', 'glass'] },
+];
+
+const currentTheme = () => document.documentElement.dataset.theme || 'glass';
 
 /** Кнопки окна Windows — в цвета полосы окна текущей темы */
 function syncTitleBar() {
@@ -69,27 +74,43 @@ $('glass-blur').oninput = () => {
   applyGlass();
 };
 applyGlass();
-// Карточка темы — маленькая схема окна в цветах этой темы
+// Карточка темы — маленькая схема окна в цветах этой темы.
+// Все темы на одной странице, но двумя понятными группами.
+function themeCard(t) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = `theme-card${currentTheme() === t.id ? ' selected' : ''}`;
+  card.dataset.pick = t.id;
+  card.title = t.hint;
+  card.innerHTML = `
+    <span class="theme-preview" data-theme="${t.id}">
+      <span class="tp-side"><i></i><i></i><i></i></span>
+      <span class="tp-main"><i></i><i class="short"></i><b></b></span>
+    </span>`;
+  const name = document.createElement('span');
+  name.className = 'theme-name';
+  name.textContent = t.name;
+  card.append(name);
+  card.onclick = () => setTheme(t.id);
+  return card;
+}
+
 function renderThemePicker() {
   const grid = $('theme-grid');
   grid.replaceChildren();
-  for (const t of THEMES) {
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = `theme-card${currentTheme() === t.id ? ' selected' : ''}`;
-    card.dataset.pick = t.id;
-    card.title = t.hint;
-    card.innerHTML = `
-      <span class="theme-preview" data-theme="${t.id}">
-        <span class="tp-side"><i></i><i></i><i></i></span>
-        <span class="tp-main"><i></i><i class="short"></i><b></b></span>
-      </span>`;
-    const name = document.createElement('span');
-    name.className = 'theme-name';
-    name.textContent = t.name;
-    card.append(name);
-    card.onclick = () => setTheme(t.id);
-    grid.append(card);
+  for (const group of THEME_GROUPS) {
+    const section = document.createElement('div');
+    section.className = 'theme-group';
+    const title = document.createElement('h4');
+    title.textContent = group.title;
+    const row = document.createElement('div');
+    row.className = 'theme-group-grid';
+    for (const id of group.ids) {
+      const t = THEMES.find((item) => item.id === id);
+      if (t) row.append(themeCard(t));
+    }
+    section.append(title, row);
+    grid.append(section);
   }
 }
 // ---------- Форма углов и «живая» подсветка стекла ----------

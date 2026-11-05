@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="noonSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5f9ecb"/><stop offset=".42" stop-color="#9fcee5"/>
+      <stop offset=".72" stop-color="#d9eef1"/><stop offset="1" stop-color="#a9c5ba"/>
+    </linearGradient>
+    <radialGradient id="noonSun" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fffbe8"/><stop offset=".4" stop-color="#fff3ba"/>
+      <stop offset="1" stop-color="#ffe89a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="noonHill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4d7969"/><stop offset="1" stop-color="#274d46"/>
+    </linearGradient>
+    <linearGradient id="noonMeadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5f8c5c"/><stop offset="1" stop-color="#253e35"/>
+    </linearGradient>
+    <linearGradient id="pond" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b9dbe0" stop-opacity=".8"/><stop offset="1" stop-color="#4a7779" stop-opacity=".65"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#noonSky)"/>
+  <circle cx="320" cy="190" r="210" fill="url(#noonSun)" opacity=".85"/>
+  <circle cx="320" cy="190" r="46" fill="#fff7d6"/>
+  <g fill="#f7fcff" opacity=".5">
+    <ellipse cx="760" cy="190" rx="150" ry="38"/><ellipse cx="860" cy="175" rx="100" ry="30"/>
+    <ellipse cx="1280" cy="250" rx="120" ry="30"/><ellipse cx="1360" cy="238" rx="80" ry="24"/>
+  </g>
+  <path fill="url(#noonHill)" opacity=".8" d="M0 640 L160 560 L300 620 L460 530 L620 630 L780 550 L940 640 L1100 560 L1260 640 L1420 570 L1600 630 L1600 1000 L0 1000Z"/>
+  <path fill="#345d4d" opacity=".8" d="M0 730 Q230 680 430 735 T860 720 T1290 740 T1600 725 L1600 1000 L0 1000Z"/>
+  <ellipse cx="1080" cy="865" rx="430" ry="92" fill="url(#pond)"/>
+  <g fill="#1e3a32">
+    <path d="M140 780 L185 500 L230 780Z"/><path d="M205 790 L245 570 L285 790Z"/>
+    <path d="M430 800 L470 540 L510 800Z"/><path d="M490 805 L530 620 L570 805Z"/>
+    <path d="M1370 790 L1415 520 L1460 790Z"/><path d="M1440 800 L1480 590 L1520 800Z"/>
+  </g>
+  <path fill="url(#noonMeadow)" d="M0 805 Q300 750 600 810 T1200 800 T1600 812 L1600 1000 L0 1000Z"/>
+  <g>
+    <path d="M1080 1000 L1110 420 Q1120 382 1170 360 L1280 325" stroke="#25342c" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <path d="M1110 470 Q990 425 920 355 M1140 500 Q1260 470 1345 400" stroke="#25342c" stroke-width="14" fill="none" stroke-linecap="round"/>
+    <path d="M1140 310 Q1200 240 1280 260 Q1340 280 1320 350 Q1290 420 1200 410 Q1130 395 1140 310Z" fill="#33453a"/>
+    <ellipse cx="1215" cy="335" rx="42" ry="58" fill="#4a5b4a"/>
+    <circle cx="1200" cy="320" r="10" fill="#f7d98a"/><circle cx="1232" cy="320" r="10" fill="#f7d98a"/>
+    <circle cx="1200" cy="320" r="4" fill="#2a2218"/><circle cx="1232" cy="320" r="4" fill="#2a2218"/>
+    <path d="M1212 342 L1220 352 L1228 342Z" fill="#d6a55f"/>
+  </g>
+  <g fill="#e7f4dd" opacity=".45">
+    <circle cx="700" cy="760" r="2"/><circle cx="760" cy="820" r="1.5"/><circle cx="840" cy="780" r="1.8"/>
+    <circle cx="1280" cy="790" r="1.4"/><circle cx="1340" cy="850" r="1.2"/><circle cx="590" cy="830" r="1.6"/>
+  </g>
+</svg>

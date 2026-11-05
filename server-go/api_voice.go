@@ -129,11 +129,11 @@ func (v *voiceManager) leave(roomID, userID int64) (conn *realtime.Conn, media s
 	return conn, media, true
 }
 
-func (v *voiceManager) pause(userID int64, wait time.Duration, onGone func(roomID int64)) {
+func (v *voiceManager) pause(userID int64, conn *realtime.Conn, wait time.Duration, onGone func(roomID int64)) {
 	v.mu.Lock()
 	for roomID, room := range v.rooms {
 		part, exists := room.parts[userID]
-		if !exists || part.conn == nil || part.timer != nil {
+		if !exists || part.conn == nil || part.conn != conn || part.timer != nil {
 			continue
 		}
 		part.conn = nil
@@ -160,6 +160,9 @@ func (v *voiceManager) resume(roomID, userID int64, conn *realtime.Conn) bool {
 	if part.timer != nil {
 		part.timer.Stop()
 		part.timer = nil
+	}
+	if part.conn != nil && part.conn != conn {
+		return false
 	}
 	part.conn = conn
 	return true
@@ -274,7 +277,13 @@ func (a *server) roomJoin(conn *realtime.Conn, user *store.User, message map[str
 		return
 	}
 	if current := a.voice.roomOf(user.ID); current != 0 {
+		// Это же место со старого устройства: запоминаем его, чтобы честно сказать
+		// «вы подключились с другого устройства», а не оставлять призрак в комнате.
+		old := a.voice.participant(current, user.ID)
 		a.voice.leave(current, user.ID)
+		if old != nil && old.conn != nil && old.conn != conn {
+			old.conn.Send(map[string]any{"type": "room:left", "roomId": current, "reason": "moved"})
+		}
 		a.broadcastVoice(current)
 	}
 	memberCount := len(a.voice.participants(roomID)) + 1
@@ -417,7 +426,7 @@ func (a *server) roomPreviewGet(conn *realtime.Conn, user *store.User, message m
 
 // voicePause — обрыв связи: держим место в комнате, пока идёт окно ожидания
 func (a *server) voicePause(conn *realtime.Conn, user *store.User) {
-	a.voice.pause(user.ID, a.cfg.ReconnectWait, func(roomID int64) {
+	a.voice.pause(user.ID, conn, a.cfg.ReconnectWait, func(roomID int64) {
 		a.broadcastVoice(roomID)
 	})
 }

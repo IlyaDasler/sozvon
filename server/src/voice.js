@@ -85,7 +85,9 @@ export const voice = {
     const map = voiceRooms.get(roomId);
     const p = map?.get(userId);
     if (!p) return false;
-    if (p.ws) return true; // уже с живого соединения
+    // Старое устройство не должно «возвращаться» поверх уже подключённого нового
+    if (p.ws && p.ws !== ws) return false;
+    if (p.ws === ws) return true;
     clearTimeout(p.timer);
     p.timer = null;
     p.ws = ws;

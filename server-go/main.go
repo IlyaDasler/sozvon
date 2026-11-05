@@ -93,6 +93,10 @@ func main() {
 		r.Use(app.requireClientVersion)
 		r.Get("/health", app.health)
 		r.Get("/version", app.versionInfo)
+		r.Get("/time", func(w http.ResponseWriter, r *http.Request) {
+			// Часы сервера, а не компьютера: по ним клиент выбирает рассвет/день/закат/ночь
+			writeJSON(w, http.StatusOK, map[string]any{"now": time.Now().UnixMilli()})
+		})
 		r.Post("/register/code", app.registerCode)
 		r.Post("/register", app.register)
 		r.Post("/login", app.login)
