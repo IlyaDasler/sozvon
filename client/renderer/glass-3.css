@@ -2239,3 +2239,61 @@ html[data-theme='glass'] .room-tool.chat {
 html[data-theme='glass'] #room-lobby {
   display: none !important;
 }
+
+/* Панель звонка — стекло */
+html[data-theme='glass'] .call-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01) 45%, rgba(255, 255, 255, 0) 100%),
+    rgba(18, 23, 38, 0.18);
+  border-bottom: 1px solid var(--pane-line);
+}
+html[data-theme='glass'] .call-panel .stage,
+html[data-theme='glass'] .call-panel .tile-strip {
+  background: transparent;
+}
+html[data-theme='glass'] .call-panel .tile {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015) 60%, rgba(255, 255, 255, 0) 100%),
+    rgba(18, 23, 38, 0.42);
+  box-shadow:
+    0 10px 26px rgba(2, 4, 10, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+html[data-theme='glass'] .call-panel .round-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--text);
+  transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease;
+}
+html[data-theme='glass'] .call-panel .round-btn:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+html[data-theme='glass'] .call-panel .round-btn svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 150ms cubic-bezier(.22, 1.15, .36, 1);
+}
+html[data-theme='glass'] .call-panel .round-btn:hover svg {
+  transform: scale(1.14);
+}
+html[data-theme='glass'] .call-panel .round-btn.off {
+  background: rgba(255, 90, 90, 0.16);
+  border-color: rgba(255, 110, 110, 0.34);
+  color: #ff9a9a;
+}
+html[data-theme='glass'] .call-panel .round-btn.on {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 46%, transparent);
+  color: #fff;
+}
+html[data-theme='glass'] .call-panel .round-btn.hangup {
+  background: rgba(255, 80, 80, 0.20);
+  border-color: rgba(255, 90, 90, 0.38);
+  color: #ffb0b0;
+}
+html[data-theme='glass'] .call-panel .round-btn.hangup:hover {
+  background: rgba(255, 80, 80, 0.28);
+}
