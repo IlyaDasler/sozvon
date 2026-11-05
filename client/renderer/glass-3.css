@@ -2243,8 +2243,8 @@ html[data-theme='glass'] #room-lobby {
 /* Панель звонка — стекло */
 html[data-theme='glass'] .call-panel {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01) 45%, rgba(255, 255, 255, 0) 100%),
-    rgba(18, 23, 38, 0.18);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.008) 45%, rgba(255, 255, 255, 0) 100%),
+    rgba(14, 16, 22, 0.12);
   border-bottom: 1px solid var(--pane-line);
 }
 html[data-theme='glass'] .call-panel .stage,
