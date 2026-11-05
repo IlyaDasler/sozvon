@@ -1804,14 +1804,16 @@ html[data-theme='glass'] .kind-body {
 
 /* Окно новой комнаты — заметно прозрачнее */
 html[data-theme='glass'] #room-create .modal-card {
-  /* Сильно прозрачное стекло: окно читается как слой над комнатой */
-  background: linear-gradient(180deg, rgba(36, 43, 66, 0.50), rgba(13, 17, 29, 0.56));
-  -webkit-backdrop-filter: blur(30px) saturate(160%);
-  backdrop-filter: blur(30px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  /* Светлая стеклянная плёнка + прозрачная основа */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.01) 100%),
+    rgba(18, 23, 38, 0.38);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 1px solid rgba(255, 255, 255, 0.20);
   box-shadow:
     0 36px 90px rgba(2, 4, 10, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 /* Карточка заполняет свою ячейку целиком, без лишнего смещения */
