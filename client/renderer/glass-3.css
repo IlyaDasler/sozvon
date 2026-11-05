@@ -2842,3 +2842,13 @@ html[data-theme='glass'] .titlebar {
 }
 html[data-theme='glass'] .content { background: rgba(6, 10, 18, 0.10); }
 html[data-theme='glass'] .chat { background: rgba(6, 10, 18, 0.18); }
+/* dialog не должен добавлять системную белую рамку/фокус вокруг окна */
+dialog.modal {
+  border: 0;
+  padding: 0;
+  outline: none;
+  background: transparent;
+}
+dialog.modal::backdrop { background: rgba(2, 5, 10, 0.62); }
+#screen-picker, #camera-picker { border: 0; outline: none; box-shadow: none; }
+#screen-picker:focus, #camera-picker:focus { outline: none; }
