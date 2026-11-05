@@ -1943,7 +1943,7 @@ html[data-theme='glass'] .profile-card .pc-avatar .status {
   border-color: rgba(18, 23, 38, 0.95);
 }
 html[data-theme='glass'] .profile-card .pc-body {
-  margin: 52px 12px 12px;
+  margin: 66px 12px 12px;
   padding: 12px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.035);
@@ -2019,5 +2019,5 @@ html[data-theme='glass'] .profile-card .pc-scroll {
 
 /* Тело начинается ниже закреплённого аватара */
 html[data-theme='glass'] .profile-card .pc-scroll > .pc-body:first-child {
-  margin-top: 52px;
+  margin-top: 66px;   /* 44 (верх аватара) + 88 + 6 (кольцо) + запас */
 }
