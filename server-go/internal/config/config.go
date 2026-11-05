@@ -11,19 +11,24 @@ import (
 // Config повторяет переменные окружения Node-сервера, чтобы переключение
 // между реализациями не требовало менять деплой.
 type Config struct {
-	Port       string
-	DataDir     string
-	InviteCode  string
-	SMTPHost    string
-	SMTPPort    string
-	SMTPUser    string
-	SMTPPass    string
-	SMTPFrom    string
-	MailTestFile string
-	OAuthTestBase string
-	PublicURL string
-	YandexClientID string
+	Port               string
+	DataDir            string
+	InviteCode         string
+	SMTPHost           string
+	SMTPPort           string
+	SMTPUser           string
+	SMTPPass           string
+	SMTPFrom           string
+	MailTestFile       string
+	OAuthTestBase      string
+	PublicURL          string
+	YandexClientID     string
 	YandexClientSecret string
+
+	// Политика версий клиента. Старые клиенты получают 426 и ссылку на обновление.
+	MinClientVersion    string
+	LatestClientVersion string
+	ClientUpdateURL     string
 
 	LiveKitURL        string
 	LiveKitAPIURL     string
@@ -98,19 +103,23 @@ func Load() Config {
 	}
 
 	return Config{
-		Port:       port,
-		DataDir:    dataDir,
-		InviteCode: os.Getenv("INVITE_CODE"),
-		SMTPHost:   os.Getenv("SMTP_HOST"),
-		SMTPPort:   envOr("SMTP_PORT", "587"),
-		SMTPUser:   os.Getenv("SMTP_USER"),
-		SMTPPass:   os.Getenv("SMTP_PASS"),
-		SMTPFrom:   os.Getenv("SMTP_FROM"),
-		MailTestFile: os.Getenv("MAIL_TEST_FILE"),
-		OAuthTestBase: os.Getenv("OAUTH_TEST_BASE"),
-		PublicURL: os.Getenv("PUBLIC_URL"),
-		YandexClientID: os.Getenv("YANDEX_CLIENT_ID"),
+		Port:               port,
+		DataDir:            dataDir,
+		InviteCode:         os.Getenv("INVITE_CODE"),
+		SMTPHost:           os.Getenv("SMTP_HOST"),
+		SMTPPort:           envOr("SMTP_PORT", "587"),
+		SMTPUser:           os.Getenv("SMTP_USER"),
+		SMTPPass:           os.Getenv("SMTP_PASS"),
+		SMTPFrom:           os.Getenv("SMTP_FROM"),
+		MailTestFile:       os.Getenv("MAIL_TEST_FILE"),
+		OAuthTestBase:      os.Getenv("OAUTH_TEST_BASE"),
+		PublicURL:          os.Getenv("PUBLIC_URL"),
+		YandexClientID:     os.Getenv("YANDEX_CLIENT_ID"),
 		YandexClientSecret: os.Getenv("YANDEX_CLIENT_SECRET"),
+
+		MinClientVersion:    envOr("MIN_CLIENT_VERSION", "3.0.0-beta.1"),
+		LatestClientVersion: envOr("LATEST_CLIENT_VERSION", "3.0.0"),
+		ClientUpdateURL:     envOr("CLIENT_UPDATE_URL", "https://github.com/IlyaDasler/sozvon/releases/latest"),
 
 		LiveKitURL:        os.Getenv("LIVEKIT_URL"),
 		LiveKitAPIURL:     envOr("LIVEKIT_API_URL", "http://127.0.0.1:7880"),

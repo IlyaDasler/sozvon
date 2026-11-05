@@ -814,6 +814,21 @@
     </form>
   </div>
 
+  <!-- Сервер отключил старую версию: выйти дальше можно только через обновление -->
+  <div id="version-gate" class="version-gate hidden" role="dialog" aria-modal="true" aria-labelledby="version-gate-title">
+    <div class="version-gate-card">
+      <div class="version-gate-kicker">Поддержка версии прекращена</div>
+      <h2 id="version-gate-title">Нужно обновиться до Созвона 3.0</h2>
+      <p class="version-gate-lead">Мы перешли на новый сервер и новую версию приложения. Версии ниже 3.0 больше не подключаются, чтобы не терять сообщения и звонки.</p>
+      <p class="muted small" id="version-gate-meta"></p>
+      <div class="version-gate-actions">
+        <button type="button" class="btn primary" id="version-gate-update">Обновить Созвон</button>
+        <a class="btn" id="version-gate-link" href="https://github.com/IlyaDasler/sozvon/releases/latest" target="_blank" rel="noreferrer">Скачать вручную</a>
+      </div>
+      <p class="hint-text">После обновления приложение откроется само. Вход и переписка сохранятся.</p>
+    </div>
+  </div>
+
   <!-- Окно «Доступно обновление» со списком изменений -->
   <div id="update-modal" class="modal hidden">
     <div class="modal-card update-card">

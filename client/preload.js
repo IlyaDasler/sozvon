@@ -1,5 +1,16 @@
 const { contextBridge, ipcRenderer, sharedTexture } = require('electron');
 
+// Версия для серверной политики. В приложении её отдаёт main, а в e2e-процессе
+// обработчика может не быть — тогда берём package.json (тот же файл, что в asar).
+let appVersion = '';
+try {
+  appVersion = ipcRenderer.sendSync('app:version') || require('../package.json').version;
+} catch {
+  try {
+    appVersion = require('../package.json').version;
+  } catch {}
+}
+
 // Свой захват монитора (screen-native.js): кадр приходит общей текстурой видеокарты, отдаём его странице
 // как VideoFrame — там из кадров собирается дорожка трансляции
 sharedTexture?.setSharedTextureReceiver(async ({ importedSharedTexture }) => {
@@ -10,6 +21,8 @@ sharedTexture?.setSharedTextureReceiver(async ({ importedSharedTexture }) => {
 
 // Небольшой мост между страницей и Windows: горячие клавиши и привлечение внимания к окну
 contextBridge.exposeInMainWorld('desktop', {
+  // Версия приложения: сервер по ней решает, поддерживается ли клиент
+  version: appVersion,
   onHotkey: (callback) => ipcRenderer.on('hotkey', (_event, name) => callback(name)),
   attention: () => ipcRenderer.send('attention'),
   focus: () => ipcRenderer.send('focus'),

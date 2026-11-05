@@ -3,7 +3,14 @@
 const Api = {
   base: '',
   token: '',
+  // Версию присылает preload; сервер отклоняет старые Electron-клиенты с 426
+  clientVersion: window.desktop?.version || '',
+  onUpdateRequired: null,
   online: false, // живо ли соединение с сервером (WebSocket) — его показывает точка в шапке
+
+  versionHeaders() {
+    return this.clientVersion ? { 'X-Client-Version': this.clientVersion } : {};
+  },
 
   async request(method, path, body, retry = method === 'GET') {
     let res;
@@ -11,6 +18,7 @@ const Api = {
       res = await fetch(`${this.base}/api${path}`, {
         method,
         headers: {
+          ...this.versionHeaders(),
           ...(body && { 'Content-Type': 'application/json' }),
           ...(this.token && { Authorization: `Bearer ${this.token}` }),
         },
@@ -27,6 +35,7 @@ const Api = {
     }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      if (res.status === 426 || data.updateRequired) this.onUpdateRequired?.(data);
       const err = new Error(data.error || `Ошибка сервера (${res.status})`);
       err.status = res.status;
       err.data = data;
@@ -46,7 +55,7 @@ const Api = {
     try {
       res = await fetch(`${this.base}/api${path}`, {
         method,
-        headers: { 'Content-Type': blob.type, Authorization: `Bearer ${this.token}` },
+        headers: { 'Content-Type': blob.type, Authorization: `Bearer ${this.token}`, ...this.versionHeaders() },
         body: blob,
       });
     } catch (err) {
@@ -54,7 +63,10 @@ const Api = {
       throw new Error(this.netError());
     }
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Ошибка сервера (${res.status})`);
+    if (!res.ok) {
+      if (res.status === 426 || data.updateRequired) this.onUpdateRequired?.(data);
+      throw new Error(data.error || `Ошибка сервера (${res.status})`);
+    }
     return data;
   },
 

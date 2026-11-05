@@ -2664,6 +2664,54 @@ const UPDATE_TEXT = {
 const isSkipped = (version) => store.get('skippedUpdate', null) === version;
 const updateModalOpen = () => !$('update-modal').classList.contains('hidden');
 
+// Сервер ответил 426: версия ниже минимальной. Показываем блокирующий экран,
+// а не даём человеку ходить по пустому интерфейсу с ошибками.
+let versionGateInfo = null;
+function showVersionGate(info = {}) {
+  versionGateInfo = { ...info };
+  const current = window.desktop?.version || info.current || '';
+  const min = info.minClient || '3.0.0';
+  $('version-gate-meta').textContent = current
+    ? `Ваша версия: ${current} · требуется: ${min}`
+    : `Требуется версия ${min} или новее`;
+  if (info.updateUrl) $('version-gate-link').href = info.updateUrl;
+  $('version-gate').classList.remove('hidden');
+  document.body.classList.add('version-blocked');
+}
+
+function hideVersionGate() {
+  $('version-gate').classList.add('hidden');
+  document.body.classList.remove('version-blocked');
+}
+
+function updateFromGate() {
+  const btn = $('version-gate-update');
+  if (!window.desktop?.update) {
+    $('version-gate-link').click();
+    return;
+  }
+  manualCheck = true;
+  if (updateStatus.state === 'ready') {
+    hideVersionGate();
+    startUpdate();
+    return;
+  }
+  if (updateStatus.state === 'available') {
+    openUpdateModal();
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Проверяем обновление…';
+  updateStatus = { ...updateStatus, state: 'checking' };
+  renderUpdate();
+  window.desktop.update.check();
+  setTimeout(() => {
+    if (!versionGateInfo) return;
+    btn.disabled = false;
+    btn.textContent = 'Обновить Созвон';
+  }, 8000);
+}
+
 // Описание релиза приходит в HTML — превращаем в простой текст, ничего из него не выполняя
 function notesToText(html) {
   const fallback = 'Исправления и улучшения.';
@@ -2680,8 +2728,11 @@ function openUpdateModal(mode = 'available') {
   const s = updateStatus;
   const latest = mode === 'latest';
   const failed = mode === 'error';
+  const required = Boolean(versionGateInfo);
   $('update-modal').classList.toggle('latest', latest);
   $('update-modal').classList.toggle('failed', failed);
+  $('update-modal').classList.toggle('required', required);
+  if (required) hideVersionGate();
   $('update-notes').classList.toggle('hidden', failed);
   $('update-notes-title').classList.toggle('hidden', failed);
   $('update-title').textContent = failed
@@ -2802,6 +2853,7 @@ function onUpdateStatus(s) {
 
 if (window.desktop?.update) {
   $('about-section').classList.remove('hidden');
+  $('version-gate-update').onclick = updateFromGate;
   window.desktop.update.onStatus(onUpdateStatus);
   window.desktop.update.status().then(onUpdateStatus).catch(() => {});
 
@@ -2896,6 +2948,7 @@ async function completeWebOAuth() {
 async function boot() {
   setAuthMode(false);
   applySpeaker();
+  Api.onUpdateRequired = showVersionGate;
   // Сервер по умолчанию общий; свой адрес вводят по ссылке «Свой сервер» (docs/self-hosting.md)
   const applyServer = () => {
     const url = isWeb ? location.origin : normalizeServer($('server-url').value) || DEFAULT_SERVER;
@@ -2915,6 +2968,14 @@ async function boot() {
     loadProviders(url);
   };
   const startServer = applyServer();
+  Api.base = startServer;
+  // Проверяем политику версий до входа: старый клиент сразу видит причину,
+  // а не ошибку входа «Сервер недоступен» после каждого действия.
+  Api.get('/version')
+    .then((policy) => {
+      if (policy?.updateRequired) showVersionGate(policy);
+    })
+    .catch(() => {});
   loadProviders(isWeb ? location.origin : startServer);
 
   // Вернулись из Яндекса — входим сразу, экран авторизации не показываем

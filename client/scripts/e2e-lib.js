@@ -10,6 +10,8 @@ const { registerClipboardImage } = require('../clipboard-image');
 const { applyChromiumFlags } = require('../chromium-flags');
 
 applyChromiumFlags(app);
+// Тестовый main не грузит main.js, но preload должен получить версию для серверной политики
+ipcMain.on('app:version', (event) => { event.returnValue = require('../package.json').version; });
 
 const SERVER = process.argv.find((a) => /^https?:\/\//.test(a)) || 'http://127.0.0.1:3000'; // localhost клиент считает старым адресом и сбрасывает вход
 
