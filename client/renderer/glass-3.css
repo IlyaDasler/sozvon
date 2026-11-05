@@ -1774,3 +1774,22 @@ html[data-theme='glass'] .kind-body {
   height: auto;
   flex: 1;
 }
+
+/* Ровные внутренние отступы карточек типа */
+html[data-theme='glass'] .kind-choice {
+  align-items: stretch;
+}
+html[data-theme='glass'] .kind {
+  display: flex;
+  height: 100%;
+}
+html[data-theme='glass'] .kind-body {
+  height: auto;
+  flex: 1;
+  padding: 14px 16px;
+  gap: 6px;
+  box-sizing: border-box;
+}
+html[data-theme='glass'] .kind-body svg {
+  margin-bottom: 2px;
+}
