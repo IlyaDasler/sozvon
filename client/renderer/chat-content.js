@@ -32,6 +32,7 @@ const LOCKED_REASONS = {
 function messageSummary(m) {
   if (m.enc && !m.plain) return '🔒 Зашифрованное сообщение';
   m = messageView(m);
+
   if (m.text) return m.text;
   const n = m.attachments?.length || 0;
   const kinds = new Set((m.attachments || []).map((a) => a.kind));
@@ -83,6 +84,7 @@ function messageContent(m) {
     return box;
   }
   m = messageView(m);
+
   // Сообщение-событие: показываем карточку, сама карточка живёт в данных комнаты
   if (m.plain?.eventId) {
     const event = roomById(m.roomId)?.events?.find((e) => e.id === m.plain.eventId);

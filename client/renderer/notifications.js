@@ -66,7 +66,19 @@ $('me-status-btn').onclick = (e) => {
   e.stopPropagation();
   const menu = $('status-menu');
   if (menu.classList.contains('hidden')) renderStatusMenu();
+  const willShow = menu.classList.contains('hidden');
   menu.classList.toggle('hidden');
+  if (!willShow) return;
+  // Меню вне панели: fixed над карточкой профиля и в пределах окна
+  if (menu.parentElement !== document.body) document.body.append(menu);
+  const anchorEl = $('me-status-btn')?.closest('.me-panel') || $('me-status-btn');
+  const rect = anchorEl.getBoundingClientRect();
+  const w = 268;
+  const left = Math.max(8, Math.min(rect.left, innerWidth - w - 8));
+  menu.style.position = 'fixed';
+  menu.style.left = `${left}px`;
+  const anchorTop = rect.top > 0 ? rect.top : innerHeight - 60;
+  menu.style.bottom = `${Math.max(8, innerHeight - anchorTop + 8)}px`;
 };
 
 // «Неактивен» сам: приложение сообщает серверу, что за компьютером давно никого нет
@@ -168,9 +180,27 @@ function openNotifTarget(open) {
   else if (open?.hub) openHubJoin(open.hub);
 }
 
+function placeNotifPanel() {
+  const panel = $('notif-panel');
+  const btn = $('notif-btn');
+  if (!panel || !btn) return;
+  const r = btn.getBoundingClientRect();
+  const width = Math.min(320, window.innerWidth - 16);
+  const side = document.querySelector('.sidebar')?.getBoundingClientRect();
+  const anchor = side ? side.left + 8 : r.right - width;
+  const left = Math.max(8, Math.min(anchor, window.innerWidth - width - 8));
+  const top = Math.max(48, r.bottom + 8);
+  panel.style.position = 'fixed';
+  panel.style.width = `${width}px`;
+  panel.style.left = `${Math.round(left)}px`;
+  panel.style.top = `${Math.round(top)}px`;
+  panel.style.maxHeight = `${Math.max(180, Math.round(window.innerHeight - top - 16))}px`;
+}
+
 function openNotifPanel() {
   renderNotifPanel();
   $('notif-panel').classList.remove('hidden');
+  placeNotifPanel();
   // Открыли — значит, всё прочитано
   saveNotifs(loadNotifs().map((n) => ({ ...n, read: true })));
   renderNotifBadge();
@@ -247,3 +277,14 @@ function notify(title, body, { kind = 'message', open = null, hub = null } = {})
   if (Notification.permission === 'granted') show();
   else if (Notification.permission === 'default') Notification.requestPermission().then((p) => p === 'granted' && show());
 }
+
+// panel-moved-to-body: сайдбар обрезает вложенные окна (contain + overflow),
+// поэтому панель уведомлений переносим в body и ставим её fixed рядом с колокольчиком
+(() => {
+  const move = () => {
+    const panel = document.getElementById('notif-panel');
+    if (panel && panel.parentElement !== document.body) document.body.append(panel);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', move);
+  else move();
+})();

@@ -3,6 +3,22 @@
 // Сверх того: где человек сейчас в голосе, общие комнаты, его роль в открытой комнате, личная заметка
 // (видна только вам) и быстрые действия — написать, позвонить или добавить в друзья.
 
+// Карточка вне сайдбара: внутри панели её обрезают overflow и backdrop-filter
+const profileCardEl = document.getElementById('profile-card');
+if (profileCardEl && profileCardEl.parentElement !== document.body) document.body.append(profileCardEl);
+
+// Подсказка «ниже есть ещё» исчезает, когда список доскроллен до конца
+if (profileCardEl) {
+  const syncEnd = () => {
+    const box = profileCardEl.querySelector('.pc-scroll');
+    if (!box) return;
+    const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 4;
+    profileCardEl.classList.toggle('at-end', atEnd);
+  };
+  profileCardEl.addEventListener('scroll', syncEnd, { passive: true, capture: true });
+  new MutationObserver(syncEnd).observe(profileCardEl, { childList: true, subtree: true });
+}
+
 const noteKey = (id) => `note:${state.me?.id}:${id}`;
 
 function section(title, content) {
@@ -195,7 +211,13 @@ function openProfileCard(userId, anchor) {
     }
     body.append(actions);
   }
-  card.append(body);
+
+  // Прокручиваем только содержимое: баннер и аватар остаются на месте,
+  // а полоса скролла живёт в нижней части карточки и не задевает углы
+  const scrollBox = document.createElement('div');
+  scrollBox.className = 'pc-scroll';
+  scrollBox.append(body);
+  card.append(scrollBox);
 
   card.classList.remove('hidden');
   placeCard(card, anchor);

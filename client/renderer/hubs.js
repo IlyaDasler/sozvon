@@ -872,7 +872,18 @@ function hubEventsPane(hub) {
       el('span', { className: 'muted small', textContent: `Будут: ${going}` })
     );
     const del = el('button', { className: 'btn small', type: 'button', textContent: 'Удалить' });
-    del.onclick = () => hubAction(Api.del(`/events/${ev.id}`), 'Событие удалено');
+    del.onclick = async () => {
+      // Сервер отдаёт обновлённую комнату, а не канал: применяем её и перерисовываем список.
+      // Раньше ответ уходил в hubAction → applyHub(room) и список событий не обновлялся
+      $('hs-error').textContent = '';
+      try {
+        applyRoomUpdate(await Api.del(`/events/${ev.id}`));
+        renderHubSettings();
+        toast('Событие удалено');
+      } catch (err) {
+        $('hs-error').textContent = err.message;
+      }
+    };
     row.append(del);
     box.append(row);
   }
@@ -1222,6 +1233,7 @@ $('event-remind').onclick = (e) => {
 };
 
 $('event-cancel').onclick = closeEventCreate;
+  $('event-x').onclick = closeEventCreate;
 $('event-create').onclick = (e) => {
   if (e.target === $('event-create')) closeEventCreate();
 };
@@ -1593,6 +1605,7 @@ function renderHubInvite() {
 
 $('hi-search').oninput = renderHubInvite;
 $('hi-close').onclick = () => $('hub-invite').classList.add('hidden');
+  $('hi-x').onclick = () => $('hub-invite').classList.add('hidden');
 
 // ---------- Приглашение мне: вступить или отказаться ----------
 

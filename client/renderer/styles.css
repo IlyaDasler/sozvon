@@ -159,7 +159,9 @@ body { display: flex; flex-direction: column; }
 .nav-btn:hover:not(:disabled) { background: var(--bg-3); color: var(--text); }
 .nav-btn:disabled { opacity: .35; cursor: default; }
 .nav-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-body:has(#auth:not(.hidden)) .nav-btn { visibility: hidden; }
+/* На экране входа кнопок «назад/вперёд» нет — убираем их из потока целиком,
+   иначе скрытые кнопки оставляют пустое место и название съезжает вправо */
+body:has(#auth:not(.hidden)) .nav-btn { display: none; }
 .screen { flex: 1; min-height: 0; }
 
 /* Р вЂ™РЎвЂ¦Р С•Р Т‘: РЎРѓР В»Р ВµР Р†Р В° РІР‚вЂќ РЎР‚Р В°РЎРѓРЎРѓР С”Р В°Р В· Р С• Р С—РЎР‚Р С‘Р В»Р С•Р В¶Р ВµР Р…Р С‘Р С‘, РЎРѓР С—РЎР‚Р В°Р Р†Р В° РІР‚вЂќ РЎвЂћР С•РЎР‚Р СР В°.
@@ -2685,3 +2687,8 @@ body.version-blocked { overflow: hidden; }
 .update-card.required #update-later,
 .update-card.required #update-close { display: none; }
 .update-card.required #update-releases { display: inline-flex; }
+
+/* Экран входа: окно фиксированного размера, кнопка «развернуть» не нужна */
+html.auth-screen #win-max {
+  display: none;
+}
