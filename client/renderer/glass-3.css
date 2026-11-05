@@ -2596,3 +2596,8 @@ html[data-theme='glass'] .msg-thread-row {
 html[data-theme='glass'] .msg-thread-row .thread-people {
   margin-top: 0;
 }
+
+/* В треде закрепление не нужно: оно относится к основной ленте */
+html[data-theme='glass'] .thread-panel .msg-tool.pin {
+  display: none;
+}
