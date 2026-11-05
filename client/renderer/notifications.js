@@ -66,7 +66,19 @@ $('me-status-btn').onclick = (e) => {
   e.stopPropagation();
   const menu = $('status-menu');
   if (menu.classList.contains('hidden')) renderStatusMenu();
+  const willShow = menu.classList.contains('hidden');
   menu.classList.toggle('hidden');
+  if (!willShow) return;
+  // Меню вне панели: fixed над карточкой профиля и в пределах окна
+  if (menu.parentElement !== document.body) document.body.append(menu);
+  const anchorEl = $('me-status-btn')?.closest('.me-panel') || $('me-status-btn');
+  const rect = anchorEl.getBoundingClientRect();
+  const w = 268;
+  const left = Math.max(8, Math.min(rect.left, innerWidth - w - 8));
+  menu.style.position = 'fixed';
+  menu.style.left = `${left}px`;
+  const anchorTop = rect.top > 0 ? rect.top : innerHeight - 60;
+  menu.style.bottom = `${Math.max(8, innerHeight - anchorTop + 8)}px`;
 };
 
 // «Неактивен» сам: приложение сообщает серверу, что за компьютером давно никого нет
