@@ -146,6 +146,8 @@ function toast(text, ms = 4000) {
 function showScreen(name) {
   $('auth').classList.toggle('hidden', name !== 'auth');
   $('main').classList.toggle('hidden', name !== 'main');
+  // На экране входа окно фиксированное, после входа — свободное
+  window.desktop?.window?.authMode?.(name === 'auth');
 }
 
 const formatTime = (ts) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
