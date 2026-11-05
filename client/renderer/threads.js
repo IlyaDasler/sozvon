@@ -72,7 +72,7 @@
       const known = new Map((state.roomHistory.get(roomId) || []).map((m) => [m.id, m]));
       for (const m of rows) {
         const cached = known.get(m.id);
-        if (cached?.plain && !m.plain) { m.plain = cached.plain; m.enc = false; }
+        if (cached?.plain && !m.plain) m.plain = cached.plain;
       }
       if (typeof decryptMessages === 'function' && typeof roomConvOf === 'function') {
         try { await decryptMessages(rows, roomConvOf(roomId)); } catch {}
@@ -141,10 +141,16 @@
   }
 
   // Счётчик ответов обновляем по событию сервера
-  function bumpReplies(rootId, roomId) {
+  function bumpReplies(rootId, roomId, data = {}) {
     const list = state.roomHistory.get(roomId);
     const root = list?.find((m) => m.id === rootId);
-    if (root) root.replies = Number(root.replies || 0) + 1;
+    if (root) {
+      root.replies = data.replies ?? Number(root.replies || 0) + 1;
+      if (Array.isArray(data.participants)) {
+        root.threadUsers = data.participants.slice(0, 5);
+        root.threadUserCount = data.participants.length;
+      }
+    }
     // Если тред этого сообщения открыт — подтягиваем новый ответ
     if (thread && thread.rootId === rootId) {
       openThread({ id: rootId, threadRoot: rootId }, { roomId });
