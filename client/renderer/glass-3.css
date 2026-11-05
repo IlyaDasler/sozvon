@@ -2539,3 +2539,28 @@ html[data-theme='glass'] #thread-send {
 html[data-theme='glass'] #thread-send:hover {
   background: rgba(255, 255, 255, 0.12);
 }
+
+/* Участники треда под сообщением */
+html[data-theme='glass'] .thread-people {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+html[data-theme='glass'] .thread-people .avatar {
+  width: 18px;
+  height: 18px;
+  font-size: 8px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+html[data-theme='glass'] .thread-more,
+html[data-theme='glass'] .thread-count {
+  font-size: 11px;
+  color: var(--text-2);
+  padding: 0 5px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+}

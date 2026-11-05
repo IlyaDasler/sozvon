@@ -30,6 +30,13 @@
       return;
     }
     const root = rows[0];
+    // Кто участвует в треде — для аватарок под корневым сообщением
+    const participants = [...new Set(rows.map((m) => m.fromId))];
+    const cachedRoot = (state.roomHistory.get(roomId) || []).find((m) => m.id === root.id);
+    if (cachedRoot) {
+      cachedRoot.threadUsers = participants.slice(0, 5);
+      cachedRoot.threadUserCount = participants.length;
+    }
     const actions = threadActions(roomId);
     let prev = null;
     for (const m of rows) {
@@ -107,7 +114,7 @@
       const saved = await Api.post(`/rooms/${thread.roomId}/messages`, body);
       const msg = { ...saved, plain, roomId: thread.roomId };
       const history = state.roomHistory.get(thread.roomId);
-      if (Array.isArray(history)) history.push(msg);
+      // В общую ленту не добавляем: ответ живёт только в треде
       await openThread({ id: thread.rootId, threadRoot: thread.rootId }, { roomId: thread.roomId });
       const root = history?.find((m) => m.id === thread.rootId);
       if (root) root.replies = Number(root.replies || 0) + 1;
@@ -137,8 +144,11 @@
   function bumpReplies(rootId, roomId) {
     const list = state.roomHistory.get(roomId);
     const root = list?.find((m) => m.id === rootId);
-    if (!root) return;
-    root.replies = Number(root.replies || 0) + 1;
+    if (root) root.replies = Number(root.replies || 0) + 1;
+    // Если тред этого сообщения открыт — подтягиваем новый ответ
+    if (thread && thread.rootId === rootId) {
+      openThread({ id: rootId, threadRoot: rootId }, { roomId });
+    }
     if (state.selectedRoomId === roomId && typeof renderRoomMessages === 'function') renderRoomMessages();
   }
 

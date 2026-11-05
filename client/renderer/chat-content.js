@@ -32,6 +32,28 @@ const LOCKED_REASONS = {
 function messageSummary(m) {
   if (m.enc && !m.plain) return '🔒 Зашифрованное сообщение';
   m = messageView(m);
+
+  if (m.threadUsers?.length) {
+    const strip = document.createElement('div');
+    strip.className = 'thread-people';
+    for (const uid of m.threadUsers) {
+      const u = typeof userById === 'function' ? userById(uid) : null;
+      if (u && typeof makeAvatar === 'function') strip.append(makeAvatar(u, 'small'));
+    }
+    if (m.threadUserCount > m.threadUsers.length) {
+      const more = document.createElement('span');
+      more.className = 'thread-more';
+      more.textContent = `+${m.threadUserCount - m.threadUsers.length}`;
+      strip.append(more);
+    }
+    if (m.replies) {
+      const count = document.createElement('span');
+      count.className = 'thread-count';
+      count.textContent = String(m.replies);
+      strip.append(count);
+    }
+    box.append(strip);
+  }
   if (m.text) return m.text;
   const n = m.attachments?.length || 0;
   const kinds = new Set((m.attachments || []).map((a) => a.kind));
