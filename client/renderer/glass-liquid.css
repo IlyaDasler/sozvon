@@ -22,7 +22,7 @@
 }
 .lg-aurora.is-visible { opacity: 1; }
 html[data-theme='glass'] .lg-aurora { display: block; }
-html[data-theme='glass'][data-daypart='day'] .lg-aurora::after { background: linear-gradient(180deg, rgba(4, 8, 16, 0.32), rgba(4, 8, 16, 0.20)); }`r`nhtml[data-theme='glass'] .screen { position: relative; z-index: 1; }
+html[data-theme='glass'][data-daypart='day'] .lg-aurora::after { background: linear-gradient(180deg, rgba(4, 8, 16, 0.16), rgba(4, 8, 16, 0.08)); }`r`nhtml[data-theme='glass'] .screen { position: relative; z-index: 1; }
 
 @media (prefers-reduced-motion: reduce) {
   .lg-aurora { transition-duration: 1ms; }
