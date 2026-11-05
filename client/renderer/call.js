@@ -414,11 +414,12 @@ class LocalMedia {
     video.onended = () => this.stopScreen();
     this.screenMode = id;
     this.screenText = text;
-    this.replace('screenAudio', audioTrack);
+    this.replace('screenAudio', this.prepareScreenAudio(audioTrack));
     this.replace('screen', video);
   }
 
   stopScreen() {
+    this.stopScreenAudio();
     this.replace('screenAudio', null);
     this.replace('screen', null);
   }
@@ -693,11 +694,12 @@ function qualityText(q) {
 // Звонок целиком: свои устройства плюс соединения со всеми собеседниками
 class MediaSession {
   // allowed(id) -> { speak, video }: что собеседнику разрешено в комнате; без права его не слышно и не видно
-  constructor({ settings, sendSignal, onChange, onSpeaking, onPeerState, onStats, volumeOf, screenVolumeOf, allowed }) {
+  constructor({ settings, sendSignal, onChange, onSpeaking, onPeerState, onStats, volumeOf, screenVolumeOf, allowed, selfId }) {
     this.settings = settings;
     this.volumeOf = volumeOf;
     // Громкость звука трансляции — своя, чтобы игру можно было прикрутить, не трогая голос
     this.screenVolumeOf = screenVolumeOf;
+    this.selfId = selfId;
     this.allowed = allowed;
     this.sendSignal = sendSignal;
     this.onChange = onChange;
@@ -719,6 +721,9 @@ class MediaSession {
     // Звук трансляции по умолчанию тише голоса; усилим его отдельным GainNode,
     // чтобы ползунок «Громкость трансляции» реально менял громкость, а не упирался в 100%.
     this.screenAudioCtx = null;
+    this.screenOutCtx = null;
+    this.screenOutGain = null;
+    this.screenOutRaw = null;
     this.statsTimer = setInterval(() => this.collectStats(), 2000);
   }
 
@@ -850,6 +855,36 @@ class MediaSession {
     peer.link.signal(data);
   }
 
+  /** Свой звук трансляции: усиление до отправки, чтобы ползунок на своей
+   *  плитке менял громкость у зрителей, а не только на этом компьютере. */
+  prepareScreenAudio(track) {
+    this.stopScreenAudio();
+    if (!track) return null;
+    try {
+      const ctx = new AudioContext();
+      const source = ctx.createMediaStreamSource(new MediaStream([track]));
+      const gain = ctx.createGain();
+      const dest = ctx.createMediaStreamDestination();
+      source.connect(gain).connect(dest);
+      gain.gain.value = Math.max(0, this.screenVolumeOf?.(this.selfId) ?? 1) * 1.8;
+      this.screenOutCtx = ctx;
+      this.screenOutGain = gain;
+      this.screenOutRaw = track;
+      ctx.resume?.().catch(() => {});
+      return dest.stream.getAudioTracks()[0];
+    } catch {
+      return track;
+    }
+  }
+
+  stopScreenAudio() {
+    this.screenOutRaw?.stop?.();
+    this.screenOutRaw = null;
+    this.screenOutGain = null;
+    this.screenOutCtx?.close?.().catch(() => {});
+    this.screenOutCtx = null;
+  }
+
   /** Отдельная цепочка усиления для звука трансляции: элемент + GainNode.
    *  Через обычный HTMLMediaElement нельзя сделать громче 100%, а стримы часто тихие. */
   connectScreenAudio(peer, el) {
@@ -896,7 +931,10 @@ class MediaSession {
       // 100% на ползунке = 180% усиления, чтобы тихие стримы было слышно.
       if (slot === 'screenAudio' && peer.screenGain) {
         el.volume = 1;
-        peer.screenGain.gain.value = this.deafened ? 0 : screen * 1.8;
+        const target = this.deafened ? 0 : screen * 1.8;
+        const ctx = this.screenAudioCtx;
+        if (ctx) peer.screenGain.gain.setTargetAtTime(target, ctx.currentTime, 0.01);
+        else peer.screenGain.gain.value = target;
       } else {
         el.volume = slot === 'screenAudio' ? screen : voice;
       }
@@ -925,6 +963,9 @@ class MediaSession {
   /** Громкость звука трансляции этого человека — отдельно от его голоса */
   setScreenVolume(id, volume) {
     this.screenVolumes[id] = volume;
+    if (id === this.selfId && this.screenOutGain) {
+      this.screenOutGain.gain.value = Math.max(0, volume) * 1.8;
+    }
     const peer = this.peers.get(id);
     if (peer) this.applyPeerAudio(peer);
   }

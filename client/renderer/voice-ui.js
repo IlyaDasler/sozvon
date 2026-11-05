@@ -34,6 +34,7 @@ function sessionOptions(sendSignal) {
     volumeOf: (id) => store.get(`volume:${id}`, 100) / 100,
     // Звук трансляции — своя громкость у каждого человека
     screenVolumeOf: (id) => store.get(`volume:screen:${id}`, 100) / 100,
+    selfId: state.me.id,
     allowed: voiceAllowed,
   };
 }
@@ -77,7 +78,7 @@ function voiceTiles() {
       speaking: speaking.get('me'),
     },
   ];
-  if (local.tracks.screen) tiles.push({ key: 'me:screen', user: state.me, isMe: true, screen: true, video: local.tracks.screen, stats: session.screenStats });
+  if (local.tracks.screen) tiles.push({ key: 'me:screen', id: state.me.id, user: state.me, isMe: true, screen: true, video: local.tracks.screen, stats: session.screenStats });
 
   for (const p of session.peers.values()) {
     const user = userById(p.id) || { id: p.id, displayName: '…', avatarColor: '#555' };
@@ -948,7 +949,7 @@ function showTileMenu(key, x, y) {
     items.push({ label: 'Во весь экран', onclick: () => openFullView(t.key) });
     items.push({ label: 'Плавающее окно', onclick: () => openFloating(t.key) });
   }
-  if (t.screen && !t.isMe) {
+  if (t.screen) {
     items.push({
       range: true,
       label: 'Громкость трансляции',
