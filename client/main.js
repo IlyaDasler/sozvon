@@ -50,6 +50,8 @@ function toPage(channel, ...args) {
 const TITLEBAR_H = 32; // как .titlebar в styles.css
 
 const WINDOW_MIN = { width: 820, height: 540 };
+// Экран входа: компактное фиксированное окно
+const AUTH_SIZE = { width: 900, height: 620 };
 // macOS: приложение запущено прямо из DMG — система держит его в случайной папке (App Translocation).
 // Обновление подменить такую копию не может, а после перезагрузки она исчезает
 const TRANSLOCATED = process.platform === 'darwin' && /AppTranslocation/i.test(process.execPath);
@@ -102,6 +104,11 @@ function createWindow({ show = true } = {}) {
       if (win.isMaximized()) win.unmaximize();
       win.setFullScreenable(false);
       win.setMaximizable(false);
+      win.setResizable(false);
+      // размер ставим после разблокировки: на Windows setSize у неменяемого окна игнорируется
+      win.setResizable(true);
+      win.setSize(AUTH_SIZE.width, AUTH_SIZE.height, false);
+      win.center();
       win.setResizable(false);
     } else {
       win.setResizable(true);

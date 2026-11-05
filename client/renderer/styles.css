@@ -2648,3 +2648,8 @@ html.is-win .fullview-bar { padding-right: 148px; }
 .rail-list,
 .members-list,
 .set-body { scrollbar-gutter: stable; }
+
+/* Экран входа: окно фиксированного размера, кнопка «развернуть» не нужна */
+html.auth-screen #win-max {
+  display: none;
+}
