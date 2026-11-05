@@ -1506,9 +1506,22 @@ html[data-theme='glass'] .modal:not(.hidden) .modal-card {
 #screen-picker {
   background: rgba(2, 5, 10, 0.72) !important;
   pointer-events: auto !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 #screen-picker .modal-card {
   background: #121722 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* Выбор камеры/экрана: содержимое не должно растворяться в стекле */
+#screen-picker .modal-card,
+#screen-picker .modal-card * {
+  color: var(--text) !important;
+}
+#screen-picker .modal-card > * {
   opacity: 1 !important;
   visibility: visible !important;
 }
@@ -2748,6 +2761,34 @@ html[data-theme='glass'] .msg-tool {
   width: 30px; height: 30px; padding: 0; justify-content: center;
 }
 
+
+/* 3.3.1: иконка приложения — на одной линии с шапкой канала */
+html[data-theme='glass'] .rail { padding-top: 2px; }
+html[data-theme='glass'] .rail-home {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+}
+
+/* 3.3.1: кнопки звонка — строго круги. Поздний «квадратный» стиль стекла
+   скруглял их как плашки. */
+html[data-theme='glass'] .call-controls .round-btn,
+html[data-theme='glass'] .call-panel .round-btn {
+  width: 48px;
+  height: 48px;
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 50% !important;
+}
+@media (max-height: 640px) {
+  html[data-theme='glass'] .call-controls .round-btn,
+  html[data-theme='glass'] .call-panel .round-btn { width: 40px; height: 40px; }
+}
+@media (max-width: 1000px) {
+  html[data-theme='glass'] .call-controls .round-btn,
+  html[data-theme='glass'] .call-panel .round-btn { width: 42px; height: 42px; }
+}
 
 /* 3.3: баннеры в стекле — мягкий цветной свет из выбранного оттенка,
    а не плоская заливка. Фото-баннер по-прежнему перекрывает градиент. */

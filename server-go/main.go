@@ -538,6 +538,14 @@ func (a *server) requireAuth(next http.Handler) http.Handler {
 		if time.Now().UnixMilli()-session.LastSeen > 5*60*1000 {
 			_ = a.store.TouchSession(session.ID)
 		}
+		// Старая сессия должна показывать текущую версию приложения, а не ту,
+		// с которой когда-то выполнялся вход.
+		device := auth.DeviceNameWithVersion(r.UserAgent(), r.Header.Get("X-Client-Version"))
+		if device != "" && device != session.Device {
+			if err := a.store.SetSessionDevice(session.ID, device); err == nil {
+				session.Device = device
+			}
+		}
 		ctx := context.WithValue(r.Context(), userKey, user)
 		ctx = context.WithValue(ctx, sessionKey, session)
 		next.ServeHTTP(w, r.WithContext(ctx))

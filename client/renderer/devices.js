@@ -14,7 +14,15 @@ function deviceRow(session) {
   row.className = 'identity-row';
   const info = document.createElement('div');
   const name = document.createElement('div');
-  name.textContent = session.current ? `${session.device} — это устройство` : session.device;
+  // Текущее устройство всегда подписано установленной версией, даже если
+  // сессия была создана старой версией и сервер ещё не обновил запись.
+  let label = session.device;
+  if (session.current && window.desktop?.version) {
+    const ua = navigator.userAgent;
+    const os = /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
+    label = `Созвон ${window.desktop.version}${os ? ` · ${os}` : ''}`;
+  }
+  name.textContent = session.current ? `${label} — это устройство` : label;
   const sub = document.createElement('div');
   sub.className = 'muted small ellipsis';
   sub.textContent = session.current ? `вход ${formatDay(session.createdAt).toLowerCase()}` : seenAgo(session.lastSeen);

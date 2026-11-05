@@ -93,4 +93,38 @@
       <circle cx="1250" cy="820" r="1.3"/><circle cx="1420" cy="760" r="1.5"/>
     </g>
   </g>
+
+  <!-- Живой передний план: широкие кроны, папоротники и камни, без геометрии -->
+  <g>
+    <g fill="#0a1414" opacity=".92">
+      <path d="M78 1000 L92 680 Q96 640 115 620 L132 600" stroke="#0a1414" stroke-width="18" fill="none" stroke-linecap="round"/>
+      <path d="M95 660 Q55 610 20 600 M100 690 Q55 675 10 690 M105 720 Q60 745 30 780" stroke="#0a1414" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <ellipse cx="92" cy="620" rx="95" ry="72" fill="#0b1717"/>
+      <ellipse cx="35" cy="650" rx="65" ry="48" fill="#0b1717"/>
+      <ellipse cx="150" cy="650" rx="70" ry="55" fill="#0b1717"/>
+      <ellipse cx="85" cy="575" rx="55" ry="42" fill="#0d1a1a"/>
+    </g>
+    <g fill="#0b1718" opacity=".9">
+      <path d="M1505 1000 L1490 700 Q1486 660 1468 640 L1450 620" stroke="#0b1718" stroke-width="18" fill="none" stroke-linecap="round"/>
+      <path d="M1490 680 Q1535 630 1570 620 M1488 710 Q1530 690 1560 710 M1480 740 Q1520 760 1550 790" stroke="#0b1718" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <ellipse cx="1500" cy="640" rx="100" ry="75" fill="#0c1818"/>
+      <ellipse cx="1560" cy="675" rx="65" ry="48" fill="#0c1818"/>
+      <ellipse cx="1435" cy="670" rx="65" ry="50" fill="#0c1818"/>
+      <ellipse cx="1510" cy="590" rx="55" ry="42" fill="#0e1b1b"/>
+    </g>
+    <g stroke="#0c1818" stroke-width="3" stroke-linecap="round" fill="none" opacity=".9">
+      <path d="M250 970 Q240 920 220 900 M255 970 Q258 925 275 905 M262 970 Q275 935 295 925"/>
+      <path d="M350 985 Q340 940 320 925 M356 985 Q360 945 378 928"/>
+      <path d="M1250 980 Q1242 940 1222 920 M1258 980 Q1262 945 1280 928"/>
+      <path d="M1350 975 Q1342 930 1322 910 M1358 975 Q1362 940 1380 920"/>
+    </g>
+    <g fill="#0b1515" opacity=".9">
+      <path d="M650 1000 Q635 960 620 945 M660 1000 Q668 960 685 942 M675 1000 Q690 965 710 950" stroke="#0b1515" stroke-width="4" fill="none"/>
+      <path d="M720 1000 Q705 955 690 938 M732 1000 Q740 960 758 940" stroke="#0b1515" stroke-width="4" fill="none"/>
+    </g>
+    <g fill="#2d3535" opacity=".8">
+      <ellipse cx="600" cy="960" rx="34" ry="12"/><ellipse cx="1150" cy="975" rx="44" ry="15"/>
+      <ellipse cx="520" cy="990" rx="22" ry="8"/><ellipse cx="1280" cy="990" rx="26" ry="9"/>
+    </g>
+  </g>
 </svg>

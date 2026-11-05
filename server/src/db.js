@@ -1190,6 +1190,7 @@ const sAdd = db.prepare('INSERT INTO sessions (id, user_id, device, created_at, 
 const sById = db.prepare('SELECT * FROM sessions WHERE id = ?');
 const sOf = db.prepare('SELECT * FROM sessions WHERE user_id = ? ORDER BY last_seen DESC');
 const sTouch = db.prepare('UPDATE sessions SET last_seen = ? WHERE id = ?');
+const sDevice = db.prepare('UPDATE sessions SET device = ? WHERE id = ?');
 const sRemove = db.prepare('DELETE FROM sessions WHERE id = ?');
 const sRemoveAllBut = db.prepare("DELETE FROM sessions WHERE user_id = ? AND id <> COALESCE(?, '')");
 const sDropOld = db.prepare('DELETE FROM sessions WHERE created_at < ?');
@@ -1202,6 +1203,7 @@ export const sessions = {
   byId: (id) => sById.get(id),
   of: (userId) => sOf.all(userId),
   touch: (id) => sTouch.run(Date.now(), id),
+  setDevice: (id, device) => sDevice.run(device, id),
   remove: (id) => sRemove.run(id),
   removeAllBut: (userId, keepId) => sRemoveAllBut.run(userId, keepId),
   dropOlderThan: (time) => sDropOld.run(time),

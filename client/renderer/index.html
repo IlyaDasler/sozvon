@@ -586,7 +586,7 @@
                 <select id="set-speaker"></select>
               </label>
               <label class="field">
-                <span>Шумоподавление нейросетью <b id="set-ns-value">Среднее</b> <em class="muted small">— клавиатура, вентилятор, улица убираются на вашем компьютере, без интернета</em></span>
+                <span>Шумоподавление нейросетью <em class="muted small">— клавиатура, вентилятор, улица убираются на вашем компьютере, без интернета</em></span>
                 <input type="range" id="set-ns-level" min="0" max="3" step="1" value="2">
                 <span class="noise-ticks"><span>Выкл</span><span>Мягко</span><span>Средне</span><span>Сильно</span></span>
               </label>
@@ -1185,7 +1185,7 @@
   </div>
 
   <!-- Выбор экрана для демонстрации -->
-  <div id="screen-picker" class="modal hidden">
+  <dialog id="screen-picker" class="modal hidden">
     <div class="modal-card screen-card">
       <h3 id="screen-title">Что показать?</h3>
       <div class="tabs" id="screen-tabs">
@@ -1215,7 +1215,7 @@
         <button type="button" class="btn primary" id="screen-start" disabled>Начать показ</button>
       </div>
     </div>
-  </div>
+  </dialog>
 
   <!-- Ключ шифрования на этом устройстве: перенести кодом с другого или создать новый (e2ee.js) -->
   <div id="e2ee-setup" class="modal hidden">

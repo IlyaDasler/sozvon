@@ -174,6 +174,13 @@ func (s *Store) TouchSession(id string) error {
 	return err
 }
 
+// SetSessionDevice обновляет подпись устройства, если человек вошёл с новой
+// версией приложения, но переиспользует старую сессию.
+func (s *Store) SetSessionDevice(id, device string) error {
+	_, err := s.db.Exec(`UPDATE sessions SET device = ? WHERE id = ?`, device, id)
+	return err
+}
+
 func (s *Store) DeleteSession(id string) error {
 	_, err := s.db.Exec(`DELETE FROM sessions WHERE id = ?`, id)
 	return err
