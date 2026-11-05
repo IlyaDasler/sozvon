@@ -1622,3 +1622,27 @@ html[data-theme='glass'] .composer-btn {
 html[data-theme='glass'] .composer-bar.is-grow .composer-btn {
   align-self: flex-end;
 }
+
+/* ---------- 115. Кнопки полосы ввода: иконка по центру рамки, отправка без синевы ---------- */
+html[data-theme='glass'] .composer-btn {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+html[data-theme='glass'] .composer-btn.send {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+html[data-theme='glass'] .composer-btn.send:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--text);
+}
