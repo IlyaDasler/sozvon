@@ -54,6 +54,7 @@ contextBridge.exposeInMainWorld('desktop', {
     minimize: () => ipcRenderer.send('window:minimize'),
     toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
     close: () => ipcRenderer.send('window:close'),
+    authMode: (on) => ipcRenderer.send('window:auth-mode', Boolean(on)),
     onState: (callback) => ipcRenderer.on('window:state', (_event, state) => callback(state)),
   },
   edit: (command) => ipcRenderer.send('edit', command),

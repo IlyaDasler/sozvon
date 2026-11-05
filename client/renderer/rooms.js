@@ -18,7 +18,8 @@ const VOICE_LEFT = {
 
 const roomIcon = (room) => (room.kind === 'voice' ? ICONS.speaker : ICONS.hash);
 const roomById = (id) => state.rooms.get(id);
-const ROOM_TOOLS = { voice: '<svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg>', settings: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>', invite: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg>' };
+const ROOM_TOOLS = {
+  chat: '<svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/></svg>', voice: '<svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg>', settings: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>', invite: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg>' };
 
 // ---------- Права (те же числа, что в server/src/perms.js) ----------
 
@@ -395,7 +396,7 @@ function roomItem(room) {
   const tools = document.createElement('span');
   tools.className = 'room-tools';
   if (room.kind === 'voice' && can(room, PERMS.connect) && state.room?.roomId !== room.id)
-    tools.append(tool('voice', 'Войти в голосовой канал', () => joinRoomVoice(room.id)));
+    if (room.kind === 'voice') tools.append(tool('chat', 'Открыть чат без голоса', () => openRoomChat(room.id)));
   tools.append(tool('settings', 'Настройки комнаты', () => openRoomManage(room.id)));
   if (can(room, PERMS.invite)) tools.append(tool('invite', 'Пригласить друзей', () => openRoomInvite(room.id)));
   row.append(tools);
@@ -431,8 +432,8 @@ function roomItem(room) {
     row.append(dot);
   }
   // Голосовая комната: щелчок открывает переписку, в голос — кнопкой с микрофоном
-  row.onclick = () => openRoomChat(room.id);
-  if (room.kind === 'voice') row.title = 'Открыть текстовый чат комнаты — голос подключается отдельно';
+  row.onclick = () => (room.kind === 'voice' ? openRoom(room.id) : openRoomChat(room.id));
+  row.title = `Подключиться к каналу «${room.name}»`;
   li.append(row);
 
   // Кто сейчас в голосовом канале
@@ -587,20 +588,20 @@ function renderRoomView() {
 
   // Кто сидит в голосе, пока ты сам не подключился
   const lobby = $('room-lobby');
-  lobby.classList.toggle('hidden', !isVoice || here);
+  lobby.classList.add('hidden');
   if (isVoice && !here) {
     lobby.replaceChildren();
     const people = (room.voice || []).map((p) => room.members.find((m) => m.id === p.userId)).filter(Boolean);
     const text = document.createElement('div');
     text.className = 'muted';
     const status = people.length
-      ? `Сейчас в голосовом канале: ${people.length}.`
-      : 'В голосовом канале пока никого.';
+      ? `В голосе: ${people.length}`
+      : 'В голосе никого';
     const allowed = can(room, PERMS.connect);
     const note = allowed
-      ? 'Переписку можно читать, не заходя в голос.'
-      : kickedUntil ? `Вас кикнули до ${timeText(kickedUntil)} — зайти в голос можно будет после.`
-      : 'Вам нельзя заходить в голосовой канал этой комнаты.';
+      ? '— вы пока в чате'
+      : kickedUntil ? `— вернуться можно после ${timeText(kickedUntil)}`
+      : '— вход в голос закрыт';
     text.textContent = `${status} ${note}`;
     const avatars = document.createElement('div');
     avatars.className = 'lobby-people';
@@ -621,7 +622,7 @@ function renderRoomView() {
       join.type = 'button';
       join.id = 'room-voice-join';
       join.className = 'btn primary room-voice-join';
-      join.textContent = 'Подключиться к голосу';
+      join.textContent = 'Войти в голос';
       join.onclick = () => joinRoomVoice(room.id);
       lobby.append(join);
     }
@@ -778,7 +779,7 @@ function handleRoomEvent(msg) {
     case 'room:message':
       return addRoomMessage(msg.message);
     case 'room:thread:new':
-      bumpThreadReplies(msg.rootId, msg.roomId);
+      bumpThreadReplies(msg.rootId, msg.roomId, { replies: msg.replies, participants: msg.participants });
       return;
     case 'room:message:deleted':
       if (dropMessage(state.roomHistory, msg.roomId, msg.id) && msg.roomId === state.selectedRoomId) renderRoomMessages();

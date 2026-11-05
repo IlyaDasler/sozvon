@@ -146,6 +146,9 @@ function toast(text, ms = 4000) {
 function showScreen(name) {
   $('auth').classList.toggle('hidden', name !== 'auth');
   $('main').classList.toggle('hidden', name !== 'main');
+  // На экране входа окно фиксированное, после входа — свободное
+  window.desktop?.window?.authMode?.(name === 'auth');
+  document.documentElement.classList.toggle('auth-screen', name === 'auth');
 }
 
 const formatTime = (ts) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -1274,16 +1277,36 @@ function messageRow(m, prev, list, actions, shown, fresh) {
   const chips = reactionsView(m);
   if (chips) body.append(chips);
   row.append(body);
-  if (actions?.chat?.kind === 'room' && Number(m.replies || 0) > 0) {
-    const link = document.createElement('button');
-    link.type = 'button';
-    link.className = 'msg-thread-link';
-    link.textContent = 'Обсуждение · ' + m.replies;
-    link.onclick = (e) => {
-      e.stopPropagation();
-      openThread(m, actions.chat);
-    };
-    body.append(link);
+  if (actions?.chat?.kind === 'room' && (Number(m.replies || 0) > 0 || m.threadUsers?.length)) {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'msg-thread-row';
+    if (m.threadUsers?.length) {
+      const strip = document.createElement('div');
+      strip.className = 'thread-people';
+      for (const uid of m.threadUsers) {
+        const u = typeof userById === 'function' ? userById(uid) : null;
+        if (u && typeof makeAvatar === 'function') strip.append(makeAvatar(u, typeof presenceOf === 'function' ? presenceOf(u) : undefined, 'small'));
+      }
+      if (m.threadUserCount > m.threadUsers.length) {
+        const more = document.createElement('span');
+        more.className = 'thread-more';
+        more.textContent = '+\u2009' + (m.threadUserCount - m.threadUsers.length);
+        strip.append(more);
+      }
+      rowEl.append(strip);
+    }
+    if (Number(m.replies || 0) > 0) {
+      const link = document.createElement('button');
+      link.type = 'button';
+      link.className = 'msg-thread-link';
+      link.textContent = '\u041e\u0431\u0441\u0443\u0436\u0434\u0435\u043d\u0438\u0435 \u00b7 ' + m.replies;
+      link.onclick = (e) => {
+        e.stopPropagation();
+        openThread(m, actions.chat);
+      };
+      rowEl.append(link);
+    }
+    body.append(rowEl);
   }
   if (actions?.chat) {
     const tools = document.createElement('div');
@@ -1302,10 +1325,10 @@ function messageRow(m, prev, list, actions, shown, fresh) {
       startReply(row.message, actions.chat);
     });
     if (actions.chat.kind === 'room')
-      tool('В треде', '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>', (e) => {
+      tool('Обсудить сообщение', '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>', (e) => {
         e.stopPropagation();
         openThread(row.message, actions.chat);
-      });
+      }, ' thread');
     tool('Переслать', '<svg viewBox="0 0 24 24"><path d="M15 14 20 9l-5-5"/><path d="M20 9h-9a7 7 0 0 0-7 7v3"/></svg>', (e) => {
       e.stopPropagation();
       forwardMessage(row.message);
@@ -1317,6 +1340,10 @@ function messageRow(m, prev, list, actions, shown, fresh) {
     if (m.fromId === state.me.id)
       tool('Изменить', '<svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>', (e) => {
         e.stopPropagation();
+        if (typeof window.editThreadMessage === 'function' && tools.closest('.thread-panel')) {
+          window.editThreadMessage(row.message, actions.chat);
+          return;
+        }
         editMessage(row.message, actions.chat);
       });
     tool(
@@ -1325,7 +1352,8 @@ function messageRow(m, prev, list, actions, shown, fresh) {
       (e) => {
         e.stopPropagation();
         togglePin(row.message, actions.chat);
-      }
+      },
+      ' pin'
     );
     if (actions.canDelete(m))
       tool('Удалить (с Shift — без вопроса)', '<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>', (e) => {

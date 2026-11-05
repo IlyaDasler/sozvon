@@ -52,6 +52,8 @@ function toPage(channel, ...args) {
 const TITLEBAR_H = 32; // как .titlebar в styles.css
 
 const WINDOW_MIN = { width: 820, height: 540 };
+// Экран входа: компактное фиксированное окно
+const AUTH_SIZE = { width: 1020, height: 700 };
 // macOS: приложение запущено прямо из DMG — система держит его в случайной папке (App Translocation).
 // Обновление подменить такую копию не может, а после перезагрузки она исчезает
 const TRANSLOCATED = process.platform === 'darwin' && /AppTranslocation/i.test(process.execPath);
@@ -89,8 +91,34 @@ function createWindow({ show = true } = {}) {
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   // Кнопки окна рисует страница: нативных Windows-кнопок больше нет
   ipcMain.on('window:minimize', () => win.minimize());
-  ipcMain.on('window:toggle-maximize', () => (win.isMaximized() ? win.unmaximize() : win.maximize()));
+  ipcMain.on('window:toggle-maximize', () => {
+    // На экране входа разворачивать нельзя
+    if (!win.isResizable()) return;
+    win.isMaximized() ? win.unmaximize() : win.maximize();
+  });
   ipcMain.on('window:close', () => win.close());
+  // До входа окно фиксированное: размер «как при запуске», без растягивания и во весь экран.
+  // После входа — обычное окно: тянется за край, разворачивается, работает полный экран
+  ipcMain.on('window:auth-mode', (_event, locked) => {
+    if (!win) return;
+    if (locked) {
+      if (win.isFullScreen()) win.setFullScreen(false);
+      if (win.isMaximized()) win.unmaximize();
+      win.setFullScreenable(false);
+      win.setMaximizable(false);
+      win.setResizable(false);
+      // размер ставим после разблокировки: на Windows setSize у неменяемого окна игнорируется
+      win.setResizable(true);
+      win.setSize(AUTH_SIZE.width, AUTH_SIZE.height, false);
+      win.center();
+      win.setResizable(false);
+    } else {
+      win.setResizable(true);
+      win.setMaximizable(true);
+      win.setFullScreenable(true);
+    }
+    sendWindowState();
+  });
   const sendWindowState = () => win.webContents.send('window:state', { maximized: win.isMaximized() });
   win.on('maximize', sendWindowState);
   win.on('unmaximize', sendWindowState);
