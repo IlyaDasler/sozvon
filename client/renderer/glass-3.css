@@ -1611,8 +1611,14 @@ html[data-theme='glass'] .composer {
 html[data-theme='glass'] .composer-bar {
   min-height: 48px;
   padding: 0 14px;
+  align-items: center;
+}
+html[data-theme='glass'] .composer-bar.is-grow {
   align-items: flex-end;
 }
 html[data-theme='glass'] .composer-btn {
+  align-self: center;
+}
+html[data-theme='glass'] .composer-bar.is-grow .composer-btn {
   align-self: flex-end;
 }

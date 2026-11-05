@@ -111,6 +111,8 @@ class Composer {
     };
     area.addEventListener('input', (e) => {
       autoGrow(area);
+      // Одна строка — кнопки по центру, много строк — прижаты к низу
+      bar.classList.toggle('is-grow', area.scrollHeight > 40);
       this.saveDraftText();
       // inputType есть только у набора: черновик и правка, поставленные в поле программно, — не «печатает»
       if (e.inputType && area.value && !editDraft) noteOwnTyping(this.draftKey);
