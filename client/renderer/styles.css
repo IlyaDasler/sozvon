@@ -2646,3 +2646,42 @@ html.is-win .fullview-bar { padding-right: 148px; }
 .rail-list,
 .members-list,
 .set-body { scrollbar-gutter: stable; }
+
+/* ---------- Версия больше не поддерживается ---------- */
+.version-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4, 4, 6, 0.76);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.version-gate.hidden { display: none; }
+.version-gate-card {
+  width: min(520px, 100%);
+  padding: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-l);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+.version-gate-kicker {
+  margin-bottom: 10px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.version-gate h2 { margin: 0 0 10px; font-size: 26px; line-height: 1.15; }
+.version-gate-lead { margin: 0 0 10px; color: var(--text-2); line-height: 1.5; }
+.version-gate-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 12px; }
+.version-gate .hint-text { margin: 0; }
+body.version-blocked { overflow: hidden; }
+.update-card.required #update-skip,
+.update-card.required #update-later,
+.update-card.required #update-close { display: none; }
+.update-card.required #update-releases { display: inline-flex; }

@@ -220,6 +220,7 @@ func (s *Store) Unblock(userID, blockedID int64) error {
 	_, err := s.db.Exec(`DELETE FROM blocks WHERE user_id = ? AND blocked_id = ?`, userID, blockedID)
 	return err
 }
+
 // RelatedUserIDs — кому рассказывать о статусе: друзья и соседи по каналам.
 func (s *Store) RelatedUserIDs(userID int64) ([]int64, error) {
 	rows, err := s.db.Query(`
@@ -260,4 +261,19 @@ func (s *Store) ChatThemeOf(userID, peerID int64) (string, error) {
 	var theme sql.NullString
 	err := s.db.QueryRow(`SELECT chat_theme FROM contacts WHERE user_id = ? AND contact_id = ?`, userID, peerID).Scan(&theme)
 	return theme.String, err
+}
+
+// SetChatWallpaper — обои личной переписки «у обоих», как тема и в Node.
+func (s *Store) SetChatWallpaper(a, b int64, wallpaper *string) error {
+	if _, err := s.db.Exec(`UPDATE contacts SET wallpaper = ? WHERE (user_id = ? AND contact_id = ?) OR (user_id = ? AND contact_id = ?)`, wallpaper, a, b, b, a); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ChatWallpaperOf — имя файла обоев, как его видит userID.
+func (s *Store) ChatWallpaperOf(userID, peerID int64) (string, error) {
+	var wallpaper sql.NullString
+	err := s.db.QueryRow(`SELECT wallpaper FROM contacts WHERE user_id = ? AND contact_id = ?`, userID, peerID).Scan(&wallpaper)
+	return wallpaper.String, err
 }

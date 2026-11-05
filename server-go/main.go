@@ -84,11 +84,15 @@ func main() {
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second), middleware.Logger)
 	router.Get("/api/files/{id}/{name}", app.serveFile)
 	router.Get("/api/avatars/{name}", app.serveMedia)
+	router.Get("/api/banners/{name}", app.serveBanner)
+	router.Get("/api/wallpapers/{name}", app.serveWallpaper)
 	router.Get("/api/hubs/{id}/icon", app.serveHubIcon)
 	router.Get("/ws", app.websocket)
 
 	router.Route("/api", func(r chi.Router) {
+		r.Use(app.requireClientVersion)
 		r.Get("/health", app.health)
+		r.Get("/version", app.versionInfo)
 		r.Post("/register/code", app.registerCode)
 		r.Post("/register", app.register)
 		r.Post("/login", app.login)
@@ -136,6 +140,8 @@ func main() {
 			r.Get("/contacts", app.contacts)
 			r.Post("/contacts", app.addContact)
 			r.Put("/contacts/{id}/theme", app.contactTheme)
+			r.Put("/contacts/{id}/wallpaper", app.contactWallpaper)
+			r.Delete("/contacts/{id}/wallpaper", app.contactWallpaper)
 			r.Delete("/contacts/{id}", app.removeContact)
 			r.Get("/friend-requests", app.friendRequests)
 			r.Post("/friend-requests/{id}/accept", app.acceptFriendRequest)
@@ -284,24 +290,24 @@ type privacyJSON struct {
 }
 
 type selfJSON struct {
-	ID           int64          `json:"id"`
-	Username     string         `json:"username"`
-	DisplayName  string         `json:"displayName"`
-	AvatarColor  string         `json:"avatarColor"`
-	AvatarURL    *string        `json:"avatarUrl"`
-	Bio          string         `json:"bio"`
-	BannerColor  *string        `json:"bannerColor"`
-	BannerURL    *string        `json:"bannerUrl"`
-	Game         *string        `json:"game"`
-	NameColor    *string        `json:"nameColor"`
-	MemberSince  int64          `json:"memberSince"`
-	PublicKey    *string        `json:"publicKey"`
-	Email        *string        `json:"email"`
-	Status       string         `json:"status"`
-	HasPassword  bool           `json:"hasPassword"`
-	TwoFactor    bool           `json:"twoFactor"`
-	Identities   []identityJSON `json:"identities"`
-	Privacy      privacyJSON    `json:"privacy"`
+	ID          int64          `json:"id"`
+	Username    string         `json:"username"`
+	DisplayName string         `json:"displayName"`
+	AvatarColor string         `json:"avatarColor"`
+	AvatarURL   *string        `json:"avatarUrl"`
+	Bio         string         `json:"bio"`
+	BannerColor *string        `json:"bannerColor"`
+	BannerURL   *string        `json:"bannerUrl"`
+	Game        *string        `json:"game"`
+	NameColor   *string        `json:"nameColor"`
+	MemberSince int64          `json:"memberSince"`
+	PublicKey   *string        `json:"publicKey"`
+	Email       *string        `json:"email"`
+	Status      string         `json:"status"`
+	HasPassword bool           `json:"hasPassword"`
+	TwoFactor   bool           `json:"twoFactor"`
+	Identities  []identityJSON `json:"identities"`
+	Privacy     privacyJSON    `json:"privacy"`
 }
 
 func optional(value string) *string {
@@ -378,6 +384,9 @@ func (a *server) health(w http.ResponseWriter, _ *http.Request) {
 		"app":            "sozvon",
 		"inviteRequired": a.cfg.InviteCode != "",
 		"emailCodes":     a.cfg.EmailCodes(),
+		"latestVersion":  a.cfg.LatestClientVersion,
+		"minClient":      a.cfg.MinClientVersion,
+		"updateUrl":      a.cfg.ClientUpdateURL,
 	})
 }
 

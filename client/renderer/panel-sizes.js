@@ -99,8 +99,9 @@ if (typeof document !== 'undefined') {
   new MutationObserver(applyPanelWidths).observe($('members-panel'), { attributes: true, attributeFilter: ['class'] });
   applyPanelWidths();
 }
-// Тонкая линия в зазоре между панелями: стоит точно по правому краю сайдбара
-(function placeMainDivider() {
+// Тонкая линия в зазоре между панелями: стоит точно по правому краю сайдбара.
+// В unit-тестах DOM нет — модуль должен импортироваться без window/document.
+if (typeof document !== 'undefined') (function placeMainDivider() {
   const side = document.querySelector('.sidebar');
   const main = side?.closest('.main');
   if (!side || !main) return;

@@ -1,5 +1,8 @@
 const { execFile } = require('node:child_process');
 const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, nativeTheme, powerMonitor, screen, session, shell, systemPreferences } = require('electron');
+const path = require('node:path');
+// Ранний обработчик: preload спрашивает версию до создания окна, иначе X-Client-Version пустой
+ipcMain.on('app:version', (event) => { event.returnValue = app.getVersion(); });
 // Бета живёт в отдельном профиле и не мешает установленной версии: их можно держать открытыми
 // одновременно, настройки и сессии не пересекаются
 const IS_BETA = /beta/i.test(app.getVersion());
@@ -9,7 +12,6 @@ if (IS_BETA) {
   } catch {}
 }
 const fs = require('node:fs');
-const path = require('node:path');
 const { autoUpdater } = require('electron-updater');
 const { listenForOAuth, openOAuthWindow, opensInApp } = require('./oauth-loopback');
 const { parseBinding } = require('./renderer/ptt-keys');
