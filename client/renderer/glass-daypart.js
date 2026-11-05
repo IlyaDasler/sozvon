@@ -14,7 +14,7 @@
   const second = document.createElement('div');
   second.className = 'lg-aurora';
   second.setAttribute('aria-hidden', 'true');
-  document.body.append(second);
+  document.body.prepend(second);
   const layers = [first, second];
   let active = 0;
   let current = '';
