@@ -87,7 +87,7 @@ function getJson(url) {
 
 /** Качает файл, сообщая прогресс в процентах. Если соединение «замолчало» — обрываем:
  *  иначе окно обновления висит на одном проценте бесконечно */
-function download(url, dest, onProgress = () => {}) {
+function download(url, dest, onProgress = () => {}, expectedSize = 0) {
   const STALL_MS = 45000;
   const TOTAL_MS = 15 * 60_000;
   return new Promise((resolve, reject) => {
@@ -116,7 +116,7 @@ function download(url, dest, onProgress = () => {}) {
             res.resume();
             return fail(new Error(`Не удалось скачать обновление: ${res.statusCode}`));
           }
-          const total = Number(res.headers['content-length']) || 0;
+          const total = Number(res.headers['content-length']) || expectedSize || 0;
           let got = 0;
           const out = fs.createWriteStream(dest);
           res.on('data', (chunk) => {
@@ -186,7 +186,7 @@ const swapLog = () => path.join(workDir(), 'swap.log');
 /** Скачиваем файл и проверяем, что он совпал с latest-mac.yml: без этого можно исполнить
  *  подменённый архив. Проверка по sha512 — как у electron-updater на Windows */
 async function downloadVerified(name, url, dest, manifest, onProgress) {
-  await download(url, dest, onProgress);
+  await download(url, dest, onProgress, manifest?.size || 0);
   const size = fs.statSync(dest).size;
   if (manifest?.size && size !== manifest.size) throw new Error('Архив скачался не полностью');
   if (!manifest?.sha512) throw new Error('Не удалось проверить целостность обновления');
@@ -198,18 +198,26 @@ async function downloadVerified(name, url, dest, manifest, onProgress) {
 /** Текст с HTTPS (для latest-mac.yml) */
 function getText(url) {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { headers: { 'User-Agent': 'Sozvon-Updater' } }, (res) => {
-      if (res.statusCode !== 200) {
-        res.resume();
-        return reject(new Error(`Сервер ответил ${res.statusCode}`));
-      }
-      let body = '';
-      res.setEncoding('utf8');
-      res.on('data', (chunk) => (body += chunk));
-      res.on('end', () => resolve(body));
-    });
-    req.on('error', reject);
-    req.setTimeout(15000, () => req.destroy(new Error('Не дождались ответа сервера')));
+    const go = (target, hops = 0) => {
+      if (hops > 5) return reject(new Error('Слишком много перенаправлений'));
+      const req = https.get(target, { headers: { 'User-Agent': 'Sozvon-Updater' } }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          res.resume();
+          return go(res.headers.location, hops + 1);
+        }
+        if (res.statusCode !== 200) {
+          res.resume();
+          return reject(new Error(`Сервер ответил ${res.statusCode}`));
+        }
+        let body = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => (body += chunk));
+        res.on('end', () => resolve(body));
+      });
+      req.on('error', reject);
+      req.setTimeout(15000, () => req.destroy(new Error('Не дождались ответа сервера')));
+    };
+    go(url);
   });
 }
 
