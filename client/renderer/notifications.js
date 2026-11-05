@@ -185,12 +185,13 @@ function placeNotifPanel() {
   const btn = $('notif-btn');
   if (!panel || !btn) return;
   const r = btn.getBoundingClientRect();
-  const width = Math.min(360, window.innerWidth - 32);
-  // Панель прижата к правому краю окна, а не к левой колонке — так она
-  // не уезжает под список чатов и не обрезается.
-  const left = Math.max(8, window.innerWidth - width - 16);
+  const width = Math.min(340, window.innerWidth - 32);
+  // Панель растёт из колокольчика: левый край — ровно под кнопкой,
+  // чтобы она не уезжала ни к центру, ни за левую колонку.
+  const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
   const top = Math.max(48, r.bottom + 8);
   panel.style.position = 'fixed';
+  panel.style.right = 'auto';
   panel.style.width = `${width}px`;
   panel.style.left = `${Math.round(left)}px`;
   panel.style.top = `${Math.round(top)}px`;

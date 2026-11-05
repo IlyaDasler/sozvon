@@ -5,6 +5,9 @@
   // ---------- Number Field: точное значение рядом с ползунком ----------
   function addNumberField(range) {
     if (range.dataset.numReady === '1') return;
+    // У шумоподавления уже есть подписи «Выкл…Сильно» и ползунок:
+    // лишний number-stepper только дублирует его и мешает.
+    if (range.id === 'set-ns-level') return;
     range.dataset.numReady = '1';
     const field = range.closest('.field');
     const label = field?.querySelector('span');

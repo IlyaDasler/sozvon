@@ -145,8 +145,20 @@ func ValidDisplayName(value string) bool {
 
 // DeviceName — как в Node: приложение и ОС из User-Agent.
 func DeviceName(userAgent string) string {
+	return DeviceNameWithVersion(userAgent, "")
+}
+
+// DeviceNameWithVersion берёт актуальную версию клиента из X-Client-Version:
+// сессия, созданная старой версией, не должна навсегда называться «Созвон 3.0».
+func DeviceNameWithVersion(userAgent, version string) string {
 	app := "Браузер"
-	if match := regexp.MustCompile(`Sozvon/(\d+\.\d+)`).FindStringSubmatch(userAgent); match != nil {
+	version = strings.TrimSpace(version)
+	if !regexp.MustCompile(`^\d+\.\d+(?:\.\d+)?$`).MatchString(version) {
+		version = ""
+	}
+	if version != "" {
+		app = "Созвон " + version
+	} else if match := regexp.MustCompile(`Sozvon/(\d+\.\d+)`).FindStringSubmatch(userAgent); match != nil {
 		app = "Созвон " + match[1]
 	}
 	osName := ""

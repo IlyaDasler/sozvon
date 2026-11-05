@@ -11,21 +11,22 @@ const TICKET_TTL_MS = 30_000;
 setInterval(() => sessions.dropOlderThan(Date.now() - TOKEN_TTL_MS), 60 * 60_000).unref();
 
 /** Название устройства для списка: из подписи приложения или браузера */
-export function deviceName(userAgent = '') {
-  const app = /Sozvon\/(\d+\.\d+)/.exec(userAgent);
+export function deviceName(userAgent = '', version = '') {
+  const cleanVersion = /^\d+\.\d+(?:\.\d+)?$/.test(String(version)) ? String(version) : '';
+  const app = cleanVersion ? [cleanVersion] : /Sozvon\/(\d+\.\d+)/.exec(userAgent);
   const os = /Windows/.test(userAgent) ? 'Windows' : /Android/.test(userAgent) ? 'Android' : /iPhone|iPad/.test(userAgent) ? 'iOS' : /Mac OS/.test(userAgent) ? 'macOS' : /Linux/.test(userAgent) ? 'Linux' : '';
   return [app ? `Созвон ${app[1]}` : 'Браузер', os].filter(Boolean).join(' · ');
 }
 
 /** Новый вход: запись о сессии и токен к ней */
-export function openSession(userId, userAgent) {
+export function openSession(userId, userAgent, version = '') {
   const id = crypto.randomBytes(16).toString('hex');
-  sessions.add(id, userId, deviceName(userAgent));
+  sessions.add(id, userId, deviceName(userAgent, version));
   return signToken(userId, id);
 }
 
 /** Кто стоит за токеном: { user, sid }; sid нет у токенов старых версий. null — вход недействителен */
-export function sessionOf(token) {
+export function sessionOf(token, userAgent = '', version = '') {
   const data = readToken(token);
   const user = data && users.byId(data.uid);
   if (!user) return null;
@@ -33,6 +34,8 @@ export function sessionOf(token) {
   const session = sessions.byId(data.sid);
   if (session?.user_id !== user.id) return null;
   if (Date.now() - session.last_seen > TOUCH_EVERY_MS) sessions.touch(session.id);
+  const device = deviceName(userAgent, version);
+  if (device && device !== session.device) sessions.setDevice(session.id, device);
   return { user, sid: session.id };
 }
 

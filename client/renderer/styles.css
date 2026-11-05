@@ -1120,11 +1120,11 @@ kbd {
   position: fixed; right: 16px; top: 54px; left: auto; z-index: 60; width: min(360px, calc(100vw - 32px)); max-height: 70vh;
   display: flex; flex-direction: column; border-radius: var(--r-l); background: var(--bg-deep);
   box-shadow: var(--shadow);
-  transform-origin: top right; animation: pop-down var(--mid) var(--ease-out);
+  transform-origin: top left; animation: pop-down var(--mid) var(--ease-out);
 }
-/* Лёгкий хвост попапа: панель приходит из правого верхнего угла, а не «висит» */
+/* Лёгкий хвост попапа: панель приходит из колокольчика */
 .notif-panel::before {
-  content: ''; position: absolute; top: -6px; right: 22px; width: 12px; height: 12px;
+  content: ''; position: absolute; top: -6px; left: 22px; right: auto; width: 12px; height: 12px;
   background: inherit; border-left: 1px solid var(--line); border-top: 1px solid var(--line);
   transform: rotate(45deg); border-top-left-radius: 3px;
 }

@@ -184,20 +184,39 @@ async function denoiseTrack(raw, level = 2) {
     // Интенсивность — доля очищенного звука в миксе. Среднее и сильное уже
     // почти полностью нейросетевые: раньше 30% сырого фона шло в эфир.
     const wetAmount = level >= 2 ? 1 : 0.75;
+    // После нейросети закрываем остаточный фон мягким гейтом: клавиатура и
+    // дыхание комнаты не проходят в эфир, а короткая атака не съедает слово.
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    const gate = ctx.createGain();
+    const samples = new Float32Array(analyser.fftSize);
+    let holdUntil = 0;
+    const gateTimer = setInterval(() => {
+      analyser.getFloatTimeDomainData(samples);
+      let sum = 0;
+      for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+      const rms = Math.sqrt(sum / samples.length);
+      const threshold = level >= 3 ? 0.018 : 0.024;
+      const now = performance.now();
+      if (rms >= threshold) holdUntil = now + 180;
+      const target = now < holdUntil ? 1 : 0.015;
+      gate.gain.setTargetAtTime(target, ctx.currentTime, target > 0.5 ? 0.006 : 0.08);
+    }, 35);
     if (wetAmount >= 1) {
-      hp.connect(node).connect(dest);
+      hp.connect(node).connect(analyser).connect(gate).connect(dest);
     } else {
       const wet = ctx.createGain();
       wet.gain.value = wetAmount;
       const dry = ctx.createGain();
       dry.gain.value = 1 - wetAmount;
-      hp.connect(node).connect(wet).connect(dest);
+      hp.connect(node).connect(analyser).connect(gate).connect(wet).connect(dest);
       hp.connect(dry).connect(dest);
     }
     const track = dest.stream.getAudioTracks()[0];
     return {
       track,
       stop() {
+        clearInterval(gateTimer);
         track.stop();
         raw.stop();
         node.destroy?.();

@@ -748,13 +748,34 @@ async function openScreenPicker({ change = false } = {}) {
   $('screen-text').checked = store.get('screenText', true);
   $('screen-picker').classList.remove('hidden');
   // Окно выбора не должно оказаться под панелью звонка ни в одной теме.
-  Object.assign($('screen-picker').style, {
+  const picker = $('screen-picker');
+  Object.assign(picker.style, {
     position: 'fixed',
     inset: '0',
-    zIndex: '9999',
+    zIndex: '2147483647',
     display: 'grid',
+    placeItems: 'center',
     opacity: '1',
+    visibility: 'visible',
+    transform: 'none',
+    background: 'rgba(2, 5, 10, 0.82)',
+    pointerEvents: 'auto',
   });
+  const pickerCard = picker.querySelector('.modal-card');
+  if (pickerCard) {
+    Object.assign(pickerCard.style, {
+      background: '#121722',
+      color: '#f2f5ff',
+      opacity: '1',
+      visibility: 'visible',
+      transform: 'none',
+    });
+  }
+  // <dialog> выводит окно в top layer: его не перекрывают ни панель звонка,
+  // ни стеклянные слои с backdrop-filter.
+  if (typeof picker.showModal === 'function' && !picker.open) {
+    try { picker.showModal(); } catch { /* уже открыт */ }
+  }
   await loadScreenSources(store.get('screenTab', 'screen'));
 }
 
@@ -848,7 +869,9 @@ for (const t of document.querySelectorAll('#screen-tabs .tab')) t.onclick = () =
 $('screen-refresh').onclick = () => loadScreenSources();
 
 function closeScreenPicker() {
-  $('screen-picker').classList.add('hidden');
+  const picker = $('screen-picker');
+  if (picker.open) picker.close();
+  picker.classList.add('hidden');
   $('screen-sources').replaceChildren();
 }
 
@@ -931,6 +954,37 @@ function openNoiseMenu(x, y) {
   }]);
 }
 
+/** ПКМ по трансляции — меню именно трансляции, а не общий шумодав */
+function showTileMenu(key, x, y) {
+  const t = voiceTiles().find((item) => item.key === key);
+  if (!t) return;
+  const items = [];
+  if (t.screen && !t.isMe) {
+    const watching = activeSession()?.watching.has(t.id);
+    items.push({
+      label: watching ? 'Перестать смотреть' : 'Смотреть трансляцию',
+      onclick: () => activeSession()?.setWatching(t.id, !watching),
+    });
+  }
+  if (t.video) {
+    items.push({ label: 'Во весь экран', onclick: () => openFullView(t.key) });
+    items.push({ label: 'Плавающее окно', onclick: () => openFloating(t.key) });
+  }
+  if (t.screen && !t.isMe) {
+    items.push({
+      range: true,
+      label: 'Громкость трансляции',
+      value: Number(store.get(`volume:screen:${t.id}`, 100)),
+      min: 0,
+      max: 100,
+      step: 5,
+      valueLabel: (v) => `${v}%`,
+      oninput: (v) => activeSession()?.setScreenVolume(t.id, v / 100),
+    });
+  }
+  if (items.length) showMenu(x, y, items);
+}
+
 function toggleNoise() {
   setNoiseLevel(noiseLevelOf() > 0 ? 0 : lastNoiseLevel);
 }
@@ -947,6 +1001,13 @@ for (const id of ['call-ns', 'voice-ns']) {
 }
 $('call-panel').oncontextmenu = (e) => {
   if (e.target.closest('input, textarea, select, a')) return;
+  const tile = e.target.closest('.tile');
+  if (tile?.dataset.key) {
+    e.preventDefault();
+    e.stopPropagation();
+    showTileMenu(tile.dataset.key, e.clientX, e.clientY);
+    return;
+  }
   e.preventDefault();
   openNoiseMenu(e.clientX, e.clientY);
 };
