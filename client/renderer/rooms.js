@@ -594,13 +594,13 @@ function renderRoomView() {
     const text = document.createElement('div');
     text.className = 'muted';
     const status = people.length
-      ? `Сейчас в голосовом канале: ${people.length}.`
-      : 'В голосовом канале пока никого.';
+      ? `В голосе: ${people.length}`
+      : 'В голосе никого';
     const allowed = can(room, PERMS.connect);
     const note = allowed
-      ? 'Переписку можно читать, не заходя в голос.'
-      : kickedUntil ? `Вас кикнули до ${timeText(kickedUntil)} — зайти в голос можно будет после.`
-      : 'Вам нельзя заходить в голосовой канал этой комнаты.';
+      ? '— вы пока в чате'
+      : kickedUntil ? `— вернуться можно после ${timeText(kickedUntil)}`
+      : '— вход в голос закрыт';
     text.textContent = `${status} ${note}`;
     const avatars = document.createElement('div');
     avatars.className = 'lobby-people';
@@ -621,7 +621,7 @@ function renderRoomView() {
       join.type = 'button';
       join.id = 'room-voice-join';
       join.className = 'btn primary room-voice-join';
-      join.textContent = 'Подключиться к голосу';
+      join.textContent = 'Войти в голос';
       join.onclick = () => joinRoomVoice(room.id);
       lobby.append(join);
     }
