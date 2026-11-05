@@ -59,24 +59,15 @@
     const prev = layers[active];
     const token = ++serial;
     const src = scenes[phase];
-    const commit = () => {
-      if (token !== serial) return;
-      next.style.backgroundImage = `url("${src}")`;
-      void next.offsetWidth;
-      next.classList.add('is-visible');
-      prev.classList.remove('is-visible');
-      active = 1 - active;
-      current = phase;
-      root.dataset.daypart = phase;
-    };
-    // Сначала декодируем кадр, потом плавно проявляем слой поверх старого.
-    const img = new Image();
-    img.src = src;
-    if (typeof img.decode === 'function') {
-      img.decode().then(commit).catch(commit);
-    } else {
-      commit();
-    }
+    // Кадры прогреты на старте; слой меняем сразу, плавность даёт CSS-переход.
+    if (token !== serial) return;
+    next.style.backgroundImage = `url("${src}")`;
+    void next.offsetWidth;
+    next.classList.add('is-visible');
+    prev.classList.remove('is-visible');
+    active = 1 - active;
+    current = phase;
+    root.dataset.daypart = phase;
   }
 
   function paint(ms = Date.now()) {
