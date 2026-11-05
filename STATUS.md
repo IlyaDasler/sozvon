@@ -220,3 +220,12 @@ sozvon/design/ui-kit.html пересобран как законченный sel
 
 ## Ferrari: F1-сцена и полупрозрачные панели (13:05 MSK)
 В тему Ferrari добавлена оригинальная векторная сцена ночной трассы с красной F1-машиной (без логотипов и чужих фото). Интерфейс переведён на полупрозрачный материал: фон-сцена fixed, sidebar/members/titlebar/chat-head/composer и модалки с backdrop blur, content — полупрозрачный тинт без полнооконного blur (чтобы не вернуть артефакты широких окон). Плитка темы в оформлении показывает машину. В UI-кит добавлена сцена и обновлены 40 кадров; Ferrari-карточка и переключатель работают. Проверено 3440×1440: весь интерфейс рисуется, car visible, horizontal scroll 0. e2e-layout/e2e-look зелёные. Бета пересобирается.
+
+## Релиз 3.0.0 и прод на Go (16:15 MSK)
+Ветка main, тег v3.0.0. В релиз вошли beta-3.0, beta-3.0-dev (треды, звонки, стеклянные окна), Ferrari и принудительная политика версий. GitHub Release v3.0.0: Windows Sozvon-Setup-3.0.0.exe, latest.yml, blockmap, macOS x64/arm64 dmg+zip. Установщик без подписи (сертификата нет).
+
+Прод VPS 135.106.226.12 переключён с Node на Go 3.0: сервис sozvon.service теперь /opt/sozvon-go/sozvon-server-go, старый Node остановлен и не запускается. Caddy: /api и /ws → Go:3000, /livekit → LiveKit:7880, остальное — статика /opt/sozvon-web. Бэкап перед переключением: /root/sozvon-release3-backup-20261105-131026 (сервис, Caddyfile, env, база). В базе до миграции: 11 пользователей, 6 каналов, 14 комнат, 255 личных сообщений, 118 сообщений комнат.
+
+Проверки прода: /api/health и /api/version 200; index 200 с <title>Созвон</title>; старый Electron (без X-Client-Version) получает 426; 3.0 без токена — 401; Node-процессов нет; LiveKit и Caddy active. Клиент с IP 92.241.13.52 уже ходит в Go (200), старый клиент с 138.249.149.63 получает 426 на ws-ticket.
+
+Тесты: server 109/109 (force-exit для CI), client 68/68, e2e-layout/chat/room/threads/call — зелёные; GitHub Actions server-tests + windows-installer + mac-builder — success. Локально установлен Sozvon 3.0.0 (Programs\Sozvon), app.asar 4 668 232, версия 3.0.0; приложение запущено.
