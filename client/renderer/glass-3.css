@@ -2512,7 +2512,7 @@ html[data-theme='glass'] .thread-head {
 }
 html[data-theme='glass'] .thread-form {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   padding: 10px 12px;
   border-top: 1px solid var(--pane-line);
@@ -2521,8 +2521,12 @@ html[data-theme='glass'] .thread-form {
 }
 html[data-theme='glass'] #thread-input {
   flex: 1;
-  height: 36px;
+  height: auto;
   min-height: 36px;
+  max-height: 140px;
+  field-sizing: content;
+  resize: none;
+  overflow-y: auto;
   padding: 6px 10px;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 10px;
