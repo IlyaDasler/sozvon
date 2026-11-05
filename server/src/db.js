@@ -297,6 +297,78 @@ if (!columnsOf('users').includes('banner_color')) db.exec('ALTER TABLE users ADD
 if (!columnsOf('users').includes('banner')) db.exec('ALTER TABLE users ADD COLUMN banner TEXT');
   // Запущенная игра: приходит из приложения (детект процессов) и показывается в профиле
   if (!columnsOf('users').includes('game')) db.exec('ALTER TABLE users ADD COLUMN game TEXT');
+// Цвет ника в чате, голосе и участниках; пусто — как цвет аватара
+if (!columnsOf('users').includes('name_color')) db.exec('ALTER TABLE users ADD COLUMN name_color TEXT');
+if (!columnsOf('users').includes('status')) db.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'online'");
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE email IS NOT NULL');
+if (!columnsOf('rooms').includes('default_perms'))
+  db.exec(`ALTER TABLE rooms ADD COLUMN default_perms INTEGER NOT NULL DEFAULT ${DEFAULT_PERMS}`);
+if (!columnsOf('room_members').includes('role_id')) db.exec('ALTER TABLE room_members ADD COLUMN role_id INTEGER');
+// Тема личного чата «у обоих» — одна на пару, хранится в обеих строках дружбы
+if (!columnsOf('contacts').includes('chat_theme')) db.exec('ALTER TABLE contacts ADD COLUMN chat_theme TEXT');
+  // Обои чата картинкой или гифкой: имя файла в data/wallpapers, общие для пары друзей
+  if (!columnsOf('contacts').includes('wallpaper')) db.exec('ALTER TABLE contacts ADD COLUMN wallpaper TEXT');
+// Свой фон комнаты: имя картинки в папке аватарок (как иконка канала)
+if (!columnsOf('rooms').includes('background')) db.exec('ALTER TABLE rooms ADD COLUMN background TEXT');
+// Кик на время: до этого момента (мс) участник может только читать чат
+if (!columnsOf('room_members').includes('timeout_until')) db.exec('ALTER TABLE room_members ADD COLUMN timeout_until INTEGER');
+// Канал комнаты (с 2.0); комнаты старых версий переносятся ниже
+if (!columnsOf('rooms').includes('hub_id')) db.exec('ALTER TABLE rooms ADD COLUMN hub_id INTEGER REFERENCES hubs(id) ON DELETE CASCADE');
+db.exec('CREATE INDEX IF NOT EXISTS rooms_hub ON rooms (hub_id)');
+// Сквозное шифрование (2.3): публичный ключ человека и конверт сообщения вместо текста
+if (!columnsOf('users').includes('public_key')) db.exec('ALTER TABLE users ADD COLUMN public_key TEXT');
+for (const table of ['messages', 'room_messages']) if (!columnsOf(table).includes('enc')) db.exec(`ALTER TABLE ${table} ADD COLUMN enc TEXT`);
+// Ответ, правка, реакции и закреп (2.4). Ответ хранится только id — текст не дублируем, он зашифрован
+for (const table of ['messages', 'room_messages']) {
+  if (!columnsOf(table).includes('reply_to')) db.exec(`ALTER TABLE ${table} ADD COLUMN reply_to INTEGER`);
+  if (!columnsOf(table).includes('edited_at')) db.exec(`ALTER TABLE ${table} ADD COLUMN edited_at INTEGER`);
+}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS message_reactions (
+    kind TEXT NOT NULL,
+    message_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    emoji TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (kind, message_id, user_id, emoji)
+  );
+  CREATE INDEX IF NOT EXISTS message_reactions_message ON message_reactions (kind, message_id);
+  CREATE TABLE IF NOT EXISTS message_pins (
+    kind TEXT NOT NULL,
+    chat_id INTEGER NOT NULL,
+    message_id INTEGER NOT NULL,
+    by_id INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (kind, message_id)
+  );
+  CREATE INDEX IF NOT EXISTS message_pins_chat ON message_pins (kind, chat_id, created_at);
+`);
+
+/** Выполняет fn целиком или никак */
+function transaction(fn) {
+  db.exec('BEGIN');
+  try {
+    fn();
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
+
+const ADMIN_ROLE = { name: 'Администратор', color: '#e5484d', perms: PERMS.admin };
+
+export const toPublicUser = (row) =>
+  row && {
+    id: row.id,
+    username: row.username,
+    displayName: row.display_name,
+    avatarColor: row.avatar_color,
+    avatarUrl: row.avatar ? `/api/avatars/${row.avatar}.webp` : null,
+    bio: row.bio || '',
+    bannerColor: row.banner_color || null,
+    bannerUrl: row.banner ? `/api/banners/${row.banner}` : null,
+    game: row.game || null,
     nameColor: row.name_color || null,
     memberSince: row.created_at,
     publicKey: row.public_key || null,
@@ -346,6 +418,228 @@ const q = {
   updateAvatar: db.prepare('UPDATE users SET avatar = ? WHERE id = ?'),
   updateBanner: db.prepare('UPDATE users SET banner = ? WHERE id = ?'),
   updateGame: db.prepare('UPDATE users SET game = ? WHERE id = ?'),
+
+  listContacts: db.prepare(`
+    SELECT u.*, c.chat_theme, c.wallpaper FROM contacts c JOIN users u ON u.id = c.contact_id
+    WHERE c.user_id = ? ORDER BY u.display_name COLLATE NOCASE
+  `),
+  hasContact: db.prepare('SELECT 1 FROM contacts WHERE user_id = ? AND contact_id = ?'),
+  setChatTheme: db.prepare('UPDATE contacts SET chat_theme = ? WHERE (user_id = ? AND contact_id = ?) OR (user_id = ? AND contact_id = ?)'),
+  setContactWallpaper: db.prepare('UPDATE contacts SET wallpaper = ? WHERE (user_id = ? AND contact_id = ?) OR (user_id = ? AND contact_id = ?)'),
+  contactWallpaperOf: db.prepare('SELECT wallpaper FROM contacts WHERE user_id = ? AND contact_id = ?'),
+  addContact: db.prepare('INSERT OR IGNORE INTO contacts (user_id, contact_id, created_at) VALUES (?, ?, ?)'),
+  removeContact: db.prepare('DELETE FROM contacts WHERE user_id = ? AND contact_id = ?'),
+  incomingRequests: db.prepare(`
+    SELECT u.*, r.created_at AS requested_at FROM friend_requests r JOIN users u ON u.id = r.from_id
+    WHERE r.to_id = ? ORDER BY r.created_at DESC
+  `),
+  outgoingRequests: db.prepare(`
+    SELECT u.*, r.created_at AS requested_at FROM friend_requests r JOIN users u ON u.id = r.to_id
+    WHERE r.from_id = ? ORDER BY r.created_at DESC
+  `),
+  hasRequest: db.prepare('SELECT 1 FROM friend_requests WHERE from_id = ? AND to_id = ?'),
+  addRequest: db.prepare('INSERT OR IGNORE INTO friend_requests (from_id, to_id, created_at) VALUES (?, ?, ?)'),
+  removeRequest: db.prepare('DELETE FROM friend_requests WHERE from_id = ? AND to_id = ?'),
+  blockedBy: db.prepare(`
+    SELECT u.*, b.created_at AS blocked_at FROM blocks b JOIN users u ON u.id = b.blocked_id
+    WHERE b.user_id = ? ORDER BY b.created_at DESC
+  `),
+  isBlocked: db.prepare('SELECT 1 FROM blocks WHERE user_id = ? AND blocked_id = ?'),
+  addBlock: db.prepare('INSERT OR IGNORE INTO blocks (user_id, blocked_id, created_at) VALUES (?, ?, ?)'),
+  removeBlock: db.prepare('DELETE FROM blocks WHERE user_id = ? AND blocked_id = ?'),
+
+  findIdentity: db.prepare('SELECT * FROM identities WHERE provider = ? AND provider_user_id = ?'),
+  identitiesOf: db.prepare('SELECT provider, email FROM identities WHERE user_id = ? ORDER BY provider'),
+  addIdentity: db.prepare(
+    'INSERT INTO identities (provider, provider_user_id, user_id, email, created_at) VALUES (?, ?, ?, ?, ?)'
+  ),
+  removeIdentity: db.prepare('DELETE FROM identities WHERE user_id = ? AND provider = ?'),
+
+  insertMessage: db.prepare('INSERT INTO messages (from_id, to_id, text, attachments, preview, enc, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
+  setPublicKey: db.prepare('UPDATE users SET public_key = ? WHERE id = ?'),
+  convEpoch: db.prepare('SELECT MAX(epoch) AS epoch FROM conv_keys WHERE conv = ?'),
+  convMine: db.prepare('SELECT epoch, sealed FROM conv_keys WHERE conv = ? AND user_id = ? ORDER BY epoch'),
+  convHolders: db.prepare('SELECT user_id FROM conv_keys WHERE conv = ? AND epoch = ?'),
+  convHas: db.prepare('SELECT 1 FROM conv_keys WHERE conv = ? AND epoch = ? AND user_id = ?'),
+  convInsert: db.prepare('INSERT OR IGNORE INTO conv_keys (conv, epoch, user_id, sealed, by_id, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
+  convDropUser: db.prepare('DELETE FROM conv_keys WHERE user_id = ?'),
+  transferPut: db.prepare('INSERT OR REPLACE INTO key_transfers (id, user_id, blob, created_at) VALUES (?, ?, ?, ?)'),
+  transferGet: db.prepare('SELECT * FROM key_transfers WHERE id = ?'),
+  transferDrop: db.prepare('DELETE FROM key_transfers WHERE id = ? OR created_at < ?'),
+  messageById: db.prepare('SELECT * FROM messages WHERE id = ?'),
+  deleteMessage: db.prepare('DELETE FROM messages WHERE id = ?'),
+  messagesBetween: db.prepare(`
+    SELECT * FROM messages
+    WHERE ((from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)) AND id < ?
+    ORDER BY id DESC LIMIT ?
+  `),
+
+  insertRoom: db.prepare('INSERT INTO rooms (name, kind, owner_id, hub_id, private, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
+  roomById: db.prepare('SELECT * FROM rooms WHERE id = ?'),
+  roomsOf: db.prepare(`
+    SELECT r.* FROM room_members m JOIN rooms r ON r.id = m.room_id
+    WHERE m.user_id = ? ORDER BY r.kind DESC, COALESCE(r.position, r.id), r.name COLLATE NOCASE
+  `),
+  renameRoom: db.prepare('UPDATE rooms SET name = ? WHERE id = ?'),
+  deleteRoom: db.prepare('DELETE FROM rooms WHERE id = ?'),
+  roomMembers: db.prepare(`
+    SELECT u.*, hm.role_id, m.timeout_until FROM room_members m
+    JOIN users u ON u.id = m.user_id
+    JOIN rooms r ON r.id = m.room_id
+    LEFT JOIN hub_members hm ON hm.hub_id = r.hub_id AND hm.user_id = m.user_id
+    WHERE m.room_id = ? ORDER BY m.created_at, u.id
+  `),
+  roomMember: db.prepare('SELECT * FROM room_members WHERE room_id = ? AND user_id = ?'),
+  isRoomMember: db.prepare('SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?'),
+  setMemberRole: db.prepare('UPDATE hub_members SET role_id = ? WHERE hub_id = ? AND user_id = ?'),
+  setMemberTimeout: db.prepare('UPDATE room_members SET timeout_until = ? WHERE room_id = ? AND user_id = ?'),
+  clearRole: db.prepare('UPDATE hub_members SET role_id = NULL WHERE role_id = ?'),
+
+  hubRoles: db.prepare('SELECT * FROM hub_roles WHERE hub_id = ? ORDER BY id'),
+  roleById: db.prepare('SELECT * FROM hub_roles WHERE id = ?'),
+  insertRole: db.prepare('INSERT INTO hub_roles (hub_id, name, color, perms, created_at) VALUES (?, ?, ?, ?, ?)'),
+  updateRole: db.prepare('UPDATE hub_roles SET name = ?, color = ?, perms = ? WHERE id = ?'),
+  deleteRole: db.prepare('DELETE FROM hub_roles WHERE id = ?'),
+  hubsWithoutRoles: db.prepare('SELECT id FROM hubs WHERE id NOT IN (SELECT hub_id FROM hub_roles)'),
+  setHubDefaultPerms: db.prepare('UPDATE hubs SET default_perms = ? WHERE id = ?'),
+  hubEmojis: db.prepare('SELECT id, name, file, created_by FROM hub_emojis WHERE hub_id = ? ORDER BY id'),
+  hubEmoji: db.prepare('SELECT * FROM hub_emojis WHERE id = ? AND hub_id = ?'),
+  insertEmoji: db.prepare('INSERT OR IGNORE INTO hub_emojis (hub_id, name, file, created_by) VALUES (?, ?, ?, ?)'),
+  deleteEmoji: db.prepare('DELETE FROM hub_emojis WHERE id = ?'),
+  hubGroups: db.prepare('SELECT id, name FROM room_groups WHERE hub_id = ? ORDER BY id'),
+  hubGroup: db.prepare('SELECT * FROM room_groups WHERE id = ? AND hub_id = ?'),
+  insertGroup: db.prepare('INSERT INTO room_groups (hub_id, name) VALUES (?, ?)'),
+  renameGroup: db.prepare('UPDATE room_groups SET name = ? WHERE id = ?'),
+  deleteGroup: db.prepare('DELETE FROM room_groups WHERE id = ?'),
+  ungroupRooms: db.prepare('UPDATE rooms SET group_id = NULL WHERE group_id = ?'),
+  setRoomGroup: db.prepare('UPDATE rooms SET group_id = ? WHERE id = ?'),
+  setRoomPosition: db.prepare('UPDATE rooms SET position = ? WHERE id = ?'),
+  nextRoomPosition: db.prepare('SELECT COALESCE(MAX(position), 0) + 1 AS pos FROM rooms WHERE hub_id = ?'),
+  setHubReactionsVisible: db.prepare('UPDATE hubs SET reactions_visible = ? WHERE id = ?'),
+
+  roomBans: db.prepare(`
+    SELECT u.*, b.created_at AS banned_at FROM room_bans b JOIN users u ON u.id = b.user_id
+    WHERE b.room_id = ? ORDER BY b.created_at
+  `),
+  isBanned: db.prepare('SELECT 1 FROM room_bans WHERE room_id = ? AND user_id = ?'),
+  addBan: db.prepare('INSERT OR IGNORE INTO room_bans (room_id, user_id, by_id, created_at) VALUES (?, ?, ?, ?)'),
+  removeBan: db.prepare('DELETE FROM room_bans WHERE room_id = ? AND user_id = ?'),
+  addRoomMember: db.prepare('INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) VALUES (?, ?, ?)'),
+  removeRoomMember: db.prepare('DELETE FROM room_members WHERE room_id = ? AND user_id = ?'),
+  // Все, с кем человек в одной комнате или канале: им тоже нужны его статус «в сети» и новый профиль
+  roomNeighbours: db.prepare(`
+    SELECT b.user_id AS id FROM room_members a JOIN room_members b ON a.room_id = b.room_id
+    WHERE a.user_id = ? AND b.user_id != a.user_id
+    UNION
+    SELECT b.user_id FROM hub_members a JOIN hub_members b ON a.hub_id = b.hub_id
+    WHERE a.user_id = ? AND b.user_id != a.user_id
+  `),
+
+  hubById: db.prepare('SELECT * FROM hubs WHERE id = ?'),
+  hubsOf: db.prepare(`
+    SELECT h.* FROM hub_members m JOIN hubs h ON h.id = m.hub_id WHERE m.user_id = ? ORDER BY m.created_at, h.id
+  `),
+  insertHub: db.prepare('INSERT INTO hubs (name, owner_id, icon_color, created_at) VALUES (?, ?, ?, ?)'),
+  updateHub: db.prepare('UPDATE hubs SET name = ?, icon_color = ? WHERE id = ?'),
+  setHubIcon: db.prepare('UPDATE hubs SET icon = ? WHERE id = ?'),
+  setRoomBackground: db.prepare('UPDATE rooms SET background = ? WHERE id = ?'),
+  deleteHub: db.prepare('DELETE FROM hubs WHERE id = ?'),
+  ownedHubs: db.prepare('SELECT COUNT(*) AS n FROM hubs WHERE owner_id = ?'),
+  firstOwnedHub: db.prepare('SELECT * FROM hubs WHERE owner_id = ? ORDER BY id LIMIT 1'),
+  hubMembers: db.prepare(`
+    SELECT u.*, m.manager, m.role_id, m.created_at AS joined_at FROM hub_members m JOIN users u ON u.id = m.user_id
+    WHERE m.hub_id = ? ORDER BY m.created_at, u.id
+  `),
+  hubNicknames: db.prepare('SELECT user_id, name FROM hub_nicknames WHERE hub_id = ?'),
+  hubNickname: db.prepare('SELECT name FROM hub_nicknames WHERE hub_id = ? AND user_id = ?'),
+  setHubNickname: db.prepare(`
+    INSERT INTO hub_nicknames (hub_id, user_id, name) VALUES (?, ?, ?)
+    ON CONFLICT (hub_id, user_id) DO UPDATE SET name = excluded.name
+  `),
+  clearHubNickname: db.prepare('DELETE FROM hub_nicknames WHERE hub_id = ? AND user_id = ?'),
+  // События канала
+  insertEvent: db.prepare('INSERT INTO events (room_id, hub_id, title, starts_at, created_by, created_at, repeat, remind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
+  setEventReminded: db.prepare('UPDATE events SET last_remind = ? WHERE id = ?'),
+  finishEvent: db.prepare('UPDATE events SET active = 0 WHERE id = ?'),
+  updateEvent: db.prepare('UPDATE events SET title = ?, starts_at = ?, repeat = ?, remind = ?, last_remind = NULL WHERE id = ?'),
+  eventById: db.prepare('SELECT * FROM events WHERE id = ?'),
+  eventsOfRoom: db.prepare('SELECT * FROM events WHERE room_id = ? ORDER BY starts_at, id'),
+  allEvents: db.prepare('SELECT * FROM events'),
+  deleteEvent: db.prepare('DELETE FROM events WHERE id = ?'),
+  eventResponses: db.prepare('SELECT * FROM event_responses WHERE event_id = ? ORDER BY updated_at, user_id'),
+  setEventResponse: db.prepare(`
+    INSERT INTO event_responses (event_id, user_id, status, ready_at, updated_at) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT (event_id, user_id) DO UPDATE SET status = excluded.status, ready_at = excluded.ready_at, updated_at = excluded.updated_at
+  `),
+  clearEventResponse: db.prepare('DELETE FROM event_responses WHERE event_id = ? AND user_id = ?'),
+  hubMember: db.prepare('SELECT * FROM hub_members WHERE hub_id = ? AND user_id = ?'),
+  addHubMember: db.prepare('INSERT OR IGNORE INTO hub_members (hub_id, user_id, created_at) VALUES (?, ?, ?)'),
+  removeHubMember: db.prepare('DELETE FROM hub_members WHERE hub_id = ? AND user_id = ?'),
+  setManager: db.prepare('UPDATE hub_members SET manager = ? WHERE hub_id = ? AND user_id = ?'),
+  hubRooms: db.prepare('SELECT * FROM rooms WHERE hub_id = ? ORDER BY COALESCE(position, id), id'),
+  // Участники комнаты становятся участниками её канала (перенос старых комнат, приглашения из старых версий)
+  roomMembersToHub: db.prepare(`
+    INSERT OR IGNORE INTO hub_members (hub_id, user_id, created_at) SELECT ?, user_id, created_at FROM room_members WHERE room_id = ?
+  `),
+  setRoomHub: db.prepare('UPDATE rooms SET hub_id = ? WHERE id = ?'),
+  ownersOfLooseRooms: db.prepare('SELECT DISTINCT owner_id FROM rooms WHERE hub_id IS NULL'),
+  looseRoomsOf: db.prepare('SELECT id FROM rooms WHERE hub_id IS NULL AND owner_id = ? ORDER BY id'),
+  hubInvitesOf: db.prepare(`
+    SELECT i.hub_id, i.created_at, i.by_id FROM hub_invites i WHERE i.user_id = ? ORDER BY i.created_at DESC
+  `),
+  hubInvite: db.prepare('SELECT * FROM hub_invites WHERE hub_id = ? AND user_id = ?'),
+  hubInvited: db.prepare('SELECT user_id FROM hub_invites WHERE hub_id = ? ORDER BY created_at, user_id'),
+  addHubInvite: db.prepare('INSERT OR REPLACE INTO hub_invites (hub_id, user_id, by_id, created_at) VALUES (?, ?, ?, ?)'),
+  removeHubInvite: db.prepare('DELETE FROM hub_invites WHERE hub_id = ? AND user_id = ?'),
+  hubBans: db.prepare(`
+    SELECT u.*, b.created_at AS banned_at FROM hub_bans b JOIN users u ON u.id = b.user_id
+    WHERE b.hub_id = ? ORDER BY b.created_at
+  `),
+  isHubBanned: db.prepare('SELECT 1 FROM hub_bans WHERE hub_id = ? AND user_id = ?'),
+  addHubBan: db.prepare('INSERT OR IGNORE INTO hub_bans (hub_id, user_id, by_id, created_at) VALUES (?, ?, ?, ?)'),
+  removeHubBan: db.prepare('DELETE FROM hub_bans WHERE hub_id = ? AND user_id = ?'),
+
+  insertRoomMessage: db.prepare(
+    'INSERT INTO room_messages (room_id, from_id, text, attachments, preview, enc, reply_to, thread_root, mention_all, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ),
+
+  insertUpload: db.prepare('INSERT INTO uploads (id, owner_id, name, mime, size, kind, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'),
+  uploadById: db.prepare('SELECT * FROM uploads WHERE id = ?'),
+  useUpload: db.prepare('UPDATE uploads SET used = 1 WHERE id = ?'),
+  staleUploads: db.prepare('SELECT id FROM uploads WHERE used = 0 AND created_at < ?'),
+  deleteUpload: db.prepare('DELETE FROM uploads WHERE id = ?'),
+  roomMessageById: db.prepare('SELECT * FROM room_messages WHERE id = ?'),
+  deleteRoomMessage: db.prepare('DELETE FROM room_messages WHERE id = ?'),
+  roomMessages: db.prepare('SELECT * FROM room_messages WHERE room_id = ? AND thread_root IS NULL AND id < ? ORDER BY id DESC LIMIT ?'),
+  roomLastMessage: db.prepare('SELECT MAX(created_at) AS ts FROM room_messages WHERE room_id = ?'),
+  roomThread: db.prepare('SELECT * FROM room_messages WHERE thread_root = ? ORDER BY id LIMIT ?'),
+  roomThreadAuthors: db.prepare('SELECT DISTINCT from_id FROM room_messages WHERE thread_root = ?'),
+  roomReplyCounts: db.prepare('SELECT thread_root, COUNT(*) AS count FROM room_messages WHERE room_id = ? AND thread_root IS NOT NULL GROUP BY thread_root'),
+};
+
+export const users = {
+  byId: (id) => q.userById.get(id),
+  byUsername: (username) => q.userByName.get(username),
+  byEmail: (email) => q.userByEmail.get(email),
+  setEmail: (id, email, shown = email) => q.setEmail.run(email, shown, id),
+  setStatus: (id, status) => q.setStatus.run(status, id),
+  create({ username, passwordHash, displayName, avatarColor, email, emailShown = email }) {
+    const res = q.insertUser.run(username, passwordHash, displayName, avatarColor, Date.now());
+    if (email) q.setEmail.run(email, emailShown, Number(res.lastInsertRowid));
+    return users.byId(Number(res.lastInsertRowid));
+  },
+  updateProfile: (id, { displayName, avatarColor, bio, bannerColor, nameColor }) =>
+    q.updateProfile.run(displayName, avatarColor, bio, bannerColor, nameColor, id),
+  updatePassword: (id, passwordHash) => q.updatePassword.run(passwordHash, id),
+  revokeLegacyTokens: (id) => q.revokeLegacy.run(id),
+  setTotpPending: (id, secret) => q.setTotpPending.run(secret, id),
+  enableTotp: (id, step, recoveryHashes) => q.enableTotp.run(step, JSON.stringify(recoveryHashes), id),
+  disableTotp: (id) => q.disableTotp.run(id),
+  setTotpStep: (id, step) => q.setTotpStep.run(step, id),
+  setTotpRecovery: (id, recoveryHashes) => q.setTotpRecovery.run(JSON.stringify(recoveryHashes), id),
+  updateAvatar: (id, avatar) => q.updateAvatar.run(avatar, id),
+  updateBanner: (id, banner) => q.updateBanner.run(banner, id),
+  setGame: (id, game) => q.updateGame.run(game, id),
 };
 
 // Дружба взаимная: при добавлении записываем обе стороны
