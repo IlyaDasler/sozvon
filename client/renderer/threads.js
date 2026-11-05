@@ -48,7 +48,7 @@
     if (!box) return;
     box.innerHTML = '';
     if (!rows.length) {
-      box.innerHTML = '<div class="thread-empty muted small">Сообщений в треде пока нет</div>';
+      box.innerHTML = '<div class="thread-empty muted small">Сообщений в обсуждении пока нет</div>';
       return;
     }
     const root = rows[0];
@@ -76,7 +76,7 @@
     const btn = document.getElementById('thread-send');
     if (area) {
       area.disabled = !on;
-      area.placeholder = on ? 'Ответить в треде' : 'Треды недоступны на этом сервере';
+      area.placeholder = on ? 'Ответить в обсуждении' : 'Обсуждения недоступны на этом сервере';
     }
     if (btn) btn.disabled = !on;
   }
@@ -87,8 +87,8 @@
     thread = { rootId, roomId };
     panel().classList.remove('hidden');
     panel().classList.add('thread-open');
-    if (headEl()) headEl().textContent = 'Тред';
-    listEl().innerHTML = '<div class="thread-empty muted small">Загружаем тред…</div>';
+    if (headEl()) headEl().textContent = 'Обсуждение';
+    listEl().innerHTML = '<div class="thread-empty muted small">Загружаем обсуждение…</div>';
     try {
       const rows = await Api.get(`/rooms/${roomId}/messages/${rootId}/thread`);
       const known = new Map((state.roomHistory.get(roomId) || []).map((m) => [m.id, m]));
@@ -110,7 +110,7 @@
       thread.unsupported = oldServer;
       setComposerEnabled(!oldServer);
       listEl().innerHTML = oldServer
-        ? '<div class="thread-empty muted small">Треды появятся после обновления сервера до 3.0</div>'
+        ? '<div class="thread-empty muted small">Обсуждения появятся после обновления сервера до 3.0</div>'
         : `<div class="error small">${err.message}</div>`;
     }
   }
