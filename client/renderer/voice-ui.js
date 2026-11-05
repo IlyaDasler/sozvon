@@ -264,12 +264,14 @@ function updateTile(el, t, focused) {
 function renderStage() {
   const stage = $('stage');
   const strip = $('tile-strip');
-  const tiles = voiceTiles();
+  const tiles = voiceTiles().sort((a, b) => Number(Boolean(b.screen)) - Number(Boolean(a.screen)));
   if (focusedTile && !tiles.some((t) => t.key === focusedTile)) focusedTile = null;
   // Смотрим трансляцию — показываем её обычной плиткой в сетке, как на скрине
   // «Ваш экран»: не раздуваем на весь экран и не теряем остальных участников.
   // Развернуть можно осознанно: кликом по плитке, двойным щелчком или кнопкой.
   const focus = focusedTile || null;
+  const watchingScreen = tiles.some((t) => t.screen && !t.isMe && t.watching);
+  stage.classList.toggle('watching-screen', watchingScreen);
   stage.classList.toggle('has-focus', Boolean(focus));
   stage.classList.toggle('has-video', tiles.some((t) => t.video));
 
@@ -292,6 +294,9 @@ function renderStage() {
     for (const el of existing.values()) el.remove();
   };
   place(stage, stageTiles);
+  // Смотрим чужой экран — не оставляем сцену прокрученной вниз: плитка
+  // трансляции должна быть видна сразу, вместе с кнопкой «во весь экран».
+  if (tiles.some((t) => t.screen && !t.isMe && t.watching)) stage.scrollTop = 0;
   place(strip, stripTiles);
   // Плитки, которых больше нет в разговоре
   for (const el of $('call-panel').querySelectorAll('.tile')) {
