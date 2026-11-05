@@ -2564,3 +2564,20 @@ html[data-theme='glass'] .thread-count {
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.06);
 }
+
+/* Тред: отступы списка и никаких тредов внутри треда */
+html[data-theme='glass'] .thread-list {
+  padding: 8px 10px 10px 12px;
+}
+html[data-theme='glass'] .thread-panel .msg {
+  padding-left: 10px;
+  padding-right: 10px;
+  margin-left: 0;
+  margin-right: 0;
+}
+html[data-theme='glass'] .thread-panel .msg-tool.thread {
+  display: none;
+}
+html[data-theme='glass'] .thread-people {
+  margin-left: 0;
+}
