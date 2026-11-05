@@ -163,8 +163,23 @@
     }
   }
 
+  /** Развернуть тред на весь чат и вернуть обратно */
+  function toggleThreadFull() {
+    const p = panel();
+    if (!p) return;
+    const full = p.classList.toggle('thread-full');
+    const btn = document.getElementById('thread-expand');
+    if (btn) {
+      btn.title = full ? 'Свернуть' : 'Развернуть на весь чат';
+      btn.innerHTML = full
+        ? '<svg viewBox="0 0 24 24"><path d="M9 3v4a2 2 0 0 1-2 2H3M15 3v4a2 2 0 0 0 2 2h4M9 21v-4a2 2 0 0 0-2-2H3M15 21v-4a2 2 0 0 1 2-2h4"/></svg>'
+        : '<svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
+    }
+  }
+
   function bind() {
     document.getElementById('thread-close')?.addEventListener('click', closeThread);
+    document.getElementById('thread-expand')?.addEventListener('click', toggleThreadFull);
     form()?.addEventListener('submit', (e) => {
       e.preventDefault();
       sendReply();

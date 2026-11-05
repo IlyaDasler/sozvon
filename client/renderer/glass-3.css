@@ -2601,3 +2601,12 @@ html[data-theme='glass'] .msg-thread-row .thread-people {
 html[data-theme='glass'] .thread-panel .msg-tool.pin {
   display: none;
 }
+
+/* Тред: обычная ширина и режим «на весь чат» */
+html[data-theme='glass'] .thread-panel {
+  width: min(380px, 92%);
+}
+html[data-theme='glass'] .thread-panel.thread-full {
+  left: 12px;
+  width: auto;
+}
