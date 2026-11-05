@@ -46,7 +46,7 @@ function applyGlass() {
   root.style.setProperty('--glass-strong-a', String(Math.min(0.9, alpha * 1.9)));
   root.style.setProperty('--glass-blur', `${blur}px`);
   const tuning = $('glass-tuning');
-  if (tuning) tuning.classList.toggle('hidden', currentTheme() !== 'glass');
+  if (tuning) tuning.classList.add('hidden');
   const alphaInput = $('glass-alpha');
   const blurInput = $('glass-blur');
   if (alphaInput) {
