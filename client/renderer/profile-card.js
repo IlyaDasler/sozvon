@@ -7,6 +7,16 @@
 const profileCardEl = document.getElementById('profile-card');
 if (profileCardEl && profileCardEl.parentElement !== document.body) document.body.append(profileCardEl);
 
+// Подсказка «ниже есть ещё» исчезает, когда список доскроллен до конца
+if (profileCardEl) {
+  const syncEnd = () => {
+    const atEnd = profileCardEl.scrollTop + profileCardEl.clientHeight >= profileCardEl.scrollHeight - 4;
+    profileCardEl.classList.toggle('at-end', atEnd);
+  };
+  profileCardEl.addEventListener('scroll', syncEnd, { passive: true });
+  new MutationObserver(syncEnd).observe(profileCardEl, { childList: true, subtree: true });
+}
+
 const noteKey = (id) => `note:${state.me?.id}:${id}`;
 
 function section(title, content) {
