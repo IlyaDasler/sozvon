@@ -16,6 +16,13 @@ const { spawn } = require('node:child_process');
 const REPO = 'IlyaDasler/sozvon';
 const RELEASES_API = `https://api.github.com/repos/${REPO}/releases/latest`;
 const DOWNLOAD_PREFIX = `https://github.com/${REPO}/releases/download/`;
+// Прод-клиент обновляется с нашего сервера, без GitHub: Caddy отдаёт
+// /updates/mac/latest-mac.yml и архивы как обычные файлы.
+const PRODUCTION_BASE = 'https://135-106-226-12.sslip.io';
+function feedBase(base) {
+  const clean = String(base || '').replace(/\/+$/, '');
+  return clean === PRODUCTION_BASE ? clean + '/updates/mac' : null;
+}
 
 /** Путь к .app, из которого запущено приложение: …/Sozvon.app/Contents/MacOS/Sozvon */
 function bundlePath(exe = process.execPath) {
@@ -222,22 +229,24 @@ function getText(url) {
 }
 
 /** Скачать и распаковать обновление; возвращает путь к новой .app */
-async function prepare({ version, onProgress, onStage = () => {} }) {
+async function prepare({ version, onProgress, onStage = () => {}, base: clientBase = '' }) {
   const dir = workDir();
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
 
-  // Ссылку собираем по шаблону релиза: не зависим от GitHub API, у которого лимит запросов.
-  // Размер и sha512 берём из манифеста релиза — он публикуется вместе с архивом
+  // Прод-клиент берёт файлы с нашего сервера, остальные — с GitHub.
+  // Размер и sha512 берём из манифеста релиза — он публикуется вместе с архивом.
   const name = assetName(version);
-  const base = `${DOWNLOAD_PREFIX}v${version}/${name}`;
-  const manifest = await getText(`${DOWNLOAD_PREFIX}v${version}/latest-mac.yml`)
+  const feed = feedBase(clientBase);
+  const downloadBase = feed ? `${feed}/${name}` : `${DOWNLOAD_PREFIX}v${version}/${name}`;
+  const manifestUrl = feed ? `${feed}/latest-mac.yml` : `${DOWNLOAD_PREFIX}v${version}/latest-mac.yml`;
+  const manifest = await getText(manifestUrl)
     .then((text) => manifestEntry(text, name))
     .catch(() => null);
   if (!manifest?.sha512) throw new Error('Не удалось получить подписанный список файлов релиза');
 
   const zip = path.join(dir, name);
-  await downloadVerified(name, base, zip, manifest, onProgress);
+  await downloadVerified(name, downloadBase, zip, manifest, onProgress);
   // Архив меньше мегабайта — значит скачалась страница ошибки, а не приложение
   if (fs.statSync(zip).size < 1024 * 1024) throw new Error('Скачался не архив приложения');
   const head = Buffer.alloc(2);

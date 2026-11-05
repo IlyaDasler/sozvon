@@ -58,6 +58,7 @@
     if (cachedRoot) {
       cachedRoot.threadUsers = participants.slice(0, 5);
       cachedRoot.threadUserCount = participants.length;
+      cachedRoot.replies = Math.max(0, rows.length - 1);
     }
     const actions = threadActions(roomId);
     let prev = null;
@@ -156,7 +157,9 @@
       // В общую ленту не добавляем: ответ живёт только в треде
       await openThread({ id: thread.rootId, threadRoot: thread.rootId }, { roomId: thread.roomId });
       const root = history?.find((m) => m.id === thread.rootId);
-      if (root) root.replies = Number(root.replies || 0) + 1;
+      // Сервер уже вернул точное число ответов. Не прибавляем +1: это давало
+      // 6 вместо 5, когда событие треда и ответ на запрос приходили оба.
+      if (root && Number.isFinite(Number(saved.replies))) root.replies = Number(saved.replies);
       if (typeof renderRoomMessages === 'function') renderRoomMessages();
     } catch (err) {
       toast(err.message);
@@ -269,7 +272,7 @@
     const list = state.roomHistory.get(roomId);
     const root = list?.find((m) => m.id === rootId);
     if (root) {
-      root.replies = data.replies ?? Number(root.replies || 0) + 1;
+      root.replies = Number.isFinite(Number(data.replies)) ? Number(data.replies) : Number(root.replies || 0);
       if (Array.isArray(data.participants)) {
         root.threadUsers = data.participants.slice(0, 5);
         root.threadUserCount = data.participants.length;

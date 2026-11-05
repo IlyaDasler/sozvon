@@ -283,7 +283,31 @@ func (a *server) broadcastRoomMessage(roomID int64, message *store.Message, ment
 	}
 	body := withMeta(a.messageJSON(message), message)
 	if threadRoot != nil {
-		event := map[string]any{"type": "room:thread:new", "roomId": roomID, "rootId": *threadRoot, "message": body}
+		// Счётчик и участники треда считаем после вставки: клиент обновляет
+		// «Обсуждение · N» по этим полям, а не догадывается +1.
+		replies := message.Replies
+		participants := []int64{}
+		seen := map[int64]bool{}
+		if rows, err := a.store.ThreadMessages(roomID, *threadRoot); err == nil {
+			replies = int64(len(rows))
+			if replies > 0 {
+				replies--
+			}
+			for _, row := range rows {
+				if !seen[row.FromID] {
+					seen[row.FromID] = true
+					participants = append(participants, row.FromID)
+				}
+			}
+		}
+		event := map[string]any{
+			"type":         "room:thread:new",
+			"roomId":       roomID,
+			"rootId":       *threadRoot,
+			"message":      body,
+			"participants": participants,
+			"replies":      replies,
+		}
 		for _, id := range ids {
 			a.hub.Send(id, event)
 		}
