@@ -2014,8 +2014,8 @@ html[data-theme='glass'] .profile-card {
   padding-bottom: 8px;
 }
 html[data-theme='glass'] .profile-card .pc-scroll {
-  /* Область прокрутки начинается ниже аватара: контент не заезжает на него */
-  margin: 46px 0 2px;
+  /* Область прокрутки начинается ниже аватара, с запасом по воздуху */
+  margin: 58px 0 2px;
   padding-right: 2px;
 }
 
