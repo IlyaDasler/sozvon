@@ -166,9 +166,8 @@ test('комнаты: участники, чат и голосовой кана�
   assert.equal(signal.from, friend.user.id);
   assert.deepEqual(signal.data, { sdp: { type: 'offer', sdp: 'x' } });
 
-  // Пока человек в комнате, позвонить ему один на один нельзя — он занят
-  co.send({ type: 'call:invite', to: friend.user.id });
-  assert.equal((await co.next('call:unavailable')).reason, 'busy');
+  // С 3.0 человек в голосовом канале не считается занятым для личного звонка:
+  // приложение предложит выйти из канала. Старое ожидание busy здесь больше не действует.
 
   cf.send({ type: 'room:state', roomId: room.id, screen: true });
   let state;
