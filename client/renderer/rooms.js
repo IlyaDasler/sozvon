@@ -397,7 +397,6 @@ function roomItem(room) {
   tools.className = 'room-tools';
   if (room.kind === 'voice' && can(room, PERMS.connect) && state.room?.roomId !== room.id)
     if (room.kind === 'voice') tools.append(tool('chat', 'Открыть чат без голоса', () => openRoomChat(room.id)));
-    tools.append(tool('voice', 'Войти в голосовой канал', () => joinRoomVoice(room.id)));
   tools.append(tool('settings', 'Настройки комнаты', () => openRoomManage(room.id)));
   if (can(room, PERMS.invite)) tools.append(tool('invite', 'Пригласить друзей', () => openRoomInvite(room.id)));
   row.append(tools);
@@ -589,7 +588,7 @@ function renderRoomView() {
 
   // Кто сидит в голосе, пока ты сам не подключился
   const lobby = $('room-lobby');
-  lobby.classList.toggle('hidden', !isVoice || here);
+  lobby.classList.add('hidden');
   if (isVoice && !here) {
     lobby.replaceChildren();
     const people = (room.voice || []).map((p) => room.members.find((m) => m.id === p.userId)).filter(Boolean);

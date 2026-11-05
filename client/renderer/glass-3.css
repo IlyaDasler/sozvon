@@ -2234,3 +2234,8 @@ html[data-theme='glass'] .room-tool:hover svg {
 html[data-theme='glass'] .room-tool.chat {
   color: var(--text-2);
 }
+
+/* Лобби голосового канала больше не используется: голос — кликом по каналу, чат — иконкой */
+html[data-theme='glass'] #room-lobby {
+  display: none !important;
+}
