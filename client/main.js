@@ -51,7 +51,7 @@ const TITLEBAR_H = 32; // как .titlebar в styles.css
 
 const WINDOW_MIN = { width: 820, height: 540 };
 // Экран входа: компактное фиксированное окно
-const AUTH_SIZE = { width: 900, height: 620 };
+const AUTH_SIZE = { width: 1020, height: 700 };
 // macOS: приложение запущено прямо из DMG — система держит его в случайной папке (App Translocation).
 // Обновление подменить такую копию не может, а после перезагрузки она исчезает
 const TRANSLOCATED = process.platform === 'darwin' && /AppTranslocation/i.test(process.execPath);
