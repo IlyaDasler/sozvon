@@ -1370,3 +1370,20 @@ html[data-theme='glass'] .rail-tip {
     0 14px 34px rgba(2, 4, 10, 0.50),
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
+
+/* ---------- 105. Все всплывающие подсказки — в стиле темы ---------- */
+html[data-theme='glass'] .app-tip,
+html[data-theme='glass'] .tip {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(34, 41, 60, 0.94), rgba(18, 22, 36, 0.95));
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  backdrop-filter: blur(14px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 12px;
+  box-shadow:
+    0 14px 34px rgba(2, 4, 10, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
