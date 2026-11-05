@@ -1650,3 +1650,30 @@ html[data-theme='glass'] .composer-btn.send svg {
   display: block;
   margin: auto;
 }
+
+/* ---------- 116. Кнопки полосы: без рамки, подсвечивается сама иконка ---------- */
+html[data-theme='glass'] .composer-btn,
+html[data-theme='glass'] .composer-btn:hover,
+html[data-theme='glass'] .composer-btn:focus,
+html[data-theme='glass'] .composer-btn:focus-visible {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+html[data-theme='glass'] .composer-btn {
+  color: var(--muted);
+}
+html[data-theme='glass'] .composer-btn:hover:not(:disabled) {
+  color: var(--text);
+}
+html[data-theme='glass'] .composer-btn svg,
+html[data-theme='glass'] .composer-btn b,
+html[data-theme='glass'] .composer-btn > span {
+  display: block;
+  transition: transform 150ms cubic-bezier(.22, 1.15, .36, 1), color 150ms ease;
+}
+html[data-theme='glass'] .composer-btn:hover:not(:disabled) svg,
+html[data-theme='glass'] .composer-btn:hover:not(:disabled) b,
+html[data-theme='glass'] .composer-btn:hover:not(:disabled) > span {
+  transform: scale(1.14);
+}
