@@ -1281,3 +1281,21 @@ html[data-theme='glass'] .btn.primary:active,
   display: block;
   margin: auto;
 }
+
+/* ---------- 101. Один разделитель вместо двух ----------
+   Слева линия рисовалась дважды: у столбца каналов и у панели чатов.
+   Оставляем по одной волосяной линии на каждой границе — как у центральной панели */
+[data-theme='glass'] .rail {
+  border-right: 0;
+}
+[data-theme='glass'] .sidebar {
+  border-right: 1px solid var(--pane-line);
+}
+[data-theme='glass'] #members-panel {
+  border-left: 1px solid var(--pane-line);
+}
+[data-theme='glass'] .chat-head,
+[data-theme='glass'] .friends-head,
+[data-theme='glass'] .members-head {
+  border-bottom: 1px solid var(--pane-line);
+}
