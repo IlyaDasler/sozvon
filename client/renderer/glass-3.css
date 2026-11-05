@@ -2672,3 +2672,15 @@ html[data-theme='glass'] .thread-head .icon-btn + .icon-btn {
 html[data-theme='glass'] .thread-form .composer-btn {
   flex: none;
 }
+
+/* Сообщение занимает всю ширину стеклянного чата: плашка наведения и
+   панель ответов/реакций не должны обрываться на фиксированной ширине.
+   Когда открыт тред, лента уступает ему справа — панель действий
+   перестраивается под оставшееся место. */
+html[data-theme='glass'] .msg {
+  max-width: none;
+  width: auto;
+}
+html[data-theme='glass'] .chat:has(> #thread-panel:not(.hidden):not(.thread-full)) > .messages {
+  padding-right: calc(min(380px, 92%) + 24px);
+}

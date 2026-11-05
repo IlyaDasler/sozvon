@@ -422,10 +422,10 @@ async function startWithSplash() {
 
 ipcMain.handle('update:status', () => ({ ...updateStatus, current: app.getVersion() }));
 ipcMain.on('update:check', checkForUpdates);
-ipcMain.on('update:download', () => {
+ipcMain.on('update:download', (_event, clientBase) => {
   // macOS: качаем архив с GitHub сами, потому что системный автоапдейтер без подписи не работает
   if (manualUpdate()) {
-    downloadMacUpdate();
+    downloadMacUpdate(clientBase);
     return;
   }
   if (updateStatus.state !== 'available' && updateStatus.state !== 'error') return;
@@ -434,12 +434,13 @@ ipcMain.on('update:download', () => {
 });
 
 // Обновление для macOS: скачать zip и распаковать рядом во временной папке
-async function downloadMacUpdate() {
+async function downloadMacUpdate(clientBase = '') {
   if (updateStatus.state === 'downloading') return;
   setUpdateStatus({ state: 'downloading', percent: 0 });
   try {
     macUpdateApp = await macUpdate.prepare({
       version: updateStatus.version,
+      base: clientBase,
       onProgress: (percent) => setUpdateStatus({ state: 'downloading', percent }),
       onStage: () => setUpdateStatus({ state: 'unpacking', percent: 100 }),
     });

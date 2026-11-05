@@ -53,6 +53,22 @@ runTest(async () => {
   });
   if (!reply || reply.threadRoot !== root) throw new Error('Ответ не привязался к треду');
 
+  // Счётчик в основной ленте обновляется в реальном времени: 5 ответов — «5», не «4»
+  for (let i = 2; i <= 5; i++) {
+    await api('POST', `/rooms/${room.id}/messages`, {
+      text: `Ответ в треде ${i}`,
+      threadRootId: root,
+      attachmentIds: [],
+      replyToId: null,
+    }, b.token).catch(() => api('POST', `/rooms/${room.id}/messages`, { text: `Ответ в треде ${i}`, threadRootId: root }, b.token));
+  }
+  await sleep(1200);
+  const liveCounter = await js(win, `(() => {
+    const link = [...document.querySelectorAll('#room-messages .msg-thread-link')].find((el) => el.textContent.includes('Обсуждение'));
+    return link ? link.textContent.replace(/\\s+/g, ' ').trim() : '';
+  })()`);
+  if (!liveCounter.includes('5')) throw new Error(`Счётчик треда в реальном времени: «${liveCounter}» вместо «Обсуждение · 5»`);
+
   // Панель треда
   await js(win, `openThread({ id: ${root}, threadRoot: ${root} }, { kind: 'room', roomId: ${room.id} }); true`);
   await sleep(900);

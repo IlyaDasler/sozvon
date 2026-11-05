@@ -205,7 +205,7 @@ runTest(async () => {
   if (f.isWin && f.padRight < 120) throw new Error(`Панель трансляции налезет на кнопки окна: отступ ${f.padRight}px`);
   console.log('✔ панель трансляции не пересекается с кнопками окна');
 
-  // ---------- Вкладки: новая стеклянная плашка вместо перетекающей подложки ----------
+  // ---------- Вкладки: одна стеклянная плашка, которая переезжает к активной ----------
   await js(win, `document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); showScreen('main'); true`);
   await sleep(600);
   const tabsState = JSON.parse(await js(win, `(async () => {
@@ -215,19 +215,59 @@ runTest(async () => {
     second?.click();
     await new Promise((r) => setTimeout(r, 320));
     const active = root?.querySelector('button.active');
+    const ind = root?.querySelector('.glass-tab-indicator');
+    const ir = ind?.getBoundingClientRect();
+    const ar = active?.getBoundingClientRect();
     return JSON.stringify({
       oldPill: Boolean(oldPill),
       activeText: active?.textContent || '',
       activeBg: active ? getComputedStyle(active).backgroundColor : '',
-      activeBox: active ? Math.round(active.getBoundingClientRect().width) : 0,
+      activeBox: active ? Math.round(ar.width) : 0,
+      hasIndicator: Boolean(ind),
+      indicatorHidden: ind ? ind.hidden : true,
+      indicatorLeft: ir ? Math.round(ir.left) : 0,
+      indicatorWidth: ir ? Math.round(ir.width) : 0,
+      activeLeft: ar ? Math.round(ar.left) : 0,
+      activeWidth: ar ? Math.round(ar.width) : 0,
+      indicatorRadius: ind ? getComputedStyle(ind).borderRadius : '',
     });
   })()`));
-  if (tabsState.oldPill) throw new Error('Вкладки: вернулась перетекающая подложка, её убрали в 3.0');
+  if (tabsState.oldPill) throw new Error('Вкладки: вернулась старая подложка .liquid-pill');
   if (!tabsState.activeText) throw new Error('Вкладки: нет активной вкладки');
   if (!tabsState.activeBox) throw new Error('Вкладки: активная вкладка схлопнулась');
-  if (tabsState.activeBg === 'rgba(0, 0, 0, 0)' || tabsState.activeBg === 'transparent')
-    throw new Error('У активной вкладки нет стеклянной плашки');
-  console.log('✔ новая плашка активной вкладки на месте');
+  if (!tabsState.hasIndicator || tabsState.indicatorHidden) throw new Error('Вкладки: нет стеклянной плашки-указателя');
+  if (Math.abs(tabsState.indicatorLeft - tabsState.activeLeft) > 2)
+    throw new Error(`Плашка вкладки не совпала по X: ${tabsState.indicatorLeft} против ${tabsState.activeLeft}`);
+  if (Math.abs(tabsState.indicatorWidth - tabsState.activeWidth) > 3)
+    throw new Error(`Плашка вкладки не совпала по ширине: ${tabsState.indicatorWidth} против ${tabsState.activeWidth}`);
+  if (tabsState.indicatorRadius === '0px') throw new Error('У плашки вкладки нет скругления');
+  if (tabsState.activeBg !== 'rgba(0, 0, 0, 0)' && tabsState.activeBg !== 'transparent')
+    throw new Error(`У активной вкладки двойная заливка поверх плашки: ${tabsState.activeBg}`);
+  console.log('✔ стеклянная плашка вкладок двигается к активной');
+
+  // Вертикальные вкладки настроек — та же плашка, только едет по Y
+  await js(win, `openSettings('look'); true`);
+  await sleep(500);
+  const setNavTab = JSON.parse(await js(win, `(() => {
+    const root = document.getElementById('set-nav');
+    const active = root?.querySelector(':scope > button[data-tab].active');
+    const ind = root?.querySelector('.glass-tab-indicator');
+    const ar = active?.getBoundingClientRect();
+    const ir = ind?.getBoundingClientRect();
+    return JSON.stringify({
+      active: active?.textContent || '',
+      hasIndicator: Boolean(ind),
+      hidden: ind ? ind.hidden : true,
+      topDiff: ar && ir ? Math.round(ir.top - ar.top) : 999,
+      heightDiff: ar && ir ? Math.round(ir.height - ar.height) : 999,
+    });
+  })()`));
+  if (!setNavTab.active) throw new Error('Настройки: нет активной вкладки');
+  if (!setNavTab.hasIndicator || setNavTab.hidden) throw new Error('Настройки: нет вертикальной плашки');
+  if (Math.abs(setNavTab.topDiff) > 2) throw new Error(`Вертикальная плашка не совпала по Y: ${setNavTab.topDiff}`);
+  if (Math.abs(setNavTab.heightDiff) > 3) throw new Error(`Вертикальная плашка не совпала по высоте: ${setNavTab.heightDiff}`);
+  await js(win, 'closeSettings(); true');
+  console.log('✔ вертикальная плашка настроек на месте');
 
   // ---------- Радиокнопки: круг 18 px, текст не наезжает ----------
   await js(win, `document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); selectContact(${b.user.id}); true`);

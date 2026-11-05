@@ -1220,6 +1220,11 @@ function messageRow(m, prev, list, actions, shown, fresh) {
     m.editedAt,
     m.reactions,
     m.pinned,
+    // Счётчик и участники обсуждения: без них строка кэшировалась со старым
+    // «Обсуждение · 4», хотя в данных уже 5 ответов.
+    m.replies,
+    m.threadUserCount,
+    m.threadUsers?.join(','),
     reply,
     mentionsMe(m),
     actions.canDelete(m),
@@ -2858,7 +2863,7 @@ async function startUpdate() {
   updateRequested = true;
   $('update-error').textContent = '';
   if (updateStatus.state === 'ready') return installUpdate();
-  window.desktop.update.download();
+  window.desktop.update.download(Api.base);
   renderUpdate();
 }
 
