@@ -61,7 +61,7 @@
     const src = scenes[phase];
     // Кадры прогреты на старте; слой меняем сразу, плавность даёт CSS-переход.
     if (token !== serial) return;
-    next.style.backgroundImage = `url("${src}")`;
+    next.style.setProperty("--scene", `url("${src}")`);
     void next.offsetWidth;
     next.classList.add('is-visible');
     prev.classList.remove('is-visible');
@@ -73,7 +73,7 @@
   function paint(ms = Date.now()) {
     const next = phaseAt(ms, zone());
     if (current === '') {
-      layers[0].style.backgroundImage = `url("${scenes[next]}")`;
+      layers[0].style.setProperty("--scene", `url("${scenes[next]}")`);
       layers[0].classList.add('is-visible');
       current = next;
       root.dataset.daypart = next;
