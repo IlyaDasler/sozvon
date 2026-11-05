@@ -1,5 +1,5 @@
-/* Фон темы «стекло»: четыре состояния одного статичного пейзажа.
-   Картинка вписывается в окно целиком, а поля заполняет её размытая копия.
+/* Фон темы «стекло»: один статичный пейзаж, четыре состояния света.
+   Фон заполняет всё окно при любом размере: cover + центр.
    Переход — перекрёстное затухание двух слоёв, без слайдшоу. */
 
 .lg-aurora {
@@ -7,34 +7,21 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: #070a12;
+  background-color: #070a12;
+  background-image: var(--scene);
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
   opacity: 0;
   transition: opacity 1200ms cubic-bezier(.22, .61, .36, 1);
   display: none;
 }
-/* Мягкое заполнение полей: та же сцена, растянутая cover и размытая. */
-.lg-aurora::before {
-  content: '';
-  position: absolute;
-  inset: -3%;
-  background-image: var(--scene);
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-  filter: blur(26px) brightness(0.52) saturate(0.85);
-  transform: scale(1.06);
-}
-/* Сам кадр: целиком в окне, без обрезки композиции. */
 .lg-aurora::after {
   content: '';
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(180deg, rgba(4, 8, 16, 0.10), rgba(4, 8, 16, 0.05)),
-    var(--scene);
-  background-position: center;
-  background-size: 100% 100%, contain;
-  background-repeat: no-repeat;
+  background: linear-gradient(180deg, rgba(4, 8, 16, 0.12), rgba(4, 8, 16, 0.06));
+  pointer-events: none;
 }
 .lg-aurora.is-visible { opacity: 1; z-index: 0; }
 html[data-theme='glass'] .lg-aurora { display: block; }
