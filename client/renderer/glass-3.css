@@ -1868,3 +1868,11 @@ html[data-theme='glass'] .composer-bar {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.03);
 }
+
+/* При фокусе рамки и скругление сохраняются */
+html[data-theme='glass'] .composer-bar:focus-within {
+  border-top: 1px solid var(--pane-line);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
