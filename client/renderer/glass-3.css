@@ -1959,10 +1959,13 @@ html[data-theme='glass'] .profile-card .pc-scroll::-webkit-scrollbar-track {
   /* Полоса короче карточки: отступы сверху и снизу */
   margin: 14px 0;
 }
-html[data-theme='glass'] .profile-card .pc-scroll::-webkit-scrollbar-button {
+html[data-theme='glass'] .profile-card .pc-scroll::-webkit-scrollbar-button,
+html[data-theme='glass'] .profile-card .pc-scroll::-webkit-scrollbar-button:vertical:start:decrement,
+html[data-theme='glass'] .profile-card .pc-scroll::-webkit-scrollbar-button:vertical:end:increment {
   display: none;
   width: 0;
   height: 0;
+  background: transparent;
 }
 html[data-theme='glass'] .profile-card .pc-scroll::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.18);
@@ -2003,4 +2006,13 @@ html[data-theme='glass'] .profile-card .pc-scroll {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+/* Полоса скролла в нижней части карточки: баннер закреплён, скроллится тело */
+html[data-theme='glass'] .profile-card {
+  padding-bottom: 8px;
+}
+html[data-theme='glass'] .profile-card .pc-scroll {
+  margin: 0 0 2px;
+  padding-right: 2px;
 }

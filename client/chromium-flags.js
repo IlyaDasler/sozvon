@@ -4,6 +4,8 @@
 // ускорения, свой захват экрана не принимается. Трансляцию и камеру мы и так кодируем программно (VP9/VP8).
 function applyChromiumFlags(app) {
   app.commandLine.appendSwitch('disable-accelerated-video-encode');
+  // Классические скроллбары вместо системных оверлейных: их можно оформлять и укорачивать
+  app.commandLine.appendSwitch('disable-features', 'OverlayScrollbar');
 }
 
 module.exports = { applyChromiumFlags };
