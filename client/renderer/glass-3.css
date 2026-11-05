@@ -1756,3 +1756,21 @@ html[data-theme='glass'] .kind input:checked + .kind-body svg {
 html[data-theme='glass'] .room-card .kind-choice {
   margin-bottom: 20px;
 }
+
+/* Отступ подписи «Название» от карточек типа канала */
+html[data-theme='glass'] .room-card .kind-choice {
+  margin-bottom: 26px;
+}
+html[data-theme='glass'] .room-card .field > span {
+  display: block;
+  margin-top: 4px;
+}
+
+/* Карточки типа не должны вылезать за свою сетку и наезжать на подпись */
+html[data-theme='glass'] .kind {
+  display: flex;
+}
+html[data-theme='glass'] .kind-body {
+  height: auto;
+  flex: 1;
+}
