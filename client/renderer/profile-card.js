@@ -211,7 +211,6 @@ function openProfileCard(userId, anchor) {
     }
     body.append(actions);
   }
-  card.append(body);
 
   // Прокручиваем только содержимое: баннер и аватар остаются на месте,
   // а полоса скролла живёт в нижней части карточки и не задевает углы
