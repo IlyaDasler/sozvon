@@ -3,6 +3,10 @@
 // Сверх того: где человек сейчас в голосе, общие комнаты, его роль в открытой комнате, личная заметка
 // (видна только вам) и быстрые действия — написать, позвонить или добавить в друзья.
 
+// Карточка вне сайдбара: внутри панели её обрезают overflow и backdrop-filter
+const profileCardEl = document.getElementById('profile-card');
+if (profileCardEl && profileCardEl.parentElement !== document.body) document.body.append(profileCardEl);
+
 const noteKey = (id) => `note:${state.me?.id}:${id}`;
 
 function section(title, content) {

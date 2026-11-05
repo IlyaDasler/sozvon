@@ -1913,3 +1913,39 @@ html[data-theme='glass'] .friend-btn.danger:hover:not(:disabled) {
     inset 0 1px 0 rgba(255, 255, 255, 0.10),
     inset 0 0 0 1px rgba(255, 110, 110, 0.38);
 }
+
+/* Карточка профиля — стекло */
+html[data-theme='glass'] .profile-card {
+  z-index: 80; /* выше панелей чата */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0) 100%),
+    rgba(18, 23, 38, 0.56);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
+  backdrop-filter: blur(6px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  box-shadow:
+    0 24px 60px rgba(2, 4, 10, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  overflow-y: auto;
+}
+html[data-theme='glass'] .profile-card .pc-banner {
+  height: 92px;
+  border-radius: 16px 16px 0 0;
+  background-image:
+    linear-gradient(180deg, rgba(8, 10, 18, 0.10), rgba(8, 10, 18, 0.55)),
+    var(--banner);
+}
+html[data-theme='glass'] .profile-card .pc-avatar.avatar {
+  box-shadow: 0 0 0 6px rgba(18, 23, 38, 0.95);
+}
+html[data-theme='glass'] .profile-card .pc-avatar .status {
+  border-color: rgba(18, 23, 38, 0.95);
+}
+html[data-theme='glass'] .profile-card .pc-body {
+  margin: 52px 12px 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
