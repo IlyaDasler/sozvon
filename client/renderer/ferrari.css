@@ -80,3 +80,11 @@
 [data-theme='ferrari'] :focus-visible {
   outline-color: color-mix(in srgb, var(--accent) 80%, transparent);
 }
+
+/* Фирменный красный не должен подменяться системным акцентом Windows:
+   у Ferrari это часть темы, а не пользовательская настройка. */
+html[data-theme='ferrari'] {
+  --accent: #e10600 !important;
+  --accent-2: #f2c200 !important;
+  --accent-hover: #c40500 !important;
+}
