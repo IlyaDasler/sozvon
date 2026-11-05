@@ -89,18 +89,22 @@ class SfuSession extends MediaSession {
       if (old) await lp.unpublishTrack(old, false).catch(() => {});
       delete this.published[slot];
       if (!track) return;
-      const m = SCREEN_MODES[this.local.screenMode];
+      const storedMode = this.local.screenMode || DEFAULT_SCREEN_MODE;
+      const m = SCREEN_MODES[storedMode] || SCREEN_MODES[DEFAULT_SCREEN_MODE];
       const options = {
         source: LK_SOURCE[slot],
         name: slot,
         ...(slot === 'mic' && { dtx: true, red: true }),
         ...(slot === 'cam' && { simulcast: true }),
-        // Для экрана LiveKit берёт screenShareEncoding, а не videoEncoding; без него — 15 к/с и 2,5 Мбит/с при любом режиме
-        // Нехватка канала: игра теряет чёткость, а не кадры (LiveKit для экрана держит разрешение); «текст» — наоборот
+        // Для экрана LiveKit берёт screenShareEncoding, а не videoEncoding.
+        // VP8 без SVC/SVC-слоёв не даёт серверу незаметно выбрать 640p;
+        // целевую скорость и FPS задаём обоими полями на случай версии SDK.
         ...(slot === 'screen' && {
           simulcast: false,
-          videoCodec: 'vp9',
-          screenShareEncoding: { maxBitrate: m.bitrate, maxFramerate: m.frameRate },
+          videoCodec: 'vp8',
+          videoEncoding: { maxBitrate: m.bitrate, maxFramerate: m.frameRate, priority: 'high' },
+          screenShareEncoding: { maxBitrate: m.bitrate, maxFramerate: m.frameRate, priority: 'high' },
+          screenShareSimulcastLayers: [],
           degradationPreference: 'maintain-resolution',
         }),
       };
