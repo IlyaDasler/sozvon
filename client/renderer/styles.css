@@ -1864,7 +1864,9 @@ kbd {
 /* ---------- Р Р€РЎвЂЎР В°РЎРѓРЎвЂљР Р…Р С‘Р С”Р С‘ РЎРѓР С—РЎР‚Р В°Р Р†Р В° ---------- */
 
 .members-panel { position: relative; width: var(--members-w, 240px); flex: none; display: flex; flex-direction: column; background: var(--bg-2); border: 1px solid var(--line); border-width: 1px 0 0 1px; }
-.members-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 6px 12px; }
+/* Список участников: только вертикальная прокрутка — горизонтальный бегунок
+   вылезал внизу панели тонкой скруглённой полоской */
+.members-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 6px 12px; }
 .members-head { display: flex; align-items: center; gap: 6px; height: var(--head-h); margin: 0 -8px; padding: 0 var(--head-pad-x); border-bottom: 1px solid var(--line); }
 .members-group {
   padding: 10px 8px 3px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
