@@ -1793,3 +1793,27 @@ html[data-theme='glass'] .kind-body {
 html[data-theme='glass'] .kind-body svg {
   margin-bottom: 2px;
 }
+
+/* Колонки типа канала строго равные, отступы слева и справа одинаковые */
+html[data-theme='glass'] .room-card .kind-choice {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+html[data-theme='glass'] .kind-body {
+  min-width: 0;
+}
+
+/* Окно новой комнаты — заметно прозрачнее */
+html[data-theme='glass'] #room-create .modal-card {
+  background: linear-gradient(180deg, rgba(30, 35, 50, 0.86), rgba(16, 20, 32, 0.90));
+}
+
+/* Карточка заполняет свою ячейку целиком, без лишнего смещения */
+html[data-theme='glass'] .kind {
+  display: block;
+  height: 100%;
+}
+html[data-theme='glass'] .kind-body {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
