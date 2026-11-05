@@ -570,6 +570,8 @@ body.has-voice .update-bar { bottom: 124px; }
 .tile.has-video .tile-avatar { display: none; }
 .tile.screen video { object-fit: contain; }
 .tile.screen { aspect-ratio: 16 / 9; }
+/* Смотрим экран: сцена не должна «прокручивать» первую плитку за пределы панели */
+.stage.watching-screen { overflow-y: hidden; align-content: flex-start; }
 video.mirror { transform: scaleX(-1); }
 .tile-label {
   position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px);
@@ -585,6 +587,7 @@ video.mirror { transform: scaleX(-1); }
 .tile-tools {
   position: absolute; right: 6px; top: 6px;
   display: flex; align-items: center; gap: 4px;
+  z-index: 4;
   opacity: 0; transition: opacity .15s;
 }
 .tile:hover .tile-tools, .tile.screen .tile-tools, .tile:fullscreen .tile-tools { opacity: 1; }
