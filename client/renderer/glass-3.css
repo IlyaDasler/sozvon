@@ -1113,6 +1113,7 @@ html[data-theme='glass'] .composer {
   background: rgba(7, 10, 18, 0.26);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+  align-items: flex-end;
 }
 html[data-theme='glass'] .composer-bar {
   width: 100%;
@@ -1552,15 +1553,20 @@ html[data-theme='glass'] .me-panel {
 }
 html[data-theme='glass'] .composer {
   box-sizing: border-box;
-  height: 48px;
+  height: auto;
   min-height: 48px;
-  padding: 0 14px;
+  padding: 5px 14px 10px;
   margin: 0 0 10px;   /* такой же отступ снизу, как у профиля */
-  align-items: center;
+  align-items: flex-end;
 }
 html[data-theme='glass'] #message-input,
 html[data-theme='glass'] #room-message-input,
 html[data-theme='glass'] #thread-input {
+  field-sizing: content;
   height: 32px;
   min-height: 32px;
+  max-height: 160px;
+  padding: 5px 0;
+  line-height: 22px;
+  overflow-y: auto;
 }

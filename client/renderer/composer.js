@@ -18,10 +18,19 @@ const COMPOSER_ICONS = {
 const formatSize = (bytes) =>
   bytes < 1024 ? `${bytes} Б` : bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} КБ` : `${(bytes / 1024 / 1024).toFixed(1)} МБ`;
 
+const COMPOSER_MAX = 160;
 function autoGrow(area) {
-  area.style.height = 'auto';
-  area.style.height = `${area.scrollHeight + 2}px`;
+  // Chromium умеет field-sizing: content — рост и предел делает CSS,
+  // иначе считаем высоту вручную с тем же пределом
+  if (window.CSS && CSS.supports('field-sizing: content')) {
+    area.style.height = '';
+    return;
+  }
+  const wanted = area.scrollHeight;
+  area.style.height = `${Math.min(wanted, COMPOSER_MAX)}px`;
+  area.style.overflowY = wanted > COMPOSER_MAX ? 'auto' : 'hidden';
 }
+
 
 // Загрузка с ходом в процентах (у fetch его нет)
 function uploadFile(file, onProgress) {
