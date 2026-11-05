@@ -2748,3 +2748,31 @@ body.version-blocked { overflow: hidden; }
 html.auth-screen #win-max {
   display: none;
 }
+
+/* ---------- Камера: выбор устройства и живая проверка ---------- */
+.cam-select {
+  width: 100%; min-height: 38px; display: flex; align-items: center;
+  padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-s);
+  background: var(--bg-4); color: var(--text); font: inherit; text-align: left; cursor: pointer;
+}
+.cam-select:hover { background: var(--bg-5); }
+.camera-card { width: min(560px, calc(100% - 32px)); }
+.camera-list { display: grid; gap: 6px; max-height: 150px; overflow-y: auto; margin: 12px 0; }
+.camera-option {
+  display: flex; align-items: center; gap: 8px; padding: 9px 11px;
+  border: 1px solid var(--line); border-radius: 9px; background: var(--bg-4);
+  color: var(--text); font: inherit; text-align: left; cursor: pointer;
+}
+.camera-option:hover { background: var(--bg-5); }
+.camera-option.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.camera-option .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.camera-option.active .dot { background: var(--accent); }
+.camera-preview {
+  width: 100%; aspect-ratio: 16 / 9; max-height: 320px; display: block;
+  object-fit: cover; border-radius: 12px; background: #05070c; margin: 8px 0;
+}
+html[data-theme='glass'] .camera-card { background: #121722 !important; }
+html[data-theme='glass'] #camera-picker { background: rgba(2, 5, 10, 0.82) !important; }
+html[data-theme='glass'] .cam-select { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
+/* Скрытый нативный select камеры: видимый выбор — .cam-select и модалка */
+#set-cam { display: none !important; }

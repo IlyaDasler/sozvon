@@ -108,6 +108,9 @@
 
   function enhance(select) {
     if (select.dataset.gsReady === '1' || select.closest('.gs-select')) return;
+    // У камеры свой список с живым превью; нативный/стеклянный select
+    // только дублировал бы его и открывал пустое меню.
+    if (select.id === 'set-cam') return;
     select.dataset.gsReady = '1';
     select.classList.add('gs-native');
     select.tabIndex = -1;
