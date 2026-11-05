@@ -51,7 +51,10 @@
   });
 
   // Прокрутка уводит карточку от якоря — закрываем
-  window.addEventListener('scroll', () => {
+  window.addEventListener('scroll', (event) => {
+    // Скролл внутри самой карточки не закрывает её
+    const target = event.target;
+    if (target && target.closest && target.closest('.profile-card')) return;
     if (shownCard()) closeProfileCard();
   }, { passive: true, capture: true });
   window.__previewReady = true;
