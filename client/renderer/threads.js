@@ -20,7 +20,7 @@
     area.value = m.plain?.text || '';
     area.focus();
     const btn = document.getElementById('thread-send');
-    if (btn) btn.textContent = '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c';
+    if (btn) btn.title = '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c';
     setComposerEnabled(true);
   }
 
@@ -29,7 +29,7 @@
     editing = null;
     const area = input(); if (area) area.value = '';
     const btn = document.getElementById('thread-send');
-    if (btn) btn.textContent = '\u041e\u0442\u0432\u0435\u0442\u0438\u0442\u044c';
+    if (btn) btn.title = '\u041e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c';
   }
 
   function threadActions(roomId) {
@@ -131,7 +131,7 @@
       const target = editing;
       editing = null;
       const sendBtn = document.getElementById('thread-send');
-      if (sendBtn) sendBtn.textContent = '\u041e\u0442\u0432\u0435\u0442\u0438\u0442\u044c';
+      if (sendBtn) sendBtn.title = '\u041e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c';
       try {
         await saveEdit(target.m, target.chat, next);
         area.value = '';
@@ -180,9 +180,52 @@
     }
   }
 
+  /** Файлы и гифки в треде: шифруем, загружаем и отправляем ответом в тред */
+  async function sendThreadFiles(files) {
+    if (!thread || !files.length) return;
+    const rootId = thread.rootId;
+    const roomId = thread.roomId;
+    try {
+      for (const file of files) {
+        const { done } = uploadEncrypted(file, () => {});
+        const attachment = await done;
+        const { body } = await encryptOutgoing(roomConvOf(roomId), { text: '', files: [attachment] });
+        body.threadRootId = rootId;
+        await Api.post(`/rooms/${roomId}/messages`, body);
+      }
+      await openThread({ id: rootId, threadRoot: rootId }, { roomId });
+      if (typeof renderRoomMessages === 'function') renderRoomMessages();
+    } catch (err) {
+      toast(err.message);
+    }
+  }
+
   function bind() {
     document.getElementById('thread-close')?.addEventListener('click', closeThread);
     document.getElementById('thread-expand')?.addEventListener('click', toggleThreadFull);
+
+    // Файлы, смайлики и гифки — как в обычном чате
+    const fileInput = document.getElementById('thread-file');
+    document.getElementById('thread-attach')?.addEventListener('click', () => fileInput?.click());
+    fileInput?.addEventListener('change', async () => {
+      const files = [...fileInput.files];
+      fileInput.value = '';
+      await sendThreadFiles(files);
+    });
+    const threadComposer = {
+      area: input(),
+      emojiBtn: document.getElementById('thread-emoji'),
+      gifBtn: document.getElementById('thread-gif'),
+      sendFileNow: (file) => sendThreadFiles([file]),
+    };
+    document.getElementById('thread-emoji')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (typeof toggleEmojiPicker === 'function') toggleEmojiPicker(threadComposer);
+    });
+    document.getElementById('thread-gif')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (typeof toggleGifPicker === 'function') toggleGifPicker(threadComposer);
+    });
     form()?.addEventListener('submit', (e) => {
       e.preventDefault();
       sendReply();

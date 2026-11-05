@@ -2532,12 +2532,22 @@ html[data-theme='glass'] #thread-input {
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.04);
 }
+html[data-theme='glass'] .thread-form .composer-btn,
 html[data-theme='glass'] #thread-send {
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 10px;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-2);
+  display: grid;
+  place-items: center;
+}
+html[data-theme='glass'] .thread-form .composer-btn:hover,
+html[data-theme='glass'] #thread-send:hover {
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--text);
 }
 html[data-theme='glass'] #thread-send:hover {
@@ -2630,4 +2640,13 @@ html[data-theme='glass'] .thread-resize:hover {
 }
 html[data-theme='glass'] .thread-panel.thread-full .thread-resize {
   display: none;
+}
+
+/* Отступ между кнопками в шапке треда */
+html[data-theme='glass'] .thread-head .icon-btn + .icon-btn {
+  margin-left: 6px;
+}
+/* Поле треда: иконки как в обычном чате */
+html[data-theme='glass'] .thread-form .composer-btn {
+  flex: none;
 }
