@@ -1233,6 +1233,7 @@ $('event-remind').onclick = (e) => {
 };
 
 $('event-cancel').onclick = closeEventCreate;
+  $('event-x').onclick = closeEventCreate;
 $('event-create').onclick = (e) => {
   if (e.target === $('event-create')) closeEventCreate();
 };
