@@ -2325,3 +2325,15 @@ html[data-theme='glass'] .msg:hover {
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
+
+/* Сообщение: воздух вокруг содержимого при подсветке */
+html[data-theme='glass'] .msg {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+html[data-theme='glass'] .msg.cont {
+  padding-top: 4px;
+}
+html[data-theme='glass'] .msg:not(.cont) {
+  margin-top: 8px;
+}
