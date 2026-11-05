@@ -1186,7 +1186,7 @@ html[data-theme='glass'] .folder-tile .mini {
 /* Развёрнутая группа каналов: дети той же ширины и того же размера,
    без наложения и без «раздутой» подложки вокруг плиток. */
 html[data-theme='glass'] .rail-folder,
-html[data-theme='glass'] .rail-folder.open {
+htmlhtml[data-theme='glass'] .rail-folder.open {
   width: 78px;
   gap: 8px;
   padding: 0;
@@ -1298,4 +1298,35 @@ html[data-theme='glass'] .btn.primary:active,
 [data-theme='glass'] .friends-head,
 [data-theme='glass'] .members-head {
   border-bottom: 1px solid var(--pane-line);
+}
+
+/* ---------- 102. Группа каналов: нейтральная папка и общая рамка ---------- */
+html[data-theme='glass'] .rail-folder .folder-tile {
+  background: rgba(255, 255, 255, 0.055);
+  color: color-mix(in srgb, var(--folder-color, var(--accent)) 55%, var(--text-2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+html[data-theme='glass'] .rail-folder .folder-tile svg {
+  fill: color-mix(in srgb, var(--folder-color, var(--accent)) 40%, transparent);
+}
+
+/* Раскрытая группа — одна стеклянная рамка вокруг каналов */
+html[data-theme='glass'] .rail-folder.open {
+  width: 62px;
+  gap: 6px;
+  padding: 6px 0;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+}
+html[data-theme='glass'] .rail-folder.open .rail-item {
+  width: 62px;
+  min-height: 42px;
+}
+html[data-theme='glass'] .rail-folder.open .rail-tile {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
 }
