@@ -1277,16 +1277,36 @@ function messageRow(m, prev, list, actions, shown, fresh) {
   const chips = reactionsView(m);
   if (chips) body.append(chips);
   row.append(body);
-  if (actions?.chat?.kind === 'room' && Number(m.replies || 0) > 0) {
-    const link = document.createElement('button');
-    link.type = 'button';
-    link.className = 'msg-thread-link';
-    link.textContent = 'Обсуждение · ' + m.replies;
-    link.onclick = (e) => {
-      e.stopPropagation();
-      openThread(m, actions.chat);
-    };
-    body.append(link);
+  if (actions?.chat?.kind === 'room' && (Number(m.replies || 0) > 0 || m.threadUsers?.length)) {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'msg-thread-row';
+    if (m.threadUsers?.length) {
+      const strip = document.createElement('div');
+      strip.className = 'thread-people';
+      for (const uid of m.threadUsers) {
+        const u = typeof userById === 'function' ? userById(uid) : null;
+        if (u && typeof makeAvatar === 'function') strip.append(makeAvatar(u, 'small'));
+      }
+      if (m.threadUserCount > m.threadUsers.length) {
+        const more = document.createElement('span');
+        more.className = 'thread-more';
+        more.textContent = '+\u2009' + (m.threadUserCount - m.threadUsers.length);
+        strip.append(more);
+      }
+      rowEl.append(strip);
+    }
+    if (Number(m.replies || 0) > 0) {
+      const link = document.createElement('button');
+      link.type = 'button';
+      link.className = 'msg-thread-link';
+      link.textContent = '\u041e\u0431\u0441\u0443\u0436\u0434\u0435\u043d\u0438\u0435 \u00b7 ' + m.replies;
+      link.onclick = (e) => {
+        e.stopPropagation();
+        openThread(m, actions.chat);
+      };
+      rowEl.append(link);
+    }
+    body.append(rowEl);
   }
   if (actions?.chat) {
     const tools = document.createElement('div');

@@ -2581,3 +2581,14 @@ html[data-theme='glass'] .thread-panel .msg-tool.thread {
 html[data-theme='glass'] .thread-people {
   margin-left: 0;
 }
+
+/* Обсуждение: аватарки слева от кнопки */
+html[data-theme='glass'] .msg-thread-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+html[data-theme='glass'] .msg-thread-row .thread-people {
+  margin-top: 0;
+}
