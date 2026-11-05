@@ -349,6 +349,9 @@ class LocalMedia {
     this.screenMode = DEFAULT_SCREEN_MODE;
     this.screenText = false;
     this.onChange = onChange;
+    this.screenOutCtx = null;
+    this.screenOutGain = null;
+    this.screenOutRaw = null;
   }
 
   async openMic(settings) {
@@ -422,6 +425,35 @@ class LocalMedia {
     this.stopScreenAudio();
     this.replace('screenAudio', null);
     this.replace('screen', null);
+  }
+
+  /** Своя трансляция: усиление звука до отправки, чтобы ползунок работал у зрителя. */
+  prepareScreenAudio(track) {
+    this.stopScreenAudio();
+    if (!track) return null;
+    try {
+      const ctx = new AudioContext();
+      const source = ctx.createMediaStreamSource(new MediaStream([track]));
+      const gain = ctx.createGain();
+      const dest = ctx.createMediaStreamDestination();
+      source.connect(gain).connect(dest);
+      gain.gain.value = 1;
+      this.screenOutCtx = ctx;
+      this.screenOutGain = gain;
+      this.screenOutRaw = track;
+      ctx.resume?.().catch(() => {});
+      return dest.stream.getAudioTracks()[0];
+    } catch {
+      return track;
+    }
+  }
+
+  stopScreenAudio() {
+    this.screenOutRaw?.stop?.();
+    this.screenOutRaw = null;
+    this.screenOutGain = null;
+    this.screenOutCtx?.close?.().catch(() => {});
+    this.screenOutCtx = null;
   }
 
   replace(slot, track) {
@@ -963,8 +995,8 @@ class MediaSession {
   /** Громкость звука трансляции этого человека — отдельно от его голоса */
   setScreenVolume(id, volume) {
     this.screenVolumes[id] = volume;
-    if (id === this.selfId && this.screenOutGain) {
-      this.screenOutGain.gain.value = Math.max(0, volume) * 1.8;
+    if (id === this.selfId && this.local?.screenOutGain) {
+      this.local.screenOutGain.gain.value = Math.max(0, volume) * 1.8;
     }
     const peer = this.peers.get(id);
     if (peer) this.applyPeerAudio(peer);
