@@ -193,13 +193,26 @@ const swapLog = () => path.join(workDir(), 'swap.log');
 /** Скачиваем файл и проверяем, что он совпал с latest-mac.yml: без этого можно исполнить
  *  подменённый архив. Проверка по sha512 — как у electron-updater на Windows */
 async function downloadVerified(name, url, dest, manifest, onProgress) {
-  await download(url, dest, onProgress, manifest?.size || 0);
-  const size = fs.statSync(dest).size;
-  if (manifest?.size && size !== manifest.size) throw new Error('Архив скачался не полностью');
-  if (!manifest?.sha512) throw new Error('Не удалось проверить целостность обновления');
-  const hash = crypto.createHash('sha512').update(fs.readFileSync(dest)).digest('base64');
-  if (hash !== manifest.sha512) throw new Error('Обновление повреждено: контрольная сумма не совпала');
-  return size;
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await download(url, dest, onProgress, manifest?.size || 0);
+      const size = fs.statSync(dest).size;
+      if (manifest?.size && size !== manifest.size) throw new Error('Архив скачался не полностью');
+      if (!manifest?.sha512) throw new Error('Не удалось проверить целостность обновления');
+      const hash = crypto.createHash('sha512').update(fs.readFileSync(dest)).digest('base64');
+      if (hash !== manifest.sha512) throw new Error('Обновление повреждено: контрольная сумма не совпала');
+      return size;
+    } catch (err) {
+      lastError = err;
+      try { fs.rmSync(dest, { force: true }); } catch {}
+      if (attempt === 0) {
+        onProgress(0);
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
+    }
+  }
+  throw lastError;
 }
 
 /** Текст с HTTPS (для latest-mac.yml) */
