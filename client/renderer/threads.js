@@ -122,6 +122,115 @@
     panel()?.classList.remove('thread-open');
   }
 
+  // ---------- Упоминания в треде ----------
+  // В треде тот же @username, что и в комнате, но поле своё — поэтому подсказка живёт здесь.
+  let mentions = null; // { list, index, start }
+
+  function mentionBox() {
+    let box = document.getElementById('thread-mentions');
+    if (box) return box;
+    const f = form();
+    if (!f) return null;
+    box = document.createElement('div');
+    box.id = 'thread-mentions';
+    box.className = 'mention-popup hidden';
+    f.append(box);
+    return box;
+  }
+
+  function mentionCandidates(query) {
+    const room = roomById(thread?.roomId);
+    const q = String(query || '').toLowerCase();
+    const people = (room?.members || []).filter((u) => u.id !== state.me?.id);
+    const found = people.filter((u) =>
+      String(u.username || '').toLowerCase().includes(q) ||
+      String(u.displayName || '').toLowerCase().includes(q)
+    );
+    const list = found.slice(0, 7).map((u) => ({ ...u, all: false }));
+    if (!q || 'all'.includes(q)) list.unshift({ username: 'all', displayName: 'Все в канале', all: true });
+    return list;
+  }
+
+  function closeMentions() {
+    mentions = null;
+    mentionBox()?.classList.add('hidden');
+  }
+
+  function renderMentions() {
+    const box = mentionBox();
+    if (!box) return;
+    box.replaceChildren();
+    if (!mentions?.list.length) return closeMentions();
+    mentions.list.forEach((u, i) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = `mention-item${i === mentions.index ? ' active' : ''}`;
+      if (u.all) {
+        item.innerHTML = '<span class="avatar micro" style="background:var(--bg-4);color:var(--text)">@</span>';
+        const text = document.createElement('span');
+        text.innerHTML = '<b>@all</b> <span class="muted small">все в канале</span>';
+        item.append(text);
+      } else {
+        item.append(makeAvatar(u, undefined, 'tiny'));
+        const text = document.createElement('span');
+        text.innerHTML = '<b></b> <span class="muted small"></span>';
+        text.querySelector('b').textContent = u.displayName || u.username;
+        text.querySelector('span').textContent = `@${u.username}`;
+        item.append(text);
+      }
+      item.onmousedown = (e) => { e.preventDefault(); pickMention(u); };
+      box.append(item);
+    });
+    box.classList.remove('hidden');
+  }
+
+  function updateMentions() {
+    const area = input();
+    if (!area || !thread) return closeMentions();
+    const before = area.value.slice(0, area.selectionStart);
+    const match = before.match(/(?:^|\s)@([a-z0-9_.-]{0,32})$/i);
+    if (!match) return closeMentions();
+    const list = mentionCandidates(match[1]);
+    if (!list.length) return closeMentions();
+    mentions = { list, index: 0, start: before.length - match[1].length - 1 };
+    renderMentions();
+  }
+
+  function mentionKey(e) {
+    if (!mentions) return false;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const n = mentions.list.length;
+      mentions.index = (mentions.index + (e.key === 'ArrowDown' ? 1 : -1) + n) % n;
+      renderMentions();
+      return true;
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      pickMention(mentions.list[mentions.index]);
+      return true;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeMentions();
+      return true;
+    }
+    return false;
+  }
+
+  function pickMention(user) {
+    const area = input();
+    if (!area || !user) return;
+    const at = mentions?.start ?? area.selectionStart;
+    const after = area.value.slice(area.selectionStart);
+    const insert = `@${user.username} `;
+    area.value = area.value.slice(0, at) + insert + after;
+    const caret = at + insert.length;
+    area.setSelectionRange(caret, caret);
+    closeMentions();
+    area.focus();
+  }
+
   async function sendReply() {
     if (!thread) return;
     const area = input();
@@ -151,6 +260,12 @@
       body.threadRootId = thread.rootId;
       // @all внутри треда: сервер разошлёт всем участникам канала, а не только треду
       if (/@all\b/i.test(text)) body.mentionAll = true;
+      // Кого именно позвали: сервер пришлёт им событие, даже если они ещё не в треде
+      const mentioned = typeof findMentions === 'function' ? findMentions(text) : [];
+      const mentionIds = (roomById(thread.roomId)?.members || [])
+        .filter((u) => u.id !== state.me?.id && mentioned.includes(String(u.username || '').toLowerCase()))
+        .map((u) => u.id);
+      if (mentionIds.length) body.mentionIds = mentionIds;
       const saved = await Api.post(`/rooms/${thread.roomId}/messages`, body);
       const msg = { ...saved, plain, roomId: thread.roomId };
       const history = state.roomHistory.get(thread.roomId);
@@ -233,7 +348,11 @@
       e.preventDefault();
       sendReply();
     });
+    input()?.addEventListener('input', updateMentions);
+    input()?.addEventListener('click', updateMentions);
+    input()?.addEventListener('blur', () => setTimeout(closeMentions, 140));
     input()?.addEventListener('keydown', (e) => {
+      if (mentionKey(e)) return;
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         sendReply();

@@ -542,6 +542,8 @@ export function createApi() {
   api.get('/health', (_req, res) =>
     res.json({ ok: true, app: 'sozvon', inviteRequired: Boolean(config.inviteCode), emailCodes: mailEnabled })
   );
+  // Часы сервера для выбора времени суток в фоне стекла
+  api.get('/time', (_req, res) => res.json({ now: Date.now() }));
 
   // Код подтверждения почты для регистрации
   api.post(
@@ -2089,6 +2091,11 @@ export function createApi() {
       }
       // @all: клиент присылает флаг, потому что текст зашифрован и сервер его не читает
       const mentionAll = Boolean(req.body.mentionAll);
+      // @username в треде: клиент присылает id упомянутых, сервер проверяет, что они в комнате
+      const memberIds = new Set(rooms.members(room.id).map((m) => m.id));
+      const mentionIds = Array.isArray(req.body.mentionIds)
+        ? [...new Set(req.body.mentionIds.map(Number).filter((id) => Number.isInteger(id) && memberIds.has(id)))]
+        : [];
       const message = withMessageMeta(
         [toRoomMessage(roomMessages.add(room.id, req.user.id, text, { ...extra, replyTo, threadRoot, mentionAll }))],
         'room',
@@ -2109,9 +2116,10 @@ export function createApi() {
             message,
             participants: roomMessages.participants(threadRoot),
             replies: roomMessages.thread(threadRoot).length,
+            mentions: mentionIds,
           });
         }
-        return { ...message, threadRoot, replies: roomMessages.thread(threadRoot).length, rootFrom: root?.from_id ?? null };
+        return { ...message, threadRoot, replies: roomMessages.thread(threadRoot).length, rootFrom: root?.from_id ?? null, mentions: mentionIds };
       }
       for (const m of rooms.members(room.id)) hub.send(m.id, { type: 'room:message', message, mentionAll });
       return { ...message, mentionAll };

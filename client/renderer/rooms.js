@@ -780,6 +780,16 @@ function handleRoomEvent(msg) {
       return addRoomMessage(msg.message);
     case 'room:thread:new':
       bumpThreadReplies(msg.rootId, msg.roomId, { replies: msg.replies, participants: msg.participants });
+      // @username в обсуждении: событие приходит всем, но уведомляем только упомянутых
+      if (Array.isArray(msg.mentions) && msg.mentions.includes(state.me.id) && msg.message?.fromId !== state.me.id) {
+        const room = roomById(msg.roomId);
+        const who = userById(msg.message.fromId)?.displayName || '?';
+        notify(`${who} упоминает вас в обсуждении`, room?.name || 'Комната', {
+          kind: 'message',
+          open: { room: msg.roomId },
+          hub: room?.hubId,
+        });
+      }
       return;
     case 'room:message:deleted':
       if (dropMessage(state.roomHistory, msg.roomId, msg.id) && msg.roomId === state.selectedRoomId) renderRoomMessages();

@@ -110,6 +110,7 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Text          string `json:"text"`
 		MentionAll    bool   `json:"mentionAll"`
+		MentionIDs    []int64 `json:"mentionIds"`
 		ThreadRootID  *int64 `json:"threadRootId"`
 		ReplyTo       *int64 `json:"replyTo"`
 		ReplyToID     *int64 `json:"replyToId"`
@@ -213,8 +214,30 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 			message = updated
 		}
 	}
-	a.broadcastRoomMessage(roomID, message, request.MentionAll, threadRoot)
-	writeJSON(w, http.StatusOK, withMeta(a.messageJSON(message), message))
+	// @username в треде: оставляем только участников комнаты, чтобы нельзя было
+	// разослать уведомление постороннему по подделанному id
+	mentions := []int64{}
+	if len(request.MentionIDs) > 0 && threadRoot != nil {
+		if memberIDs, err := a.store.RoomMemberIDs(roomID); err == nil {
+			allowed := map[int64]bool{}
+			for _, id := range memberIDs {
+				allowed[id] = true
+			}
+			seen := map[int64]bool{}
+			for _, id := range request.MentionIDs {
+				if allowed[id] && !seen[id] {
+					seen[id] = true
+					mentions = append(mentions, id)
+				}
+			}
+		}
+	}
+	a.broadcastRoomMessage(roomID, message, request.MentionAll, threadRoot, mentions)
+	body := withMeta(a.messageJSON(message), message)
+	if len(mentions) > 0 {
+		body["mentions"] = mentions
+	}
+	writeJSON(w, http.StatusOK, body)
 }
 
 func (a *server) threadMessages(w http.ResponseWriter, r *http.Request) {

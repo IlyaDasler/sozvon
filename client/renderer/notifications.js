@@ -185,10 +185,10 @@ function placeNotifPanel() {
   const btn = $('notif-btn');
   if (!panel || !btn) return;
   const r = btn.getBoundingClientRect();
-  const width = Math.min(320, window.innerWidth - 16);
-  const side = document.querySelector('.sidebar')?.getBoundingClientRect();
-  const anchor = side ? side.left + 8 : r.right - width;
-  const left = Math.max(8, Math.min(anchor, window.innerWidth - width - 8));
+  const width = Math.min(360, window.innerWidth - 32);
+  // Панель прижата к правому краю окна, а не к левой колонке — так она
+  // не уезжает под список чатов и не обрезается.
+  const left = Math.max(8, window.innerWidth - width - 16);
   const top = Math.max(48, r.bottom + 8);
   panel.style.position = 'fixed';
   panel.style.width = `${width}px`;

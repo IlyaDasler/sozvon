@@ -266,8 +266,10 @@ function renderStage() {
   const strip = $('tile-strip');
   const tiles = voiceTiles();
   if (focusedTile && !tiles.some((t) => t.key === focusedTile)) focusedTile = null;
-  // Чужой экран, который смотрим, сам разворачивается на всю панель
-  const focus = focusedTile || tiles.find((t) => t.screen && !t.isMe && t.watching)?.key || null;
+  // Смотрим трансляцию — показываем её обычной плиткой в сетке, как на скрине
+  // «Ваш экран»: не раздуваем на весь экран и не теряем остальных участников.
+  // Развернуть можно осознанно: кликом по плитке, двойным щелчком или кнопкой.
+  const focus = focusedTile || null;
   stage.classList.toggle('has-focus', Boolean(focus));
   stage.classList.toggle('has-video', tiles.some((t) => t.video));
 
@@ -738,8 +740,16 @@ async function openScreenPicker({ change = false } = {}) {
   $('screen-audio').checked = store.get('screenAudio', false);
   const savedMode = screenMode(store.get('screenMode', DEFAULT_SCREEN_MODE));
   for (const r of document.querySelectorAll('input[name="screen-mode"]')) r.checked = r.value === savedMode;
-  $('screen-text').checked = store.get('screenText', false);
+  $('screen-text').checked = store.get('screenText', true);
   $('screen-picker').classList.remove('hidden');
+  // Окно выбора не должно оказаться под панелью звонка ни в одной теме.
+  Object.assign($('screen-picker').style, {
+    position: 'fixed',
+    inset: '0',
+    zIndex: '9999',
+    display: 'grid',
+    opacity: '1',
+  });
   await loadScreenSources(store.get('screenTab', 'screen'));
 }
 
@@ -750,7 +760,10 @@ let screenTab = 'screen';
 async function loadScreenSources(tab = screenTab) {
   $('screen-sources').innerHTML = '<p class="muted">Загрузка…</p>';
   try {
-    screenSourceList = await window.desktop.screen.sources();
+    screenSourceList = await Promise.race([
+      window.desktop.screen.sources(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Список экранов не ответил за 5 секунд')), 5000)),
+    ]);
   } catch (err) {
     screenSourceList = [];
     $('screen-sources').replaceChildren();
@@ -871,11 +884,15 @@ function renderNoiseButton() {
   const level = noiseLevelOf();
   const on = level > 0;
   const name = NOISE_LEVELS.find((l) => l.value === level)?.name ?? '';
-  $('call-ns').innerHTML = on ? ICONS.noise : ICONS.noiseOff;
-  $('call-ns').classList.toggle('on', on);
-  $('call-ns').title = on
-    ? `Шумоподавление: ${name.toLowerCase()} — нажмите, чтобы выключить, или правой кнопкой для уровня`
-    : 'Шумоподавление выключено — нажмите, чтобы включить';
+  for (const id of ['call-ns', 'voice-ns']) {
+    const btn = $(id);
+    if (!btn) continue;
+    btn.innerHTML = on ? ICONS.noise : ICONS.noiseOff;
+    btn.classList.toggle('on', on);
+    btn.title = on
+      ? `Шумоподавление: ${name.toLowerCase()} — нажмите, чтобы выключить, или правой кнопкой для уровня`
+      : 'Шумоподавление выключено — нажмите, чтобы включить';
+  }
 }
 
 /** Уровень шумоподавления применяется сразу, без переподключения к разговору */
@@ -886,32 +903,43 @@ async function setNoiseLevel(level) {
   store.set('audio', state.settings);
   renderNoiseButton();
   if ($('set-ns-level')) $('set-ns-level').value = String(value);
+  if ($('set-ns-value')) {
+    $('set-ns-value').textContent = NOISE_LEVELS.find((l) => l.value === value)?.name ?? '';
+  }
   const session = activeSession();
   if (session) await session.switchMic(state.settings).catch((err) => toast(mediaErrorText(err)));
   const name = NOISE_LEVELS.find((l) => l.value === value)?.name ?? '';
   toast(value ? `Шумоподавление: ${name.toLowerCase()}` : 'Шумоподавление выключено');
 }
 
-/** Меню уровней: одно и то же в звонке, голосовом канале и по правой кнопке на кнопке микрофона */
+/** Меню уровня: одна и та же шкала в звонке, голосовом канале и по правой кнопке */
 function openNoiseMenu(x, y) {
-  const level = noiseLevelOf();
-  showMenu(
-    x,
-    y,
-    NOISE_LEVELS.map((l) => ({
-      label: `${l.value === level ? '✓ ' : ''}${l.name}`,
-      onclick: () => setNoiseLevel(l.value),
-    }))
-  );
+  showMenu(x, y, [{
+    range: true,
+    label: 'Шумоподавление',
+    value: noiseLevelOf(),
+    min: 0,
+    max: 3,
+    step: 1,
+    valueLabel: (v) => NOISE_LEVELS.find((l) => l.value === v)?.name || '',
+    oninput: (v) => setNoiseLevel(v),
+  }]);
 }
 
-$('call-ns').onclick = () => setNoiseLevel(noiseLevelOf() > 0 ? 0 : lastNoiseLevel);
-// Правая кнопка в звонке и в голосовом канале — выбор интенсивности
-$('call-ns').oncontextmenu = (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  openNoiseMenu(e.clientX, e.clientY);
-};
+function toggleNoise() {
+  setNoiseLevel(noiseLevelOf() > 0 ? 0 : lastNoiseLevel);
+}
+
+for (const id of ['call-ns', 'voice-ns']) {
+  const btn = $(id);
+  if (!btn) continue;
+  btn.onclick = toggleNoise;
+  btn.oncontextmenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openNoiseMenu(e.clientX, e.clientY);
+  };
+}
 $('call-panel').oncontextmenu = (e) => {
   if (e.target.closest('input, textarea, select, a')) return;
   e.preventDefault();

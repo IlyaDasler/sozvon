@@ -6,13 +6,14 @@
   const GROUPS = [
     { id: 'friend-tabs', vertical: false },
     { id: 'set-nav', vertical: true },
+    { id: 'privacy-subnav', vertical: true },
   ];
 
   const glass = () => document.documentElement.dataset.theme === 'glass';
   const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
   function activeOf(root) {
-    const buttons = [...root.querySelectorAll(':scope > button[data-tab]')];
+    const buttons = [...root.querySelectorAll(':scope > button')];
     return buttons.find((b) => b.classList.contains('active') || b.getAttribute('aria-selected') === 'true') || null;
   }
 
@@ -42,7 +43,7 @@
         frame = 0;
         if (!root.isConnected || !glass()) return hide();
         const active = activeOf(root);
-        if (!active || active.classList.contains('add-tab')) return hide();
+        if (!active) return hide();
         const rr = root.getBoundingClientRect();
         const ar = active.getBoundingClientRect();
         if (!ar.width || !ar.height || !rr.width || !rr.height) return hide();

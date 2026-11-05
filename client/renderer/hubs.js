@@ -454,6 +454,31 @@ function showMenu(x, y, items) {
       if (menu.lastChild && !menu.lastChild.classList.contains('popup-sep')) menu.append(el('div', { className: 'popup-sep' }));
       continue;
     }
+    if (item.range) {
+      const wrap = document.createElement('div');
+      wrap.className = 'popup-range';
+      const head = document.createElement('div');
+      head.className = 'popup-range-head';
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      const value = document.createElement('b');
+      value.textContent = item.valueLabel?.(Number(item.value)) || '';
+      head.append(label, value);
+      const input = document.createElement('input');
+      input.type = 'range';
+      input.min = String(item.min ?? 0);
+      input.max = String(item.max ?? 3);
+      input.step = String(item.step ?? 1);
+      input.value = String(item.value ?? 0);
+      input.oninput = () => {
+        value.textContent = item.valueLabel?.(Number(input.value)) || '';
+        item.oninput?.(Number(input.value));
+      };
+      input.onclick = (e) => e.stopPropagation();
+      wrap.append(head, input);
+      menu.append(wrap);
+      continue;
+    }
     const button = el('button', {
       type: 'button',
       className: `popup-item${item.danger ? ' danger' : ''}`,

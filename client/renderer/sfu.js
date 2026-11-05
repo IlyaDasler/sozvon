@@ -98,7 +98,7 @@ class SfuSession extends MediaSession {
           simulcast: false,
           videoCodec: 'vp9',
           screenShareEncoding: { maxBitrate: m.bitrate, maxFramerate: m.frameRate },
-          degradationPreference: this.local.screenText ? 'maintain-resolution' : 'maintain-framerate',
+          degradationPreference: 'maintain-resolution',
         }),
       };
       try {

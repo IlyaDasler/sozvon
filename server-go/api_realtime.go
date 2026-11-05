@@ -276,7 +276,7 @@ func (a *server) handleStatus(user *store.User, message map[string]any) {
 }
 
 // broadcastRoomMessage — рассылка сообщения участникам комнаты (как room:message в Node)
-func (a *server) broadcastRoomMessage(roomID int64, message *store.Message, mentionAll bool, threadRoot *int64) {
+func (a *server) broadcastRoomMessage(roomID int64, message *store.Message, mentionAll bool, threadRoot *int64, mentions []int64) {
 	ids, err := a.store.RoomMemberIDs(roomID)
 	if err != nil {
 		return
@@ -307,6 +307,7 @@ func (a *server) broadcastRoomMessage(roomID int64, message *store.Message, ment
 			"message":      body,
 			"participants": participants,
 			"replies":      replies,
+			"mentions":     mentions,
 		}
 		for _, id := range ids {
 			a.hub.Send(id, event)

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="dawnSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#161a38"/><stop offset=".38" stop-color="#4b3f68"/>
+      <stop offset=".64" stop-color="#b06d7c"/><stop offset=".78" stop-color="#f0a47e"/>
+      <stop offset=".86" stop-color="#f7c89a"/><stop offset="1" stop-color="#3b3140"/>
+    </linearGradient>
+    <radialGradient id="dawnSun" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fff1cf"/><stop offset=".45" stop-color="#ffd39b"/>
+      <stop offset="1" stop-color="#ffb36b" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="dawnHill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b3a52"/><stop offset="1" stop-color="#171b2a"/>
+    </linearGradient>
+    <linearGradient id="dawnMeadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#26343a"/><stop offset="1" stop-color="#0c1319"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#dawnSky)"/>
+  <circle cx="1150" cy="700" r="220" fill="url(#dawnSun)" opacity=".9"/>
+  <circle cx="1150" cy="700" r="48" fill="#ffe3b3" opacity=".85"/>
+  <path fill="url(#dawnHill)" opacity=".85" d="M0 640 L140 560 L250 610 L390 520 L520 610 L650 540 L790 620 L940 530 L1080 610 L1210 550 L1350 620 L1480 560 L1600 610 L1600 1000 L0 1000Z"/>
+  <path fill="#1b2530" opacity=".9" d="M0 730 L120 700 L240 735 L360 690 L480 740 L600 700 L740 750 L880 710 L1030 755 L1180 705 L1320 750 L1460 710 L1600 750 L1600 1000 L0 1000Z"/>
+  <g fill="#101b22">
+    <path d="M180 760 L210 580 L240 760Z"/><path d="M220 780 L250 620 L280 780Z"/>
+    <path d="M420 790 L455 570 L490 790Z"/><path d="M465 800 L500 630 L535 800Z"/>
+    <path d="M790 780 L820 590 L850 780Z"/><path d="M830 800 L865 650 L900 800Z"/>
+    <path d="M1360 780 L1395 570 L1430 780Z"/><path d="M1410 800 L1445 630 L1480 800Z"/>
+  </g>
+  <path fill="url(#dawnMeadow)" d="M0 810 Q300 760 600 815 T1200 805 T1600 820 L1600 1000 L0 1000Z"/>
+  <g>
+    <path d="M1120 1000 L1150 430 Q1160 390 1210 370 L1320 340" stroke="#1b171d" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <path d="M1150 470 Q1030 430 960 360 M1180 500 Q1300 480 1380 410" stroke="#1b171d" stroke-width="14" fill="none" stroke-linecap="round"/>
+    <path d="M1180 320 Q1240 250 1320 270 Q1380 290 1360 360 Q1330 430 1240 420 Q1170 405 1180 320Z" fill="#10161c"/>
+    <ellipse cx="1255" cy="345" rx="42" ry="58" fill="#171d24"/>
+    <circle cx="1240" cy="330" r="10" fill="#ffd37a"/><circle cx="1272" cy="330" r="10" fill="#ffd37a"/>
+    <circle cx="1240" cy="330" r="4" fill="#241a12"/><circle cx="1272" cy="330" r="4" fill="#241a12"/>
+    <path d="M1252 352 L1260 362 L1268 352Z" fill="#d89a57"/>
+  </g>
+  <g fill="#e9d7a7" opacity=".7">
+    <circle cx="520" cy="620" r="2"/><circle cx="680" cy="700" r="1.5"/><circle cx="930" cy="650" r="1.8"/>
+    <circle cx="1040" cy="730" r="1.3"/><circle cx="360" cy="720" r="1.4"/><circle cx="1470" cy="680" r="1.2"/>
+  </g>
+</svg>

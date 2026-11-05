@@ -1,6 +1,6 @@
-/* Фон темы «стекло»: спокойный сумеречный горизонт.
-   Он не изображает объём и не спорит с содержимым — просто даёт материалу,
-   что преломлять. Сами поверхности живут в glass-3.css и glass-system.css. */
+/* Фон темы «стекло»: место обитания совы. Один и тот же лес, но в разное
+   время суток — рассвет, полдень, закат и ночь с луной. Время выбирает
+   glass-daypart.js по часовому поясу пользователя и часам сервера. */
 
 .lg-aurora {
   position: fixed;
@@ -8,8 +8,31 @@
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(7, 10, 16, 0.12), rgba(7, 10, 16, 0.22)),
-    url("glass-scene.svg") center / cover no-repeat;
+    linear-gradient(180deg, rgba(4, 8, 16, 0.10), rgba(4, 8, 16, 0.24)),
+    url("glass-night.svg") center / cover no-repeat;
+  transition: opacity 600ms ease;
   display: none;
 }
-html[data-theme='glass'] .lg-aurora { display: block; }html[data-theme='glass'] .screen { position: relative; z-index: 1; }
+html[data-theme='glass'] .lg-aurora { display: block; }
+
+html[data-theme='glass'][data-daypart='dawn'] .lg-aurora {
+  background:
+    linear-gradient(180deg, rgba(22, 18, 38, 0.10), rgba(24, 16, 30, 0.20)),
+    url("glass-dawn.svg") center / cover no-repeat;
+}
+html[data-theme='glass'][data-daypart='day'] .lg-aurora {
+  background:
+    linear-gradient(180deg, rgba(5, 14, 24, 0.62), rgba(5, 14, 24, 0.46)),
+    url("glass-noon.svg") center / cover no-repeat;
+}
+html[data-theme='glass'][data-daypart='sunset'] .lg-aurora {
+  background:
+    linear-gradient(180deg, rgba(30, 15, 30, 0.10), rgba(26, 12, 20, 0.22)),
+    url("glass-sunset.svg") center / cover no-repeat;
+}
+html[data-theme='glass'][data-daypart='night'] .lg-aurora {
+  background:
+    linear-gradient(180deg, rgba(4, 8, 18, 0.12), rgba(4, 8, 18, 0.30)),
+    url("glass-night.svg") center / cover no-repeat;
+}
+html[data-theme='glass'] .screen { position: relative; z-index: 1; }

@@ -60,8 +60,11 @@
 
     const body = document.createElement('div');
     body.className = 'collapse-body';
+    const inner = document.createElement('div');
+    inner.className = 'collapse-inner';
     const after = [...block.children].filter((el) => el !== heading);
-    for (const el of after) body.append(el);
+    for (const el of after) inner.append(el);
+    body.append(inner);
 
     const button = document.createElement('button');
     button.type = 'button';

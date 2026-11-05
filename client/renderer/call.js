@@ -5,43 +5,47 @@
 // Каждая нота — мягкий «колокольчик»: чистый тон с тихими обертонами, быстро звучит и плавно тает,
 // а общий фильтр срезает резкость и даёт лёгкое эхо. Ноты — из пентатоники, поэтому всё звучит созвучно.
 const PATTERNS = {
-  // Входящий звонок: узнаваемый мотив вверх-вниз (соль — си — ре — си), повторяется
-  ring: [[0, 0.55, 784], [0.15, 0.55, 988], [0.3, 0.6, 1175], [0.52, 1.1, 988]],
+  // Входящий звонок: мягкая восходящая фраза, как «колокольчик» macOS.
+  // Не тревожный рингтон, а спокойный сигнал, который приятно слышать.
+  ring: [[0, 1.0, 659.25], [0.18, 1.0, 783.99], [0.36, 1.5, 987.77], [0.82, 1.1, 783.99], [1.0, 1.6, 659.25]],
   // Ждём ответа: два тихих низких тона
-  ringback: [[0, 1.2, 523], [0.5, 1.4, 659]],
-  end: [[0, 0.45, 659], [0.16, 0.8, 494]],
-  mute: [[0, 0.25, 440]],
-  unmute: [[0, 0.25, 659]],
-  join: [[0, 0.35, 587], [0.1, 0.6, 880]],
-  leave: [[0, 0.35, 880], [0.1, 0.6, 587]],
-  test: [[0, 0.5, 523], [0.18, 0.5, 659], [0.36, 0.5, 784], [0.54, 1.0, 1047]],
-  notify: [[0, 0.3, 1047], [0.1, 0.7, 1568]],
+  ringback: [[0, 1.3, 523.25], [0.58, 1.5, 659.25]],
+  end: [[0, 0.7, 523.25], [0.18, 0.95, 392.0]],
+  mute: [[0, 0.28, 392.0]],
+  unmute: [[0, 0.3, 659.25]],
+  join: [[0, 0.42, 587.33], [0.11, 0.7, 880.0]],
+  leave: [[0, 0.4, 880.0], [0.11, 0.65, 587.33]],
+  test: [[0, 0.55, 523.25], [0.18, 0.55, 659.25], [0.36, 0.6, 783.99], [0.56, 1.0, 1046.5]],
+  notify: [[0, 0.45, 880.0], [0.12, 0.7, 1174.66]],
 };
 
 // Обертоны колокольчика: [во сколько раз выше, громкость]
-const BELL = [[1, 1], [2, 0.16], [3.01, 0.05]];
+const BELL = [[1, 1], [2, 0.08], [3.01, 0.02]];
 
 function playPattern(ctx, pattern, volume = 0.12) {
   const now = ctx.currentTime + 0.02;
-  // Общий выход: мягкий фильтр и короткое тихое эхо
+  // Общий выход: мягкий фильтр и короткое тихое эхо. Без резких атак и высоких
+  // обертонов — звук должен быть тёплым, «macOS-ным», а не звенящим.
   const out = ctx.createBiquadFilter();
   out.type = 'lowpass';
-  out.frequency.value = 3800;
+  out.frequency.value = 2600;
+  out.Q.value = 0.35;
   const echo = ctx.createDelay();
-  echo.delayTime.value = 0.16;
+  echo.delayTime.value = 0.21;
   const echoGain = ctx.createGain();
-  echoGain.gain.value = 0.18;
+  echoGain.gain.value = 0.12;
   out.connect(ctx.destination);
   out.connect(echo).connect(echoGain).connect(ctx.destination);
   for (const [at, dur, freq] of pattern) {
     const t = now + at;
     const env = ctx.createGain();
     env.gain.setValueAtTime(0, t);
-    env.gain.linearRampToValueAtTime(volume, t + 0.012);
+    env.gain.linearRampToValueAtTime(volume, t + 0.03);
     env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     env.connect(out);
     for (const [mult, level] of BELL) {
       const osc = ctx.createOscillator();
+      osc.type = 'sine';
       osc.frequency.value = freq * mult;
       const g = ctx.createGain();
       g.gain.value = level;
@@ -73,9 +77,9 @@ class Tone {
   loop(kind) {
     this.stop();
     this.ctx = newAudioContext(this.sinkId);
-    const length = this.play(this.ctx, kind, 0.12);
-    const every = length ? Math.max(length * 1000 + 600, 2000) : kind === 'ring' ? 2400 : 3600;
-    this.timer = setInterval(() => this.play(this.ctx, kind, 0.12), every);
+    const length = this.play(this.ctx, kind, 0.10);
+    const every = length ? Math.max(length * 1000 + 900, 2600) : kind === 'ring' ? 4200 : 3800;
+    this.timer = setInterval(() => this.play(this.ctx, kind, 0.10), every);
   }
 
   /** Сыграть звук события: свой файл, если выбран, иначе стандартный. Возвращает длину своего (с) или 0 */
@@ -170,18 +174,25 @@ async function denoiseTrack(raw, level = 2) {
     const node = await noiseSuppressorNode(ctx);
     const dest = ctx.createMediaStreamDestination();
     const source = ctx.createMediaStreamSource(new MediaStream([raw]));
-    // Интенсивность — доля очищенного звука в миксе: на «сильном» остаётся только нейросеть,
-    // на «мягком» голос чистится, но комната слышна — так меньше «металлического» призвука
-    const wetAmount = level >= 3 ? 1 : level === 2 ? 0.7 : 0.4;
+    // Срезаем низкий гул и выравниваем громкость до нейросети: так RNNoise
+    // не принимает вентилятор за голос и не оставляет «дыхание» комнаты.
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 85;
+    hp.Q.value = 0.7;
+    source.connect(hp);
+    // Интенсивность — доля очищенного звука в миксе. Среднее и сильное уже
+    // почти полностью нейросетевые: раньше 30% сырого фона шло в эфир.
+    const wetAmount = level >= 3 ? 1 : level === 2 ? 0.92 : 0.7;
     if (wetAmount >= 1) {
-      source.connect(node).connect(dest);
+      hp.connect(node).connect(dest);
     } else {
       const wet = ctx.createGain();
       wet.gain.value = wetAmount;
       const dry = ctx.createGain();
       dry.gain.value = 1 - wetAmount;
-      source.connect(node).connect(wet).connect(dest);
-      source.connect(dry).connect(dest);
+      hp.connect(node).connect(wet).connect(dest);
+      hp.connect(dry).connect(dest);
     }
     const track = dest.stream.getAudioTracks()[0];
     return {
@@ -572,7 +583,9 @@ class PeerLink {
       enc.maxFramerate = mode.frameRate;
       enc.scaleResolutionDownBy = 1;
       enc.priority = enc.networkPriority = 'high';
-      params.degradationPreference = this.local.screenText ? 'maintain-resolution' : 'maintain-framerate';
+      // Для трансляции важнее не потерять 1440p/1080p: при нехватке канала
+      // лучше просядет частота кадров, чем разрешение до 640p, как было раньше.
+      params.degradationPreference = 'maintain-resolution';
     } else {
       return;
     }
@@ -683,6 +696,9 @@ class MediaSession {
     this.code = null; // код шифрования: { emoji, digits }, когда соединились со всеми
     this.watching = new Set(); // чьи трансляции смотрим (по умолчанию — ничьи)
     this.screenStats = null; // своя трансляция: что уходит
+    // Звук трансляции по умолчанию тише голоса; усилим его отдельным GainNode,
+    // чтобы ползунок «Громкость трансляции» реально менял громкость, а не упирался в 100%.
+    this.screenAudioCtx = null;
     this.statsTimer = setInterval(() => this.collectStats(), 2000);
   }
 
@@ -786,6 +802,8 @@ class MediaSession {
     this.peers.delete(id);
     peer.link.close();
     peer.meter?.stop();
+    peer.screenGain?.disconnect();
+    peer.screenGain = null;
     for (const el of Object.values(peer.audio)) {
       el.pause();
       el.srcObject = null;
@@ -812,6 +830,22 @@ class MediaSession {
     peer.link.signal(data);
   }
 
+  /** Отдельная цепочка усиления для звука трансляции: элемент + GainNode.
+   *  Через обычный HTMLMediaElement нельзя сделать громче 100%, а стримы часто тихие. */
+  connectScreenAudio(peer, el) {
+    if (peer.screenGain) return;
+    try {
+      this.screenAudioCtx ??= new AudioContext();
+      const source = this.screenAudioCtx.createMediaElementSource(el);
+      const gain = this.screenAudioCtx.createGain();
+      source.connect(gain).connect(this.screenAudioCtx.destination);
+      peer.screenGain = gain;
+      this.screenAudioCtx.resume?.().catch(() => {});
+    } catch {
+      peer.screenGain = null;
+    }
+  }
+
   onRemoteTrack(peer, slot, track) {
     peer.tracks[slot] = track;
     if (SLOT_KIND[slot] === 'audio') {
@@ -819,6 +853,7 @@ class MediaSession {
       if (!el) el = peer.audio[slot] = new Audio();
       el.autoplay = true;
       el.srcObject = new MediaStream([track]);
+      if (slot === 'screenAudio') this.connectScreenAudio(peer, el);
       this.applyPeerAudio(peer);
       el.play().catch(() => {});
       if (slot === 'mic') {
@@ -837,11 +872,18 @@ class MediaSession {
     const screen = this.screenVolumes[peer.id] ?? this.screenVolumeOf?.(peer.id) ?? 1;
     const allowed = this.allowed?.(peer.id) ?? { speak: true, video: true };
     for (const [slot, el] of Object.entries(peer.audio)) {
-      // Звук экрана — отдельная громкость: игру можно прикрутить, не трогая голос
-      el.volume = slot === 'screenAudio' ? screen : voice;
+      // Звук экрана — отдельная громкость: игру можно прикрутить, не трогая голос.
+      // 100% на ползунке = 180% усиления, чтобы тихие стримы было слышно.
+      if (slot === 'screenAudio' && peer.screenGain) {
+        el.volume = 1;
+        peer.screenGain.gain.value = this.deafened ? 0 : screen * 1.8;
+      } else {
+        el.volume = slot === 'screenAudio' ? screen : voice;
+      }
       el.muted = this.deafened || !(slot === 'mic' ? allowed.speak : allowed.video) || (slot === 'screenAudio' && !this.watching.has(peer.id));
-      if (el.setSinkId && el.sinkId !== this.sinkId) el.setSinkId(this.sinkId).catch(() => {});
+      if (slot !== 'screenAudio' && el.setSinkId && el.sinkId !== this.sinkId) el.setSinkId(this.sinkId).catch(() => {});
     }
+    if (this.screenAudioCtx?.setSinkId) this.screenAudioCtx.setSinkId(this.sinkId || '').catch(() => {});
   }
 
   /** Смотреть трансляцию человека или перестать: он шлёт нам экран, только пока мы смотрим */
