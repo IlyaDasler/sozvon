@@ -1340,6 +1340,10 @@ function messageRow(m, prev, list, actions, shown, fresh) {
     if (m.fromId === state.me.id)
       tool('Изменить', '<svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>', (e) => {
         e.stopPropagation();
+        if (typeof window.editThreadMessage === 'function' && tools.closest('.thread-panel')) {
+          window.editThreadMessage(row.message, actions.chat);
+          return;
+        }
         editMessage(row.message, actions.chat);
       });
     tool(
