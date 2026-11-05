@@ -2050,3 +2050,10 @@ html[data-theme='glass'] #remove-contact-btn:hover svg {
 html[data-theme='glass'] #remove-contact-btn:hover {
   color: #ff9a9a;
 }
+
+/* Убираем тёмную подложку у полосы ввода: она давала тёмный выступ у края поля */
+html[data-theme='glass'] .composer {
+  background: transparent;
+  border-top: 0;
+  box-shadow: none;
+}
