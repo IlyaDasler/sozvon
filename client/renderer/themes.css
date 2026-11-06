@@ -7,9 +7,47 @@
 /* Созвон — тёмная, по умолчанию: глубокий сине-чёрный и фиолетовый, как на экране входа */
 :root,
 [data-theme='sozvon'] {
+  /* Уровни поверхностей: от иссиня-чёрного к синему, бирюза — только акцент */
+  --bg-deep: #080c12;   /* Void       — почти сине-чёрный фон приложения */
+  --bg-2: #0b111a;      /* Obsidian   — боковые панели, список серверов и каналов */
+  --bg: #0f1722;        /* Slate      — рабочая область чата */
+  --bg-3: #16202d;      /* Elevated   — карточки, поля ввода, меню, всплывающие окна */
+  --bg-4: #111b26;      /* Selected   — выбранные нейтральные элементы */
+  --bg-5: #1d2b3a;      /* Hover      — подсветка при наведении */
+  --line: #17212e;
+  --line-strong: #223041;
+  --text: #e9f1f5;      /* основной текст */
+  --text-2: #aebdc8;    /* второстепенный */
+  --muted: #7c8e9c;     /* подсказки */
+  --text-3: #56687a;    /* неактивный */
+  --accent: #2ecbbe;    /* Electric Teal — основной акцент */
+  --accent-theme: #2ecbbe; /* Акцент темы, не заменяется системным цветом ОС */
+  --accent-2: #77e7dc;  /* Light Teal — светлый акцент */
+  --accent-hover: #0f9c90; /* Deep Teal — нажатие */
+  --accent-soft: #0c2f33;  /* Muted Teal — активный канал, мягкие подсветки */
+  --on-accent: #04211e;
+  --link: #66ddd0;
+  --ok: #4ade80;
+  --idle: #f0b232;
+  --warn: #f0b232;
+  --danger: #f2555a;
+  --danger-hover: #de464b;
+  --glow: color-mix(in srgb, var(--accent) 22%, transparent);
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --header-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+  /* Макет (theme-layout.css): цвет тонких подложек и рамок */
+  --edge: #ffffff;
+  --ink: #000000;
+  --accent-contrast: #ffffff;
+  color-scheme: dark;
+}
+
+/* Тёмная: классическая тёмная тема — графит с фиолетовым акцентом.
+   Макет тот же, что у «Глубины» (стили в theme-sozvon.css), отличаются только цвета */
+[data-theme='dark'] {
   --bg-deep: #07080c;
-  --bg: #181a24;
   --bg-2: #0f1118;
+  --bg: #181a24;
   --bg-3: #1c1f2a;
   --bg-4: #252937;
   --bg-5: #2f3445;
@@ -18,9 +56,12 @@
   --text: #eef0f7;
   --text-2: #c8ccda;
   --muted: #8a90a3;
+  --text-3: #6a7086;
   --accent: #7b6cff;
+  --accent-theme: #7b6cff;
   --accent-2: #a855f7;
   --accent-hover: #6d5cf5;
+  --accent-soft: color-mix(in srgb, var(--accent-theme) 16%, var(--bg-deep));
   --on-accent: #ffffff;
   --link: #8fb8ff;
   --ok: #2bc46f;
@@ -31,10 +72,88 @@
   --glow: color-mix(in srgb, var(--accent) 34%, transparent);
   --shadow: 0 18px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
   --header-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+  /* Макет (theme-layout.css): цвет тонких подложек и рамок */
+  --edge: #ffffff;
+  --ink: #000000;
+  --accent-contrast: #ffffff;
   color-scheme: dark;
 }
 
-/* Полночь: настоящий чёрный — для OLED-экранов и игр ночью */
+/* Стекло: тот же макет, что у «Глубины», но поверхности полупрозрачные.
+   Непрозрачность подобрана так, чтобы фон угадывался, но не мешал читать. */
+[data-theme='frost'] {
+  /* Светлое «жидкое стекло»: пастельный фон, белые панели, границы — тёмной тушью */
+  --bg-deep: #e9ddff;
+  --bg: rgba(255, 255, 255, 0.66);
+  --bg-2: rgba(255, 255, 255, 0.80);
+  --bg-3: rgba(255, 255, 255, 0.90);
+  --bg-4: rgba(255, 255, 255, 0.94);
+  --bg-5: rgba(255, 255, 255, 0.97);
+  --line: rgba(42, 53, 80, 0.16);
+  --line-strong: rgba(42, 53, 80, 0.26);
+  --text: #222a3a;
+  --text-2: #465066;
+  --muted: #6b7688;
+  --text-3: #8f99ab;
+  --accent: #0a84ff;
+  --accent-theme: #0a84ff;
+  --accent-2: #40c8ff;
+  --accent-hover: #0077ed;
+  --accent-soft: rgba(10, 132, 255, 0.16);
+  --on-accent: #ffffff;
+  --link: #0a6fd8;
+  --ok: #1f9a55;
+  --idle: #b7791f;
+  --warn: #b7791f;
+  --danger: #e0342f;
+  --danger-hover: #c02c27;
+  --glow: color-mix(in srgb, var(--accent) 20%, transparent);
+  --shadow: 0 18px 44px rgba(70, 90, 140, 0.22), 0 0 0 1px rgba(42, 53, 80, 0.10);
+  --header-shadow: 0 1px 0 rgba(42, 53, 80, 0.12);
+  --edge: #2a3550;
+  --ink: #2a3550;
+  --accent-contrast: #000000;
+  color-scheme: light;
+}
+
+/* Холод: ледяная синева, белый свет по центру и прозрачные панели с белой кромкой */
+[data-theme='cold'] {
+  --bg-deep: #bfe0f7;
+  --bg: rgba(226, 243, 255, 0.62);
+  --bg-2: rgba(238, 249, 255, 0.72);
+  --bg-3: rgba(255, 255, 255, 0.82);
+  --bg-4: rgba(255, 255, 255, 0.90);
+  --bg-5: rgba(255, 255, 255, 0.96);
+  --line: rgba(32, 84, 132, 0.18);
+  --line-strong: rgba(32, 84, 132, 0.30);
+  --text: #12304a;
+  --text-2: #2f5570;
+  --muted: #5a7c93;
+  --text-3: #7c9cb2;
+  --accent: #1e88e5;
+  --accent-theme: #1e88e5;
+  --accent-2: #5fc8ff;
+  --accent-hover: #0b6cb5;
+  --accent-soft: rgba(30, 136, 229, 0.16);
+  --on-accent: #ffffff;
+  --link: #0b6cb5;
+  --ok: #1f9a55;
+  --idle: #b7791f;
+  --warn: #b7791f;
+  --danger: #d9433a;
+  --danger-hover: #bf352e;
+  --glow: color-mix(in srgb, var(--accent) 22%, transparent);
+  --shadow: 0 18px 46px rgba(18, 60, 108, 0.24), 0 0 0 1px rgba(255, 255, 255, 0.55);
+  --header-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+  /* Макет (theme-layout.css): тёмно-синие подложки-границы, белые блики сверху */
+  --edge: #27506f;
+  --ink: #1c4260;
+  --accent-contrast: #000000;
+  color-scheme: light;
+}
+
+/* Полночь: настоящий чёрный — для OLED-экранов и игр ночью.
+   Макет тот же, что у «Глубины» (стили в theme-layout.css), цвета — классическая полночь */
 [data-theme='midnight'] {
   --bg-deep: #000000;
   --bg: #08080a;
@@ -47,12 +166,27 @@
   --text: #f2f3f5;
   --text-2: #d0d2d8;
   --muted: #858a94;
+  --text-3: #6f737e;
   --accent: #6f7bff;
+  --accent-theme: #6f7bff;
   --accent-2: #8f6bff;
   --accent-hover: #5d69f0;
+  --accent-soft: color-mix(in srgb, var(--accent-theme) 16%, var(--bg-deep));
+  --on-accent: #ffffff;
   --link: #8fb8ff;
+  --ok: #2bc46f;
+  --idle: #f0b232;
+  --warn: #f0b232;
+  --danger: #f2484d;
+  --danger-hover: #dc3b40;
+  --glow: color-mix(in srgb, var(--accent) 34%, transparent);
   --shadow: 0 18px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06);
   --header-shadow: 0 1px 0 #16161b;
+  /* Макет (theme-layout.css): цвет тонких подложек и рамок */
+  --edge: #ffffff;
+  --ink: #000000;
+  --accent-contrast: #ffffff;
+  color-scheme: dark;
 }
 
 [data-theme='light'] {
@@ -67,19 +201,31 @@
   --text: #11131a;
   --text-2: #353947;
   --muted: #646a7b;
+  --text-3: #8a90a0;
   --accent: #6656f0;
+  --accent-theme: #6656f0;
   --accent-2: #9a4de8;
   --accent-hover: #5546dc;
+  --accent-soft: color-mix(in srgb, var(--accent-theme) 10%, var(--bg));
+  --on-accent: #ffffff;
   --link: #2f62d8;
   --ok: #1f9a55;
+  --idle: #b7791f;
+  --warn: #b7791f;
   --danger: #d9363b;
+  --danger-hover: #c02c31;
   --glow: color-mix(in srgb, var(--accent) 22%, transparent);
   --shadow: 0 16px 40px rgba(28, 32, 56, 0.16), 0 0 0 1px rgba(28, 32, 56, 0.06);
   --header-shadow: 0 1px 0 rgba(28, 32, 56, 0.07);
+  /* Макет (theme-layout.css): подложки и рамки — тёмной тушью, тени — мягкие */
+  --edge: #161a30;
+  --ink: #1c2038;
+  --accent-contrast: #000000;
   color-scheme: light;
 }
 
-/* Лес: зелёный Созвон, каким он был до 1.8, — глубже и мягче */
+/* Лес: зелёный Созвон, каким он был до 1.8, — глубже и мягче.
+   Макет тот же, что у «Глубины» (стили в theme-layout.css), цвета — классический лес */
 [data-theme='forest'] {
   --bg-deep: #0a0f0d;
   --bg: #121916;
@@ -92,15 +238,29 @@
   --text: #e9f1ec;
   --text-2: #c4d1c9;
   --muted: #8a9a91;
+  --text-3: #64766c;
   --accent: #2fc98a;
+  --accent-theme: #2fc98a;
   --accent-2: #20b2c9;
   --accent-hover: #25a873;
+  --accent-soft: color-mix(in srgb, var(--accent-theme) 16%, var(--bg-deep));
   --on-accent: #06221a;
   --link: #6fc3ff;
   --ok: #2fc98a;
+  --idle: #f0b232;
+  --warn: #f0b232;
+  --danger: #f2484d;
+  --danger-hover: #dc3b40;
+  --glow: color-mix(in srgb, var(--accent) 34%, transparent);
+  /* Макет (theme-layout.css): белые подложки и чёрные тени */
+  --edge: #ffffff;
+  --ink: #000000;
+  --accent-contrast: #ffffff;
+  color-scheme: dark;
 }
 
-/* Сумерки: тёплые фиолетовые тона */
+/* Сумерки: тёплые фиолетовые тона.
+   Макет тот же, что у «Глубины» (стили в theme-layout.css), цвета — классические сумерки */
 [data-theme='dusk'] {
   --bg-deep: #110d18;
   --bg: #1d1727;
@@ -113,11 +273,25 @@
   --text: #f3eefa;
   --text-2: #d8cfe7;
   --muted: #a194b6;
+  --text-3: #7b6b91;
   --accent: #b06bff;
+  --accent-theme: #b06bff;
   --accent-2: #ff6ba8;
   --accent-hover: #9a55f0;
+  --accent-soft: color-mix(in srgb, var(--accent-theme) 16%, var(--bg-deep));
   --on-accent: #ffffff;
   --link: #8fc9ff;
+  --ok: #2fc98a;
+  --idle: #f0b232;
+  --warn: #f0b232;
+  --danger: #f2484d;
+  --danger-hover: #dc3b40;
+  --glow: color-mix(in srgb, var(--accent) 34%, transparent);
+  /* Макет (theme-layout.css): белые подложки и чёрные тени */
+  --edge: #ffffff;
+  --ink: #000000;
+  --accent-contrast: #ffffff;
+  color-scheme: dark;
 }
 /* Феррари: карбон, алый Rosso Corsa и гоночный жёлтый.
    Только плоские поверхности и тонкие линии — без хрома, логотипов и «объёма». */
@@ -134,6 +308,7 @@
   --text-2: #d9d0c7;
   --muted: #9a8f88;
   --accent: #e10600;
+  --accent-theme: #e10600;
   --accent-2: #f2c200;
   --accent-hover: #c40500;
   --on-accent: #ffffff;
@@ -163,6 +338,7 @@
   --text-2: #d5daf0;
   --muted: #9aa2c4;
   --accent: #7aa7ff;
+  --accent-theme: #7aa7ff;
   --accent-2: #c58bff;
   --accent-hover: #6898ff;
   --link: #9ec3ff;

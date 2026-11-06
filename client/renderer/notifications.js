@@ -186,9 +186,8 @@ function placeNotifPanel() {
   if (!panel || !btn) return;
   const r = btn.getBoundingClientRect();
   const width = Math.min(340, window.innerWidth - 32);
-  // Панель растёт из колокольчика: левый край — ровно под кнопкой,
-  // чтобы она не уезжала ни к центру, ни за левую колонку.
-  const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+  // Панель — чуть левее колокольчика (язычок при этом остаётся под кнопкой)
+  const left = Math.max(8, Math.min(r.left - 32, window.innerWidth - width - 8));
   const top = Math.max(48, r.bottom + 8);
   panel.style.position = 'fixed';
   panel.style.right = 'auto';
@@ -196,6 +195,9 @@ function placeNotifPanel() {
   panel.style.left = `${Math.round(left)}px`;
   panel.style.top = `${Math.round(top)}px`;
   panel.style.maxHeight = `${Math.max(180, Math.round(window.innerHeight - top - 16))}px`;
+  // «Язычок» — ровно под центром колокольчика
+  const tail = Math.min(width - 30, Math.max(8, Math.round(r.left + r.width / 2 - left - 6)));
+  panel.style.setProperty('--notif-tail', `${tail}px`);
 }
 
 function openNotifPanel() {

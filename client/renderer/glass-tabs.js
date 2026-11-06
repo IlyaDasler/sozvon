@@ -9,7 +9,12 @@
     { id: 'privacy-subnav', vertical: true },
   ];
 
-  const glass = () => document.documentElement.dataset.theme === 'glass';
+  const themeName = () => document.documentElement.dataset.theme || '';
+  // Плашка-указатель живёт в «Стекле» и в тёмной теме (там только у вкладок друзей)
+  const usesTabs = (root) =>
+    themeName() === 'glass' ||
+    (['sozvon', 'dark', 'midnight', 'light', 'forest', 'dusk', 'frost', 'cold'].includes(themeName()) &&
+      root.id === 'friend-tabs');
   const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
   function activeOf(root) {
@@ -41,7 +46,7 @@
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
-        if (!root.isConnected || !glass()) return hide();
+        if (!root.isConnected || !usesTabs(root)) return hide();
         const active = activeOf(root);
         if (!active) return hide();
         const rr = root.getBoundingClientRect();
