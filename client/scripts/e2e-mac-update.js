@@ -30,11 +30,21 @@ assert.ok(fs.existsSync(manifestPath), `нет ${manifestPath}`);
 
 const REPO = 'IlyaDasler/sozvon';
 const API = `https://api.github.com/repos/${REPO}/releases?per_page=10`;
+const GH_TOKEN = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || '';
 
 function getJson(url) {
   return new Promise((resolve, reject) => {
     https
-      .get(url, { headers: { 'User-Agent': 'Sozvon-E2E', Accept: 'application/vnd.github+json' } }, (res) => {
+      .get(
+        url,
+        {
+          headers: {
+            'User-Agent': 'Sozvon-E2E',
+            Accept: 'application/vnd.github+json',
+            ...(GH_TOKEN && { Authorization: `Bearer ${GH_TOKEN}` }),
+          },
+        },
+        (res) => {
         if (res.statusCode !== 200) {
           res.resume();
           reject(new Error(`GitHub API ${res.statusCode}`));
