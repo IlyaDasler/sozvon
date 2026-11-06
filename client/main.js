@@ -23,7 +23,6 @@ const { runStartup, CHECK_TIMEOUT_MS, canAutoInstall } = require('./startup');
 const { registerNativeScreen } = require('./screen-native');
 const { registerVault } = require('./vault');
 const { registerClipboardImage } = require('./clipboard-image');
-const { registerRecording } = require('./recording');
 const { applyChromiumFlags } = require('./chromium-flags');
 const { UPDATE_EVERY_MS, checkDue } = require('./update-schedule');
 
@@ -648,7 +647,6 @@ ipcMain.on('focus', showWindow);
 ipcMain.handle('preview:fetch', (_event, url) => fetchPreview(String(url)));
 registerVault();
 registerClipboardImage();
-registerRecording();
 
 // ---------- Плавающее окно трансляции ----------
 // Отдельное окно Windows: его можно растянуть за края, унести на другой монитор и оставить поверх остальных.
