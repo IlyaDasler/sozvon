@@ -180,7 +180,13 @@ xattr -dr com.apple.quarantine "$APP" 2>/dev/null
 # Подпись должна быть валидной, иначе macOS скажет «приложение повреждено»
 codesign --force --deep --sign - "$APP" 2>/dev/null
 echo "подпись обновлена"
-open "$APP" || echo "не удалось запустить приложение"
+if [ "$(id -u)" = "0" ]; then
+  CONSOLE_UID=$(stat -f %u /dev/console 2>/dev/null)
+  launchctl asuser "$CONSOLE_UID" open "$APP" 2>/dev/null || open "$APP"
+else
+  open "$APP"
+fi
+echo "приложение запущено"
 sleep 2
 rm -rf "$OLD"
 echo "готово"
@@ -285,20 +291,31 @@ async function prepare({ version, onProgress, onStage = () => {}, base: clientBa
  *  по нему видно, где именно встало обновление */
 function apply({ newApp, app, onQuit }) {
   const dir = path.dirname(app);
+  let needsAdmin = false;
   try {
     fs.accessSync(dir, fs.constants.W_OK);
   } catch {
-    return { ok: false, reason: 'Нет прав на запись рядом с приложением' };
+    needsAdmin = true;
   }
   fs.mkdirSync(workDir(), { recursive: true });
   const script = path.join(workDir(), 'swap.sh');
   const log = swapLog();
   fs.writeFileSync(log, `обновление запущено ${new Date().toISOString()}\n`);
   fs.writeFileSync(script, swapScript({ pid: process.pid, appDir: app, newApp, log }), { mode: 0o755 });
-  const child = spawn('/bin/sh', [script], { detached: true, stdio: 'ignore' });
-  child.unref();
+
+  // Из /Applications обычный пользователь не может заменить .app. Показываем
+  // системный запрос пароля и выполняем тот же скрипт от администратора.
+  if (needsAdmin) {
+    const command = `/bin/sh ${script.replace(/'/g, `'\\''`)}`;
+    const apple = `do shell script ${JSON.stringify(command)} with administrator privileges`;
+    const child = spawn('/usr/bin/osascript', ['-e', apple], { detached: true, stdio: 'ignore' });
+    child.unref();
+  } else {
+    const child = spawn('/bin/sh', [script], { detached: true, stdio: 'ignore' });
+    child.unref();
+  }
   onQuit?.();
-  return { ok: true, log };
+  return { ok: true, log, needsAdmin };
 }
 
 module.exports = { bundlePath, assetName, pickAsset, manifestEntry, swapScript, prepare, apply, getJson, swapLog, downloadVerified };

@@ -2932,6 +2932,12 @@ function installUpdate() {
   for (const el of document.querySelectorAll('.modal')) el.classList.add('hidden');
   $('updating').classList.remove('hidden');
   setTimeout(() => window.desktop.update.install(), 1500);
+  // Если установка не закрыла приложение за 25 секунд — не оставляем человека на экране-заглушке.
+  setTimeout(() => {
+    if (updateStatus.state !== 'ready') return;
+    $('updating').classList.add('hidden');
+    toast('Не удалось установить обновление автоматически. Скачайте новую версию со страницы релиза.');
+  }, 25000);
 }
 
 async function startUpdate() {
@@ -2957,9 +2963,13 @@ function onUpdateStatus(s) {
   if (manualCheck && st === 'unsupported') toast('Обновления работают только в установленной версии');
   if (['available', 'latest', 'error', 'unsupported'].includes(st)) manualCheck = false;
   if (st === 'ready' && updateRequested) installUpdate();
-  if (st === 'error' && updateRequested) {
-    updateRequested = false;
-    $('update-error').textContent = 'Не удалось скачать обновление. Проверьте интернет и попробуйте ещё раз.';
+  if (st === 'error') {
+    $('updating').classList.add('hidden');
+    if (updateRequested) {
+      updateRequested = false;
+      $('update-error').textContent = 'Не удалось установить обновление. Скачайте новую версию со страницы релиза.';
+      openUpdateModal('error');
+    }
   }
   renderUpdate();
 }
