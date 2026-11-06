@@ -9,10 +9,6 @@ const { registerVault } = require('../vault');
 const { registerClipboardImage } = require('../clipboard-image');
 const { applyChromiumFlags } = require('../chromium-flags');
 
-// Запись звонка пишет в отдельную временную папку, без нативного диалога.
-process.env.SOZVON_RECORDING_DIR = path.join(__dirname, '..', 'e2e-recordings', String(process.pid));
-require('../recording').registerRecording();
-
 applyChromiumFlags(app);
 // Тестовый main не грузит main.js, но preload должен получить версию для серверной политики
 ipcMain.on('app:version', (event) => { event.returnValue = require('../package.json').version; });
