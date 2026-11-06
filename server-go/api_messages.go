@@ -107,13 +107,17 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusForbidden, "В этой комнате у вас нет права писать").write(w)
 		return
 	}
+	if !a.userLimit(user.ID, "message", a.cfg.MessageRateLimit, 10*time.Second) {
+		fail(http.StatusTooManyRequests, "Вы пишете слишком быстро, подождите несколько секунд").write(w)
+		return
+	}
 	var request struct {
-		Text          string `json:"text"`
-		MentionAll    bool   `json:"mentionAll"`
-		MentionIDs    []int64 `json:"mentionIds"`
-		ThreadRootID  *int64 `json:"threadRootId"`
-		ReplyTo       *int64 `json:"replyTo"`
-		ReplyToID     *int64 `json:"replyToId"`
+		Text          string          `json:"text"`
+		MentionAll    bool            `json:"mentionAll"`
+		MentionIDs    []int64         `json:"mentionIds"`
+		ThreadRootID  *int64          `json:"threadRootId"`
+		ReplyTo       *int64          `json:"replyTo"`
+		ReplyToID     *int64          `json:"replyToId"`
 		Enc           json.RawMessage `json:"enc"`
 		PreviewURL    string          `json:"previewUrl"`
 		AttachmentIDs []string        `json:"attachmentIds"`
@@ -346,6 +350,7 @@ func linkInText(text, rawURL string) bool {
 	bare := strings.TrimPrefix(strings.TrimPrefix(rawURL, "https://"), "http://")
 	return bare != "" && strings.Contains(text, bare)
 }
+
 // readConv — «прочитал переписку до конца»: dm или room, плюс событие себе.
 func (a *server) readConv(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)

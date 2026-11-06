@@ -148,5 +148,9 @@ func (a *server) convKeys(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	// Как в Node: участники переписки узнают, что появилась новая версия ключа
+	for _, member := range members {
+		a.hub.Send(member, map[string]any{"type": "keys:updated", "conv": conv})
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }

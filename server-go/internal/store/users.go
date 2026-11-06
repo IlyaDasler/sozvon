@@ -271,6 +271,16 @@ func (s *Store) SetPublicKey(userID int64, key string) error {
 	return err
 }
 
+// SetGame — запущенная игра из детекта процессов клиента; nil очищает.
+func (s *Store) SetGame(userID int64, game *string) error {
+	if game == nil {
+		_, err := s.db.Exec(`UPDATE users SET game = NULL WHERE id = ?`, userID)
+		return err
+	}
+	_, err := s.db.Exec(`UPDATE users SET game = ? WHERE id = ?`, *game, userID)
+	return err
+}
+
 // CreateUserWithEmail — регистрация по почте: логин придуман, почта подтверждена кодом.
 func (s *Store) CreateUserWithEmail(username, passwordHash, displayName, avatarColor, email, emailShown string) (*User, error) {
 	now := time.Now().UnixMilli()

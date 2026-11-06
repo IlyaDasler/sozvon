@@ -15,6 +15,7 @@ const ringTimeout = 45 * time.Second
 type callMember struct {
 	conn  *realtime.Conn
 	group bool
+	timer *time.Timer
 }
 
 type call struct {
@@ -107,6 +108,72 @@ func (m *callManager) removeUser(userID int64) string {
 		}
 	}
 	return ""
+}
+
+// pause — связь оборвалась: держим место в звонке, пока идёт окно ожидания.
+// Возвращает id звонка, если человек в нём был и ещё не «на паузе».
+func (m *callManager) pause(userID int64, wait time.Duration, onTimeout func(callID string, userID int64)) (string, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for id, c := range m.calls {
+		member, exists := c.members[userID]
+		if !exists || member.conn == nil || member.timer != nil {
+			continue
+		}
+		member.conn = nil
+		member.timer = time.AfterFunc(wait, func() { onTimeout(id, userID) })
+		return id, true
+	}
+	return "", false
+}
+
+// timeoutMember — окно ожидания истекло: убираем место и говорим, сколько осталось.
+func (m *callManager) timeoutMember(callID string, userID int64) (int, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	c := m.calls[callID]
+	if c == nil {
+		return 0, false
+	}
+	member, exists := c.members[userID]
+	if !exists || member.conn != nil {
+		return len(c.members), false
+	}
+	delete(c.members, userID)
+	return len(c.members), true
+}
+
+// resume — новое соединение занимает то же место в звонке (как call:resume в Node).
+func (m *callManager) resume(callID string, userID int64, conn *realtime.Conn) string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	c := m.calls[callID]
+	if c == nil {
+		return "missing"
+	}
+	member, exists := c.members[userID]
+	if !exists {
+		return "missing"
+	}
+	if member.conn != nil {
+		return "elsewhere"
+	}
+	if member.timer != nil {
+		member.timer.Stop()
+		member.timer = nil
+	}
+	member.conn = conn
+	return "ok"
+}
+
+// stopMemberTimers — звонок закончился, окна ожидания больше не нужны.
+func (m *callManager) stopMemberTimers(call *call) {
+	for _, member := range call.members {
+		if member.timer != nil {
+			member.timer.Stop()
+			member.timer = nil
+		}
+	}
 }
 
 // ---------- обработчики ----------
@@ -281,6 +348,7 @@ func (a *server) endCall(id string, reason string) {
 		return
 	}
 	a.calls.mu.Lock()
+	a.calls.stopMemberTimers(call)
 	members := make([]int64, 0, len(call.members))
 	for memberID := range call.members {
 		members = append(members, memberID)
@@ -321,13 +389,48 @@ func (a *server) leaveCall(id string, userID int64, reason string) {
 	a.callMembers(id, userID, "left")
 }
 
-// userDisconnected — обрыв связи: выходим из звонка (в Node было окно ожидания)
-func (a *server) userDisconnected(userID int64) {
-	id := a.calls.removeUser(userID)
-	if id == "" {
+// callPause — обрыв связи: место в звонке держится, пока идёт окно ожидания (как pauseMember в Node).
+func (a *server) callPause(userID int64) {
+	callID, ok := a.calls.pause(userID, a.cfg.ReconnectWait, a.callTimeout)
+	if !ok {
 		return
 	}
-	a.endCall(id, "disconnected")
+	a.callMembers(callID, userID, "reconnecting")
+}
+
+// callTimeout — окно ожидания истекло: участник выходит, звонок на двоих заканчивается.
+func (a *server) callTimeout(callID string, userID int64) {
+	remaining, removed := a.calls.timeoutMember(callID, userID)
+	if !removed {
+		return
+	}
+	if remaining < 2 {
+		a.endCall(callID, "disconnected")
+		return
+	}
+	a.callMembers(callID, userID, "left")
+}
+
+// callResume — вернувшийся после обрыва занимает своё место в звонке (call:resume → call:resumed).
+func (a *server) callResume(conn *realtime.Conn, user *store.User, message map[string]any) {
+	callID, _ := message["callId"].(string)
+	if callID == "" {
+		return
+	}
+	switch a.calls.resume(callID, user.ID, conn) {
+	case "ok":
+		conn.Send(map[string]any{"type": "call:resumed", "callId": callID})
+		a.callMembers(callID, user.ID, "joined")
+	case "elsewhere":
+		conn.Send(map[string]any{"type": "call:ended", "callId": callID, "reason": "answered-elsewhere"})
+	default:
+		conn.Send(map[string]any{"type": "call:ended", "callId": callID, "reason": "disconnected"})
+	}
+}
+
+// userDisconnected — обрыв связи: звонок не рвём сразу, даём окно на возврат.
+func (a *server) userDisconnected(userID int64) {
+	a.callPause(userID)
 }
 
 func messageBool(message map[string]any, key string) (bool, bool) {

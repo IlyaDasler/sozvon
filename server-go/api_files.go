@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -16,7 +17,7 @@ import (
 )
 
 const (
-	maxFileBytes  = 25 << 20
+	maxFileBytes   = 25 << 20
 	maxAttachments = 10
 )
 
@@ -90,6 +91,10 @@ func urlEscape(value string) string {
 
 func (a *server) upload(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
+	if !a.userLimit(user.ID, "upload", a.cfg.UploadRateLimit, time.Minute) {
+		fail(http.StatusTooManyRequests, "Слишком много файлов подряд, подождите минуту").write(w)
+		return
+	}
 	name := cleanName(r.URL.Query().Get("name"))
 	mime := cleanMime(r.Header.Get("Content-Type"))
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxFileBytes))

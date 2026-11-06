@@ -45,6 +45,80 @@ func (a *server) roomOr404(w http.ResponseWriter, roomID int64) *store.RoomRow {
 	return room
 }
 
+// hubRoomsOrder — порядок комнат в канале: список приходит целиком, только для одного вида
+// (голосовые и текстовые сортируются отдельно), как в Node-сервере.
+func (a *server) hubRoomsOrder(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	hubID, err := parseInt64(chi.URLParam(r, "id"))
+	if err != nil || hubID == 0 {
+		fail(http.StatusBadRequest, "Неверный канал").write(w)
+		return
+	}
+	if hub := a.hubOr404(w, hubID); hub == nil {
+		return
+	}
+	if !a.hubManager(hubID, user.ID) {
+		fail(http.StatusForbidden, "Недостаточно прав").write(w)
+		return
+	}
+	var request struct {
+		IDs []int64 `json:"ids"`
+	}
+	if err := decode(r, &request); err != nil {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	if len(request.IDs) == 0 {
+		fail(http.StatusBadRequest, "Неверный порядок комнат").write(w)
+		return
+	}
+	own, err := a.store.RoomsOfHub(hubID)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	byID := make(map[int64]*store.RoomRow, len(own))
+	for _, room := range own {
+		byID[room.ID] = room
+	}
+	seen := make(map[int64]bool, len(request.IDs))
+	unique := make([]int64, 0, len(request.IDs))
+	for _, id := range request.IDs {
+		if _, ok := byID[id]; !ok {
+			fail(http.StatusNotFound, "Комната не найдена").write(w)
+			return
+		}
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		unique = append(unique, id)
+	}
+	kind := byID[unique[0]].Kind
+	for _, id := range unique {
+		if byID[id].Kind != kind {
+			fail(http.StatusBadRequest, "Голосовые и текстовые комнаты сортируются по отдельности").write(w)
+			return
+		}
+	}
+	expected := 0
+	for _, room := range own {
+		if room.Kind == kind {
+			expected++
+		}
+	}
+	if len(unique) != expected {
+		fail(http.StatusBadRequest, "Пришёл неполный список комнат").write(w)
+		return
+	}
+	if err := a.store.ReorderRooms(unique); err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	a.broadcastHubRooms(hubID)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
 // ---------- приглашения в канал ----------
 
 // broadcastHub — полный объект канала всем участникам (как notifyHub в Node)

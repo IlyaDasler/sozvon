@@ -44,6 +44,7 @@ type server struct {
 	calls   *callManager
 	voice   *voiceManager
 	livekit livekit.Options
+	limits  *limiter
 }
 
 func authRandomID() string { return auth.RandomID(16) }
@@ -78,7 +79,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), oauth: oauth.Options{ClientID: cfg.YandexClientID, ClientSecret: cfg.YandexClientSecret, TestBase: cfg.OAuthTestBase}, preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}}
+	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), oauth: oauth.Options{ClientID: cfg.YandexClientID, ClientSecret: cfg.YandexClientSecret, TestBase: cfg.OAuthTestBase}, preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}, limits: newLimiter()}
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second), middleware.Logger)
@@ -133,6 +134,7 @@ func main() {
 			r.Post("/messages/{peerId}/{id}/reactions", app.dmReactions)
 			r.Put("/messages/{peerId}/{id}/pin", app.dmPin)
 			r.Delete("/messages/{peerId}/{id}/pin", app.dmPin)
+			r.Put("/me/game", app.setMyGame)
 			r.Put("/me/avatar", app.uploadAvatar)
 			r.Delete("/me/avatar", app.uploadAvatar)
 			r.Put("/me/banner", app.uploadBanner)
@@ -140,6 +142,7 @@ func main() {
 			r.Post("/ws-ticket", app.wsTicket)
 			r.Get("/sessions", app.sessions)
 			r.Delete("/sessions/{id}", app.deleteSession)
+			r.Post("/sessions/revoke-others", app.revokeOtherSessions)
 
 			r.Get("/contacts", app.contacts)
 			r.Post("/contacts", app.addContact)
@@ -168,6 +171,7 @@ func main() {
 			r.Post("/keys/{conv}", app.convKeys)
 			r.Get("/rooms", app.rooms)
 			r.Post("/rooms", app.createRoom)
+			r.Put("/hubs/{id}/rooms/order", app.hubRoomsOrder)
 			r.Patch("/rooms/{id}", app.patchRoom)
 			r.Put("/rooms/{id}/background", app.roomBackground)
 			r.Delete("/rooms/{id}/background", app.roomBackground)
@@ -175,6 +179,11 @@ func main() {
 			r.Post("/rooms/{id}/messages", app.sendRoomMessage)
 			r.Get("/rooms/{id}/messages/{messageId}/thread", app.threadMessages)
 			r.Get("/rooms/{id}/pins", app.roomPinsList)
+			r.Post("/rooms/{id}/events", app.roomEventCreate)
+			r.Put("/events/{eventId}/response", app.roomEventResponse)
+			r.Patch("/events/{eventId}", app.roomEventPatch)
+			r.Delete("/events/{eventId}", app.roomEventDelete)
+			r.Post("/events/{eventId}/finish", app.roomEventFinish)
 			r.Post("/rooms/{id}/timeouts", app.roomTimeouts)
 			r.Delete("/rooms/{id}/timeouts/{userId}", app.roomTimeouts)
 			r.Post("/rooms/{id}/disconnect", app.disconnectMember)
@@ -229,6 +238,8 @@ func main() {
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+	// Напоминания о событиях: раз в полминуты, как в Node-сервере
+	go app.eventRemindersLoop()
 	go func() {
 		logger.Info("сервер запущен", "addr", httpServer.Addr, "data", cfg.DataDir)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -395,6 +406,10 @@ func (a *server) health(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (a *server) register(w http.ResponseWriter, r *http.Request) {
+	if !a.authLimit(r, "register") {
+		fail(http.StatusTooManyRequests, "Слишком много попыток, подождите минуту").write(w)
+		return
+	}
 	var body registerBody
 	if err := decode(r, &body); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
@@ -457,6 +472,10 @@ func (a *server) register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *server) login(w http.ResponseWriter, r *http.Request) {
+	if !a.authLimit(r, "login") {
+		fail(http.StatusTooManyRequests, "Слишком много попыток, подождите минуту").write(w)
+		return
+	}
 	var body struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
@@ -474,10 +493,16 @@ func (a *server) login(w http.ResponseWriter, r *http.Request) {
 	} else {
 		user, err = a.store.UserByUsername(login)
 	}
+	if err == nil && a.loginLocked(login) {
+		fail(http.StatusTooManyRequests, "Слишком много неудачных попыток. Попробуйте через 15 минут или восстановите пароль").write(w)
+		return
+	}
 	if err != nil || !auth.VerifyPassword(body.Password, userPasswordHash(user)) {
+		a.loginFailed(login)
 		fail(http.StatusUnauthorized, "Неверная почта, логин или пароль").write(w)
 		return
 	}
+	a.loginSucceeded(login)
 	if user.TotpSecret != "" && body.TotpCode == "" {
 		writeJSON(w, http.StatusForbidden, map[string]any{
 			"error":    "Введите код из приложения-аутентификатора",
