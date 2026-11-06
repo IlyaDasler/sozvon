@@ -215,7 +215,10 @@ function renderRail() {
   renderRailCall();
 
   const list = $('rail-list');
+  // Плашка активного канала живёт внутри списка и не должна исчезать при перерисовке.
+  const indicator = list.querySelector(':scope > .glass-tab-indicator');
   list.replaceChildren();
+  if (indicator) list.append(indicator);
   for (const invite of state.hubInvites) list.append(inviteItem(invite));
   if (!state.hubsLoaded) return;
   const layout = currentLayout();

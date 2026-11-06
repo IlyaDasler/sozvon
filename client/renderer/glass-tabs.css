@@ -4,6 +4,21 @@
 
 html[data-theme='glass'] #friend-tabs,
 html[data-theme='glass'] #set-nav,
+html[data-theme='glass'] #rail-list {
+  position: relative;
+  isolation: isolate;
+}
+html[data-theme='glass'] #rail-list .rail-item {
+  position: relative;
+  z-index: 1;
+}
+html[data-theme='glass'] #rail-list .glass-tab-indicator {
+  z-index: 0;
+  border-radius: 18px;
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent), 0 6px 18px rgba(0,0,0,.24);
+}
 html[data-theme='glass'] #privacy-subnav {
   position: relative;
   isolation: isolate;
@@ -63,6 +78,21 @@ html[data-theme='glass'] #friend-tabs > .add-tab.active {
 }
 
 /* Подменю «Данные и приватность»: та же плашка и та же анимация, но компактнее */
+html[data-theme='glass'] #rail-list {
+  position: relative;
+  isolation: isolate;
+}
+html[data-theme='glass'] #rail-list .rail-item {
+  position: relative;
+  z-index: 1;
+}
+html[data-theme='glass'] #rail-list .glass-tab-indicator {
+  z-index: 0;
+  border-radius: 18px;
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent), 0 6px 18px rgba(0,0,0,.24);
+}
 html[data-theme='glass'] #privacy-subnav {
   gap: 3px;
   margin: 2px 0 8px 10px;
