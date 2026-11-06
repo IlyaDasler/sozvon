@@ -256,7 +256,11 @@ function renderRooms() {
     }
     for (const room of loose) list.append(roomItem(room));
   }
-  for (const group of groups) renderRoomGroup(list, hub, group, sorted.filter((r) => r.groupId === group.id));
+  for (const group of groups) {
+    const groupRooms = sorted.filter((r) => r.groupId === group.id);
+    if (!groupRooms.length) continue;
+    renderRoomGroup(list, hub, group, groupRooms);
+  }
 }
 
 // ---------- Группы комнат ----------
