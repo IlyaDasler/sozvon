@@ -42,6 +42,9 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
+      # НЕРУШИМО: автообновление macOS проверяется до сборки. Красный тест = нет релиза.
+      - name: Тест автообновления macOS
+        run: node --test test/mac-update.test.js
       # Своего нативного захвата экрана для macOS нет: трансляция идёт через Chromium
       - name: Сборка без подписи
         if: env.MAC_CERT == ''
