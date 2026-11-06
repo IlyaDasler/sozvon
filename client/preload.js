@@ -79,6 +79,14 @@ contextBridge.exposeInMainWorld('desktop', {
     download: (base) => ipcRenderer.send('update:download', base),
     install: () => ipcRenderer.send('update:install'),
   },
+  // Локальная запись звонка. Файл выбирает main-процесс, страница только шлёт чанки.
+  recording: {
+    start: (name) => ipcRenderer.invoke('recording:start', String(name || 'Созвон')),
+    chunk: (id, data) => ipcRenderer.send('recording:chunk', id, data),
+    flush: (id) => ipcRenderer.invoke('recording:flush', id),
+    stop: (id) => ipcRenderer.invoke('recording:stop', id),
+    reveal: (filePath) => ipcRenderer.invoke('recording:reveal', String(filePath || '')),
+  },
   // Плавающее окно трансляции: отдельное окно Windows, его можно унести на другой монитор
   pip: {
     open: (opts) => ipcRenderer.invoke('pip:open', opts || {}),

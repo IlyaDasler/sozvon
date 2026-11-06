@@ -14,3 +14,4 @@ client/e2e-logs/
 tauri-pilot/src-tauri/target/
 tauri-pilot/src-tauri/Cargo.lock
 _backup/
+client/e2e-recordings/
