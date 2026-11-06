@@ -308,6 +308,7 @@
   --text-2: #d9d0c7;
   --muted: #9a8f88;
   --accent: #e10600;
+  --accent-theme: #e10600;
   --accent-2: #f2c200;
   --accent-hover: #c40500;
   --on-accent: #ffffff;
@@ -337,6 +338,7 @@
   --text-2: #d5daf0;
   --muted: #9aa2c4;
   --accent: #7aa7ff;
+  --accent-theme: #7aa7ff;
   --accent-2: #c58bff;
   --accent-hover: #6898ff;
   --link: #9ec3ff;

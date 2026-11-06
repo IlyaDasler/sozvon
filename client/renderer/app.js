@@ -2470,6 +2470,8 @@ function showSettingsTab(tab) {
   for (const p of document.querySelectorAll('#settings .set-pane')) p.classList.toggle('hidden', p.dataset.pane !== current);
   document.getElementById('privacy-subnav')?.classList.toggle('hidden', current !== 'privacy');
   document.getElementById('settings')?.classList.toggle('privacy-mode', current === 'privacy');
+  // Оформление: подложка без размытия — видно, как выбранная тема ложится на приложение
+  document.getElementById('settings')?.classList.toggle('look-preview', current === 'look');
   $('settings').querySelector('.set-body').scrollTop = 0;
   if (current === 'privacy') {
     showPrivacyPage(window.privacyPage || 'data');
