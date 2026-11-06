@@ -334,7 +334,6 @@ func (a *server) respondSelf(w http.ResponseWriter, userID int64) {
 	writeJSON(w, http.StatusOK, self)
 }
 
-
 // mailResend — ошибка «код уже отправлен», чтобы отдать 429.
 var mailResend = resendError{}
 

@@ -114,6 +114,7 @@ func NewConn(userID int64, sid string, ws *websocket.Conn) *Conn {
 }
 
 func deadline() time.Time { return time.Now().Add(2 * time.Second) }
+
 // CloseSession — закрыть живые соединения конкретного устройства.
 func (h *Hub) CloseSession(userID int64, sid string) {
 	h.closeMatching(userID, func(conn *Conn) bool { return conn.SID == sid })

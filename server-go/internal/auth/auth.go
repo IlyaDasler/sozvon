@@ -68,9 +68,9 @@ func SignToken(secret []byte, userID int64, sessionID string) string {
 }
 
 type Token struct {
-	UID int64  `json:"uid"`
-	SID string `json:"sid"`
-	Exp int64  `json:"exp"`
+	UID  int64  `json:"uid"`
+	SID  string `json:"sid"`
+	Exp  int64  `json:"exp"`
 	Kind string `json:"kind"`
 }
 

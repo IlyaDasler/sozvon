@@ -12,7 +12,7 @@ import (
 
 // События канала: «собираемся играть в 21:00».
 // Событие живёт в комнате канала, готовность участников («буду», «не смогу»,
-// «готов в 21:30») приходит всем вместе с комнатой, как в Node-сервере.
+// «готов в 21:30») приходит всем вместе с комнатой, как в серверной логике.
 
 var eventRepeats = map[string]bool{"none": true, "daily": true, "weekdays": true, "weekly": true}
 var eventReminds = map[int64]bool{0: true, 5: true, 10: true, 15: true, 30: true, 60: true}
@@ -398,7 +398,7 @@ func (a *server) roomEventFinish(w http.ResponseWriter, r *http.Request) {
 }
 
 // checkEventReminders — раз в полминуты проверяем ближайшие запуски и напоминаем
-// всем участникам комнаты, как в Node-сервере.
+// всем участникам комнаты, как в серверной логике.
 func (a *server) checkEventReminders() {
 	now := time.Now().UnixMilli()
 	events, err := a.store.AllEvents()

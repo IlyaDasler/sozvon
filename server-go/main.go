@@ -88,7 +88,7 @@ func main() {
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
-	// Напоминания о событиях: раз в полминуты, как в Node-сервере
+	// Напоминания о событиях: раз в полминуты, как в серверной логике
 	go app.eventRemindersLoop()
 	go func() {
 		logger.Info("сервер запущен", "addr", httpServer.Addr, "data", cfg.DataDir)
@@ -262,7 +262,7 @@ func (a *server) routes() http.Handler {
 			r.Post("/uploads", a.upload)
 		})
 	})
-	// Веб-версия клиента: Node-сервер раздавал client/renderer из WEB_DIR, Go делает так же.
+	// Веб-версия клиента: Веб-версия клиента раздаётся из WEB_DIR.
 	fileServer := a.staticHandler()
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		// Неизвестный API — JSON-ошибка, как в Node; остальное — файлы клиента

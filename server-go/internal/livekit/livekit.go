@@ -69,10 +69,10 @@ func (o Options) JoinGrant(roomID int64, userID int64, name string, speak bool, 
 	}
 	now := time.Now().Unix()
 	token := sign(o.Secret, map[string]any{
-		"iss": o.Key,
-		"nbf": now - 10,
-		"exp": now + 6*3600,
-		"sub": itoa(userID),
+		"iss":  o.Key,
+		"nbf":  now - 10,
+		"exp":  now + 6*3600,
+		"sub":  itoa(userID),
 		"name": name,
 		"video": map[string]any{
 			"room":              o.Room(roomID),
@@ -114,6 +114,7 @@ func itoa(value int64) string {
 	}
 	return digits
 }
+
 // adminToken — пропуск администратора комнаты на минуту (как в Node).
 func (o Options) adminToken(room string, ttl int64) string {
 	now := time.Now().Unix()
@@ -162,6 +163,7 @@ func (o Options) RemoveParticipant(roomID, userID int64) error {
 func (o Options) DeleteRoom(roomID int64) error {
 	return o.twirp("DeleteRoom", map[string]any{"room": o.Room(roomID)})
 }
+
 // ListRooms — проверка, что медиасервер принимает наш пропуск администратора.
 func (o Options) ListRooms() (int, error) {
 	if !o.Enabled() {

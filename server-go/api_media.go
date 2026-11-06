@@ -182,6 +182,7 @@ func (a *server) roomBackground(w http.ResponseWriter, r *http.Request) {
 	a.notifyRoom(roomID)
 	writeJSON(w, http.StatusOK, a.roomJSON(updated))
 }
+
 // announceProfile — новый аватар или баннер видят друзья и соседи по каналам.
 func (a *server) announceProfile(userID int64) {
 	fresh, err := a.store.UserByID(userID)

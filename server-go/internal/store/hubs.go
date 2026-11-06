@@ -35,20 +35,20 @@ type EmojiRow struct {
 }
 
 type HubRow struct {
-	ID              int64
-	Name            string
-	OwnerID         int64
-	IconColor       string
-	Icon            string
-	CreatedAt       int64
-	DefaultPerms    int64
+	ID               int64
+	Name             string
+	OwnerID          int64
+	IconColor        string
+	Icon             string
+	CreatedAt        int64
+	DefaultPerms     int64
 	ReactionsVisible bool
-	Roles           []RoleRow
-	Members         []HubMember
-	Groups          []GroupRow
-	Emojis          []EmojiRow
-	Invited         []*User
-	Bans            []*User
+	Roles            []RoleRow
+	Members          []HubMember
+	Groups           []GroupRow
+	Emojis           []EmojiRow
+	Invited          []*User
+	Bans             []*User
 }
 
 type RoomMember struct {
@@ -487,6 +487,7 @@ func (s *Store) IsHubMember(hubID, userID int64) (bool, error) {
 	err := s.db.QueryRow(`SELECT COUNT(*) FROM hub_members WHERE hub_id = ? AND user_id = ?`, hubID, userID).Scan(&exists)
 	return exists > 0, err
 }
+
 type HubInvite struct {
 	HubID       int64
 	HubName     string
@@ -531,6 +532,7 @@ func (s *Store) HubInvitesOf(userID int64) ([]HubInvite, error) {
 	}
 	return list, nil
 }
+
 // RoomMemberIDs — кто получает события комнаты.
 func (s *Store) RoomMemberIDs(roomID int64) ([]int64, error) {
 	rows, err := s.db.Query(`SELECT user_id FROM room_members WHERE room_id = ?`, roomID)
