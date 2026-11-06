@@ -5,3 +5,7 @@ deploy/.env
 *.log
 .DS_Store
 .e2e-shots/
+server-go/sozvon-server-go*
+server-go/sozvon-go*
+server-go/sozvon-backup*
+server-go/*.test
