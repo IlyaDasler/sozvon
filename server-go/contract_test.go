@@ -9,13 +9,9 @@ import (
 	"testing"
 )
 
-// Контракт с Node-сервером: фикстуры лежат в server/contract.
-// Тест не требует запуска сервера — он сторожит, что в Go есть все маршруты
-// и все имена событий WebSocket, которые сняты с работающего Node.
-// Фикстуры лежат рядом с Go-сервером; если их там ещё нет — берём копию из server/contract
-// (пока Node-сервер не удалён). Это позволяет убрать Node без поломки тестов.
+// Контракт API и WebSocket хранится рядом с Go-сервером: server-go/contract.
+// Тест не требует запуска сервера — он сторожит все маршруты и имена событий.
 const contractDir = "contract"
-const contractFallbackDir = "../server/contract"
 
 type contractCall struct {
 	Name   string `json:"name"`
@@ -24,11 +20,7 @@ type contractCall struct {
 }
 
 func contractPath(name string) string {
-	local := filepath.Join(contractDir, name)
-	if _, err := os.Stat(local); err == nil {
-		return local
-	}
-	return filepath.Join(contractFallbackDir, name)
+	return filepath.Join(contractDir, name)
 }
 
 func readContract(t *testing.T, name string, target any) bool {

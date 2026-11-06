@@ -10,7 +10,7 @@ if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
   try { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction Stop }
   catch { $taskRemoved = $false }
 }
-# Сначала цикл перезапуска (cmd), потом сам сервер (node)
+# Сначала цикл перезапуска (cmd), потом сам сервер
 Get-CimInstance Win32_Process |
   Where-Object { $_.CommandLine -and $_.CommandLine.Contains($InstallDir) } |
   Sort-Object { $_.Name -ne 'cmd.exe' } |

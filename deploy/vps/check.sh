@@ -28,10 +28,8 @@ else
 fi
 if systemctl cat sozvon 2>/dev/null | grep -q 'sozvon-go'; then
   ok 'реализация: Go (sozvon-go)'
-elif systemctl cat sozvon 2>/dev/null | grep -q '/usr/bin/node'; then
-  ok 'реализация: Node'
 else
-  bad 'не понял, что запускает sozvon — посмотрите systemctl cat sozvon'
+  bad 'sozvon запускает не sozvon-go — посмотрите systemctl cat sozvon'
 fi
 for unit in livekit coturn caddy; do
   if systemctl is-active --quiet "$unit"; then ok "$unit запущен"; else bad "$unit не работает"; fi
