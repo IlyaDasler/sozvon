@@ -2,17 +2,18 @@ package main
 
 import (
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
-
-	"sozvon/server/internal/version"
 )
 
-// Политика версий: клиенты ниже MIN_CLIENT_VERSION получают 426 и ссылку
-// на обновление. Браузерная версия (без Electron в UA) не блокируется, чтобы
-// веб-клиент и OAuth-страницы продолжали работать.
+// Политика версий — как в Node-сервере (client-version.js): блокируем только
+// старые Electron-клиенты по User-Agent «Sozvon/1.x». Браузер, веб-версия и любые
+// запросы без версии в UA проходят: иначе e2e-тесты, curl и OAuth-страницы
+// получали бы 426 на пустом месте.
 //
-// Заголовок X-Client-Version присылает Electron-клиент начиная с 3.0.
-// Старые Electron-клиенты его не умеют — для них это и есть признак старой версии.
+// Заголовок X-Client-Version новый клиент присылает для информации — им можно
+// пользоваться в /api/version, но не как пропуском или запретом.
 
 type versionPolicyBody struct {
 	Latest         string `json:"latest"`
@@ -29,17 +30,26 @@ func (a *server) versionPolicy() versionPolicyBody {
 	}
 }
 
-func isElectronRequest(r *http.Request) bool {
-	return strings.Contains(strings.ToLower(r.UserAgent()), "electron")
+// minClientMajor — самая старая поддерживаемая мажорная версия, как MIN_MAJOR в Node.
+const minClientMajor = 2
+
+var sozvonUserAgent = regexp.MustCompile(`(?i)\bSozvon/(\d+)\.\d+\.\d+`)
+
+// oldClientByUserAgent — «Sozvon/1.9.0» и старше; остальные запросы считаются новыми.
+func oldClientByUserAgent(userAgent string) bool {
+	match := sozvonUserAgent.FindStringSubmatch(userAgent)
+	if match == nil {
+		return false
+	}
+	major, err := strconv.Atoi(match[1])
+	if err != nil {
+		return false
+	}
+	return major < minClientMajor
 }
 
 func (a *server) clientVersionAllowed(r *http.Request) bool {
-	raw := strings.TrimSpace(r.Header.Get("X-Client-Version"))
-	if raw != "" {
-		return version.AtLeast(raw, a.cfg.MinClientVersion)
-	}
-	// Без заголовка: обычный браузер — можно, Electron — старая версия.
-	return !isElectronRequest(r)
+	return !oldClientByUserAgent(r.UserAgent())
 }
 
 func (a *server) versionInfo(w http.ResponseWriter, r *http.Request) {

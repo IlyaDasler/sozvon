@@ -44,6 +44,7 @@ type server struct {
 	calls   *callManager
 	voice   *voiceManager
 	livekit livekit.Options
+	limits  *limiter
 }
 
 func authRandomID() string { return auth.RandomID(16) }
@@ -78,157 +79,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), oauth: oauth.Options{ClientID: cfg.YandexClientID, ClientSecret: cfg.YandexClientSecret, TestBase: cfg.OAuthTestBase}, preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}}
+	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), oauth: oauth.Options{ClientID: cfg.YandexClientID, ClientSecret: cfg.YandexClientSecret, TestBase: cfg.OAuthTestBase}, preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}, limits: newLimiter()}
 
-	router := chi.NewRouter()
-	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second), middleware.Logger)
-	router.Get("/api/files/{id}/{name}", app.serveFile)
-	router.Get("/api/avatars/{name}", app.serveMedia)
-	router.Get("/api/banners/{name}", app.serveBanner)
-	router.Get("/api/wallpapers/{name}", app.serveWallpaper)
-	router.Get("/api/hubs/{id}/icon", app.serveHubIcon)
-	router.Get("/ws", app.websocket)
-
-	router.Route("/api", func(r chi.Router) {
-		r.Use(app.requireClientVersion)
-		r.Get("/health", app.health)
-		r.Get("/version", app.versionInfo)
-		r.Get("/time", func(w http.ResponseWriter, r *http.Request) {
-			// Часы сервера, а не компьютера: по ним клиент выбирает рассвет/день/закат/ночь
-			writeJSON(w, http.StatusOK, map[string]any{"now": time.Now().UnixMilli()})
-		})
-		r.Post("/register/code", app.registerCode)
-		r.Post("/register", app.register)
-		r.Post("/login", app.login)
-		r.Post("/password/code", app.passwordCode)
-		r.Post("/password/reset", app.passwordReset)
-		r.Get("/oauth/providers", app.oauthProviders)
-		r.Get("/oauth/{provider}/url", app.oauthURL)
-		r.Post("/oauth/{provider}", app.oauthAuth)
-		r.Post("/signup/complete", app.signupComplete)
-		r.Get("/oauth/{provider}/web", app.oauthWebStart)
-		r.Get("/oauth/{provider}/callback", app.oauthWebCallback)
-		r.Post("/oauth/web/exchange", app.oauthWebExchange)
-
-		r.Group(func(r chi.Router) {
-			r.Use(app.requireAuth)
-			r.Get("/link-preview", app.linkPreview)
-			r.Get("/me", app.me)
-			r.Patch("/me/privacy", app.updatePrivacy)
-			r.Patch("/me", app.patchMe)
-			r.Put("/me/status", app.setMyStatus)
-			r.Put("/me/key", app.setMyKey)
-			r.Post("/key-transfer", app.keyTransferPut)
-			r.Get("/key-transfer/{id}", app.keyTransferGet)
-			r.Post("/me/email/code", app.emailCode)
-			r.Put("/me/email", app.updateEmail)
-			r.Delete("/me/identities/{provider}", app.unlinkIdentity)
-			r.Delete("/me/email", app.updateEmail)
-			r.Get("/messages/{peerId}", app.dmMessages)
-			r.Get("/messages/{peerId}/pins", app.dmPins)
-			r.Post("/messages/{peerId}", app.sendDM)
-			r.Patch("/messages/{peerId}/{id}", app.editDM)
-			r.Delete("/messages/{peerId}/{id}", app.deleteDM)
-			r.Get("/messages/{peerId}/{id}/reactions", app.dmReactions)
-			r.Post("/messages/{peerId}/{id}/reactions", app.dmReactions)
-			r.Put("/messages/{peerId}/{id}/pin", app.dmPin)
-			r.Delete("/messages/{peerId}/{id}/pin", app.dmPin)
-			r.Put("/me/avatar", app.uploadAvatar)
-			r.Delete("/me/avatar", app.uploadAvatar)
-			r.Put("/me/banner", app.uploadBanner)
-			r.Delete("/me/banner", app.uploadBanner)
-			r.Post("/ws-ticket", app.wsTicket)
-			r.Get("/sessions", app.sessions)
-			r.Delete("/sessions/{id}", app.deleteSession)
-
-			r.Get("/contacts", app.contacts)
-			r.Post("/contacts", app.addContact)
-			r.Put("/contacts/{id}/theme", app.contactTheme)
-			r.Put("/contacts/{id}/wallpaper", app.contactWallpaper)
-			r.Delete("/contacts/{id}/wallpaper", app.contactWallpaper)
-			r.Delete("/contacts/{id}", app.removeContact)
-			r.Get("/friend-requests", app.friendRequests)
-			r.Post("/friend-requests/{id}/accept", app.acceptFriendRequest)
-			r.Delete("/friend-requests/{id}", app.declineFriendRequest)
-			r.Get("/blocks", app.blocks)
-			r.Post("/blocks", app.blockUser)
-			r.Post("/blocks/{id}", app.blockUser)
-			r.Delete("/blocks/{id}", app.unblockUser)
-
-			r.Get("/hubs", app.hubs)
-			r.Post("/hubs", app.createHub)
-			r.Patch("/hubs/{id}", app.patchHub)
-			r.Put("/hubs/{id}/icon", app.hubIcon)
-			r.Delete("/hubs/{id}/icon", app.hubIcon)
-			r.Delete("/hubs/{id}", app.deleteHub)
-			r.Get("/hub-invites", app.hubInvites)
-
-			r.Get("/keys/{conv}", app.convKeys)
-			r.Put("/keys/{conv}", app.convKeys)
-			r.Post("/keys/{conv}", app.convKeys)
-			r.Get("/rooms", app.rooms)
-			r.Post("/rooms", app.createRoom)
-			r.Patch("/rooms/{id}", app.patchRoom)
-			r.Put("/rooms/{id}/background", app.roomBackground)
-			r.Delete("/rooms/{id}/background", app.roomBackground)
-			r.Get("/rooms/{id}/messages", app.roomMessages)
-			r.Post("/rooms/{id}/messages", app.sendRoomMessage)
-			r.Get("/rooms/{id}/messages/{messageId}/thread", app.threadMessages)
-			r.Get("/rooms/{id}/pins", app.roomPinsList)
-			r.Post("/rooms/{id}/timeouts", app.roomTimeouts)
-			r.Delete("/rooms/{id}/timeouts/{userId}", app.roomTimeouts)
-			r.Post("/rooms/{id}/disconnect", app.disconnectMember)
-			r.Delete("/rooms/{id}/voice/{userId}", app.voiceKick)
-			r.Put("/rooms/{id}/messages/{messageId}/pin", app.roomPin)
-			r.Delete("/rooms/{id}/messages/{messageId}/pin", app.roomPin)
-			r.Patch("/rooms/{id}/messages/{messageId}", app.roomEditMessage)
-			r.Delete("/rooms/{id}/messages/{messageId}", app.roomDeleteMessage)
-			r.Get("/rooms/{id}/messages/{messageId}/reactions", app.roomMessageReactions)
-			r.Post("/rooms/{id}/messages/{messageId}/reactions", app.roomMessageReactions)
-			r.Post("/hubs/{id}/members", app.hubAddMembers)
-			r.Post("/hubs/{id}/groups", app.hubGroups)
-			r.Patch("/hubs/{id}/groups/{groupId}", app.hubGroup)
-			r.Delete("/hubs/{id}/groups/{groupId}", app.hubGroup)
-			r.Put("/hubs/{id}/emojis/{name}", app.hubEmoji)
-			r.Delete("/hubs/{id}/emojis/{name}", app.hubEmoji)
-			r.Post("/hubs/{id}/invites", app.hubInvite)
-			r.Post("/hub-invites/{id}/accept", app.acceptHubInvite)
-			r.Delete("/hub-invites/{id}", app.declineHubInvite)
-			r.Delete("/hubs/{id}/members/{userId}", app.hubMember)
-			r.Put("/hubs/{id}/members/{userId}/manager", app.hubMemberManager)
-			r.Put("/hubs/{id}/members/{userId}/nickname", app.hubMemberNickname)
-			r.Delete("/hubs/{id}/members/{userId}/nickname", app.hubMemberNickname)
-			r.Put("/hubs/{id}/members/{userId}/role", app.hubMemberRole)
-			r.Post("/hubs/{id}/bans", app.hubBan)
-			r.Delete("/hubs/{id}/bans/{userId}", app.hubBan)
-			r.Post("/hubs/{id}/roles", app.hubRole)
-			r.Patch("/hubs/{id}/roles/{roleId}", app.hubRole)
-			r.Delete("/hubs/{id}/roles/{roleId}", app.hubRole)
-			r.Delete("/rooms/{id}", app.roomDelete)
-			r.Post("/rooms/{id}/bans", app.roomBans)
-			r.Delete("/rooms/{id}/bans/{userId}", app.roomBans)
-			r.Post("/rooms/{id}/members", app.addRoomMember)
-			r.Delete("/rooms/{id}/members/{userId}", app.roomMembers)
-			r.Put("/rooms/{id}/members/{userId}/role", app.roomRole)
-			r.Post("/rooms/{id}/roles", app.roomRoles)
-			r.Patch("/rooms/{id}/roles/{roleId}", app.roomRoles)
-			r.Delete("/rooms/{id}/roles/{roleId}", app.roomRoles)
-			r.Post("/read", app.readConv)
-			r.Post("/rooms/{id}/read", app.markRoomRead)
-			r.Get("/unread", app.unread)
-			r.Get("/ice", app.ice)
-			r.Post("/me/2fa/setup", app.totpSetup)
-			r.Post("/me/2fa/enable", app.totpEnable)
-			r.Post("/me/2fa/disable", app.totpDisable)
-			r.Post("/uploads", app.upload)
-		})
-	})
+	router := app.routes()
 
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+	// Напоминания о событиях: раз в полминуты, как в Node-сервере
+	go app.eventRemindersLoop()
 	go func() {
 		logger.Info("сервер запущен", "addr", httpServer.Addr, "data", cfg.DataDir)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -246,6 +107,189 @@ func main() {
 		logger.Error("не удалось остановить сервер", "error", err)
 	}
 	logger.Info("сервер остановлен")
+}
+
+// routes — все маршруты сервера. Вынесено из main, чтобы проверять статику и API в тестах.
+func (a *server) routes() http.Handler {
+	router := chi.NewRouter()
+	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second), middleware.Logger)
+	router.Get("/api/files/{id}/{name}", a.serveFile)
+	router.Get("/api/avatars/{name}", a.serveMedia)
+	router.Get("/api/banners/{name}", a.serveBanner)
+	router.Get("/api/wallpapers/{name}", a.serveWallpaper)
+	router.Get("/api/hubs/{id}/icon", a.serveHubIcon)
+	router.Get("/ws", a.websocket)
+
+	router.Route("/api", func(r chi.Router) {
+		r.Use(a.requireClientVersion)
+		r.Get("/health", a.health)
+		r.Get("/version", a.versionInfo)
+		r.Get("/time", func(w http.ResponseWriter, r *http.Request) {
+			// Часы сервера, а не компьютера: по ним клиент выбирает рассвет/день/закат/ночь
+			writeJSON(w, http.StatusOK, map[string]any{"now": time.Now().UnixMilli()})
+		})
+		r.Post("/register/code", a.registerCode)
+		r.Post("/register", a.register)
+		r.Post("/login", a.login)
+		r.Post("/password/code", a.passwordCode)
+		r.Post("/password/reset", a.passwordReset)
+		r.Get("/oauth/providers", a.oauthProviders)
+		r.Get("/oauth/{provider}/url", a.oauthURL)
+		r.Post("/oauth/{provider}", a.oauthAuth)
+		r.Post("/signup/complete", a.signupComplete)
+		r.Get("/oauth/{provider}/web", a.oauthWebStart)
+		r.Get("/oauth/{provider}/callback", a.oauthWebCallback)
+		r.Post("/oauth/web/exchange", a.oauthWebExchange)
+
+		r.Group(func(r chi.Router) {
+			r.Use(a.requireAuth)
+			r.Get("/link-preview", a.linkPreview)
+			r.Get("/me", a.me)
+			r.Patch("/me/privacy", a.updatePrivacy)
+			r.Patch("/me", a.patchMe)
+			r.Put("/me/status", a.setMyStatus)
+			r.Put("/me/key", a.setMyKey)
+			r.Post("/key-transfer", a.keyTransferPut)
+			r.Get("/key-transfer/{id}", a.keyTransferGet)
+			r.Post("/me/email/code", a.emailCode)
+			r.Put("/me/email", a.updateEmail)
+			r.Delete("/me/identities/{provider}", a.unlinkIdentity)
+			r.Delete("/me/email", a.updateEmail)
+			r.Get("/messages/{peerId}", a.dmMessages)
+			r.Get("/messages/{peerId}/pins", a.dmPins)
+			r.Post("/messages/{peerId}", a.sendDM)
+			r.Patch("/messages/{peerId}/{id}", a.editDM)
+			r.Delete("/messages/{peerId}/{id}", a.deleteDM)
+			r.Get("/messages/{peerId}/{id}/reactions", a.dmReactions)
+			r.Post("/messages/{peerId}/{id}/reactions", a.dmReactions)
+			r.Put("/messages/{peerId}/{id}/pin", a.dmPin)
+			r.Delete("/messages/{peerId}/{id}/pin", a.dmPin)
+			r.Put("/me/game", a.setMyGame)
+			r.Put("/me/avatar", a.uploadAvatar)
+			r.Delete("/me/avatar", a.uploadAvatar)
+			r.Put("/me/banner", a.uploadBanner)
+			r.Delete("/me/banner", a.uploadBanner)
+			r.Post("/ws-ticket", a.wsTicket)
+			r.Get("/sessions", a.sessions)
+			r.Delete("/sessions/{id}", a.deleteSession)
+			r.Post("/sessions/revoke-others", a.revokeOtherSessions)
+
+			r.Get("/contacts", a.contacts)
+			r.Post("/contacts", a.addContact)
+			r.Put("/contacts/{id}/theme", a.contactTheme)
+			r.Put("/contacts/{id}/wallpaper", a.contactWallpaper)
+			r.Delete("/contacts/{id}/wallpaper", a.contactWallpaper)
+			r.Delete("/contacts/{id}", a.removeContact)
+			r.Get("/friend-requests", a.friendRequests)
+			r.Post("/friend-requests/{id}/accept", a.acceptFriendRequest)
+			r.Delete("/friend-requests/{id}", a.declineFriendRequest)
+			r.Get("/blocks", a.blocks)
+			r.Post("/blocks", a.blockUser)
+			r.Post("/blocks/{id}", a.blockUser)
+			r.Delete("/blocks/{id}", a.unblockUser)
+
+			r.Get("/hubs", a.hubs)
+			r.Post("/hubs", a.createHub)
+			r.Patch("/hubs/{id}", a.patchHub)
+			r.Put("/hubs/{id}/icon", a.hubIcon)
+			r.Delete("/hubs/{id}/icon", a.hubIcon)
+			r.Delete("/hubs/{id}", a.deleteHub)
+			r.Get("/hub-invites", a.hubInvites)
+
+			r.Get("/keys/{conv}", a.convKeys)
+			r.Put("/keys/{conv}", a.convKeys)
+			r.Post("/keys/{conv}", a.convKeys)
+			r.Get("/rooms", a.rooms)
+			r.Post("/rooms", a.createRoom)
+			r.Put("/hubs/{id}/rooms/order", a.hubRoomsOrder)
+			r.Patch("/rooms/{id}", a.patchRoom)
+			r.Put("/rooms/{id}/background", a.roomBackground)
+			r.Delete("/rooms/{id}/background", a.roomBackground)
+			r.Get("/rooms/{id}/messages", a.roomMessages)
+			r.Post("/rooms/{id}/messages", a.sendRoomMessage)
+			r.Get("/rooms/{id}/messages/{messageId}/thread", a.threadMessages)
+			r.Get("/rooms/{id}/pins", a.roomPinsList)
+			r.Post("/rooms/{id}/events", a.roomEventCreate)
+			r.Put("/events/{eventId}/response", a.roomEventResponse)
+			r.Patch("/events/{eventId}", a.roomEventPatch)
+			r.Delete("/events/{eventId}", a.roomEventDelete)
+			r.Post("/events/{eventId}/finish", a.roomEventFinish)
+			r.Post("/rooms/{id}/timeouts", a.roomTimeouts)
+			r.Delete("/rooms/{id}/timeouts/{userId}", a.roomTimeouts)
+			r.Post("/rooms/{id}/disconnect", a.disconnectMember)
+			r.Delete("/rooms/{id}/voice/{userId}", a.voiceKick)
+			r.Put("/rooms/{id}/messages/{messageId}/pin", a.roomPin)
+			r.Delete("/rooms/{id}/messages/{messageId}/pin", a.roomPin)
+			r.Patch("/rooms/{id}/messages/{messageId}", a.roomEditMessage)
+			r.Delete("/rooms/{id}/messages/{messageId}", a.roomDeleteMessage)
+			r.Get("/rooms/{id}/messages/{messageId}/reactions", a.roomMessageReactions)
+			r.Post("/rooms/{id}/messages/{messageId}/reactions", a.roomMessageReactions)
+			r.Post("/hubs/{id}/members", a.hubAddMembers)
+			r.Post("/hubs/{id}/groups", a.hubGroups)
+			r.Patch("/hubs/{id}/groups/{groupId}", a.hubGroup)
+			r.Delete("/hubs/{id}/groups/{groupId}", a.hubGroup)
+			r.Put("/hubs/{id}/emojis/{name}", a.hubEmoji)
+			r.Delete("/hubs/{id}/emojis/{name}", a.hubEmoji)
+			r.Post("/hubs/{id}/invites", a.hubInvite)
+			r.Post("/hub-invites/{id}/accept", a.acceptHubInvite)
+			r.Delete("/hub-invites/{id}", a.declineHubInvite)
+			r.Delete("/hubs/{id}/members/{userId}", a.hubMember)
+			r.Put("/hubs/{id}/members/{userId}/manager", a.hubMemberManager)
+			r.Put("/hubs/{id}/members/{userId}/nickname", a.hubMemberNickname)
+			r.Delete("/hubs/{id}/members/{userId}/nickname", a.hubMemberNickname)
+			r.Put("/hubs/{id}/members/{userId}/role", a.hubMemberRole)
+			r.Post("/hubs/{id}/bans", a.hubBan)
+			r.Delete("/hubs/{id}/bans/{userId}", a.hubBan)
+			r.Post("/hubs/{id}/roles", a.hubRole)
+			r.Patch("/hubs/{id}/roles/{roleId}", a.hubRole)
+			r.Delete("/hubs/{id}/roles/{roleId}", a.hubRole)
+			r.Delete("/rooms/{id}", a.roomDelete)
+			r.Post("/rooms/{id}/bans", a.roomBans)
+			r.Delete("/rooms/{id}/bans/{userId}", a.roomBans)
+			r.Post("/rooms/{id}/members", a.addRoomMember)
+			r.Delete("/rooms/{id}/members/{userId}", a.roomMembers)
+			r.Put("/rooms/{id}/members/{userId}/role", a.roomRole)
+			r.Post("/rooms/{id}/roles", a.roomRoles)
+			r.Patch("/rooms/{id}/roles/{roleId}", a.roomRoles)
+			r.Delete("/rooms/{id}/roles/{roleId}", a.roomRoles)
+			r.Post("/read", a.readConv)
+			r.Post("/rooms/{id}/read", a.markRoomRead)
+			r.Get("/unread", a.unread)
+			r.Get("/ice", a.ice)
+			r.Post("/me/2fa/setup", a.totpSetup)
+			r.Post("/me/2fa/enable", a.totpEnable)
+			r.Post("/me/2fa/disable", a.totpDisable)
+			r.Post("/uploads", a.upload)
+		})
+	})
+	// Веб-версия клиента: Node-сервер раздавал client/renderer из WEB_DIR, Go делает так же.
+	fileServer := a.staticHandler()
+	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		// Неизвестный API — JSON-ошибка, как в Node; остальное — файлы клиента
+		if r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") {
+			fail(http.StatusNotFound, "Не найдено").write(w)
+			return
+		}
+		if fileServer != nil {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+		http.NotFound(w, r)
+	})
+	return router
+}
+
+// staticHandler — раздача веб-клиента из WEB_DIR (если каталог задан и существует).
+func (a *server) staticHandler() http.Handler {
+	dir := a.cfg.WebDir
+	if dir == "" {
+		return nil
+	}
+	info, err := os.Stat(dir)
+	if err != nil || !info.IsDir() {
+		return nil
+	}
+	return http.FileServer(http.Dir(dir))
 }
 
 // ---------- ответы ----------
@@ -395,6 +439,10 @@ func (a *server) health(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (a *server) register(w http.ResponseWriter, r *http.Request) {
+	if !a.authLimit(r, "register") {
+		fail(http.StatusTooManyRequests, "Слишком много попыток, подождите минуту").write(w)
+		return
+	}
 	var body registerBody
 	if err := decode(r, &body); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
@@ -457,6 +505,10 @@ func (a *server) register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *server) login(w http.ResponseWriter, r *http.Request) {
+	if !a.authLimit(r, "login") {
+		fail(http.StatusTooManyRequests, "Слишком много попыток, подождите минуту").write(w)
+		return
+	}
 	var body struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
@@ -474,10 +526,16 @@ func (a *server) login(w http.ResponseWriter, r *http.Request) {
 	} else {
 		user, err = a.store.UserByUsername(login)
 	}
+	if err == nil && a.loginLocked(login) {
+		fail(http.StatusTooManyRequests, "Слишком много неудачных попыток. Попробуйте через 15 минут или восстановите пароль").write(w)
+		return
+	}
 	if err != nil || !auth.VerifyPassword(body.Password, userPasswordHash(user)) {
+		a.loginFailed(login)
 		fail(http.StatusUnauthorized, "Неверная почта, логин или пароль").write(w)
 		return
 	}
+	a.loginSucceeded(login)
 	if user.TotpSecret != "" && body.TotpCode == "" {
 		writeJSON(w, http.StatusForbidden, map[string]any{
 			"error":    "Введите код из приложения-аутентификатора",

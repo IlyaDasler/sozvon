@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Port               string
 	DataDir            string
+	WebDir             string
 	InviteCode         string
 	SMTPHost           string
 	SMTPPort           string
@@ -43,6 +44,12 @@ type Config struct {
 	PublicIP      string
 	TurnPort      string
 	ReconnectWait time.Duration
+
+	// Ограничители частоты — те же переменные окружения, что в Node-сервере
+	AuthRateLimit    int
+	MessageRateLimit int
+	UploadRateLimit  int
+	SocketRateLimit  int
 }
 
 func list(value string) []string {
@@ -105,6 +112,7 @@ func Load() Config {
 	return Config{
 		Port:               port,
 		DataDir:            dataDir,
+		WebDir:             os.Getenv("WEB_DIR"),
 		InviteCode:         os.Getenv("INVITE_CODE"),
 		SMTPHost:           os.Getenv("SMTP_HOST"),
 		SMTPPort:           envOr("SMTP_PORT", "587"),
@@ -134,6 +142,11 @@ func Load() Config {
 		PublicIP:      publicIP,
 		TurnPort:      turnPort,
 		ReconnectWait: time.Duration(numberEnv("CALL_RECONNECT_GRACE_MS", 20_000)) * time.Millisecond,
+
+		AuthRateLimit:    numberEnv("AUTH_RATE_LIMIT", 10),
+		MessageRateLimit: numberEnv("MESSAGE_RATE_LIMIT", 20),
+		UploadRateLimit:  numberEnv("UPLOAD_RATE_LIMIT", 30),
+		SocketRateLimit:  numberEnv("SOCKET_RATE_LIMIT", 600),
 	}
 }
 
