@@ -676,7 +676,10 @@ video.mirror { transform: scaleX(-1); }
   animation: rise var(--slow) var(--ease-out);
 }
 .voice-info { flex: 1; min-width: 0; }
-.voice-state-row { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; color: var(--warn); }
+.voice-state-row { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 700; font-size: 13px; color: var(--warn); }
+#voice-state { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voice-panel .icon-btn { flex: none; }
+#voice-where { max-width: 100%; }
 #voice-state.ok { color: var(--ok); }
 #voice-where { display: block; color: var(--muted); }
 .voice-panel .icon-btn.on { color: var(--accent); }
