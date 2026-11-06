@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -34,21 +34,28 @@
 </head>
 <body>
 <div class="shell">
-  <aside><div class="brand"><span class="dot"></span>Созвон</div>
-    <nav><button class="active">Профиль</button><button>Оформление</button><button>Приватность</button><button>Звонки</button></nav>
+  <aside><div class="brand"><span class="dot"></span>Sozvon</div>
+    <nav><button class="active">Profile</button><button>Appearance</button><button>Privacy</button><button>Calls</button></nav>
   </aside>
-  <main><section class="card"><h1>Настройки профиля</h1><p>Пилот Tauri: тот же HTML/CSS, системный WebView.</p>
-    <div class="field"><label>Отображаемое имя</label><input value="Илья"></div>
-    <div class="field"><label>О себе</label><input placeholder="Пара слов"></div>
-    <button class="cta">Сохранить</button>
-    <div class="metrics" id="metrics">замер…</div>
+  <main><section class="card"><h1>Profile settings</h1><p>Tauri pilot: same HTML/CSS, system WebView.</p>
+    <div class="field"><label>Display name</label><input value="Ilya"></div>
+    <div class="field"><label>About</label><input placeholder="A few words"></div>
+    <button class="cta">Save</button>
+    <div class="metrics" id="metrics">measuring...</div>
   </section></main>
 </div>
 <script>
-let frames=0; const start=performance.now();
-function tick(){ frames++; if(performance.now()-start<2000) requestAnimationFrame(tick); else {
-  document.getElementById('metrics').textContent = `анимация: ${Math.round(frames/2)} fps · загрузка: ${Math.round(performance.now())} мс`;
-}}
+let frames = 0;
+const started = performance.now();
+const startupMs = Math.round(started);
+function tick() {
+  frames++;
+  if (performance.now() - started < 2000) return requestAnimationFrame(tick);
+  const fps = Math.round(frames / 2);
+  const load = startupMs;
+  document.getElementById('metrics').textContent = 'animation: ' + fps + ' fps, load: ' + load + ' ms';
+  document.title = 'Sozvon Pilot | ' + fps + ' fps | ' + load + ' ms';
+}
 requestAnimationFrame(tick);
 </script>
 </body></html>
