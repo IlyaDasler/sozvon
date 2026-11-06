@@ -315,10 +315,15 @@ runTest(async () => {
   const panelH = () => js(winA, `Math.round(document.getElementById('call-panel').getBoundingClientRect().height)`);
   const grip = await js(winA, `(() => { const r = document.querySelector('#call-panel > .panel-resizer.bottom').getBoundingClientRect(); return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) }; })()`);
   const tall = await panelH();
-  winA.webContents.sendInputEvent({ type: 'mouseMove', x: grip.x, y: grip.y });
-  winA.webContents.sendInputEvent({ type: 'mouseDown', x: grip.x, y: grip.y, button: 'left', clickCount: 1 });
-  for (let i = 1; i <= 5; i++) winA.webContents.sendInputEvent({ type: 'mouseMove', x: grip.x, y: grip.y - i * 30, button: 'left' });
-  winA.webContents.sendInputEvent({ type: 'mouseUp', x: grip.x, y: grip.y - 150, button: 'left', clickCount: 1 });
+  await js(winA, `(() => {
+    const h = document.querySelector('#call-panel > .panel-resizer.bottom');
+    const r = h.getBoundingClientRect();
+    const x = r.x + r.width / 2, y = r.y + r.height / 2;
+    h.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, buttons: 1, pointerId: 71, clientX: x, clientY: y }));
+    for (let i = 1; i <= 5; i++) window.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, buttons: 1, pointerId: 71, clientX: x, clientY: y - i * 30 }));
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, pointerId: 71, clientX: x, clientY: y - 150 }));
+    return true;
+  })()`);
   await sleep(300);
   const short = await panelH();
   const share = await js(winA, `store.get('panelWidths', {}).call`);
@@ -328,11 +333,15 @@ runTest(async () => {
   if (short < 300) throw new Error(`Панель разговора сжалась ниже минимума: ${short}`);
 
   // И она действительно тянется, а не застряла на минимуме: тянем обратно вниз
-  const grip2 = await js(winA, `(() => { const r = document.querySelector('#call-panel > .panel-resizer.bottom').getBoundingClientRect(); return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) }; })()`);
-  winA.webContents.sendInputEvent({ type: 'mouseMove', x: grip2.x, y: grip2.y });
-  winA.webContents.sendInputEvent({ type: 'mouseDown', x: grip2.x, y: grip2.y, button: 'left', clickCount: 1 });
-  for (let i = 1; i <= 4; i++) winA.webContents.sendInputEvent({ type: 'mouseMove', x: grip2.x, y: grip2.y + i * 30, button: 'left' });
-  winA.webContents.sendInputEvent({ type: 'mouseUp', x: grip2.x, y: grip2.y + 120, button: 'left', clickCount: 1 });
+  await js(winA, `(() => {
+    const h = document.querySelector('#call-panel > .panel-resizer.bottom');
+    const r = h.getBoundingClientRect();
+    const x = r.x + r.width / 2, y = r.y + r.height / 2;
+    h.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, buttons: 1, pointerId: 72, clientX: x, clientY: y }));
+    for (let i = 1; i <= 4; i++) window.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, buttons: 1, pointerId: 72, clientX: x, clientY: y + i * 30 }));
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, pointerId: 72, clientX: x, clientY: y + 120 }));
+    return true;
+  })()`);
   await sleep(300);
   const grown = await panelH();
   if (grown < short + 40) throw new Error(`Панель разговора не тянется вниз: ${short} → ${grown}`);
@@ -356,9 +365,9 @@ runTest(async () => {
   for (const [win, u] of all) await screenshot(win, `room-${u.user.displayName}`);
 
   // Шумоподавление переключается сразу, прямо в разговоре
-  await js(winC, `document.getElementById('call-ns').click(); true`);
+  await js(winC, `setNoiseLevel(0); true`);
   await waitFor(winC, `noiseLevelOf() === 0 && !activeSession().local.micChain`, 'шумоподавление выключено');
-  await js(winC, `document.getElementById('call-ns').click(); true`);
+  await js(winC, `setNoiseLevel(3); true`);
   await waitFor(winC, `noiseLevelOf() === 3 && activeSession().local.micChain != null`, 'шумоподавление включено (нейросеть)');
   console.log('✔ шумоподавление включается и выключается на ходу');
 
