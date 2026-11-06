@@ -440,9 +440,9 @@ body:has(#auth:not(.hidden)) .nav-btn { display: none; }
 
 .update-bar {
   position: fixed; left: 80px; bottom: 64px; z-index: 5;
-  width: 224px;
+  width: calc(var(--sidebar-w, 248px) - 16px);
   display: flex; align-items: center; gap: 8px;
-  padding: 8px 8px 8px 10px; border-radius: 8px;
+  padding: 7px 8px 7px 12px; border-radius: var(--r-l);
   background: color-mix(in srgb, var(--accent) 22%, var(--bg-deep)); color: var(--text);
   box-shadow: 0 6px 20px rgba(0,0,0,.35);
   font-size: 13px; font-weight: 600;

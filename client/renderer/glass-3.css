@@ -2852,3 +2852,4 @@ dialog.modal {
 dialog.modal::backdrop { background: rgba(2, 5, 10, 0.62); }
 #screen-picker, #camera-picker { border: 0; outline: none; box-shadow: none; }
 #screen-picker:focus, #camera-picker:focus { outline: none; }
+html[data-theme='glass'] .update-bar { border-radius: 15px; }

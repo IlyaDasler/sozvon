@@ -6,7 +6,7 @@
 const CHECK_TIMEOUT_MS = 8000;
 
 /** Чем кончился запуск: 'install' — обновление скачано, ставим; 'start' — открываем приложение */
-function runStartup(updater, { onStatus, timeoutMs = CHECK_TIMEOUT_MS }) {
+function runStartup(updater, { onStatus, timeoutMs = CHECK_TIMEOUT_MS, platform = process.platform }) {
   return new Promise((resolve) => {
     let version = null;
     let timer = null;
@@ -14,6 +14,9 @@ function runStartup(updater, { onStatus, timeoutMs = CHECK_TIMEOUT_MS }) {
       'update-available': (info) => {
         clearTimeout(timer);
         version = info.version;
+        // На macOS Squirrel.Mac без подписи не ставит обновление и может
+        // оставить приложение на заставке. Не качаем им — обновление делает mac-update.
+        if (platform === 'darwin') return finish('start');
         onStatus({ state: 'downloading', version, percent: 0 });
         updater.downloadUpdate().catch(() => {}); // ошибка придёт событием 'error'
       },

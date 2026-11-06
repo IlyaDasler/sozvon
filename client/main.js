@@ -344,7 +344,11 @@ function setupUpdater({ checkNow = true } = {}) {
     updateRetried = false;
     setUpdateStatus({ state: 'latest', notes: releaseNotes(info), checkedAt: Date.now() });
   });
-  autoUpdater.on('update-downloaded', (info) => setUpdateStatus({ state: 'ready', version: info.version }));
+  autoUpdater.on('update-downloaded', (info) => {
+    // macOS ставит обновление только через mac-update; Squirrel здесь не источник ready.
+    if (process.platform === 'darwin') return;
+    setUpdateStatus({ state: 'ready', version: info.version });
+  });
   autoUpdater.on('error', (err) => {
     const message = String(err?.message || '');
     // Нет файла обновлений — значит просто нет релиза для этой платформы: это не ошибка
@@ -394,7 +398,7 @@ function showSplashStatus(status) {
 }
 
 async function startWithSplash() {
-  const result = await runStartup(autoUpdater, { onStatus: showSplashStatus, timeoutMs: app.isPackaged ? CHECK_TIMEOUT_MS : 1500 });
+  const result = await runStartup(autoUpdater, { onStatus: showSplashStatus, timeoutMs: app.isPackaged ? CHECK_TIMEOUT_MS : 1500, platform: process.platform });
   // Страховка: что бы ни случилось с обновлением, приложение обязано открыться
   const showWindow = () => {
     if (quitting) return;
