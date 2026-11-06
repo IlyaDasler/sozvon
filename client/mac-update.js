@@ -13,6 +13,14 @@ const https = require('node:https');
 const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 
+// НЕРУШИМЫЙ ИНВАРИАНТ (с 3.3.5): автообновление macOS обязано работать.
+// Нельзя выпускать релиз, если падает тест mac-update или ломается установка.
+const MAC_UPDATE_INVARIANT = Object.freeze({
+  mustWork: true,
+  since: '3.3.5',
+  covers: ['feed', 'download', 'sha512', 'unpack', 'permissions', 'swap', 'relaunch', 'ui-recovery'],
+});
+
 const REPO = 'IlyaDasler/sozvon';
 const RELEASES_API = `https://api.github.com/repos/${REPO}/releases/latest`;
 const DOWNLOAD_PREFIX = `https://github.com/${REPO}/releases/download/`;
@@ -318,4 +326,4 @@ function apply({ newApp, app, onQuit }) {
   return { ok: true, log, needsAdmin };
 }
 
-module.exports = { bundlePath, assetName, pickAsset, manifestEntry, swapScript, prepare, apply, getJson, swapLog, downloadVerified };
+module.exports = { bundlePath, assetName, pickAsset, manifestEntry, swapScript, prepare, apply, getJson, swapLog, downloadVerified, MAC_UPDATE_INVARIANT };
