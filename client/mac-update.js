@@ -127,7 +127,8 @@ function download(url, dest, onProgress = () => {}, expectedSize = 0) {
     const go = (target, hops = 0) => {
       if (hops > 5) return fail(new Error('Слишком много перенаправлений'));
       arm();
-      https
+      const client = target.startsWith('http:') ? http : https;
+      client
         .get(target, { headers: { 'User-Agent': 'Sozvon-Updater' } }, (res) => {
           if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
             res.resume();
