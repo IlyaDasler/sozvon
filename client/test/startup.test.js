@@ -20,9 +20,9 @@ function fakeUpdater(script) {
   return u;
 }
 
-const run = (updater, timeoutMs = 1000) => {
+const run = (updater, timeoutMs = 1000, platform = 'win32') => {
   const shown = [];
-  return runStartup(updater, { onStatus: (s) => shown.push(s), timeoutMs }).then((result) => ({ result, shown }));
+  return runStartup(updater, { onStatus: (s) => shown.push(s), timeoutMs, platform }).then((result) => ({ result, shown }));
 };
 
 test('новой версии нет — запускаем приложение', async () => {
@@ -84,4 +84,11 @@ test('на macOS обновление при запуске не ставим: S
   // Если ставить нечего — приложение просто открывается на любой платформе
   assert.equal(canAutoInstall('win32', 'start'), false);
   assert.equal(canAutoInstall('darwin', 'start'), false);
+});
+test('на macOS запуск не качает Squirrel-обновление и не уходит в install', async () => {
+  const u = fakeUpdater({ check: (u) => u.emit('update-available', { version: '3.4.1' }) });
+  const { result, shown } = await run(u, 1000, 'darwin');
+  assert.equal(result, 'start');
+  assert.equal(u.downloads, 0);
+  assert.deepEqual(shown.map((s) => s.state), ['checking', 'starting']);
 });

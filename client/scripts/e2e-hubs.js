@@ -203,6 +203,21 @@ runTest(async () => {
   await waitFor(winA, `!document.getElementById('profile-card').classList.contains('hidden')`, 'карточка профиля из списка участников');
   console.log('✔ список участников: скрытие запоминается, группы и карточка профиля');
 
+  // Имя в канале меняется у всех сразу: участники и авторы сообщений
+  const general = await js(winB, 'state.selectedRoomId');
+  await api('POST', `/rooms/${general}/messages`, { text: 'Сообщение до переименования в канале' }, b.token);
+  await sleep(300);
+  await js(winA, `selectRoom(${general}); true`);
+  await api('PUT', `/hubs/${hubId}/members/${b.user.id}/nickname`, { name: 'Вася в канале' }, a.token);
+  const nickShown = (win, id) => `(() => {
+    const members = [...document.querySelectorAll('#members-list .member-nick')].map((el) => el.textContent);
+    const authors = [...document.querySelectorAll('#room-messages .msg [data-profile="${id}"]:not(.avatar)')].map((el) => el.textContent);
+    return members.some((t) => t.includes('Вася в канале')) && authors.some((t) => t.includes('Вася в канале'));
+  })()`;
+  await waitFor(winA, nickShown(winA, b.user.id), 'новое имя в канале у Ильи');
+  await waitFor(winB, nickShown(winB, b.user.id), 'новое имя в канале у Васи');
+  console.log('✔ имя в канале обновляется в реальном времени у всех');
+
   // Вася закрыл приложение — у Ильи он «Не в сети»
   winB.destroy();
   await waitFor(winA, `[...document.querySelectorAll('#members-list .members-group')].some((g) => g.textContent.startsWith('Не в сети — 1'))`, 'Вася не в сети');

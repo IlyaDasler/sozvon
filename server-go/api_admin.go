@@ -321,6 +321,9 @@ func (a *server) hubMemberNickname(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	// Имя в канале — общее для всех: обновляем канал и комнаты у каждого участника.
+	a.broadcastHub(hubID)
+	a.broadcastHubRooms(hubID)
 	if hub := a.hubOr404(w, hubID); hub != nil {
 		writeJSON(w, http.StatusOK, a.hubJSON(hub))
 	}
