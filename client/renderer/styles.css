@@ -384,6 +384,8 @@ body:has(#auth:not(.hidden)) .nav-btn { display: none; }
    Р В±Р С•Р С”Р С•Р Р†Р В°РЎРЏ Р С—Р В°Р Р…Р ВµР В»РЎРЉ, РЎвЂЎР В°РЎвЂљ Р С‘ РЎС“РЎвЂЎР В°РЎРѓРЎвЂљР Р…Р С‘Р С”Р С‘, РЎРѓР С• РЎРѓР С”РЎР‚РЎС“Р С–Р В»РЎвЂР Р…Р Р…РЎвЂ№Р С РЎС“Р С–Р В»Р С•Р С РЎС“ РЎРѓРЎвЂљР С•Р В»Р В±РЎвЂ Р В° */
 .main {
   display: flex;
+  /* Небольшой отступ окна: сверху, снизу и справа — интерфейс не прилипает к краям */
+  padding: 8px 8px 8px 0;
   background:
     radial-gradient(70% 55% at 0% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
     var(--bg-deep);
@@ -724,12 +726,17 @@ video.mirror { transform: scaleX(-1); }
 .room-card h4 { margin: 18px 0 10px; font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; }
 .room-card > .row:last-child { margin-top: 18px; }
 .kind-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-.kind input { position: absolute; opacity: 0; }
+/* Радиокнопка спрятана, но остаётся доступной: селектор сильнее общего правила
+   input[type='radio'] ниже, иначе она занимает место и «съедает» отступ карточки */
+.kind-choice .kind input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
 .kind-body {
   display: flex; flex-direction: column; gap: 4px; height: 100%;
   padding: 12px; border-radius: 10px; cursor: pointer;
   background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line);
+  transition: background var(--fast), box-shadow var(--fast);
 }
+/* Наведение видно и у невыбранной карточки, и у выбранной другой */
+.kind:hover .kind-body { box-shadow: inset 0 0 0 1px var(--line-strong); }
 .kind-body svg { width: 22px; height: 22px; color: var(--muted); margin-bottom: 2px; }
 .kind input:checked + .kind-body { box-shadow: inset 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg-3)); }
 .kind input:checked + .kind-body svg { color: var(--accent); }
@@ -780,7 +787,7 @@ video.mirror { transform: scaleX(-1); }
   border-radius: var(--r-m); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line);
   transition: box-shadow var(--fast), background var(--fast);
 }
-.screen-mode input { position: absolute; opacity: 0; pointer-events: none; }
+.screen-modes .screen-mode input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
 .screen-mode b { font-size: 16px; }
 .screen-mode span { font-size: 13px; color: var(--text-2); }
 .screen-mode em { font-style: normal; font-size: 11px; color: var(--muted); }
@@ -991,6 +998,24 @@ video.mirror { transform: scaleX(-1); }
   background: color-mix(in srgb, var(--bg-deep) 70%, transparent); backdrop-filter: blur(6px);
   animation: fade var(--mid) var(--ease);
 }
+/* Разговорные окна — это <dialog>: он тоже должен занимать всё окно, иначе
+   карточка упирается в его «содержимое» и появляется лишняя прокрутка */
+dialog.modal {
+  width: 100%; height: 100%;
+  max-width: none; max-height: none;
+  margin: 0; padding: 0; border: 0;
+}
+/* Оформление и настройки канала: под окном не затемняем и не размываем —
+   человек сразу видит, как меняется тема и как выглядит канал */
+#settings.modal,
+#hub-settings.modal {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+#settings.modal:not(.hidden),
+#hub-settings.modal:not(.hidden) {
+  background: transparent;
+}
 .modal-card {
   width: min(460px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow-y: auto;
   padding: 24px; border-radius: var(--r-xl); background: var(--bg-2);
@@ -1124,7 +1149,7 @@ kbd {
 }
 /* Лёгкий хвост попапа: панель приходит из колокольчика */
 .notif-panel::before {
-  content: ''; position: absolute; top: -6px; left: 22px; right: auto; width: 12px; height: 12px;
+  content: ''; position: absolute; top: -6px; left: var(--notif-tail, 22px); right: auto; width: 12px; height: 12px;
   background: inherit; border-left: 1px solid var(--line); border-top: 1px solid var(--line);
   transform: rotate(45deg); border-top-left-radius: 3px;
 }
@@ -1408,7 +1433,7 @@ kbd {
 
 /* ---------- Р С™Р С•Р СР Р…Р В°РЎвЂљРЎвЂ№: Р С”Р Р…Р С•Р С—Р С”Р С‘ Р Р† РЎРѓР С—Р С‘РЎРѓР С”Р Вµ ---------- */
 
-.room-tools { display: inline-flex; gap: 2px; flex: none; width: 46px; }
+.room-tools { display: inline-flex; gap: 2px; flex: none; width: auto; }
 .room-tool {
   width: 22px; height: 22px; padding: 0; border: 0; border-radius: 4px; display: grid; place-items: center;
   background: none; color: var(--muted); cursor: pointer; opacity: .55; transition: opacity .1s, background .1s;
@@ -1556,6 +1581,21 @@ kbd {
 /* ---------- Р СџРЎР‚Р С‘Р С–Р В»Р В°РЎРѓР С‘РЎвЂљРЎРЉ Р С‘ Р С”Р С‘Р С”Р Р…РЎС“РЎвЂљРЎРЉ ---------- */
 
 .invite-card h3, .kick-card h3 { font-size: 18px; margin-bottom: 12px; }
+/* Крестик в окнах приглашения и создания комнаты — в углу, как у остальных окон */
+.invite-card, .room-card { position: relative; }
+.invite-card h3, .room-card h3 { padding-right: 40px; }
+.invite-card .invite-close, .room-card .invite-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+}
+.invite-card .invite-close:hover, .room-card .invite-close:hover { background: var(--bg-4); color: var(--text); }
+.invite-card .invite-close svg, .room-card .invite-close svg { width: 16px; height: 16px; }
 .dialog-card { width: min(420px, calc(100% - 32px)); }
 .crop-card { display: flex; flex-direction: column; gap: 12px; align-items: center; width: min(360px, calc(100% - 32px)); }
 .crop-card h3 { margin: 0; align-self: flex-start; }
@@ -1656,7 +1696,7 @@ kbd {
   width: 72px; flex: none;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   /* Р’В«+Р’В» Р Р†Р Р…Р С‘Р В·РЎС“ РІР‚вЂќ Р С—Р С• РЎвЂ Р ВµР Р…РЎвЂљРЎР‚РЎС“ Р Р…Р С‘Р В¶Р Р…Р ВµР в„– Р С—Р С•Р В»Р С”Р С‘: (Р Р†РЎвЂ№РЎРѓР С•РЎвЂљР В° Р С—Р С•Р В»Р С”Р С‘ РІв‚¬вЂ™ Р Р†РЎвЂ№РЎРѓР С•РЎвЂљР В° Р С—Р В»Р С‘РЎвЂљР С”Р С‘) / 2 + Р С•РЎвЂљРЎРѓРЎвЂљРЎС“Р С— Р С—Р С•Р В»Р С”Р С‘ */
-  padding: 10px 0 calc(var(--dock-gap) + (var(--dock-h) - var(--rail-tile)) / 2); background: transparent;
+  padding: 0 0 calc(var(--dock-gap) + (var(--dock-h) - var(--rail-tile)) / 2); background: transparent;
 }
 .rail-list {
   flex: 1; min-height: 0; width: 100%;
@@ -1665,7 +1705,7 @@ kbd {
 }
 .rail-list::-webkit-scrollbar { display: none; }
 .rail-list.drop-end { box-shadow: inset 0 -3px 0 var(--accent); }
-.rail-sep { width: 32px; height: 2px; margin: 6px 0; border-radius: 1px; background: var(--line-strong); flex: none; }
+.rail-sep { width: 32px; height: 2px; margin: -2px 0 6px; border-radius: 1px; background: var(--line-strong); flex: none; }
 .rail-item { position: relative; width: 72px; display: flex; justify-content: center; flex: none; }
 
 /* Р СџР С•Р В»Р С•РЎРѓР С”Р В° РЎРѓР В»Р ВµР Р†Р В°: РЎвЂљР С•РЎвЂЎР С”Р В° РІР‚вЂќ Р ВµРЎРѓРЎвЂљРЎРЉ Р Р…Р ВµР С—РЎР‚Р С•РЎвЂЎР С‘РЎвЂљР В°Р Р…Р Р…Р С•Р Вµ, Р С”Р С•РЎР‚Р С•РЎвЂљР С”Р В°РЎРЏ РІР‚вЂќ Р Р…Р В°Р Р†Р ВµР Т‘Р ВµР Р…Р С‘Р Вµ, Р Т‘Р В»Р С‘Р Р…Р Р…Р В°РЎРЏ РІР‚вЂќ Р С•РЎвЂљР С”РЎР‚РЎвЂ№РЎвЂљР С• */
@@ -1680,18 +1720,19 @@ kbd {
 
 .rail-tile {
   position: relative; width: var(--rail-tile); height: var(--rail-tile); padding: 0;
-  display: grid; place-items: center; border: 0; border-radius: 50%;
+  display: grid; place-items: center; border: 0; border-radius: 15px;
   background: var(--bg-3); color: var(--text-2); cursor: pointer;
   font-weight: 700; font-size: 15px; letter-spacing: .02em;
   transition: border-radius var(--mid) var(--ease), background var(--mid), box-shadow var(--mid) var(--ease), transform var(--fast) var(--ease);
 }
-/* Каналы с картинкой — скруглённый квадрат: круг обрезал фото по краям.
-   Буквенные каналы остаются круглыми, как в референсе */
+/* Все иконки каналов — скруглённые квадраты, как у каналов с картинкой */
 .rail-tile.has-image,
-.rail-tile.rail-home { border-radius: 15px; }
-.rail-tile:hover, .rail-item.active .rail-tile { border-radius: 15px; }
+.rail-tile.rail-home,
+.rail-tile:hover,
+.rail-item.active .rail-tile { border-radius: 15px; }
+/* Наведение — иконка чуть увеличивается; нажатие — слегка сжимается */
+.rail-tile:hover { transform: scale(1.08); }
 .rail-tile:active { transform: scale(.94); }
-.rail-item.active .rail-tile { box-shadow: 0 6px 16px color-mix(in srgb, var(--hub-color, var(--accent)) 35%, transparent); }
 .rail-home { background: var(--bg-3); }
 .rail-home img { display: block; }
 .rail-item.active .rail-home, .rail-home:hover { background: var(--accent); }
@@ -1737,9 +1778,15 @@ kbd {
 
 /* Р вЂњРЎР‚РЎС“Р С—Р С—Р В°: РЎРѓР Р†РЎвЂРЎР‚Р Р…РЎС“РЎвЂљР В°РЎРЏ РІР‚вЂќ Р СР С•Р В·Р В°Р С‘Р С”Р В° Р С‘Р В· Р С”Р В°Р Р…Р В°Р В»Р С•Р Р†, РЎР‚Р В°Р В·Р Р†РЎвЂРЎР‚Р Р…РЎС“РЎвЂљР В°РЎРЏ РІР‚вЂќ Р С—Р С•Р Т‘Р В»Р С•Р В¶Р С”Р В° РЎвЂ Р Р†Р ВµРЎвЂљР В° Р С–РЎР‚РЎС“Р С—Р С—РЎвЂ№ */
 .rail-folder { width: 56px; display: flex; flex-direction: column; align-items: center; gap: 6px; border-radius: 16px; flex: none; }
-.rail-folder.open { padding-bottom: 6px; background: color-mix(in srgb, var(--folder-color) 18%, var(--bg-2)); }
+/* Открытая группа не подсвечивается цветной подложкой */
+.rail-folder.open { padding-bottom: 6px; }
 .rail-folder .rail-item { width: 72px; }
 .folder-tile { background: color-mix(in srgb, var(--folder-color) 30%, var(--bg-3)); color: var(--folder-color); }
+/* Группа каналов — всегда скруглённый квадрат, как у обычных каналов;
+   наведение — плитка чуть увеличивается; открытая группа не подсвечивается */
+.rail-tile.folder-tile { border-radius: 15px; }
+.rail-tile.folder-tile:hover { transform: scale(1.08); }
+.rail-item.active .rail-tile.folder-tile { box-shadow: none; }
 .rail-folder.open .folder-tile { background: transparent; }
 .folder-tile svg { width: 22px; height: 22px; fill: color-mix(in srgb, var(--folder-color) 35%, transparent); }
 .folder-tile:has(.mini) { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 5px; grid-template-rows: 1fr 1fr; place-items: stretch; }
@@ -1794,7 +1841,8 @@ kbd {
 /* ---------- Р Р€РЎвЂЎР В°РЎРѓРЎвЂљР Р…Р С‘Р С”Р С‘ РЎРѓР С—РЎР‚Р В°Р Р†Р В° ---------- */
 
 .members-panel { position: relative; width: var(--members-w, 240px); flex: none; display: flex; flex-direction: column; background: var(--bg-2); border: 1px solid var(--line); border-width: 1px 0 0 1px; }
-.members-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 6px 12px; }
+/* Только вертикальная прокрутка: иначе снизу вылезает горизонтальный бегунок */
+.members-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 6px 12px; }
 .members-head { display: flex; align-items: center; gap: 6px; height: var(--head-h); margin: 0 -8px; padding: 0 var(--head-pad-x); border-bottom: 1px solid var(--line); }
 .members-group {
   padding: 10px 8px 3px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
@@ -1815,13 +1863,7 @@ kbd {
 .panel-resizer.right { right: 0; }
 .panel-resizer.left { left: 0; }
 .panel-resizer.bottom { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 8px; cursor: row-resize; }
-.panel-resizer.bottom::after { top: auto; bottom: 0; left: 0; right: 0; width: auto; height: 2px; }
 body.resizing-rows { cursor: row-resize; }
-.panel-resizer::after {
-  content: ''; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; border-radius: 1px;
-  background: var(--accent); opacity: 0; transition: opacity var(--mid) var(--ease);
-}
-.panel-resizer:hover::after, body.resizing .panel-resizer::after { opacity: .8; }
 body.resizing { cursor: col-resize; user-select: none; }
 body.resizing * { transition: none !important; }
 
@@ -1843,9 +1885,16 @@ body.resizing * { transition: none !important; }
 .popup-item.danger { color: var(--danger); }
 .popup-item.danger:hover { background: var(--danger); color: #fff; }
 .popup-sep { height: 1px; margin: 4px 6px; background: var(--line); }
-.popup-range { padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
-.popup-range-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--text-2); }
+.popup-range { position: relative; padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
+.popup-range-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-right: 24px; font-size: 13px; color: var(--text-2); }
 .popup-range-head b { color: var(--text); font-weight: 600; }
+.popup-range-close {
+  position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; padding: 0;
+  display: grid; place-items: center; border: 0; border-radius: 6px; background: none;
+  color: var(--muted); cursor: pointer; transition: background var(--fast), color var(--fast);
+}
+.popup-range-close svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.popup-range-close:hover { background: var(--bg-4); color: var(--text); }
 .popup-range input { width: 100%; accent-color: var(--accent); }
 .noise-ticks { display: flex; justify-content: space-between; gap: 4px; margin-top: -4px; color: var(--muted); font-size: 10.5px; }
 .noise-ticks span { flex: 1; text-align: center; }
@@ -1972,6 +2021,21 @@ html.theme-switching, html.theme-switching * { transition: background-color var(
 /* ---------- Р РЋР С•Р В±РЎвЂ№РЎвЂљР С‘РЎРЏ Р С”Р В°Р Р…Р В°Р В»Р В° ---------- */
 .field-row { display: flex; gap: 10px; }
 .field-row .field { flex: 1; min-width: 0; }
+/* Крестик окна события — в правом верхнем углу, как у других окон */
+.event-form { position: relative; }
+.event-form h3 { padding-right: 40px; }
+.event-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+}
+.event-close:hover { background: var(--bg-4); color: var(--text); }
+.event-close svg { width: 16px; height: 16px; }
 .event-invitees { display: flex; flex-wrap: wrap; gap: 6px 14px; max-height: 140px; overflow-y: auto; }
 .event-invite { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .hub-events { display: flex; flex-direction: column; gap: 10px; }
@@ -2336,18 +2400,29 @@ input[type='radio']:disabled { opacity: .45; cursor: default; }
 [data-density='compact'] .rs-nav button,
 [data-density='compact'] .set-nav button { padding: 5px 9px; }
 /* ---------- Разделитель дня в ленте ---------- */
+/* Контейнер тянется на всю ширину, по бокам — линии, дата остаётся пилюлей */
 .day {
-  align-self: center;
-  width: fit-content;
-  margin: 14px auto 6px;
-  padding: 3px 12px;
-  border-radius: 999px;
-  background: var(--bg-3);
-  box-shadow: inset 0 0 0 1px var(--line);
+  align-self: stretch;
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 6px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: .02em;
+}
+html:not([data-theme='glass']) .day > span {
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  box-shadow: inset 0 0 0 1px var(--line);
+  white-space: nowrap;
 }
 .msg.cont { padding-top: 1px; }
 /* ---------- Единая толщина штриха у иконок ----------
@@ -2525,20 +2600,31 @@ code, pre, .msg-text code, .e2ee-card input { font-family: var(--font-mono); }
   font-weight: 600;
   width: fit-content;
 }
-/* Обои чата: картинка или GIF под сообщениями, с затемнением для читаемости */
-#chat[data-chat-wallpaper='1'] .messages {
+/* Обои чата: картинка или GIF под сообщениями, с затемнением для читаемости.
+   Фон кладём на весь чат, а не только на список сообщений, — картинка доходит
+   до низа блока, и под полем ввода не остаётся полосы */
+#chat[data-chat-wallpaper='1'] {
   background-image: linear-gradient(rgba(6, 8, 16, .38), rgba(6, 8, 16, .38)), var(--chat-wallpaper);
   background-size: cover;
   background-position: center;
 }
 .chat-wallpaper { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .chat-wallpaper .row { gap: 8px; }
+/* Небольшой зазор между левой колонкой и рабочей областью (как у панели участников).
+   В «Жидком стекле» зазор задаётся раскладкой темы — там не дублируем */
+html:not([data-theme='glass']) .content {
+  margin-left: 8px;
+}
+
+/* При зазоре между панелями линия-разделитель не нужна (кроме «Жидкого стекла») */
+html:not([data-theme='glass']) .main-divider { display: none; }
+
 /* ---------- Панель участников: та же форма, что у остальных панелей ---------- */
 .members-panel {
   border-radius: var(--panel-radius, 16px);
   border: 1px solid var(--line);
   overflow: hidden;
-  margin-left: 10px;
+  margin-left: 8px;
 }
 .members-head .icon-btn {
   width: 26px;

@@ -57,15 +57,40 @@ if (typeof document !== 'undefined') {
     handle.className = `panel-resizer ${edge}`;
     handle.setAttribute('aria-label', 'Изменить ширину панели. Двойной щелчок — вернуть как было');
     handle.onpointerdown = (e) => {
+      if (e.button !== 0) return;
       e.preventDefault();
-      handle.setPointerCapture(e.pointerId);
+      const id = e.pointerId;
+      try {
+        handle.setPointerCapture(id);
+      } catch {
+        /* захват не нужен — двигаем по событиям окна */
+      }
       document.body.classList.add('resizing');
       const box = panel.getBoundingClientRect();
-      handle.onpointermove = (m) => savePanelWidth(kind, edge === 'right' ? m.clientX - box.left : box.right - m.clientX);
-      handle.onpointerup = () => {
-        handle.onpointermove = handle.onpointerup = null;
+
+      const stop = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', stop);
+        window.removeEventListener('pointercancel', stop);
+        window.removeEventListener('blur', stop);
+        document.removeEventListener('visibilitychange', onVisibility);
         document.body.classList.remove('resizing');
       };
+      const move = (m) => {
+        // Кнопку отпустили вне окна (хоткей скриншота, переключение окна) — прекращаем тянуть
+        if (m.pointerId !== id || m.buttons === 0) return stop();
+        savePanelWidth(kind, edge === 'right' ? m.clientX - box.left : box.right - m.clientX);
+      };
+      const onVisibility = () => {
+        if (document.hidden) stop();
+      };
+
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', stop);
+      window.addEventListener('pointercancel', stop);
+      window.addEventListener('blur', stop);
+      document.addEventListener('visibilitychange', onVisibility);
+      handle.addEventListener('lostpointercapture', stop, { once: true });
     };
     handle.ondblclick = () => savePanelWidth(kind, null);
     panel.append(handle);
@@ -77,15 +102,39 @@ if (typeof document !== 'undefined') {
     handle.className = 'panel-resizer bottom';
     handle.setAttribute('aria-label', 'Поделить место между разговором и чатом. Двойной щелчок — вернуть как было');
     handle.onpointerdown = (e) => {
+      if (e.button !== 0) return;
       e.preventDefault();
-      handle.setPointerCapture(e.pointerId);
+      const id = e.pointerId;
+      try {
+        handle.setPointerCapture(id);
+      } catch {
+        /* захват не нужен — двигаем по событиям окна */
+      }
       document.body.classList.add('resizing', 'resizing-rows');
       const box = panel.parentElement.getBoundingClientRect();
-      handle.onpointermove = (m) => savePanelWidth('call', callShare((m.clientY - box.top) / box.height));
-      handle.onpointerup = () => {
-        handle.onpointermove = handle.onpointerup = null;
+
+      const stop = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', stop);
+        window.removeEventListener('pointercancel', stop);
+        window.removeEventListener('blur', stop);
+        document.removeEventListener('visibilitychange', onVisibility);
         document.body.classList.remove('resizing', 'resizing-rows');
       };
+      const move = (m) => {
+        if (m.pointerId !== id || m.buttons === 0) return stop();
+        savePanelWidth('call', callShare((m.clientY - box.top) / box.height));
+      };
+      const onVisibility = () => {
+        if (document.hidden) stop();
+      };
+
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', stop);
+      window.addEventListener('pointercancel', stop);
+      window.addEventListener('blur', stop);
+      document.addEventListener('visibilitychange', onVisibility);
+      handle.addEventListener('lostpointercapture', stop, { once: true });
     };
     handle.ondblclick = () => savePanelWidth('call', null);
     panel.append(handle);

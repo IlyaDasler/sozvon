@@ -275,7 +275,7 @@ function folderItem(folder) {
   const hubs = folder.hubs.map(hubById);
   const box = document.createElement('div');
   box.className = `rail-folder${folder.collapsed ? '' : ' open'}`;
-  box.style.setProperty('--folder-color', folder.color || 'var(--accent)');
+  box.style.setProperty('--folder-color', folder.color || 'var(--accent-theme)');
 
   const tile = document.createElement('button');
   tile.type = 'button';
@@ -463,7 +463,17 @@ function showMenu(x, y, items) {
       label.textContent = item.label;
       const value = document.createElement('b');
       value.textContent = item.valueLabel?.(Number(item.value)) || '';
-      head.append(label, value);
+      // Крестик закрывает меню: выбор уровня не «прилипает» к экрану
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'popup-range-close';
+      close.title = 'Закрыть';
+      close.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+      close.onclick = (e) => {
+        e.stopPropagation();
+        hideMenu();
+      };
+      head.append(label, value, close);
       const input = document.createElement('input');
       input.type = 'range';
       input.min = String(item.min ?? 0);
@@ -1069,7 +1079,9 @@ function buildTimeDrum(container, time, onChange) {
   const mins = Array.from({ length: 12 }, (_, i) => i * 5);
   wrap.append(
     makeColumn(hours, () => h, (v) => (h = v)),
-    makeColumn(mins, () => m, (v) => (m = v))
+    makeColumn(mins, () => m, (v) => (m = v)),
+    // Подсветка выбранной строки: аккуратная полоса по центру вместо крупных плашек
+    el('div', { className: 'drum-band' })
   );
   container.replaceChildren(wrap);
 
