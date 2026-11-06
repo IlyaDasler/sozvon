@@ -1,9 +1,9 @@
 package main
 
 import (
-	"net/url"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"

@@ -46,7 +46,7 @@ func (a *server) roomOr404(w http.ResponseWriter, roomID int64) *store.RoomRow {
 }
 
 // hubRoomsOrder — порядок комнат в канале: список приходит целиком, только для одного вида
-// (голосовые и текстовые сортируются отдельно), как в Node-сервере.
+// (голосовые и текстовые сортируются отдельно), как в серверной логике.
 func (a *server) hubRoomsOrder(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
 	hubID, err := parseInt64(chi.URLParam(r, "id"))
@@ -215,9 +215,9 @@ func (a *server) acceptHubInvite(w http.ResponseWriter, r *http.Request) {
 	if hub == nil {
 		return
 	}
-			a.broadcastHubRooms(hubID)
-		a.broadcastHub(hubID)
-		_ = hub
+	a.broadcastHubRooms(hubID)
+	a.broadcastHub(hubID)
+	_ = hub
 	writeJSON(w, http.StatusOK, a.hubJSON(hub))
 }
 
@@ -619,10 +619,12 @@ func (a *server) roomAdminAction(w http.ResponseWriter, r *http.Request, action 
 	}
 	writeJSON(w, http.StatusOK, a.roomJSON(updated))
 }
-func (a *server) roomBans(w http.ResponseWriter, r *http.Request)    { a.roomAdminAction(w, r, "bans") }
-func (a *server) roomMembers(w http.ResponseWriter, r *http.Request) { a.roomAdminAction(w, r, "members") }
-func (a *server) roomRole(w http.ResponseWriter, r *http.Request)    { a.roomAdminAction(w, r, "role") }
-func (a *server) roomRoles(w http.ResponseWriter, r *http.Request)   { a.roomAdminAction(w, r, "roles") }
+func (a *server) roomBans(w http.ResponseWriter, r *http.Request) { a.roomAdminAction(w, r, "bans") }
+func (a *server) roomMembers(w http.ResponseWriter, r *http.Request) {
+	a.roomAdminAction(w, r, "members")
+}
+func (a *server) roomRole(w http.ResponseWriter, r *http.Request)  { a.roomAdminAction(w, r, "role") }
+func (a *server) roomRoles(w http.ResponseWriter, r *http.Request) { a.roomAdminAction(w, r, "roles") }
 
 func (a *server) hubAddMembers(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
@@ -805,6 +807,7 @@ func (a *server) addRoomMember(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, a.roomJSON(updated))
 }
+
 // disconnectMember — модератор отключает человека от голоса, не выгоняя из комнаты.
 func (a *server) disconnectMember(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)

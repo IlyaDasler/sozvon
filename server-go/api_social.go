@@ -349,7 +349,7 @@ func (a *server) hubJSON(hub *store.HubRow) map[string]any {
 			"url":       "/api/avatars/" + emoji.File + ".webp",
 		})
 	}
-	// В Node invited — массив id, клиент строит Set и сравнивает с id друзей
+	// В серверной логике invited — массив id, клиент строит Set и сравнивает с id друзей
 	invited := make([]int64, 0, len(hub.Invited))
 	for _, user := range hub.Invited {
 		invited = append(invited, user.ID)

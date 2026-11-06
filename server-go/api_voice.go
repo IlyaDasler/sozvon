@@ -17,14 +17,14 @@ import (
 // Как идёт звук — p2p (каждый с каждым) или через LiveKit — решается при входе.
 
 type voiceParticipant struct {
-	conn      *realtime.Conn
-	muted     bool
-	deafened  bool
-	video     bool
-	screen    bool
-	preview   string
-	joinedAt  int64
-	timer     *time.Timer
+	conn     *realtime.Conn
+	muted    bool
+	deafened bool
+	video    bool
+	screen   bool
+	preview  string
+	joinedAt int64
+	timer    *time.Timer
 }
 
 type voiceRoom struct {
@@ -459,6 +459,7 @@ func hasPrefix(value, prefix string) bool {
 }
 
 var _ = livekit.Options{}
+
 func (v *voiceManager) setMuted(roomID, userID int64, muted bool) {
 	v.mu.Lock()
 	defer v.mu.Unlock()

@@ -21,9 +21,9 @@ import (
 // Вход через Яндекс ID: приложение и браузер, привязка профиля, регистрация по приглашению.
 
 const (
-	webFlowTTL = 10 * time.Minute
-	webCodeTTL = time.Minute
-	ticketTTL  = 15 * time.Minute
+	webFlowTTL  = 10 * time.Minute
+	webCodeTTL  = time.Minute
+	ticketTTL   = 15 * time.Minute
 	stateCookie = "sozvon_oauth"
 )
 
@@ -43,8 +43,8 @@ type webFlow struct {
 }
 
 type webCode struct {
-	token  string
-	ticket string
+	token   string
+	ticket  string
 	expires time.Time
 }
 
@@ -199,7 +199,7 @@ func (a *server) oauthAuth(w http.ResponseWriter, r *http.Request) {
 			Expires: time.Now().Add(ticketTTL).UnixMilli(),
 		})
 		writeJSON(w, http.StatusForbidden, map[string]any{
-			"error":     "Аккаунт подтверждён. Введите код приглашения, чтобы создать профиль",
+			"error":      "Аккаунт подтверждён. Введите код приглашения, чтобы создать профиль",
 			"needInvite": true,
 			"ticket":     ticket,
 		})
