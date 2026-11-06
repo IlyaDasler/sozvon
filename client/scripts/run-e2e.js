@@ -11,6 +11,10 @@ const electron =
     ? path.join(client, 'node_modules', 'electron', 'dist', 'electron.exe')
     : path.join(client, 'node_modules', 'electron', 'dist', 'electron');
 const names = process.argv.slice(2);
+if (!fs.existsSync(electron)) {
+  console.error(`Нет Electron: ${electron}`);
+  process.exit(2);
+}
 if (!names.length) {
   console.error('Укажи сценарии: node scripts/run-e2e.js e2e-groups ...');
   process.exit(2);
@@ -40,7 +44,8 @@ for (const name of names) {
     timeout: 600_000
   });
   const seconds = Math.round((Date.now() - started) / 1000);
-  const line = `${name.padEnd(24)} ${res.status === 0 ? 'OK' : `FAIL(${res.status})`} ${String(seconds).padStart(4)}s`;
+  if (res.error) console.error(`${name}: ${res.error.message}`);
+  const line = `${name.padEnd(24)} ${res.status === 0 ? 'OK' : `FAIL(${res.status ?? res.signal ?? 'null'})`} ${String(seconds).padStart(4)}s`;
   summary.push(line);
   console.log(line);
   if (res.status !== 0) {

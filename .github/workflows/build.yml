@@ -67,6 +67,8 @@ jobs:
   e2e:
     runs-on: windows-latest
     needs: go-tests
+    env:
+      E2E_NO_GPU: '1'
     defaults:
       run:
         working-directory: client
@@ -80,6 +82,9 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
+      # npm 11 в этом образе не всегда запускает postinstall Electron — качаем бинарь явно.
+      - name: Бинарь Electron для e2e
+        run: node node_modules/electron/install.js
       - run: npm run native
       - name: Собрать Go-сервер
         working-directory: server-go
