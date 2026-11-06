@@ -7,6 +7,7 @@
     { id: 'friend-tabs', vertical: false },
     { id: 'set-nav', vertical: true },
     { id: 'privacy-subnav', vertical: true },
+    { id: 'rail-list', vertical: true, selector: '.rail-item.active .rail-tile', inflate: 7 },
   ];
 
   const themeName = () => document.documentElement.dataset.theme || '';
@@ -17,12 +18,13 @@
       root.id === 'friend-tabs');
   const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-  function activeOf(root) {
+  function activeOf(root, selector) {
+    if (selector) return root.querySelector(selector);
     const buttons = [...root.querySelectorAll(':scope > button')];
     return buttons.find((b) => b.classList.contains('active') || b.getAttribute('aria-selected') === 'true') || null;
   }
 
-  function create(root, vertical) {
+  function create(root, vertical, selector, inflate = 0) {
     if (root.dataset.glassTabs === '1') return null;
     root.dataset.glassTabs = '1';
     root.classList.add('glass-tabs');
@@ -47,23 +49,23 @@
       frame = requestAnimationFrame(() => {
         frame = 0;
         if (!root.isConnected || !usesTabs(root)) return hide();
-        const active = activeOf(root);
+        const active = activeOf(root, selector);
         if (!active) return hide();
         const rr = root.getBoundingClientRect();
         const ar = active.getBoundingClientRect();
         if (!ar.width || !ar.height || !rr.width || !rr.height) return hide();
 
-        const x = Math.round(ar.left - rr.left);
-        const y = Math.round(ar.top - rr.top);
-        const key = `${x}:${y}:${Math.round(ar.width)}:${Math.round(ar.height)}:${vertical}`;
+        const x = Math.round(ar.left - rr.left) - inflate;
+        const y = Math.round(ar.top - rr.top) + (root.scrollTop || 0) - inflate;
+        const key = `${x}:${y}:${Math.round(ar.width + inflate * 2)}:${Math.round(ar.height + inflate * 2)}:${vertical}`;
         if (key === last) return;
         const first = !shown;
         last = key;
 
         // Ширина/высота — сразу, без анимации: иначе плашка «переливается» шириной.
         if (first || !animate) indicator.classList.add('no-anim');
-        indicator.style.width = `${Math.round(ar.width)}px`;
-        indicator.style.height = `${Math.round(ar.height)}px`;
+        indicator.style.width = `${Math.round(ar.width + inflate * 2)}px`;
+        indicator.style.height = `${Math.round(ar.height + inflate * 2)}px`;
         indicator.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         indicator.hidden = false;
         shown = true;
@@ -86,9 +88,9 @@
   }
 
   function init() {
-    for (const { id, vertical } of GROUPS) {
+    for (const { id, vertical, selector, inflate } of GROUPS) {
       const root = document.getElementById(id);
-      if (root) create(root, vertical);
+      if (root) create(root, vertical, selector, inflate);
     }
   }
 
