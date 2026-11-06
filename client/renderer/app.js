@@ -2924,6 +2924,30 @@ function closeUpdateModal() {
   renderUpdate();
 }
 
+/** Плашка обновления повторяет фактическую геометрию панели «В голосе»,
+ *  а не догадывается по ширине сайдбара. */
+function placeUpdateBar() {
+  const bar = $('update-bar');
+  if (!bar) return;
+  const voice = $('voice-panel');
+  const sidebar = document.querySelector('.sidebar');
+  let rect = null;
+  let radius = '';
+  if (voice && voice.getClientRects().length) {
+    rect = voice.getBoundingClientRect();
+    radius = getComputedStyle(voice).borderRadius;
+  } else if (sidebar && sidebar.getClientRects().length) {
+    const r = sidebar.getBoundingClientRect();
+    rect = { left: r.left + 8, width: Math.max(0, r.width - 16) };
+    radius = getComputedStyle(document.documentElement).getPropertyValue('--r-l').trim() || '14px';
+  }
+  if (!rect || !rect.width) return;
+  bar.style.left = `${Math.round(rect.left)}px`;
+  bar.style.width = `${Math.round(rect.width)}px`;
+  bar.style.borderRadius = radius;
+}
+window.addEventListener('resize', () => requestAnimationFrame(placeUpdateBar));
+
 function renderUpdate() {
   const s = updateStatus;
   const busy = s.state === 'downloading' || (s.state === 'ready' && updateRequested);
@@ -2963,6 +2987,7 @@ function renderUpdate() {
   $('update-check-btn').textContent =
     s.state === 'ready' ? 'Перезапустить и обновить' : s.state === 'available' ? 'Обновить…' : 'Проверить обновления';
   $('update-check-btn').disabled = s.state === 'checking' || s.state === 'downloading';
+  requestAnimationFrame(placeUpdateBar);
 }
 
 // Сначала говорим, что происходит: иначе окно просто исчезает, и человек жмёт на ярлык,
