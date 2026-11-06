@@ -4,6 +4,8 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/IlyaDasler/sozvon/main/deploy/vps/setup.sh | sudo bash
 #   или: sudo INVITE_CODE=код bash deploy/vps/setup.sh
+#   Go-сервер вместо Node: sudo SERVER_IMPL=go bash deploy/vps/setup.sh
+#   (база, настройки и секреты общие — можно вернуться на Node тем же скриптом)
 #
 # Повторный запуск обновляет код и сохраняет базу, код приглашения и секреты.
 set -euo pipefail
@@ -13,6 +15,11 @@ APP_DIR=/opt/sozvon
 DATA_DIR=/var/lib/sozvon
 ENV_FILE=/etc/sozvon.env
 export DEBIAN_FRONTEND=noninteractive
+SERVER_IMPL=${SERVER_IMPL:-node}
+case "$SERVER_IMPL" in
+  node|go) ;;
+  *) echo "SERVER_IMPL должен быть node или go (сейчас: $SERVER_IMPL)"; exit 1 ;;
+esac
 
 log() { printf '\n\033[1;32m==> %s\033[0m\n' "$*"; }
 
@@ -27,7 +34,9 @@ log 'Ставлю пакеты'
 apt-get update -qq
 apt-get install -y -qq nodejs npm coturn git ufw caddy >/dev/null
 
-node -e 'const [a,b]=process.versions.node.split(".").map(Number); if (a<22||(a===22&&b<13)) { console.error("Нужен Node.js 22.13+, а стоит "+process.version); process.exit(1) }'
+if [ "$SERVER_IMPL" = node ]; then
+  node -e 'const [a,b]=process.versions.node.split(".").map(Number); if (a<22||(a===22&&b<13)) { console.error("Нужен Node.js 22.13+, а стоит "+process.version); process.exit(1) }'
+fi
 
 log 'Скачиваю код'
 if [ -d "$APP_DIR/.git" ]; then
@@ -35,7 +44,46 @@ if [ -d "$APP_DIR/.git" ]; then
 else
   git clone -q "$REPO" "$APP_DIR"
 fi
-(cd "$APP_DIR/server" && npm ci --omit=dev --omit=optional --no-audit --no-fund --loglevel=error)
+if [ "$SERVER_IMPL" = node ]; then
+  (cd "$APP_DIR/server" && npm ci --omit=dev --omit=optional --no-audit --no-fund --loglevel=error)
+fi
+
+# --- Go-сервер: готовые бинарники из релиза, иначе сборка из исходников ---
+GO_BIN=/usr/local/bin/sozvon-go
+BACKUP_BIN=/usr/local/bin/sozvon-backup
+if [ "$SERVER_IMPL" = go ]; then
+  log 'Готовлю Go-сервер'
+  arch=$(dpkg --print-architecture)
+  case "$arch" in
+    amd64|arm64) ;;
+    *) echo "Архитектура $arch не поддерживается"; exit 1 ;;
+  esac
+  base=${SOZVON_GO_BASE_URL:-https://github.com/IlyaDasler/sozvon/releases/latest/download}
+  tmp=$(mktemp -d)
+  installed=0
+  if curl -fsSL -o "$tmp/SHA256SUMS-go.txt" "$base/SHA256SUMS-go.txt" 2>/dev/null; then
+    if curl -fsSL -o "$tmp/sozvon-go-linux-$arch" "$base/sozvon-go-linux-$arch" 2>/dev/null &&
+       curl -fsSL -o "$tmp/sozvon-backup-linux-$arch" "$base/sozvon-backup-linux-$arch" 2>/dev/null; then
+      ( cd "$tmp" && grep -E "sozvon-(go|backup)-linux-$arch\$" SHA256SUMS-go.txt | sha256sum -c --quiet - ) || {
+        echo 'Суммы Go-бинарников не совпали — не ставлю'; rm -rf "$tmp"; exit 1; }
+      install -m 755 "$tmp/sozvon-go-linux-$arch" "$GO_BIN"
+      install -m 755 "$tmp/sozvon-backup-linux-$arch" "$BACKUP_BIN"
+      installed=1
+    fi
+  fi
+  if [ "$installed" = 0 ]; then
+    log 'Готовых бинарников в релизе нет — собираю из исходников (Go 1.27+ или авто-загрузка тулчейна)'
+    if ! command -v go >/dev/null 2>&1; then
+      apt-get install -y -qq golang-go >/dev/null || { echo 'Go поставить не удалось'; rm -rf "$tmp"; exit 1; }
+    fi
+    ( cd "$APP_DIR/server-go" &&
+      CGO_ENABLED=0 GOTOOLCHAIN=auto go build -trimpath -ldflags '-s -w' -o "$GO_BIN" . &&
+      CGO_ENABLED=0 GOTOOLCHAIN=auto go build -trimpath -ldflags '-s -w' -o "$BACKUP_BIN" ./cmd/backup ) || {
+        echo 'Сборка Go-сервера не удалась'; rm -rf "$tmp"; exit 1; }
+  fi
+  rm -rf "$tmp"
+  log "Go-сервер установлен: $GO_BIN"
+fi
 
 id sozvon >/dev/null 2>&1 || useradd --system --home "$DATA_DIR" --shell /usr/sbin/nologin sozvon
 mkdir -p "$DATA_DIR" && chown sozvon:sozvon "$DATA_DIR" && chmod 700 "$DATA_DIR"
@@ -171,9 +219,16 @@ systemctl daemon-reload
 systemctl enable -q livekit && systemctl restart livekit
 
 log 'Настраиваю сервис «Созвон»'
+if [ "$SERVER_IMPL" = go ]; then
+  SV_WORKDIR=/opt
+  SV_EXEC=$GO_BIN
+else
+  SV_WORKDIR=$APP_DIR/server
+  SV_EXEC="/usr/bin/node src/index.js"
+fi
 cat > /etc/systemd/system/sozvon.service <<EOF
 [Unit]
-Description=Sozvon voice chat server
+Description=Sozvon voice chat server ($SERVER_IMPL)
 After=network-online.target
 Wants=network-online.target
 
@@ -181,8 +236,8 @@ Wants=network-online.target
 User=sozvon
 Group=sozvon
 EnvironmentFile=$ENV_FILE
-WorkingDirectory=$APP_DIR/server
-ExecStart=/usr/bin/node src/index.js
+WorkingDirectory=$SV_WORKDIR
+ExecStart=$SV_EXEC
 Restart=always
 RestartSec=3
 NoNewPrivileges=true
@@ -200,6 +255,13 @@ systemctl enable -q sozvon && systemctl restart sozvon
 log 'Настраиваю ежедневную резервную копию'
 BACKUP_DIR=/var/backups/sozvon
 mkdir -p "$BACKUP_DIR" && chown sozvon:sozvon "$BACKUP_DIR" && chmod 700 "$BACKUP_DIR"
+if [ "$SERVER_IMPL" = go ]; then
+  BK_WORKDIR=/opt
+  BK_EXEC=$BACKUP_BIN
+else
+  BK_WORKDIR=$APP_DIR/server
+  BK_EXEC="/usr/bin/node src/backup.js"
+fi
 cat > /etc/systemd/system/sozvon-backup.service <<EOF
 [Unit]
 Description=Sozvon daily backup
@@ -210,8 +272,8 @@ User=sozvon
 Group=sozvon
 EnvironmentFile=$ENV_FILE
 Environment=BACKUP_DIR=$BACKUP_DIR
-WorkingDirectory=$APP_DIR/server
-ExecStart=/usr/bin/node src/backup.js
+WorkingDirectory=$BK_WORKDIR
+ExecStart=$BK_EXEC
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
@@ -323,5 +385,8 @@ curl -fsS "https://$DOMAIN/livekit/" >/dev/null || { echo 'LiveKit не отве
 log 'Готово'
 echo "  Адрес сервера:     https://$DOMAIN"
 echo "  Код приглашения:   ${INVITE_CODE:-не нужен (регистрация открыта)}"
+echo "  Сервер:            $SERVER_IMPL ($([ "$SERVER_IMPL" = go ] && echo server-go || echo server))"
 echo "  Настройки и ключи: $ENV_FILE (после правки: systemctl restart sozvon)"
 echo "  Журнал:            journalctl -u sozvon -f"
+echo "  Проверка:          sudo bash $APP_DIR/deploy/vps/check.sh"
+echo "  Инструкция:        $APP_DIR/docs/vps-handover.md"
