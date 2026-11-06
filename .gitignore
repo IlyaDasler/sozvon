@@ -1,6 +1,6 @@
 node_modules/
 client/dist/
-server/data/
+server-go/data/
 deploy/.env
 *.log
 .DS_Store

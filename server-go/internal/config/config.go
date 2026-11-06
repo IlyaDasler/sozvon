@@ -8,8 +8,7 @@ import (
 	"time"
 )
 
-// Config повторяет переменные окружения Node-сервера, чтобы переключение
-// между реализациями не требовало менять деплой.
+// Config — переменные окружения сервера.
 type Config struct {
 	Port               string
 	DataDir            string
@@ -45,7 +44,7 @@ type Config struct {
 	TurnPort      string
 	ReconnectWait time.Duration
 
-	// Ограничители частоты — те же переменные окружения, что в Node-сервере
+	// Ограничители частоты
 	AuthRateLimit    int
 	MessageRateLimit int
 	UploadRateLimit  int

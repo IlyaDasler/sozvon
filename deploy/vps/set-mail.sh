@@ -44,12 +44,12 @@ unset SMTP_PASS
 
 # Пробное письмо — тем же кодом, которым сервер шлёт коды людям, и с новыми настройками, ещё до записи
 echo "Отправляю пробное письмо на $SMTP_USER…"
-cd "$APP_DIR/server"
-if sudo -u sozvon env $(grep -v '^#' "$tmp" | xargs) node --input-type=module -e "
-  const { mailEnabled, sendCode } = await import('./src/mail.js');
-  if (!mailEnabled) throw new Error('почта не включилась');
-  await sendCode('register', process.env.SMTP_USER);
-" 2>&1 | grep -E 'Письмо не отправлено|почта не включилась' ; [ "${PIPESTATUS[0]}" = 0 ]; then
+if [ -x /usr/local/bin/sozvon-mailtest ]; then
+  MAIL_CMD=(/usr/local/bin/sozvon-mailtest)
+else
+  MAIL_CMD=(env GOTOOLCHAIN=auto go run ./cmd/mailtest)
+fi
+if (cd "$APP_DIR/server-go" && sudo -u sozvon env $(grep -v '^#' "$tmp" | xargs) "${MAIL_CMD[@]}") 2>&1 | grep -E 'Письмо не отправлено|почта не включилась|SMTP_USER' ; [ "${PIPESTATUS[0]}" = 0 ]; then
   install -m 640 -o root -g sozvon "$tmp" "$ENV_FILE"
   systemctl restart sozvon
   echo "Готово: на $SMTP_USER пришло письмо «Код для регистрации в Созвоне». Настройки записаны, сервер перезапущен — регистрация по почте работает."

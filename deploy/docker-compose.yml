@@ -1,11 +1,11 @@
-# Запуск на VPS:  cd deploy && cp .env.example .env && nano .env && docker compose up -d
+# Запуск на VPS:  cd deploy && cp .env.example .env && nano .env && docker compose up -d\n# Сервер: Go (server-go/Dockerfile)
 # С HTTPS (нужен домен): docker compose --profile https up -d
 
 services:
   server:
     build:
       context: ..
-      dockerfile: server/Dockerfile
+      dockerfile: server-go/Dockerfile
     restart: unless-stopped
     ports:
       - "3000:3000"

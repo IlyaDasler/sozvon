@@ -2,7 +2,7 @@ name: Сборка
 
 on:
   push:
-    branches: [main, main-v2]
+    branches: [main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -11,21 +11,8 @@ permissions:
   contents: write
 
 jobs:
-  server-tests:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - run: npm ci
-      - run: npm test
-
-  # Go-сервер — совместимая замена Node (ADR 0002). Тесты включают сторожа контракта:
-  # маршруты и имена событий WebSocket сверяются с фикстурами server/contract/*.json
+  # Go — единственный сервер. Тесты включают сторожа контракта:
+  # маршруты и имена событий WebSocket сверяются с фикстурами server-go/contract/*.json
   go-tests:
     runs-on: ubuntu-latest
     defaults:
@@ -42,7 +29,7 @@ jobs:
       - run: go build -o /tmp/sozvon-server-go .
       # Утилита резервных копий собирается отдельно: её запускает таймер на сервере
       - run: go build -o /tmp/sozvon-backup ./cmd/backup
-      # Готовые бинарники для VPS: setup.sh с SERVER_IMPL=go скачивает их из релиза
+      # Готовые бинарники для VPS: setup.sh скачивает их из релиза
       - name: Бинарники для Linux
         run: |
           mkdir -p dist-go
@@ -51,15 +38,17 @@ jobs:
               -o dist-go/sozvon-go-linux-$arch .
             CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "-s -w" \
               -o dist-go/sozvon-backup-linux-$arch ./cmd/backup
+            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "-s -w" \
+              -o dist-go/sozvon-mailtest-linux-$arch ./cmd/mailtest
           done
-          (cd dist-go && sha256sum sozvon-go-linux-* sozvon-backup-linux-* > SHA256SUMS-go.txt)
+          (cd dist-go && sha256sum sozvon-go-linux-* sozvon-backup-linux-* sozvon-mailtest-linux-* > SHA256SUMS-go.txt)
       - uses: actions/upload-artifact@v4
         with:
           name: sozvon-go-linux
           path: server-go/dist-go/*
           if-no-files-found: error
 
-  # Бинарники Go прикрепляются к релизу: их скачивает deploy/vps/setup.sh (SERVER_IMPL=go)
+  # Бинарники Go прикрепляются к релизу: их скачивает deploy/vps/setup.sh
   go-release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: go-tests
@@ -77,7 +66,7 @@ jobs:
   # Сборка без сертификата Apple: приложение не подписано, автообновление на macOS отключено в main.js
   mac-builder:
     runs-on: macos-latest
-    needs: server-tests
+    needs: go-tests
     # Пустой секрет нельзя передавать как CSC_LINK: electron-builder примет его за путь к файлу.
     # Поэтому значение поднимаем в переменную и выбираем шаг сборки по ней
     env:
@@ -137,7 +126,7 @@ jobs:
 
   windows-installer:
     runs-on: windows-latest
-    needs: server-tests
+    needs: go-tests
     defaults:
       run:
         working-directory: client
