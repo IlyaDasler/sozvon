@@ -445,17 +445,19 @@ function roomItem(room) {
     const users = document.createElement('ul');
     users.className = 'voice-users';
     for (const p of room.voice) {
-      const user = room.members.find((m) => m.id === p.userId) || userById(p.userId);
+      const member = room.members.find((m) => m.id === p.userId);
+      const user = member || userById(p.userId);
       if (!user) continue;
+      const shownName = member?.nickname || user.displayName;
       const item = document.createElement('li');
       item.dataset.voiceUser = p.userId;
       item.dataset.profile = p.userId;
-      item.title = user.displayName;
+      item.title = shownName;
       if (speaking.get(p.userId === state.me.id ? 'me' : p.userId)) item.classList.add('speaking');
       item.append(makeAvatar(user, undefined, 'tiny'));
       const n = document.createElement('span');
       n.className = 'ellipsis';
-      n.textContent = user.displayName;
+      n.textContent = shownName;
       const role = roleOf(room, p.userId);
       // Цвет роли важнее, без роли — свой цвет ника
       if (role || user.nameColor) n.style.color = role?.color || user.nameColor;
@@ -616,7 +618,7 @@ function renderRoomView() {
       p.dataset.profile = u.id;
       const n = document.createElement('span');
       n.className = 'ellipsis';
-      n.textContent = u.displayName;
+      n.textContent = u.nickname || u.displayName;
       p.append(makeAvatar(u), n);
       avatars.append(p);
     }

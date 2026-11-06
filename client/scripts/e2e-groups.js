@@ -23,6 +23,12 @@ runTest(async () => {
   const voice = await js(winB, `JSON.stringify((roomById(${one.id})?.voice || []).map((p) => p.userId))`);
   if (!JSON.parse(voice).includes(a.user.id)) throw new Error(`В комнате группы не видно участника: ${voice}`);
 
+  // Имя в канале меняется и в голосовом списке, без входа в комнату
+  await js(winB, `openHub(${hub.id}); true`);
+  await sleep(300);
+  await api('PUT', `/hubs/${hub.id}/members/${a.user.id}/nickname`, { name: 'Илья в канале' }, a.token);
+  await waitFor(winB, `[...document.querySelectorAll('#room-list [data-voice-user="${a.user.id}"] .ellipsis')].some((n) => n.textContent === 'Илья в канале')`, 'новое имя в голосовом списке');
+
   // Группа видна у второго клиента
   const grouped = await js(winB, `JSON.stringify((state.hubs.get(${hub.id})?.groups || []).map((g) => g.name))`);
   if (!grouped.includes('ПРОВЕРКА')) throw new Error(`Группа не загрузилась: ${grouped}`);
