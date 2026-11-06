@@ -175,8 +175,13 @@ function formatNotifTime(at) {
 function openNotifTarget(open) {
   window.desktop?.focus();
   if (open?.contact && state.contacts.has(open.contact)) selectContact(open.contact);
-  else if (open?.room && state.rooms.has(open.room)) selectRoom(open.room);
-  else if (open?.friends) showFriendsTab(open.friends);
+  else if (open?.room && state.rooms.has(open.room)) {
+    selectRoom(open.room);
+    // Уведомление треда ведёт не только в комнату, но и в сам тред.
+    if (open.thread && typeof window.openThread === 'function') {
+      window.openThread({ id: open.thread, threadRoot: open.thread }, { kind: 'room', roomId: open.room });
+    }
+  } else if (open?.friends) showFriendsTab(open.friends);
   else if (open?.hub) openHubJoin(open.hub);
 }
 

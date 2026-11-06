@@ -1,5 +1,5 @@
 // Треды в канале: счётчик ответов, панель, ответ из панели
-const { api, register, js, sleep, openClient, runTest, befriend } = require('./e2e-lib');
+const { api, register, js, sleep, openClient, runTest, befriend, waitFor } = require('./e2e-lib');
 
 runTest(async () => {
   const a = await register('th' + Math.random().toString(36).slice(2, 5), 'Аня');
@@ -66,6 +66,16 @@ runTest(async () => {
   const cTitles = await notificationsOf(winC);
   if (!aTitles.some((t) => t.includes('ответил в обсуждении'))) throw new Error(`Участник треда не получил уведомление: ${JSON.stringify(aTitles)}`);
   if (cTitles.some((t) => t.includes('обсуждении'))) throw new Error(`Посторонний участник канала получил уведомление треда: ${JSON.stringify(cTitles)}`);
+
+  // Клик по уведомлению открывает не только комнату, но и сам тред
+  await js(win, `(() => {
+    const n = loadNotifs().find((x) => x.open?.thread);
+    if (!n) throw new Error('уведомление без thread');
+    openNotifTarget(n.open);
+    return true;
+  })()`);
+  await waitFor(win, `!document.getElementById('thread-panel').classList.contains('hidden') && Boolean(document.querySelector('#thread-list .thread-root'))`, 'тред открылся из уведомления');
+  console.log('✔ уведомление треда открывает комнату и сам тред');
 
   // Упоминание в треде доставляется тому, кого тегнули, даже если он не писал в треде
   await api('POST', `/rooms/${room.id}/messages`, {

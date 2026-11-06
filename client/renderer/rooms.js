@@ -804,7 +804,7 @@ function handleRoomEvent(msg) {
         notify(
           mentioned ? `${who} упоминает вас в обсуждении` : `${who} ответил в обсуждении`,
           room?.name || 'Комната',
-          { kind: 'message', open: { room: msg.roomId }, hub: room?.hubId }
+          { kind: 'message', open: { room: msg.roomId, thread: msg.rootId }, hub: room?.hubId }
         );
       }
       return;
