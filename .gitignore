@@ -9,3 +9,4 @@ server-go/sozvon-server-go*
 server-go/sozvon-go*
 server-go/sozvon-backup*
 server-go/*.test
+server-go/dist-go/

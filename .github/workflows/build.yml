@@ -45,18 +45,18 @@ jobs:
       # Готовые бинарники для VPS: setup.sh с SERVER_IMPL=go скачивает их из релиза
       - name: Бинарники для Linux
         run: |
-          mkdir -p /tmp/go-dist
+          mkdir -p dist-go
           for arch in amd64 arm64; do
             CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "-s -w" \
-              -o /tmp/go-dist/sozvon-go-linux-$arch .
+              -o dist-go/sozvon-go-linux-$arch .
             CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "-s -w" \
-              -o /tmp/go-dist/sozvon-backup-linux-$arch ./cmd/backup
+              -o dist-go/sozvon-backup-linux-$arch ./cmd/backup
           done
-          (cd /tmp/go-dist && sha256sum sozvon-go-linux-* sozvon-backup-linux-* > SHA256SUMS-go.txt)
+          (cd dist-go && sha256sum sozvon-go-linux-* sozvon-backup-linux-* > SHA256SUMS-go.txt)
       - uses: actions/upload-artifact@v4
         with:
           name: sozvon-go-linux
-          path: /tmp/go-dist/*
+          path: server-go/dist-go/*
           if-no-files-found: error
 
   # Бинарники Go прикрепляются к релизу: их скачивает deploy/vps/setup.sh (SERVER_IMPL=go)

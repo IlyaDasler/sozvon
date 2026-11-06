@@ -46,6 +46,9 @@ sudo DOMAIN=chat.example.com INVITE_CODE=моя-семья bash deploy/vps/setup
 sudo SERVER_IMPL=go bash deploy/vps/setup.sh
 ```
 
+Если ставите с другой ветки (например, пока Go-изменения не влиты в `main`):
+`sudo SOZVON_BRANCH=main-v2 SERVER_IMPL=go bash deploy/vps/setup.sh`.
+
 - при установке скрипт скачивает готовые бинарники (`sozvon-go`, `sozvon-backup`) из последнего
   GitHub-релиза и проверяет sha256 из `SHA256SUMS-go.txt`; если бинарников в релизе нет —
   собирает из `server-go` (нужен Go или авто-загрузка тулчейна);
