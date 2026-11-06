@@ -138,6 +138,7 @@ jobs:
     # Поэтому значение поднимаем в переменную и выбираем шаг сборки по ней
     env:
       MAC_CERT: ${{ secrets.MAC_CERT_P12 }}
+      GH_TOKEN: ${{ github.token }}
     defaults:
       run:
         working-directory: client
