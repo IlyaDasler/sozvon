@@ -5,6 +5,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/IlyaDasler/sozvon/main/deploy/vps/setup.sh | sudo bash
 #   или: sudo INVITE_CODE=код bash deploy/vps/setup.sh
 #   Go-сервер вместо Node: sudo SERVER_IMPL=go bash deploy/vps/setup.sh
+#   Другая ветка репозитория: sudo SOZVON_BRANCH=main-v2 SERVER_IMPL=go bash deploy/vps/setup.sh
 #   (база, настройки и секреты общие — можно вернуться на Node тем же скриптом)
 #
 # Повторный запуск обновляет код и сохраняет базу, код приглашения и секреты.
@@ -16,6 +17,8 @@ DATA_DIR=/var/lib/sozvon
 ENV_FILE=/etc/sozvon.env
 export DEBIAN_FRONTEND=noninteractive
 SERVER_IMPL=${SERVER_IMPL:-node}
+# Ветка, с которой ставим сервер: main; пока Go-изменения не влиты — main-v2
+SOZVON_BRANCH=${SOZVON_BRANCH:-main}
 case "$SERVER_IMPL" in
   node|go) ;;
   *) echo "SERVER_IMPL должен быть node или go (сейчас: $SERVER_IMPL)"; exit 1 ;;
@@ -38,11 +41,14 @@ if [ "$SERVER_IMPL" = node ]; then
   node -e 'const [a,b]=process.versions.node.split(".").map(Number); if (a<22||(a===22&&b<13)) { console.error("Нужен Node.js 22.13+, а стоит "+process.version); process.exit(1) }'
 fi
 
-log 'Скачиваю код'
+log "Скачиваю код (ветка $SOZVON_BRANCH)"
 if [ -d "$APP_DIR/.git" ]; then
-  git -C "$APP_DIR" fetch -q origin main && git -C "$APP_DIR" reset -q --hard origin/main
+  git -C "$APP_DIR" fetch -q origin "$SOZVON_BRANCH"
+  git -C "$APP_DIR" checkout -q "$SOZVON_BRANCH" 2>/dev/null ||
+    git -C "$APP_DIR" checkout -q -b "$SOZVON_BRANCH" "origin/$SOZVON_BRANCH"
+  git -C "$APP_DIR" reset -q --hard "origin/$SOZVON_BRANCH"
 else
-  git clone -q "$REPO" "$APP_DIR"
+  git clone -q -b "$SOZVON_BRANCH" "$REPO" "$APP_DIR"
 fi
 if [ "$SERVER_IMPL" = node ]; then
   (cd "$APP_DIR/server" && npm ci --omit=dev --omit=optional --no-audit --no-fund --loglevel=error)
@@ -386,6 +392,7 @@ log 'Готово'
 echo "  Адрес сервера:     https://$DOMAIN"
 echo "  Код приглашения:   ${INVITE_CODE:-не нужен (регистрация открыта)}"
 echo "  Сервер:            $SERVER_IMPL ($([ "$SERVER_IMPL" = go ] && echo server-go || echo server))"
+echo "  Ветка:             $SOZVON_BRANCH"
 echo "  Настройки и ключи: $ENV_FILE (после правки: systemctl restart sozvon)"
 echo "  Журнал:            journalctl -u sozvon -f"
 echo "  Проверка:          sudo bash $APP_DIR/deploy/vps/check.sh"

@@ -11,6 +11,9 @@
 curl -fsSL https://raw.githubusercontent.com/IlyaDasler/sozvon/main/deploy/vps/setup.sh \
   | sudo SERVER_IMPL=go bash
 
+# Пока Go-изменения не влиты в main — явно указать ветку:
+# | sudo SOZVON_BRANCH=main-v2 SERVER_IMPL=go bash
+
 # 2. Записать из вывода скрипта: адрес (https://…), код приглашения (если нужен)
 
 # 3. Проверить, что всё живо
@@ -21,6 +24,7 @@ sudo bash /opt/sozvon/deploy/vps/check.sh
 
 ```bash
 sudo SERVER_IMPL=go bash /opt/sozvon/deploy/vps/setup.sh
+# с веткой: sudo SOZVON_BRANCH=main-v2 SERVER_IMPL=go bash /opt/sozvon/deploy/vps/setup.sh
 ```
 
 Скрипт можно запускать повторно — база, секреты и код приглашения сохраняются, код обновляется.
@@ -35,6 +39,7 @@ sudo systemctl start sozvon-backup.service
 
 # 2. Поставить Go-сервис рядом (порт 3001), Node продолжает работать
 sudo SERVER_IMPL=go bash /opt/sozvon/deploy/vps/setup.sh
+# с веткой: sudo SOZVON_BRANCH=main-v2 SERVER_IMPL=go bash /opt/sozvon/deploy/vps/setup.sh
 #    (скрипт перезапишет sozvon.service на Go — поэтому для «рядом» лучше
 #     сначала прогнать проверку на копии базы по чек-листу)
 
