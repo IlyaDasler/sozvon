@@ -55,6 +55,8 @@ sudo SERVER_IMPL=go bash deploy/vps/setup.sh
 - база (`DATA_DIR`), `secret.key` и `/etc/sozvon.env` общие с Node: переключение и возврат
   на Node (`sudo SERVER_IMPL=node bash deploy/vps/setup.sh`) не требуют переноса данных;
 - бэкап-таймер начинает использовать `sozvon-backup` — та же папка `/var/backups/sozvon`;
+- веб-версия клиента раздаётся из `WEB_DIR` (как и в Node): после установки можно открыть
+  `https://<адрес>/` в браузере;
 - порядок переключения прод-сервера, проверки и откат — в [go-cutover.md](go-cutover.md).
 
 Проверить установку: `sudo bash deploy/vps/check.sh`.

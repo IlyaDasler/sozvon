@@ -210,10 +210,17 @@ LiveKit-токены, TURN, правка/удаление и реакции по
 - покрыто юнит-тестом: копия создаётся, строки совпадают, повторный прогон не копирует те же файлы,
   старые копии удаляются, файлы, которые ещё есть на сервере, не трогаются.
 
+**Веб-версия клиента**
+- Go раздаёт `client/renderer` из `WEB_DIR` — так же, как Node через `express.static`;
+  `/api/*` при этом остаётся API, неизвестный путь API отдаёт JSON 404, а не файл клиента;
+- проверено: `/` (index.html, text/html), `/styles.css` (text/css), `/api/health` (200),
+  `/api/нет` (404 application/json).
+
 **Контракт и CI**
 - `contract_test.go` сторожит контракт без запуска сервера: все маршруты из
-  `server/contract/api.json` должны быть в `main.go`, все имена событий из
-  `server/contract/ws-events.json` — в исходниках Go;
+  `server-go/contract/api.json` должны быть в `main.go`, все имена событий из
+  `server-go/contract/ws-events.json` — в исходниках Go; фикстуры лежат рядом с Go-сервером,
+  поэтому удаление Node-сервера их не ломает;
 - `.github/workflows/build.yml` теперь гоняет `go vet`, `go test`, сборку сервера
   и утилиты бэкапа (job `go-tests`), а пуш в `main-v2` тоже запускает CI.
 
@@ -221,4 +228,6 @@ LiveKit-токены, TURN, правка/удаление и реакции по
 - встроенный TURN (`node-turn` в Node при `TURN_EMBEDDED=1`): Go работает с внешним coturn
   в режиме `use-auth-secret` — это основной путь деплоя; встроенный TURN пока не перенесён;
 - переключение прода: пошаговый чек-лист, проверка на копии базы, окно переключения
-  Caddy и откат — в [docs/go-cutover.md](../docs/go-cutover.md).
+  Caddy и откат — в [docs/go-cutover.md](../docs/go-cutover.md);
+- удаление Node-сервера после стабилизации Go — условия и порядок в
+  [docs/remove-node.md](../docs/remove-node.md).

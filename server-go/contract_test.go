@@ -12,7 +12,10 @@ import (
 // Контракт с Node-сервером: фикстуры лежат в server/contract.
 // Тест не требует запуска сервера — он сторожит, что в Go есть все маршруты
 // и все имена событий WebSocket, которые сняты с работающего Node.
-const contractDir = "../server/contract"
+// Фикстуры лежат рядом с Go-сервером; если их там ещё нет — берём копию из server/contract
+// (пока Node-сервер не удалён). Это позволяет убрать Node без поломки тестов.
+const contractDir = "contract"
+const contractFallbackDir = "../server/contract"
 
 type contractCall struct {
 	Name   string `json:"name"`
@@ -20,11 +23,20 @@ type contractCall struct {
 	Path   string `json:"path"`
 }
 
+func contractPath(name string) string {
+	local := filepath.Join(contractDir, name)
+	if _, err := os.Stat(local); err == nil {
+		return local
+	}
+	return filepath.Join(contractFallbackDir, name)
+}
+
 func readContract(t *testing.T, name string, target any) bool {
 	t.Helper()
-	body, err := os.ReadFile(filepath.Join(contractDir, name))
+	path := contractPath(name)
+	body, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
-		t.Logf("фикстура %s не найдена — пропускаем (server-go скопирован отдельно)", name)
+		t.Logf("фикстура %s не найдена — пропускаем (фикстуры контракта не скопированы)", name)
 		return false
 	}
 	if err != nil {
