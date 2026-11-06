@@ -532,6 +532,8 @@ func (a *server) roomJSON(room *store.RoomRow) map[string]any {
 	if room.Background != "" {
 		backgroundURL = "/api/avatars/" + room.Background + ".webp"
 	}
+	voice := a.voice.participants(room.ID)
+	voiceSince := a.voice.since(room.ID)
 	return map[string]any{
 		"id":            room.ID,
 		"name":          room.Name,
@@ -548,8 +550,8 @@ func (a *server) roomJSON(room *store.RoomRow) map[string]any {
 		"members":       members,
 		"bans":          bans,
 		"events":        a.eventsJSON(room.ID),
-		"voice":         []any{},
-		"voiceSince":    nil,
+		"voice":         voice,
+		"voiceSince":    voiceSince,
 		"lastActivity":  a.store.RoomLastActivity(room.ID),
 		"now":           time.Now().UnixMilli(),
 	}
@@ -749,9 +751,16 @@ func (a *server) patchRoom(w http.ResponseWriter, r *http.Request) {
 				groupID = &value
 			}
 		}
+		oldGroup := room.GroupID
 		if err := a.store.SetRoomGroup(id, groupID); err != nil {
 			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 			return
+		}
+		if room.HubID != nil && oldGroup != nil && (groupID == nil || *groupID != *oldGroup) {
+			_ = a.store.DeleteRoomGroupIfEmpty(*room.HubID, *oldGroup)
+		}
+		if room.HubID != nil {
+			a.broadcastHub(*room.HubID)
 		}
 	}
 	if request.DefaultPerms != nil {

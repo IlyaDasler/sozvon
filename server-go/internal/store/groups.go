@@ -55,6 +55,12 @@ func (s *Store) SetRoomGroup(roomID int64, groupID *int64) error {
 	return err
 }
 
+// DeleteRoomGroupIfEmpty удаляет группу, если в ней не осталось комнат.
+func (s *Store) DeleteRoomGroupIfEmpty(hubID, groupID int64) error {
+	_, err := s.db.Exec(`DELETE FROM room_groups WHERE id = ? AND hub_id = ? AND NOT EXISTS (SELECT 1 FROM rooms WHERE group_id = ?)`, groupID, hubID, groupID)
+	return err
+}
+
 func (s *Store) AddHubEmoji(hubID int64, name, file string, byID int64) error {
 	_, err := s.db.Exec(`INSERT INTO hub_emojis (hub_id, name, file, created_by) VALUES (?, ?, ?, ?)`, hubID, name, file, byID)
 	return err
