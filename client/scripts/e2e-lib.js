@@ -68,7 +68,13 @@ let screenSources = new Map();
 let screenChoice = null;
 let windowCount = 0;
 ipcMain.handle('screen:sources', async () => {
-  const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 400, height: 225 }, fetchWindowIcons: true });
+  const all = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 400, height: 225 }, fetchWindowIcons: true });
+  // На машинах с несколькими мониторами окно выбора не выбирает экран само —
+  // для тестов достаточно одного: E2E_SINGLE_SCREEN=1 оставляет первый монитор
+  const firstScreen = all.find((s) => s.id.startsWith('screen:'));
+  const sources = process.env.E2E_SINGLE_SCREEN === '1'
+    ? all.filter((s) => !s.id.startsWith('screen:') || s.id === firstScreen?.id)
+    : all;
   screenSources = new Map(sources.map((s) => [s.id, s]));
   return sources
     .filter((s) => s.name)
