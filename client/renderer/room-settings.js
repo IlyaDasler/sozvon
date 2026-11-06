@@ -492,6 +492,7 @@ function renderRoomInvite() {
 
 $('ri-search').oninput = renderRoomInvite;
 $('ri-close').onclick = () => $('room-invite').classList.add('hidden');
+$('ri-x').onclick = () => $('room-invite').classList.add('hidden');
 
 // ---------- Разметка окна ----------
 

@@ -4,3 +4,4 @@ server/data/
 deploy/.env
 *.log
 .DS_Store
+.e2e-shots/

@@ -824,6 +824,7 @@ const QUICK_REACTIONS = [
   '🍻', '🎮', '🎧', '🐱', '🐶', '🌟', '💡', '🥲',
   '😎', '🤯', '🥶', '🤗', '😇', '🙃', '😜', '🤪',
   '🥰', '😱', '🤤', '🤑', '🧠', '🫡', '🍕', '🎂',
+  '💩',
 ];
 
 /** Адрес действия над сообщением: личный чат или комната */
@@ -1205,6 +1206,26 @@ watchReactionChips('room-messages', () => ({ kind: 'room', roomId: state.selecte
 // Лента сообщений: и для чата с другом, и для комнаты. Строка живёт, пока не поменялась: перестроить всю ленту значит
 // сбросить выделение, остановить видео, а пока картинки заново узнают размер — сдвинуть текст под глазами читателя
 
+/**
+ * Участники обсуждения под сообщением канала. Сервер обычно присылает их сразу,
+ * но если данных не оказалось (например, сообщение пришло событием) — подтягиваем
+ * один раз, чтобы аватарки были видны без открытия треда
+ */
+function ensureThreadUsers(m, chat) {
+  if (!chat?.roomId || m.threadUsers?.length || m._threadUsersLoaded || !Number(m.replies || 0)) return;
+  m._threadUsersLoaded = true;
+  Api.get(`/rooms/${chat.roomId}/messages/${m.id}/thread`)
+    .then((rows) => {
+      const ids = [...new Set((rows || []).map((r) => r.fromId))];
+      m.threadUsers = ids.slice(0, 5);
+      m.threadUserCount = ids.length;
+      if (state.selectedRoomId === chat.roomId && typeof renderRoomMessages === 'function') renderRoomMessages();
+    })
+    .catch(() => {
+      m._threadUsersLoaded = false;
+    });
+}
+
 /** Строка сообщения; shown — та же строка, уже показанная в ленте (вернётся она же, если ничего не поменялось) */
 function messageRow(m, prev, list, actions, shown, fresh) {
   const newDay = !prev || formatDay(prev.createdAt) !== formatDay(m.createdAt);
@@ -1286,6 +1307,7 @@ function messageRow(m, prev, list, actions, shown, fresh) {
   if (chips) body.append(chips);
   row.append(body);
   if (actions?.chat?.kind === 'room' && (Number(m.replies || 0) > 0 || m.threadUsers?.length)) {
+    ensureThreadUsers(m, actions.chat);
     const rowEl = document.createElement('div');
     rowEl.className = 'msg-thread-row';
     if (m.threadUsers?.length) {
@@ -1303,7 +1325,8 @@ function messageRow(m, prev, list, actions, shown, fresh) {
       }
       rowEl.append(strip);
     }
-    if (Number(m.replies || 0) > 0) {
+    // Внутри обсуждения ссылки «Обсуждение · N» быть не должно: второго треда не существует
+    if (Number(m.replies || 0) > 0 && actions.scope !== 'thread') {
       const link = document.createElement('button');
       link.type = 'button';
       link.className = 'msg-thread-link';
@@ -1328,19 +1351,28 @@ function messageRow(m, prev, list, actions, shown, fresh) {
       b.onclick = fn;
       tools.append(b);
     };
+    // В обсуждении ответ уходит в обсуждение, а не в общий чат
+    const inThread = actions.scope === 'thread' || Boolean(tools.closest?.('.thread-panel'));
     tool('Ответить', '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 7 7v3"/></svg>', (e) => {
       e.stopPropagation();
+      if (inThread && typeof window.replyInThread === 'function') {
+        window.replyInThread(row.message, actions.chat);
+        return;
+      }
       startReply(row.message, actions.chat);
     });
-    if (actions.chat.kind === 'room')
+    // Внутри обсуждения нельзя завести ещё одно обсуждение
+    if (actions.chat.kind === 'room' && !inThread)
       tool('Обсудить сообщение', '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>', (e) => {
         e.stopPropagation();
         openThread(row.message, actions.chat);
       }, ' thread');
-    tool('Переслать', '<svg viewBox="0 0 24 24"><path d="M15 14 20 9l-5-5"/><path d="M20 9h-9a7 7 0 0 0-7 7v3"/></svg>', (e) => {
-      e.stopPropagation();
-      forwardMessage(row.message);
-    });
+    // Пересылка и закреп — только для ленты канала, не для обсуждения
+    if (!inThread)
+      tool('Переслать', '<svg viewBox="0 0 24 24"><path d="M15 14 20 9l-5-5"/><path d="M20 9h-9a7 7 0 0 0-7 7v3"/></svg>', (e) => {
+        e.stopPropagation();
+        forwardMessage(row.message);
+      });
     tool('Реакция', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0"/><path d="M9 9h.01M15 9h.01"/></svg>', (e) => {
       e.stopPropagation();
       openReactions(row.message, actions.chat, e.currentTarget);
@@ -1348,21 +1380,22 @@ function messageRow(m, prev, list, actions, shown, fresh) {
     if (m.fromId === state.me.id)
       tool('Изменить', '<svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>', (e) => {
         e.stopPropagation();
-        if (typeof window.editThreadMessage === 'function' && tools.closest('.thread-panel')) {
+        if (typeof window.editThreadMessage === 'function' && (inThread || tools.closest?.('.thread-panel'))) {
           window.editThreadMessage(row.message, actions.chat);
           return;
         }
         editMessage(row.message, actions.chat);
       });
-    tool(
-      m.pinned ? 'Открепить' : 'Закрепить',
-      '<svg viewBox="0 0 24 24"><path d="M9 4h6l-1 6 4 4H6l4-4z"/><path d="M12 14v6"/></svg>',
-      (e) => {
-        e.stopPropagation();
-        togglePin(row.message, actions.chat);
-      },
-      ' pin'
-    );
+    if (!inThread)
+      tool(
+        m.pinned ? 'Открепить' : 'Закрепить',
+        '<svg viewBox="0 0 24 24"><path d="M9 4h6l-1 6 4 4H6l4-4z"/><path d="M12 14v6"/></svg>',
+        (e) => {
+          e.stopPropagation();
+          togglePin(row.message, actions.chat);
+        },
+        ' pin'
+      );
     if (actions.canDelete(m))
       tool('Удалить (с Shift — без вопроса)', '<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>', (e) => {
         deleteMessage(row.message, actions.remove, e.shiftKey);
@@ -1402,7 +1435,11 @@ function renderMessageList(box, list, loaded, emptyText, actions) {
   for (const m of list) {
     const day = formatDay(m.createdAt);
     if (!prev || formatDay(prev.createdAt) !== day) {
-      if (!feed.days.has(day)) feed.days.set(day, Object.assign(document.createElement('div'), { className: 'day', textContent: day }));
+      if (!feed.days.has(day)) {
+        const dayRow = Object.assign(document.createElement('div'), { className: 'day' });
+        dayRow.append(Object.assign(document.createElement('span'), { textContent: day }));
+        feed.days.set(day, dayRow);
+      }
       nodes.push(feed.days.get(day));
     }
     if (m === line) {
@@ -1547,6 +1584,7 @@ function showNewMessage(m, peerId) {
     if (peerId !== state.selectedId) state.unread.set(peerId, (state.unread.get(peerId) || 0) + 1);
     noteUnread(`dm:${peerId}`, m.id);
     renderContacts();
+    renderRail();
     notify(state.contacts.get(peerId)?.displayName || 'Новое сообщение', messageSummary(m), { kind: 'message', open: { contact: peerId } });
   }
 }
@@ -1883,6 +1921,7 @@ function renderCallAdd() {
 $('call-add').onclick = openCallAdd;
 $('call-add-search').oninput = renderCallAdd;
 $('call-add-close').onclick = () => $('call-add-modal').classList.add('hidden');
+$('call-add-x').onclick = () => $('call-add-modal').classList.add('hidden');
 
 function declineIncoming() {
   if (!state.incoming) return;
@@ -2431,6 +2470,8 @@ function showSettingsTab(tab) {
   for (const p of document.querySelectorAll('#settings .set-pane')) p.classList.toggle('hidden', p.dataset.pane !== current);
   document.getElementById('privacy-subnav')?.classList.toggle('hidden', current !== 'privacy');
   document.getElementById('settings')?.classList.toggle('privacy-mode', current === 'privacy');
+  // Оформление: подложка без размытия — видно, как выбранная тема ложится на приложение
+  document.getElementById('settings')?.classList.toggle('look-preview', current === 'look');
   $('settings').querySelector('.set-body').scrollTop = 0;
   if (current === 'privacy') {
     showPrivacyPage(window.privacyPage || 'data');
