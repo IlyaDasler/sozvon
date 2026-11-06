@@ -18,7 +18,7 @@ const { spawn } = require('node:child_process');
 const MAC_UPDATE_INVARIANT = Object.freeze({
   mustWork: true,
   since: '3.3.5',
-  covers: ['feed', 'download', 'sha512', 'unpack', 'permissions', 'swap', 'relaunch', 'ui-recovery'],
+  covers: ['feed', 'download', 'sha512', 'unpack', 'permissions', 'swap', 'relaunch', 'ui-recovery', 'e2e'],
 });
 
 const REPO = 'IlyaDasler/sozvon';
