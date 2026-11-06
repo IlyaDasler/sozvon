@@ -18,7 +18,7 @@ const COMPOSER_ICONS = {
 const formatSize = (bytes) =>
   bytes < 1024 ? `${bytes} Б` : bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} КБ` : `${(bytes / 1024 / 1024).toFixed(1)} МБ`;
 
-const COMPOSER_MAX = 160;
+const COMPOSER_MAX = 240;
 function autoGrow(area) {
   // Chromium умеет field-sizing: content — рост и предел делает CSS,
   // иначе считаем высоту вручную с тем же пределом
@@ -248,9 +248,12 @@ class Composer {
     await this.send({ text: '', files: [attachment], preview: null });
   }
 
-  /** Перетаскивание файлов в область чата */
-  acceptDrops(zone) {
+  /** Перетаскивание файлов в область чата. skipWhenThread — пока открыто обсуждение,
+      файл принимает только оно: общий чат не подсвечивается и ничего не добавляет */
+  acceptDrops(zone, skipWhenThread = false) {
+    const threadTakesOver = () => skipWhenThread && typeof window.isThreadOpen === 'function' && window.isThreadOpen();
     zone.addEventListener('dragover', (e) => {
+      if (threadTakesOver()) return;
       if (!e.dataTransfer?.types.includes('Files') || this.area.disabled) return;
       e.preventDefault();
       zone.classList.add('drop-target');
@@ -260,6 +263,7 @@ class Composer {
     });
     zone.addEventListener('drop', (e) => {
       zone.classList.remove('drop-target');
+      if (threadTakesOver()) return;
       if (!e.dataTransfer?.files.length || this.area.disabled) return;
       e.preventDefault();
       this.addFiles([...e.dataTransfer.files]);
@@ -682,7 +686,7 @@ const roomComposer = new Composer($('room-message-form'), $('room-message-input'
   addRoomMessage({ ...(await Api.post(`/rooms/${roomId}/messages`, body)), plain });
   if (reply) clearReply();
 }, { mentionCandidates: () => (roomById(state.selectedRoomId)?.members || []).filter((m) => m.id !== state.me.id) });
-roomComposer.acceptDrops($('room-view'));
+roomComposer.acceptDrops($('room-view'), true);
 
 // Esc в поле во время правки — отменить её
 for (const [composer, kind] of [[dmComposer, 'dm'], [roomComposer, 'room']])

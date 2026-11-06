@@ -114,6 +114,8 @@ function forgetUnread(conv) {
   const [, kind, id] = /^(dm|room):(\d+)$/.exec(conv);
   (kind === 'dm' ? state.unread : state.roomUnread).delete(Number(id));
   state.readMarks.delete(conv);
+  // Отметка снята — сразу убираем полоску непрочитанного в рейле
+  if (typeof renderRail === 'function') renderRail();
 }
 
 /** Человек прочитал переписку до конца */

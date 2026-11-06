@@ -680,6 +680,7 @@ function showNewRoomMessage(m) {
     if (!viewing) state.roomUnread.set(m.roomId, (state.roomUnread.get(m.roomId) || 0) + 1);
     noteUnread(`room:${m.roomId}`, m.id);
     renderRooms();
+    renderRail();
     const room = roomById(m.roomId);
     const who = userById(m.fromId)?.displayName || '?';
     // Упомянули — так и говорим в заголовке
@@ -779,7 +780,11 @@ function handleRoomEvent(msg) {
     case 'room:message':
       return addRoomMessage(msg.message);
     case 'room:thread:new':
-      bumpThreadReplies(msg.rootId, msg.roomId, { replies: msg.replies, participants: msg.participants });
+      bumpThreadReplies(msg.rootId, msg.roomId, {
+        replies: msg.replies,
+        participants: msg.participants,
+        message: msg.message ? { ...msg.message, roomId: msg.roomId } : null,
+      });
       // @username в обсуждении: событие приходит всем, но уведомляем только упомянутых
       if (Array.isArray(msg.mentions) && msg.mentions.includes(state.me.id) && msg.message?.fromId !== state.me.id) {
         const room = roomById(msg.roomId);
@@ -793,6 +798,8 @@ function handleRoomEvent(msg) {
       return;
     case 'room:message:deleted':
       if (dropMessage(state.roomHistory, msg.roomId, msg.id) && msg.roomId === state.selectedRoomId) renderRoomMessages();
+      // Удалили сообщение в открытом обсуждении — убираем строку точечно, без перезагрузки
+      if (typeof window.threadMessageRemoved === 'function') window.threadMessageRemoved(msg.id);
       return;
     case 'room:message:edited': {
       const list = state.roomHistory.get(msg.message.roomId) || [];
@@ -1042,6 +1049,7 @@ function openRoomCreate(kind = 'voice', hubId = state.view, groupId = null) {
 }
 
 $('room-create-cancel').onclick = () => $('room-create').classList.add('hidden');
+$('room-create-x').onclick = () => $('room-create').classList.add('hidden');
 $('room-create-form').onsubmit = async (e) => {
   e.preventDefault();
   const name = $('room-name').value.trim();

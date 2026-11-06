@@ -5,8 +5,12 @@
   let thread = null; // { rootId, roomId }
   let editing = null; // правка сообщения прямо в треде
   let savedWidth = ''; // ширина треда до разворота
+  let baseWidth = 0; // исходная ширина: меньше неё тред не сжать
+  let threadReply = null; // ответ на сообщение внутри обсуждения
+  let rowCache = []; // сообщения открытого обсуждения — для точечного обновления без перезагрузки
 
   const panel = () => document.getElementById('thread-panel');
+  const isThreadOpen = () => Boolean(thread) && Boolean(panel()) && !panel().classList.contains('hidden');
   const listEl = () => document.getElementById('thread-list');
   const headEl = () => document.getElementById('thread-title');
   const form = () => document.getElementById('thread-form');
@@ -32,6 +36,52 @@
     if (btn) btn.title = '\u041e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c';
   }
 
+  /** Полоса «ответ на сообщение» над полем обсуждения */
+  function replyBarEl() {
+    let bar = document.getElementById('thread-reply');
+    if (bar) return bar;
+    const f = form();
+    if (!f) return null;
+    bar = document.createElement('div');
+    bar.id = 'thread-reply';
+    bar.className = 'reply-bar hidden';
+    f.before(bar);
+    return bar;
+  }
+
+  function renderThreadReply() {
+    const bar = replyBarEl();
+    if (!bar) return;
+    if (!threadReply) {
+      bar.classList.add('hidden');
+      bar.replaceChildren();
+      return;
+    }
+    const author = userById(threadReply.fromId) || { displayName: '?' };
+    const name = document.createElement('b');
+    name.textContent = author.displayName;
+    const text = document.createElement('span');
+    text.textContent = threadReply.text || 'вложение';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.title = 'Отменить ответ';
+    close.textContent = '×';
+    close.onclick = () => {
+      threadReply = null;
+      renderThreadReply();
+    };
+    bar.replaceChildren(name, text, close);
+    bar.classList.remove('hidden');
+  }
+
+  /** Ответить в обсуждении: цитата попадёт в это же обсуждение */
+  function replyInThread(m) {
+    if (!m) return;
+    threadReply = { id: m.id, fromId: m.fromId, text: m.plain?.text || '' };
+    renderThreadReply();
+    input()?.focus();
+  }
+
   function threadActions(roomId) {
     return (
       state.roomActions || {
@@ -47,6 +97,7 @@
     const box = listEl();
     if (!box) return;
     box.innerHTML = '';
+    rowCache = rows;
     if (!rows.length) {
       box.innerHTML = '<div class="thread-empty muted small">Сообщений в обсуждении пока нет</div>';
       return;
@@ -60,7 +111,7 @@
       cachedRoot.threadUserCount = participants.length;
       cachedRoot.replies = Math.max(0, rows.length - 1);
     }
-    const actions = threadActions(roomId);
+    const actions = { ...threadActions(roomId), scope: 'thread' };
     let prev = null;
     for (const m of rows) {
       const shown = messageRow(m, prev, rows, actions, null, false);
@@ -69,6 +120,50 @@
       prev = m;
     }
     box.scrollTop = box.scrollHeight;
+    // Участники треда сразу видны под корневым сообщением в ленте канала,
+    // не дожидаясь, пока кто-то напишет ответ
+    if (state.selectedRoomId === roomId && typeof renderRoomMessages === 'function') renderRoomMessages();
+  }
+
+  function appendThreadRow(m) {
+    const box = listEl();
+    if (!box || !thread) return;
+    box.querySelector('.thread-empty')?.remove();
+    const actions = { ...threadActions(thread.roomId), scope: 'thread' };
+    const prev = rowCache.at(-1) || null;
+    rowCache.push(m);
+    const shown = messageRow(m, prev, rowCache, actions, null, true);
+    box.append(shown.row);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function updateThreadRow(m) {
+    const box = listEl();
+    if (!box || !thread) return;
+    const idx = rowCache.findIndex((x) => x.id === m.id);
+    if (idx < 0) return;
+    const actions = { ...threadActions(thread.roomId), scope: 'thread' };
+    const prev = idx ? rowCache[idx - 1] : null;
+    rowCache[idx] = m;
+    const shown = messageRow(m, prev, rowCache, actions, null, false);
+    const old = box.querySelectorAll('.msg')[idx];
+    if (old) old.replaceWith(shown.row);
+    else box.append(shown.row);
+  }
+
+  /** Сообщение удалили — убираем строку из открытого обсуждения */
+  function removeThreadRow(id) {
+    if (!thread) return;
+    if (id === thread.rootId) {
+      rowCache = [];
+      closeThread();
+      return;
+    }
+    const idx = rowCache.findIndex((m) => m.id === id);
+    if (idx < 0) return;
+    const old = listEl()?.querySelectorAll('.msg')[idx];
+    rowCache.splice(idx, 1);
+    old?.remove();
   }
 
   /** Поле ответа доступно только если сервер умеет треды */
@@ -88,6 +183,11 @@
     thread = { rootId, roomId };
     panel().classList.remove('hidden');
     panel().classList.add('thread-open');
+    renderThreadReply();
+    // Запоминаем исходную ширину: растянуть можно, сжать меньше исходной — нет
+    if (!panel().style.width && !baseWidth) {
+      baseWidth = Math.round(panel().getBoundingClientRect().width) || 360;
+    }
     if (headEl()) headEl().textContent = 'Обсуждение';
     listEl().innerHTML = '<div class="thread-empty muted small">Загружаем обсуждение…</div>';
     try {
@@ -118,6 +218,8 @@
 
   function closeThread() {
     thread = null;
+    threadReply = null;
+    renderThreadReply();
     panel()?.classList.add('hidden');
     panel()?.classList.remove('thread-open');
   }
@@ -245,7 +347,8 @@
       try {
         await saveEdit(target.m, target.chat, next);
         area.value = '';
-        await openThread({ id: thread.rootId, threadRoot: thread.rootId }, { roomId: thread.roomId });
+        // Строку обновляем на месте: список не перезагружаем, чтобы он не мигал
+        updateThreadRow(target.m);
         if (typeof renderRoomMessages === 'function') renderRoomMessages();
       } catch (err) {
         toast(err.message);
@@ -255,8 +358,9 @@
     if (!text) return;
     area.value = '';
     area.style.height = '';
+    const quoted = threadReply;
     try {
-      const { body, plain } = await encryptOutgoing(roomConvOf(thread.roomId), { text });
+      const { body, plain } = await encryptOutgoing(roomConvOf(thread.roomId), { text, reply: quoted });
       body.threadRootId = thread.rootId;
       // @all внутри треда: сервер разошлёт всем участникам канала, а не только треду
       if (/@all\b/i.test(text)) body.mentionAll = true;
@@ -269,8 +373,14 @@
       const saved = await Api.post(`/rooms/${thread.roomId}/messages`, body);
       const msg = { ...saved, plain, roomId: thread.roomId };
       const history = state.roomHistory.get(thread.roomId);
-      // В общую ленту не добавляем: ответ живёт только в треде
-      await openThread({ id: thread.rootId, threadRoot: thread.rootId }, { roomId: thread.roomId });
+      // Ответ на сообщение внутри обсуждения: полоса цитаты больше не нужна
+      if (quoted) {
+        threadReply = null;
+        renderThreadReply();
+      }
+      // В общую ленту не добавляем: ответ живёт только в треде.
+      // В список добавляем сразу, без перезагрузки — он не должен мигать
+      appendThreadRow(msg);
       const root = history?.find((m) => m.id === thread.rootId);
       // Сервер уже вернул точное число ответов. Не прибавляем +1: это давало
       // 6 вместо 5, когда событие треда и ответ на запрос приходили оба.
@@ -307,11 +417,13 @@
       for (const file of files) {
         const { done } = uploadEncrypted(file, () => {});
         const attachment = await done;
-        const { body } = await encryptOutgoing(roomConvOf(roomId), { text: '', files: [attachment] });
+        const { body, plain } = await encryptOutgoing(roomConvOf(roomId), { text: '', files: [attachment] });
         body.threadRootId = rootId;
-        await Api.post(`/rooms/${roomId}/messages`, body);
+        const saved = await Api.post(`/rooms/${roomId}/messages`, body);
+        // Тред мог закрыться или смениться, пока файл загружался
+        if (!thread || thread.rootId !== rootId) continue;
+        appendThreadRow({ ...saved, plain, roomId });
       }
-      await openThread({ id: rootId, threadRoot: rootId }, { roomId });
       if (typeof renderRoomMessages === 'function') renderRoomMessages();
     } catch (err) {
       toast(err.message);
@@ -362,6 +474,31 @@
 
     // Ручка ширины у левого края треда
     const p = panel();
+    if (p && !p.dataset.drops) {
+      p.dataset.drops = '1';
+      // Пока открыто обсуждение, файл принимает только оно: подсветка и добавление
+      // остаются здесь, а у общего чата рамка не появляется и не залипает
+      const clearDropTargets = () => {
+        for (const el of document.querySelectorAll('.drop-target')) el.classList.remove('drop-target');
+      };
+      p.addEventListener('dragover', (e) => {
+        if (!e.dataTransfer?.types.includes('Files') || !thread) return;
+        e.preventDefault();
+        e.stopPropagation();
+        clearDropTargets();
+        p.classList.add('drop-target');
+      });
+      p.addEventListener('dragleave', (e) => {
+        if (!p.contains(e.relatedTarget)) p.classList.remove('drop-target');
+      });
+      p.addEventListener('drop', (e) => {
+        clearDropTargets();
+        if (!e.dataTransfer?.files.length || !thread) return;
+        e.preventDefault();
+        e.stopPropagation();
+        sendThreadFiles([...e.dataTransfer.files]);
+      });
+    }
     if (p && !p.querySelector('.thread-resize')) {
       const grip = document.createElement('div');
       grip.className = 'thread-resize';
@@ -370,9 +507,10 @@
         e.preventDefault();
         const startX = e.clientX;
         const startW = p.getBoundingClientRect().width;
-        const maxW = Math.max(320, (p.parentElement?.clientWidth || window.innerWidth) - 24);
+        const minW = baseWidth || Math.round(startW);
+        const maxW = Math.max(minW, (p.parentElement?.clientWidth || window.innerWidth) - 24);
         const move = (ev) => {
-          const w = Math.min(maxW, Math.max(300, startW + (startX - ev.clientX)));
+          const w = Math.min(maxW, Math.max(minW, startW + (startX - ev.clientX)));
           p.style.width = `${w}px`;
         };
         const up = () => {
@@ -386,6 +524,18 @@
     }
   }
 
+  /** Перерисовать открытое обсуждение — например, после удаления сообщения в нём */
+  function refreshOpenThread() {
+    if (!thread) return;
+    const inList = (state.roomHistory.get(thread.roomId) || []).some((m) => m.id === thread.rootId);
+    // Корневое сообщение удалили — обсуждать больше нечего
+    if (!inList) {
+      closeThread();
+      return;
+    }
+    openThread({ id: thread.rootId, threadRoot: thread.rootId }, { roomId: thread.roomId });
+  }
+
   // Счётчик ответов обновляем по событию сервера
   function bumpReplies(rootId, roomId, data = {}) {
     const list = state.roomHistory.get(roomId);
@@ -397,9 +547,16 @@
         root.threadUserCount = data.participants.length;
       }
     }
-    // Если тред этого сообщения открыт — подтягиваем новый ответ
-    if (thread && thread.rootId === rootId) {
-      openThread({ id: rootId, threadRoot: rootId }, { roomId });
+    // Если тред этого сообщения открыт — добавляем новый ответ строкой, без перезагрузки списка
+    if (thread && thread.rootId === rootId && data.message) {
+      const incoming = data.message;
+      if (incoming.fromId !== state.me?.id && !rowCache.some((m) => m.id === incoming.id)) {
+        const roomIdOfMsg = roomId;
+        const finish = () => appendThreadRow(incoming);
+        if (typeof decryptMessages === 'function' && typeof roomConvOf === 'function' && !incoming.plain) {
+          decryptMessages([incoming], roomConvOf(roomIdOfMsg)).then(finish).catch(finish);
+        } else finish();
+      }
     }
     if (state.selectedRoomId === roomId && typeof renderRoomMessages === 'function') renderRoomMessages();
   }
@@ -407,6 +564,10 @@
   window.openThread = openThread;
   window.closeThread = closeThread;
   window.editThreadMessage = editThreadMessage;
+  window.replyInThread = replyInThread;
+  window.isThreadOpen = isThreadOpen;
+  window.refreshOpenThread = refreshOpenThread;
+  window.threadMessageRemoved = removeThreadRow;
   window.bumpThreadReplies = bumpReplies;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);

@@ -897,8 +897,8 @@ function renderNoiseButton() {
     btn.innerHTML = on ? ICONS.noise : ICONS.noiseOff;
     btn.classList.toggle('on', on);
     btn.title = on
-      ? `Шумоподавление: ${name.toLowerCase()} — нажмите, чтобы выключить, или правой кнопкой для уровня`
-      : 'Шумоподавление выключено — нажмите, чтобы включить';
+      ? `Шумоподавление: ${name.toLowerCase()} — нажмите, чтобы выбрать уровень`
+      : 'Шумоподавление выключено — нажмите, чтобы выбрать уровень';
   }
 }
 
@@ -968,10 +968,12 @@ function toggleNoise() {
   setNoiseLevel(noiseLevelOf() > 0 ? 0 : lastNoiseLevel);
 }
 
+
 for (const id of ['call-ns', 'voice-ns']) {
   const btn = $(id);
   if (!btn) continue;
-  btn.onclick = toggleNoise;
+  // Левая кнопка сразу открывает выбор уровня шумоподавления
+  btn.onclick = (e) => openNoiseMenu(e.clientX, e.clientY);
   btn.oncontextmenu = (e) => {
     e.preventDefault();
     e.stopPropagation();

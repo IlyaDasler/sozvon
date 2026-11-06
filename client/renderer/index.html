@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="glass-components.css">
   <link rel="stylesheet" href="glass-3.css">
   <link rel="stylesheet" href="ferrari.css">
+  <link rel="stylesheet" href="theme-layout.css">
   <link rel="stylesheet" href="glass-tabs.css">
   <script src="theme-boot.js"></script>
   <script src="liquid-tabs.js" defer></script>
@@ -881,6 +882,7 @@
   <!-- Новая комната -->
   <div id="room-create" class="modal hidden">
     <form class="modal-card room-card" id="room-create-form">
+      <button type="button" class="icon-btn invite-close" id="room-create-x" title="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <h3>Новая комната</h3>
       <div class="kind-choice">
         <label class="kind">
@@ -1154,6 +1156,7 @@
   <!-- Пригласить друзей в комнату -->
   <div id="room-invite" class="modal hidden">
     <div class="modal-card invite-card">
+      <button type="button" class="icon-btn invite-close" id="ri-x" title="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <h3 id="ri-title"></h3>
       <input id="ri-search" class="friend-search" placeholder="Поиск друзей" spellcheck="false">
       <p class="error" id="ri-error"></p>
@@ -1165,6 +1168,7 @@
   <!-- Позвать друга в идущий звонок -->
   <div id="call-add-modal" class="modal hidden">
     <div class="modal-card invite-card">
+      <button type="button" class="icon-btn invite-close" id="call-add-x" title="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <h3>Добавить в звонок</h3>
       <input id="call-add-search" class="friend-search" placeholder="Поиск друзей" spellcheck="false">
       <div class="member-list invite-list" id="call-add-list"></div>
