@@ -1704,7 +1704,9 @@ kbd {
 .rail-list {
   flex: 1; min-height: 0; width: 100%;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
-  overflow-y: auto; scrollbar-width: none; padding: 4px 0 8px;
+  overflow-y: auto; scrollbar-width: none;
+  /* запас под анимированную плашку активного канала: иначе у верхнего канала её срезает scroll-контейнер */
+  padding: 12px 0 15px;
 }
 .rail-list::-webkit-scrollbar { display: none; }
 .rail-list.drop-end { box-shadow: inset 0 -3px 0 var(--accent); }

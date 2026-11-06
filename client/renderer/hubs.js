@@ -412,9 +412,13 @@ $('rail').addEventListener('mouseover', (e) => {
   const tip = $('rail-tip');
   const r = target.getBoundingClientRect();
   tip.textContent = target.dataset.tip;
-  tip.style.top = `${r.top + r.height / 2}px`;
-  tip.style.left = `${r.right + 12}px`;
   tip.classList.remove('hidden');
+  // Не даём подсказке уехать за правый/верхний край окна
+  const half = tip.offsetHeight / 2;
+  const top = Math.min(innerHeight - half - 8, Math.max(half + 8, r.top + r.height / 2));
+  const left = Math.min(innerWidth - tip.offsetWidth - 8, r.right + 12);
+  tip.style.top = `${top}px`;
+  tip.style.left = `${Math.max(8, left)}px`;
 });
 $('rail').addEventListener('mouseleave', hideRailTip);
 
