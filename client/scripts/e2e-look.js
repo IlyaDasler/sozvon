@@ -129,8 +129,8 @@ runTest(async () => {
     return JSON.stringify(groups);
   })()`));
   const expectedGroups = [
-    { title: 'Классические темы', ids: ['sozvon', 'midnight', 'light', 'forest', 'dusk'] },
-    { title: 'Новые темы', ids: ['ferrari', 'glass'] },
+    { title: 'Классические темы', ids: ['sozvon', 'dark', 'midnight', 'light', 'forest', 'dusk'] },
+    { title: 'Новые темы', ids: ['frost', 'cold', 'ferrari', 'glass'] },
   ];
   if (JSON.stringify(picker) !== JSON.stringify(expectedGroups)) throw new Error(`Группы тем в оформлении: ${JSON.stringify(picker)}`);
   await js(win, `document.querySelector('[data-pick="ferrari"]').click(); true`);
@@ -151,11 +151,15 @@ runTest(async () => {
     return Math.round('${edge}' === 'right' ? (center + ${dx}) - p.left : p.right - (center + ${dx}));
   })()`);
   const drag = async (sel, dx) => {
-    const r = await js(win, `(() => { const b = document.querySelector('${sel} > .panel-resizer').getBoundingClientRect(); return { x: Math.round(b.left + b.width / 2), y: Math.round(b.top + 200) }; })()`);
-    const wc = win.webContents;
-    wc.sendInputEvent({ type: 'mouseDown', x: r.x, y: r.y, button: 'left', clickCount: 1 });
-    for (let i = 1; i <= 8; i++) wc.sendInputEvent({ type: 'mouseMove', x: r.x + Math.round((dx * i) / 8), y: r.y, button: 'left' });
-    wc.sendInputEvent({ type: 'mouseUp', x: r.x + dx, y: r.y, button: 'left', clickCount: 1 });
+    await js(win, `(() => {
+      const h = document.querySelector('${sel} > .panel-resizer');
+      const r = h.getBoundingClientRect();
+      const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + 200);
+      h.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, buttons: 1, pointerId: 81, clientX: x, clientY: y }));
+      for (let i = 1; i <= 8; i++) window.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, buttons: 1, pointerId: 81, clientX: x + Math.round((${dx} * i) / 8), clientY: y }));
+      window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, pointerId: 81, clientX: x + ${dx}, clientY: y }));
+      return true;
+    })()`);
     await sleep(300);
   };
   const sidebarBefore = await width('.sidebar');
