@@ -434,9 +434,9 @@ func (a *server) patchHub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request struct {
-		Name            string  `json:"name"`
-		IconColor       *string `json:"iconColor"`
-		ReactionsVisible *bool  `json:"reactionsVisible"`
+		Name             string  `json:"name"`
+		IconColor        *string `json:"iconColor"`
+		ReactionsVisible *bool   `json:"reactionsVisible"`
 	}
 	if err := decode(r, &request); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
@@ -547,7 +547,7 @@ func (a *server) roomJSON(room *store.RoomRow) map[string]any {
 		"roles":         roles,
 		"members":       members,
 		"bans":          bans,
-		"events":        []any{},
+		"events":        a.eventsJSON(room.ID),
 		"voice":         []any{},
 		"voiceSince":    nil,
 		"lastActivity":  a.store.RoomLastActivity(room.ID),
@@ -824,8 +824,56 @@ func (a *server) setMyStatus(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	// Как в Node: текущее устройство сразу узнаёт, что статус применился
+	a.hub.Send(user.ID, map[string]any{"type": "me:status", "status": request.Status})
 	a.broadcastPresence(user.ID)
 	fresh, _ := a.store.UserByID(user.ID)
+	self, err := a.self(fresh)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	writeJSON(w, http.StatusOK, self)
+}
+
+// setMyGame — запущенная игра из детекта процессов клиента (или null, когда игра закрыта).
+func (a *server) setMyGame(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	var request struct {
+		Game *string `json:"game"`
+	}
+	if err := decode(r, &request); err != nil {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	var game *string
+	if request.Game != nil {
+		name := strings.TrimSpace(*request.Game)
+		if runes := []rune(name); len(runes) > 60 {
+			name = string(runes[:60])
+		}
+		if name != "" {
+			game = &name
+		}
+	}
+	if err := a.store.SetGame(user.ID, game); err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	fresh, err := a.store.UserByID(user.ID)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	// Как notifyProfile в Node: профиль уходит друзьям, соседям по каналам и себе
+	event := map[string]any{"type": "user:updated", "user": a.publicUser(fresh)}
+	if ids, err := a.store.RelatedUserIDs(fresh.ID); err == nil {
+		for _, id := range ids {
+			a.hub.Send(id, event)
+		}
+	}
+	a.hub.Send(fresh.ID, event)
+	a.broadcastPresence(fresh.ID)
 	self, err := a.self(fresh)
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
@@ -901,6 +949,7 @@ func (a *server) contactTheme(w http.ResponseWriter, r *http.Request) {
 	a.hub.Send(user.ID, map[string]any{"type": "chat:theme", "userId": peerID, "theme": value, "by": user.ID})
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "theme": value})
 }
+
 // updatePrivacy — настройки конфиденциальности: часть проверяет сервер, часть — клиент.
 func (a *server) updatePrivacy(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
