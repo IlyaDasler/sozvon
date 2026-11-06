@@ -4,9 +4,12 @@ const { api, register, js, sleep, openClient, runTest, befriend } = require('./e
 runTest(async () => {
   const a = await register('th' + Math.random().toString(36).slice(2, 5), 'Аня');
   const b = await register('tb' + Math.random().toString(36).slice(2, 5), 'Боря');
+  const c = await register('tc' + Math.random().toString(36).slice(2, 5), 'Вика');
   await befriend(a, b);
+  await befriend(a, c);
   const hub = await api('POST', '/hubs', { name: 'Эридан' }, a.token);
   await api('POST', `/hubs/${hub.id}/members`, { userId: b.user.id }, a.token).catch(() => {});
+  await api('POST', `/hubs/${hub.id}/members`, { userId: c.user.id }, a.token).catch(() => {});
 
   const win = await openClient('tha', a);
   await sleep(1400);
@@ -41,6 +44,11 @@ runTest(async () => {
   if (!ids.length) throw new Error('Корневое сообщение не отправилось');
   const root = ids[ids.length - 1];
 
+  const winC = await openClient('thc' + Math.random().toString(36).slice(2, 5), c);
+  await sleep(900);
+  winC.show();
+  const notificationsOf = async (w) => JSON.parse(await js(w, `JSON.stringify((typeof loadNotifs === 'function' ? loadNotifs() : []).map((n) => n.title))`));
+
   // Ответ в тред от второго участника (через API — как будто с другого устройства)
   const reply = await api('POST', `/rooms/${room.id}/messages`, {
     text: 'Ответ в треде',
@@ -52,6 +60,24 @@ runTest(async () => {
     return api('POST', `/rooms/${room.id}/messages`, { text: 'Ответ в треде', threadRootId: root }, b.token);
   });
   if (!reply || reply.threadRoot !== root) throw new Error('Ответ не привязался к треду');
+
+  await sleep(500);
+  const aTitles = await notificationsOf(win);
+  const cTitles = await notificationsOf(winC);
+  if (!aTitles.some((t) => t.includes('ответил в обсуждении'))) throw new Error(`Участник треда не получил уведомление: ${JSON.stringify(aTitles)}`);
+  if (cTitles.some((t) => t.includes('обсуждении'))) throw new Error(`Посторонний участник канала получил уведомление треда: ${JSON.stringify(cTitles)}`);
+
+  // Упоминание в треде доставляется тому, кого тегнули, даже если он не писал в треде
+  await api('POST', `/rooms/${room.id}/messages`, {
+    text: 'Ответ с упоминанием',
+    threadRootId: root,
+    mentionIds: [c.user.id],
+    attachmentIds: [],
+    replyToId: null,
+  }, b.token).catch(() => api('POST', `/rooms/${room.id}/messages`, { text: 'Ответ с упоминанием', threadRootId: root, mentionIds: [c.user.id] }, b.token));
+  await sleep(500);
+  const cMentions = await notificationsOf(winC);
+  if (!cMentions.some((t) => t.includes('упоминает вас'))) throw new Error(`Упомянутый участник не получил уведомление: ${JSON.stringify(cMentions)}`);
 
   // Счётчик в основной ленте обновляется в реальном времени: 5 ответов — «5», не «4»
   for (let i = 2; i <= 5; i++) {
@@ -67,7 +93,7 @@ runTest(async () => {
     const link = [...document.querySelectorAll('#room-messages .msg-thread-link')].find((el) => el.textContent.includes('Обсуждение'));
     return link ? link.textContent.replace(/\\s+/g, ' ').trim() : '';
   })()`);
-  if (!liveCounter.includes('5')) throw new Error(`Счётчик треда в реальном времени: «${liveCounter}» вместо «Обсуждение · 5»`);
+  if (!liveCounter.includes('6')) throw new Error(`Счётчик треда в реальном времени: «${liveCounter}» вместо «Обсуждение · 6»`);
 
   // Панель треда
   await js(win, `openThread({ id: ${root}, threadRoot: ${root} }, { kind: 'room', roomId: ${room.id} }); true`);

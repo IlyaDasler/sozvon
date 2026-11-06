@@ -785,15 +785,19 @@ function handleRoomEvent(msg) {
         participants: msg.participants,
         message: msg.message ? { ...msg.message, roomId: msg.roomId } : null,
       });
-      // @username в обсуждении: событие приходит всем, но уведомляем только упомянутых
-      if (Array.isArray(msg.mentions) && msg.mentions.includes(state.me.id) && msg.message?.fromId !== state.me.id) {
+      // Событие о треде приходит только его участникам и упомянутым.
+      // Участник треда получает уведомление об ответе, упомянутый — отдельный текст.
+      const fromMe = msg.message?.fromId === state.me.id;
+      const mentioned = Array.isArray(msg.mentions) && msg.mentions.includes(state.me.id);
+      const inThread = Array.isArray(msg.participants) && msg.participants.includes(state.me.id);
+      if (!fromMe && (mentioned || inThread)) {
         const room = roomById(msg.roomId);
         const who = userById(msg.message.fromId)?.displayName || '?';
-        notify(`${who} упоминает вас в обсуждении`, room?.name || 'Комната', {
-          kind: 'message',
-          open: { room: msg.roomId },
-          hub: room?.hubId,
-        });
+        notify(
+          mentioned ? `${who} упоминает вас в обсуждении` : `${who} ответил в обсуждении`,
+          room?.name || 'Комната',
+          { kind: 'message', open: { room: msg.roomId }, hub: room?.hubId }
+        );
       }
       return;
     case 'room:message:deleted':
