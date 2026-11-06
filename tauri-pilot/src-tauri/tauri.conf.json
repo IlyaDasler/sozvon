@@ -1,12 +1,20 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Sozvon Pilot",
-  "version": "0.1.0",
-  "identifier": "ru.ilyadasler.sozvon.pilot",
-  "build": { "frontendDist": "../ui" },
-  "app": {
-    "windows": [{ "title": "Sozvon Pilot", "width": 900, "height": 620, "resizable": true }],
-    "security": { "csp": null }
-  },
-  "bundle": { "active": false }
+    "$schema":  "https://schema.tauri.app/config/2",
+    "productName":  "Sozvon Pilot",
+    "version":  "0.1.0",
+    "identifier":  "ru.ilyadasler.sozvon.pilot",
+    "build":  {
+                  "frontendDist":  "../ui"
+              },
+    "app":  {
+                "windows":  [
+
+                            ],
+                "security":  {
+                                 "csp":  null
+                             }
+            },
+    "bundle":  {
+                   "active":  false
+               }
 }
