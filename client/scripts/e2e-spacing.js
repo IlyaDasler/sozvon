@@ -101,19 +101,19 @@ runTest(async () => {
   await sleep(600);
   const sizes = JSON.parse(await js(win, `(() => {
     const out = {};
-    const box = document.querySelector('#settings .gs-select');
+    const box = [...document.querySelectorAll('#settings .gs-select')].find((el) => el.getClientRects().length);
     if (box) {
       const b = box.getBoundingClientRect();
       const v = box.querySelector('.gs-value').getBoundingClientRect();
       out.select = { h: Math.round(b.height), centered: Math.abs((v.top + v.bottom) / 2 - (b.top + b.bottom) / 2) <= 2 };
     }
-    const num = document.querySelector('#settings .number-field');
+    const num = [...document.querySelectorAll('#settings .number-field')].find((el) => el.getClientRects().length);
     if (num) {
       const n = num.getBoundingClientRect();
       const field = num.closest('.field').getBoundingClientRect();
       out.number = { h: Math.round(n.height), inside: n.right <= field.right + 1 };
     }
-    const head = document.querySelector('#settings .collapse-head');
+    const head = [...document.querySelectorAll('#settings .collapse-head')].find((el) => el.getClientRects().length);
     if (head) {
       const h = head.getBoundingClientRect();
       const title = head.querySelector('.collapse-title').getBoundingClientRect();

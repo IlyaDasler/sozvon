@@ -194,7 +194,7 @@ runTest(async () => {
   // и плашка «старые сообщения» не появляется ни у получателя, ни у отправителя
   const atBottom = `(() => { const m = document.getElementById('messages'); return m.scrollHeight - m.scrollTop - m.clientHeight < 5; })()`;
   const jumpHidden = `document.querySelector('#messages + .jump-bar').classList.contains('hidden')`;
-  for (let i = 0; i < 15; i++) await send(winA, `разгон ${i}`);
+  for (let i = 0; i < 15; i++) { await send(winA, `разгон ${i}`); await sleep(550); }
   await waitFor(winB, `${lastMsg}?.textContent === 'разгон 14'`, 'длинная переписка у Бори');
   await js(
     winA,
@@ -248,7 +248,7 @@ runTest(async () => {
   console.log('✔ щелчок по закреплённому листает к нему');
 
   // Листаем вверх: лента не прыгает вниз от новых сообщений, внизу — «Перейти к последним»
-  for (let i = 0; i < 25; i++) await send(winA, `строка ${i}`);
+  for (let i = 0; i < 25; i++) { await send(winA, `строка ${i}`); await sleep(550); }
   await waitFor(winB, `${lastMsg}?.textContent === 'строка 24'`, 'длинная переписка');
   const jump = `document.querySelector('#messages + .jump-bar')`;
   await js(winB, `document.getElementById('messages').scrollTop = 0; document.getElementById('messages').dispatchEvent(new Event('scroll')); true`);
