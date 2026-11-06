@@ -224,6 +224,17 @@ LiveKit-токены, TURN, правка/удаление и реакции по
 - `.github/workflows/build.yml` теперь гоняет `go vet`, `go test`, сборку сервера
   и утилиты бэкапа (job `go-tests`), а пуш в `main-v2` тоже запускает CI.
 
+**Проверено e2e против Go**
+- на живом Go-сервере прогнаны клиентские сценарии: `friends`, `hubs`, `chat`, `threads`, `typing`,
+  `status`, `unread`, `e2ee`, `sessions`, `reaction-who`, `privacy`, `room-groups`, `feed`,
+  `two-factor`, `call`, `group-call`, `scenarios`, `journey` — зелёные;
+- условия запуска: сервер с `LINK_PREVIEW_ALLOW_PRIVATE=1` (превью ссылок с 127.0.0.1) и, для
+  `e2e-journey`, `MAIL_TEST_FILE=<файл>` с хотя бы одной строкой (тест парсит файл как JSON-строки);
+- на машине с двумя мониторами `e2e-room` запускается с `E2E_SINGLE_SCREEN=1` — окно выбора
+  экрана само выбирает источник только при одном мониторе;
+- проверка политики версий закреплена юнит-тестом `api_version_test.go`: старые клиенты
+  `Sozvon/1.x` получают 426, браузер/e2e/curl без версии — проходят, как в Node.
+
 **Осталось до полного паритета**
 - встроенный TURN (`node-turn` в Node при `TURN_EMBEDDED=1`): Go работает с внешним coturn
   в режиме `use-auth-secret` — это основной путь деплоя; встроенный TURN пока не перенесён;
