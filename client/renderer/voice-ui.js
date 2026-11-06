@@ -609,6 +609,7 @@ function renderVoice() {
   // Панель «В голосе» над профилем — видна из любого места приложения
   $('voice-panel').classList.toggle('hidden', !session);
   document.body.classList.toggle('has-voice', Boolean(session));
+  if (typeof placeUpdateBar === 'function') requestAnimationFrame(placeUpdateBar);
   $('voice-where').textContent = voiceTitle();
 
   if (session && !voiceTimer) voiceTimer = setInterval(renderVoiceStatus, 1000);
