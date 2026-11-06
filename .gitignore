@@ -10,3 +10,7 @@ server-go/sozvon-go*
 server-go/sozvon-backup*
 server-go/*.test
 server-go/dist-go/
+client/e2e-logs/
+tauri-pilot/src-tauri/target/
+tauri-pilot/src-tauri/Cargo.lock
+_backup/

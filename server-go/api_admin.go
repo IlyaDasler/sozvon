@@ -474,17 +474,24 @@ func (a *server) roomDelete(w http.ResponseWriter, r *http.Request) {
 	if room.HubID != nil && room.Kind == "voice" {
 		_ = a.livekit.DeleteRoom(roomID)
 	}
+	var roomMemberIDs []int64
+	if room.HubID != nil {
+		roomMemberIDs, _ = a.store.RoomMemberIDs(roomID)
+	}
 	if err := a.store.DeleteRoom(roomID); err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
 	if room.HubID != nil {
-		// Комнату убираем у всех участников канала, а не по id канала вместо комнаты
-		if hub, err := a.store.HubByID(*room.HubID); err == nil {
-			for _, member := range hub.Members {
-				a.hub.Send(member.User.ID, map[string]any{"type": "room:removed", "roomId": roomID})
-			}
+		// Если это была последняя комната группы — группа больше не нужна.
+		if room.GroupID != nil {
+			_ = a.store.DeleteRoomGroupIfEmpty(*room.HubID, *room.GroupID)
 		}
+		// Комнату убираем только у её участников, а не у всего канала.
+		for _, userID := range roomMemberIDs {
+			a.hub.Send(userID, map[string]any{"type": "room:removed", "roomId": roomID})
+		}
+		a.broadcastHub(*room.HubID)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
