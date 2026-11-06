@@ -91,6 +91,10 @@ func (a *server) sendDM(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusNotFound, "Собеседник не найден").write(w)
 		return
 	}
+	if !a.userLimit(user.ID, "message", a.cfg.MessageRateLimit, 10*time.Second) {
+		fail(http.StatusTooManyRequests, "Вы пишете слишком быстро, подождите несколько секунд").write(w)
+		return
+	}
 	var request struct {
 		Text          string          `json:"text"`
 		Enc           json.RawMessage `json:"enc"`
@@ -195,6 +199,7 @@ func (a *server) deleteDM(w http.ResponseWriter, r *http.Request) {
 }
 
 var _ = time.Now
+
 // dmPins — закреплённые сообщения переписки (пока пусто, как только закрепов нет)
 func (a *server) dmPins(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)

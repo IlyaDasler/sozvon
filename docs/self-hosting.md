@@ -37,6 +37,31 @@ sudo DOMAIN=chat.example.com INVITE_CODE=моя-семья bash deploy/vps/setup
 
 Скрипт можно запускать повторно: он обновляет код, но сохраняет базу, секреты и код приглашения.
 
+### Go-сервер вместо Node (по желанию)
+
+Тот же скрипт умеет ставить сервер на Go — он совместим с Node по API, базе и настройкам,
+поэтому клиенты и бэкапы работают без изменений:
+
+```bash
+sudo SERVER_IMPL=go bash deploy/vps/setup.sh
+```
+
+Если ставите с другой ветки (например, пока Go-изменения не влиты в `main`):
+`sudo SOZVON_BRANCH=main-v2 SERVER_IMPL=go bash deploy/vps/setup.sh`.
+
+- при установке скрипт скачивает готовые бинарники (`sozvon-go`, `sozvon-backup`) из последнего
+  GitHub-релиза и проверяет sha256 из `SHA256SUMS-go.txt`; если бинарников в релизе нет —
+  собирает из `server-go` (нужен Go или авто-загрузка тулчейна);
+- база (`DATA_DIR`), `secret.key` и `/etc/sozvon.env` общие с Node: переключение и возврат
+  на Node (`sudo SERVER_IMPL=node bash deploy/vps/setup.sh`) не требуют переноса данных;
+- бэкап-таймер начинает использовать `sozvon-backup` — та же папка `/var/backups/sozvon`;
+- веб-версия клиента раздаётся из `WEB_DIR` (как и в Node): после установки можно открыть
+  `https://<адрес>/` в браузере;
+- порядок переключения прод-сервера, проверки и откат — в [go-cutover.md](go-cutover.md).
+
+Проверить установку: `sudo bash deploy/vps/check.sh`.
+Если сервер ставит другой человек — передайте ему [vps-handover.md](vps-handover.md).
+
 ## Куда подключать клиент
 
 1. На экране входа нажмите **«Свой сервер»**.

@@ -132,6 +132,7 @@ func (a *server) websocket(w http.ResponseWriter, r *http.Request) {
 
 	// Пинг, чтобы замечать оборванные соединения
 	done := make(chan struct{})
+	socketKey := "socket:" + itoa(user.ID)
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
@@ -153,6 +154,10 @@ func (a *server) websocket(w http.ResponseWriter, r *http.Request) {
 		var message map[string]any
 		if err := json.Unmarshal(raw, &message); err != nil {
 			continue
+		}
+		// Защита от флуда событиями: как socketRateLimit в Node
+		if !a.limits.allow(socketKey, a.cfg.SocketRateLimit, 10*time.Second) {
+			break
 		}
 		kind, _ := message["type"].(string)
 		switch kind {
@@ -180,6 +185,8 @@ func (a *server) websocket(w http.ResponseWriter, r *http.Request) {
 			a.roomPreviewGet(conn, user, message)
 		case "call:invite":
 			a.callInvite(conn, user, message)
+		case "call:resume":
+			a.callResume(conn, user, message)
 		case "call:add":
 			a.callAdd(conn, user, message)
 		case "call:accept":
@@ -195,6 +202,9 @@ func (a *server) websocket(w http.ResponseWriter, r *http.Request) {
 
 	close(done)
 	conn.CloseRaw()
+	// Место в голосовой комнате и в звонке держим, пока идёт окно ожидания:
+	// короткий обрыв сети не должен рвать разговор (как pauseMember в Node)
+	a.voicePause(conn, user)
 	if a.hub.Remove(conn) {
 		a.userDisconnected(user.ID)
 		a.broadcastPresence(user.ID)

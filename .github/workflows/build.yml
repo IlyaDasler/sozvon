@@ -2,7 +2,7 @@ name: Сборка
 
 on:
   push:
-    branches: [main]
+    branches: [main, main-v2]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -23,6 +23,55 @@ jobs:
           node-version: 24
       - run: npm ci
       - run: npm test
+
+  # Go-сервер — совместимая замена Node (ADR 0002). Тесты включают сторожа контракта:
+  # маршруты и имена событий WebSocket сверяются с фикстурами server/contract/*.json
+  go-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server-go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server-go/go.mod
+          cache-dependency-path: server-go/go.sum
+      - run: go vet ./...
+      - run: go test ./...
+      - run: go build -o /tmp/sozvon-server-go .
+      # Утилита резервных копий собирается отдельно: её запускает таймер на сервере
+      - run: go build -o /tmp/sozvon-backup ./cmd/backup
+      # Готовые бинарники для VPS: setup.sh с SERVER_IMPL=go скачивает их из релиза
+      - name: Бинарники для Linux
+        run: |
+          mkdir -p dist-go
+          for arch in amd64 arm64; do
+            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "-s -w" \
+              -o dist-go/sozvon-go-linux-$arch .
+            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "-s -w" \
+              -o dist-go/sozvon-backup-linux-$arch ./cmd/backup
+          done
+          (cd dist-go && sha256sum sozvon-go-linux-* sozvon-backup-linux-* > SHA256SUMS-go.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sozvon-go-linux
+          path: server-go/dist-go/*
+          if-no-files-found: error
+
+  # Бинарники Go прикрепляются к релизу: их скачивает deploy/vps/setup.sh (SERVER_IMPL=go)
+  go-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: go-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sozvon-go-linux
+          path: dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
 
   # macOS собирается только на macOS-раннере: electron-builder не умеет делать .dmg с Windows.
   # Сборка без сертификата Apple: приложение не подписано, автообновление на macOS отключено в main.js
