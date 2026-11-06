@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Port               string
 	DataDir            string
+	WebDir             string
 	InviteCode         string
 	SMTPHost           string
 	SMTPPort           string
@@ -111,6 +112,7 @@ func Load() Config {
 	return Config{
 		Port:               port,
 		DataDir:            dataDir,
+		WebDir:             os.Getenv("WEB_DIR"),
 		InviteCode:         os.Getenv("INVITE_CODE"),
 		SMTPHost:           os.Getenv("SMTP_HOST"),
 		SMTPPort:           envOr("SMTP_PORT", "587"),
