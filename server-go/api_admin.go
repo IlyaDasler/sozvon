@@ -124,18 +124,19 @@ func (a *server) hubRoomsOrder(w http.ResponseWriter, r *http.Request) {
 // broadcastHub — полный объект канала всем участникам (как notifyHub в Node)
 // broadcastHubRooms — свежие комнаты канала всем участникам (как notifyRoom в Node)
 func (a *server) broadcastHubRooms(hubID int64) {
-	hub, err := a.store.HubByID(hubID)
-	if err != nil {
-		return
-	}
 	rooms, err := a.store.RoomsOfHub(hubID)
 	if err != nil {
 		return
 	}
 	for _, room := range rooms {
 		body := a.roomJSON(room)
-		for _, member := range hub.Members {
-			a.hub.Send(member.User.ID, map[string]any{"type": "room:updated", "room": body})
+		// Приватную комнату видят только её участники, а не весь канал.
+		ids, err := a.store.RoomMemberIDs(room.ID)
+		if err != nil {
+			continue
+		}
+		for _, id := range ids {
+			a.hub.Send(id, map[string]any{"type": "room:updated", "room": body})
 		}
 	}
 }
