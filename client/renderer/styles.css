@@ -2363,7 +2363,6 @@ input[type='radio']:disabled { opacity: .45; cursor: default; }
   .rail { width: 52px; }
   .sidebar { width: 184px !important; }
   .chat-head .peer-meta, .chat-head .chat-sub { display: none; }
-  .voice-info, .voice-state-row { display: none; }
   .titlebar { height: 28px; }
 }
 /* Узкое окно, финальные правки размеров: рейл и композер не должны обрезать содержимое */
