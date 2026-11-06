@@ -362,13 +362,15 @@ function moveRoomToGroup(room, groupId) {
 
 // ---------- Сколько идёт разговор ----------
 
-function formatVoiceTime(ms) {
+// Формат живёт в room-utils.mjs; fallback — на случай старого кэша.
+const formatVoiceTime = (ms) => {
+  if (window.RoomUtils?.formatVoiceTime) return window.RoomUtils.formatVoiceTime(ms);
   const total = Math.max(0, Math.floor(ms / 1000));
   const two = (n) => String(n).padStart(2, '0');
   const hours = Math.floor(total / 3600);
   const clock = `${two(Math.floor(total / 60) % 60)}:${two(total % 60)}`;
   return hours ? `${hours}:${clock}` : clock;
-}
+};
 
 function tickVoiceTimers() {
   const now = serverNow();
