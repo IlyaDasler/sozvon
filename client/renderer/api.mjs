@@ -20,9 +20,9 @@ const Api = {
         headers: {
           ...this.versionHeaders(),
           ...(body && { 'Content-Type': 'application/json' }),
-          ...(this.token && { Authorization: `Bearer ${this.token}` }),
+          ...(this.token && { Authorization: `Bearer ${this.token}` })
         },
-        body: body && JSON.stringify(body),
+        body: body && JSON.stringify(body)
       });
     } catch (err) {
       // Запрос оборвался в дороге (смена сети, VPN). Чтение безопасно повторить; запись — нет, её повторит человек
@@ -46,7 +46,9 @@ const Api = {
 
   // Связь с сервером живая (точка зелёная) — не дошёл только этот запрос; иначе — сервер правда недоступен
   netError() {
-    return this.online ? 'Запрос не дошёл до сервера — попробуйте ещё раз' : 'Сервер недоступен. Проверьте адрес и интернет.';
+    return this.online
+      ? 'Запрос не дошёл до сервера — попробуйте ещё раз'
+      : 'Сервер недоступен. Проверьте адрес и интернет.';
   },
 
   // Отправка файла как есть (например, картинки аватарки)
@@ -56,7 +58,7 @@ const Api = {
       res = await fetch(`${this.base}/api${path}`, {
         method,
         headers: { 'Content-Type': blob.type, Authorization: `Bearer ${this.token}`, ...this.versionHeaders() },
-        body: blob,
+        body: blob
       });
     } catch (err) {
       console.warn('Файл не дошёл до сервера:', method, path, err.message);
@@ -74,7 +76,7 @@ const Api = {
   post: (path, body = {}) => Api.request('POST', path, body),
   patch: (path, body = {}) => Api.request('PATCH', path, body),
   put: (path, body = {}) => Api.request('PUT', path, body),
-  del: (path) => Api.request('DELETE', path),
+  del: (path) => Api.request('DELETE', path)
 };
 
 // Постоянное соединение с сервером; при обрыве переподключается само
@@ -99,7 +101,8 @@ class ServerSocket {
     }
     if (this.closed) return;
     const url = `${Api.base.replace(/^http/, 'ws')}/ws?ticket=${encodeURIComponent(ticket)}`;
-    const ws = (this.ws = new WebSocket(url));
+    const ws = new WebSocket(url);
+    this.ws = ws;
 
     ws.onopen = () => {
       this.retry = 0;
@@ -143,3 +146,10 @@ class ServerSocket {
     this.ws = null;
   }
 }
+
+if (typeof window !== 'undefined') {
+  window.Api = Api;
+  window.ServerSocket = ServerSocket;
+}
+
+export { Api, ServerSocket };
