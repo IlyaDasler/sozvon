@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sozvon Pilot</title>
+<style>
+  :root { color-scheme: dark; --accent:#8b7cff; --line:rgba(255,255,255,.14); }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; color:#f4f2ff;
+    background: radial-gradient(120% 100% at 20% 0%, #3c2a67 0, #171225 45%, #0d0a14 100%); overflow:hidden; }
+  .shell { display:grid; grid-template-columns:240px 1fr; height:100vh; }
+  aside { padding:22px; border-right:1px solid var(--line); background:rgba(255,255,255,.04); backdrop-filter:blur(18px); }
+  .brand { display:flex; gap:10px; align-items:center; font-weight:700; letter-spacing:.02em; }
+  .dot { width:28px; height:28px; border-radius:9px; background:linear-gradient(135deg,#b6a8ff,#6651e8); box-shadow:0 0 24px #8b7cff88; }
+  nav { margin-top:30px; display:grid; gap:6px; }
+  button { all:unset; cursor:pointer; padding:10px 12px; border-radius:10px; color:#b9b2d4; transition:background .18s ease, color .18s ease, transform .18s ease; }
+  button:hover { background:rgba(255,255,255,.08); color:#fff; transform:translateX(3px); }
+  button.active { background:rgba(139,124,255,.18); color:#fff; box-shadow:inset 0 0 0 1px rgba(139,124,255,.38); }
+  main { padding:44px; display:flex; flex-direction:column; justify-content:center; }
+  .card { max-width:520px; padding:28px; border-radius:22px; border:1px solid var(--line);
+    background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.03)); backdrop-filter:blur(24px);
+    box-shadow:0 24px 80px rgba(0,0,0,.34); animation:rise .5s cubic-bezier(.22,1,.36,1); }
+  h1 { margin:0 0 8px; font-size:26px; }
+  p { margin:0 0 22px; color:#b9b2d4; }
+  .field { display:grid; gap:7px; margin-bottom:14px; }
+  label { color:#9e96bb; font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
+  input { height:40px; border-radius:11px; border:1px solid var(--line); background:rgba(0,0,0,.18); color:#fff; padding:0 12px; outline:none; }
+  input:focus { border-color:var(--accent); box-shadow:0 0 0 3px #8b7cff33; }
+  .cta { display:inline-flex; justify-content:center; padding:11px 18px; border-radius:11px; background:var(--accent); color:#120d24; font-weight:700; }
+  .metrics { margin-top:18px; color:#9e96bb; font-size:12px; font-variant-numeric:tabular-nums; }
+  @keyframes rise { from { opacity:0; transform:translateY(10px) scale(.985); } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside><div class="brand"><span class="dot"></span>Созвон</div>
+    <nav><button class="active">Профиль</button><button>Оформление</button><button>Приватность</button><button>Звонки</button></nav>
+  </aside>
+  <main><section class="card"><h1>Настройки профиля</h1><p>Пилот Tauri: тот же HTML/CSS, системный WebView.</p>
+    <div class="field"><label>Отображаемое имя</label><input value="Илья"></div>
+    <div class="field"><label>О себе</label><input placeholder="Пара слов"></div>
+    <button class="cta">Сохранить</button>
+    <div class="metrics" id="metrics">замер…</div>
+  </section></main>
+</div>
+<script>
+let frames=0; const start=performance.now();
+function tick(){ frames++; if(performance.now()-start<2000) requestAnimationFrame(tick); else {
+  document.getElementById('metrics').textContent = `анимация: ${Math.round(frames/2)} fps · загрузка: ${Math.round(performance.now())} мс`;
+}}
+requestAnimationFrame(tick);
+</script>
+</body></html>

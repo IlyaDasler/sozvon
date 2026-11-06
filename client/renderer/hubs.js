@@ -1533,9 +1533,12 @@ $('hub-icon-input').onchange = async (e) => {
 
 let nickTarget = null; // { hubId, userId }
 
-/** Своё имя человека в текущем канале (или null, если его там не переименовывали) */
-function channelNickOf(userId) {
-  const room = state.selectedRoomId && roomById(state.selectedRoomId);
+/** Имя человека в канале. roomId — контекст сообщения/экрана; без него
+ *  сначала смотрим комнату, в которой идёт голос, — иначе ник пропадал,
+ *  когда человек уходил в личный чат или «Друзья». */
+function channelNickOf(userId, roomId = null) {
+  const voiceRoom = state.room?.roomId && roomById(state.room.roomId);
+  const room = (roomId && roomById(roomId)) || voiceRoom || (state.selectedRoomId && roomById(state.selectedRoomId));
   const member = room?.members?.find((m) => m.id === userId) || currentHub()?.members?.find((m) => m.id === userId);
   return member?.nickname || null;
 }

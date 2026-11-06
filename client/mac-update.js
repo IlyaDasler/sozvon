@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const https = require('node:https');
+const http = require('node:http');
 const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 
@@ -29,7 +30,12 @@ const DOWNLOAD_PREFIX = `https://github.com/${REPO}/releases/download/`;
 const PRODUCTION_BASE = 'https://135-106-226-12.sslip.io';
 function feedBase(base) {
   const clean = String(base || '').replace(/\/+$/, '');
-  return clean === PRODUCTION_BASE ? clean + '/updates/mac' : null;
+  if (clean === PRODUCTION_BASE) return clean + '/updates/mac';
+  // Только для e2e на macOS: локальный фид, никакого влияния на прод.
+  if (process.env.SOZVON_UPDATE_TEST === '1' && /^http:\/\/127\.0\.0\.1:\d+$/.test(clean)) {
+    return clean + '/updates/mac';
+  }
+  return null;
 }
 
 /** Путь к .app, из которого запущено приложение: …/Sozvon.app/Contents/MacOS/Sozvon */
@@ -234,7 +240,8 @@ function getText(url) {
   return new Promise((resolve, reject) => {
     const go = (target, hops = 0) => {
       if (hops > 5) return reject(new Error('Слишком много перенаправлений'));
-      const req = https.get(target, { headers: { 'User-Agent': 'Sozvon-Updater' } }, (res) => {
+      const client = target.startsWith('http:') ? http : https;
+      const req = client.get(target, { headers: { 'User-Agent': 'Sozvon-Updater' } }, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           res.resume();
           return go(res.headers.location, hops + 1);

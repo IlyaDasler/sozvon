@@ -29,6 +29,12 @@ runTest(async () => {
   await api('PUT', `/hubs/${hub.id}/members/${a.user.id}/nickname`, { name: 'Илья в канале' }, a.token);
   await waitFor(winB, `[...document.querySelectorAll('#room-list [data-voice-user="${a.user.id}"] .ellipsis')].some((n) => n.textContent === 'Илья в канале')`, 'новое имя в голосовом списке');
 
+  // Ник остаётся в голосовой панели, даже если уйти из канала в «Друзья»
+  await js(winA, `selectContact(null); true`);
+  await sleep(250);
+  const nickOut = await js(winA, `channelNickOf(${a.user.id})`);
+  if (nickOut !== 'Илья в канале') throw new Error(`ник пропал вне канала: ${nickOut}`);
+
   // Группа видна у второго клиента
   const grouped = await js(winB, `JSON.stringify((state.hubs.get(${hub.id})?.groups || []).map((g) => g.name))`);
   if (!grouped.includes('ПРОВЕРКА')) throw new Error(`Группа не загрузилась: ${grouped}`);
@@ -42,6 +48,14 @@ runTest(async () => {
   groups = await api('GET', '/hubs', null, a.token);
   found = (groups.find((h) => h.id === hub.id)?.groups || []).some((g) => g.name === 'ПРОВЕРКА');
   if (found) throw new Error('Пустая группа осталась после разделения');
+
+  // Удаление последней комнаты в группе тоже не оставляет пустую группу
+  const transient = await api('POST', '/rooms', { hubId: hub.id, name: 'Удаляемая', kind: 'text', memberIds: [b.user.id] }, a.token);
+  await api('POST', `/hubs/${hub.id}/groups`, { name: 'Удаляемая группа', roomIds: [transient.id] }, a.token);
+  await api('DELETE', `/rooms/${transient.id}`, null, a.token);
+  groups = await api('GET', '/hubs', null, a.token);
+  found = (groups.find((h) => h.id === hub.id)?.groups || []).some((g) => g.name === 'Удаляемая группа');
+  if (found) throw new Error('Пустая группа осталась после удаления комнаты');
 
   console.log('✔ группа: участники голоса видны до входа, пустая группа удаляется');
 });

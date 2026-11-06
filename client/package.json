@@ -12,7 +12,9 @@
     "native": "cd native/capture && npm ci --ignore-scripts && npx node-gyp rebuild",
     "dist": "electron-builder --win --x64 --publish never && node scripts/check-package.js",
     "dist:mac": "electron-builder --mac --publish never && node scripts/check-package-mac.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "lint": "biome check renderer/update-bar.mjs scripts/run-e2e.js scripts/e2e-mac-update.js test/update-bar.test.js",
+    "format": "biome format --write renderer/update-bar.mjs scripts/run-e2e.js scripts/e2e-mac-update.js test/update-bar.test.js"
   },
   "build": {
     "appId": "ru.ilyadasler.sozvon",
@@ -48,8 +50,20 @@
       "icon": "build/icon.png",
       "artifactName": "Sozvon-${version}-${arch}.${ext}",
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] },
-        { "target": "zip", "arch": ["x64", "arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Созвон использует микрофон, чтобы вы могли говорить.",
@@ -75,6 +89,7 @@
     }
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.6.6",
     "electron": "^45.0.0",
     "electron-builder": "^26.18.0"
   },

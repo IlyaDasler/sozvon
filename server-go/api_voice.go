@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
@@ -225,6 +226,19 @@ func (v *voiceManager) participants(roomID int64) []map[string]any {
 			"joinedAt": part.joinedAt,
 		})
 	}
+	// map обходится в случайном порядке: без сортировки список участников
+	// переставляется при каждом room:voice. Кто раньше вошёл — тот выше.
+	sort.SliceStable(list, func(i, j int) bool {
+		left, right := list[i], list[j]
+		li, _ := left["joinedAt"].(int64)
+		ri, _ := right["joinedAt"].(int64)
+		if li != ri {
+			return li < ri
+		}
+		lid, _ := left["userId"].(int64)
+		rid, _ := right["userId"].(int64)
+		return lid < rid
+	})
 	return list
 }
 

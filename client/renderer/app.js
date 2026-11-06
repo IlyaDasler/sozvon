@@ -1231,7 +1231,7 @@ function messageRow(m, prev, list, actions, shown, fresh) {
   const newDay = !prev || formatDay(prev.createdAt) !== formatDay(m.createdAt);
   const base = userById(m.fromId) || { displayName: '?', avatarColor: '#555' };
   // В комнате у человека может быть своё имя в канале — показываем его
-  const nick = actions.chat?.kind === 'room' ? channelNickOf(m.fromId) : null;
+  const nick = actions.chat?.kind === 'room' ? channelNickOf(m.fromId, actions.chat.roomId) : null;
   const author = nick ? { ...base, displayName: nick } : base;
   const reply = replyOf(m, list);
   // У ответа своя дуга к аватарке, поэтому он всегда начинает новую группу
@@ -2924,28 +2924,19 @@ function closeUpdateModal() {
   renderUpdate();
 }
 
-/** Плашка обновления повторяет фактическую геометрию панели «В голосе»,
- *  а не догадывается по ширине сайдбара. */
+/** Обёртка: расчёт живёт в update-bar.mjs и покрыт тестом. */
 function placeUpdateBar() {
+  if (window.UpdateBar?.place) return window.UpdateBar.place();
+  // На случай очень старого кэша без модуля — прежнее поведение не теряем.
   const bar = $('update-bar');
-  if (!bar) return;
   const voice = $('voice-panel');
-  const sidebar = document.querySelector('.sidebar');
-  let rect = null;
-  let radius = '';
-  if (voice && voice.getClientRects().length) {
-    rect = voice.getBoundingClientRect();
-    radius = getComputedStyle(voice).borderRadius;
-  } else if (sidebar && sidebar.getClientRects().length) {
-    const r = sidebar.getBoundingClientRect();
-    rect = { left: r.left + 8, width: Math.max(0, r.width - 16) };
-    radius = getComputedStyle(document.documentElement).getPropertyValue('--r-l').trim() || '14px';
-  }
-  if (!rect || !rect.width) return;
-  bar.style.left = `${Math.round(rect.left)}px`;
-  bar.style.width = `${Math.round(rect.width)}px`;
-  bar.style.borderRadius = radius;
+  if (!bar || !voice || !voice.getClientRects().length) return;
+  const r = voice.getBoundingClientRect();
+  bar.style.left = `${Math.round(r.left)}px`;
+  bar.style.width = `${Math.round(r.width)}px`;
+  bar.style.borderRadius = getComputedStyle(voice).borderRadius;
 }
+
 window.addEventListener('resize', () => requestAnimationFrame(placeUpdateBar));
 
 function renderUpdate() {
