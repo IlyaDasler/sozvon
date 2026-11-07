@@ -1220,3 +1220,16 @@
   color: var(--on-accent);
   filter: none;
 }
+
+/* ---------- Обои чата: картинка — фон, интерфейс — главный ---------- */
+/* Цветная картинка не должна перетягивать внимание: заливаем её цветом самой темы,
+   чтобы обои читались как фон, а панели, текст и кнопки оставались выразительными.
+   В «Совон» и «Феррари» этого не делаем — там обои часть оформления. */
+:is([data-theme='sozvon'], [data-theme='dark'], [data-theme='midnight'], [data-theme='light'], [data-theme='forest'], [data-theme='dusk'], [data-theme='frost'], [data-theme='cold']) #chat[data-chat-wallpaper='1'] {
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--bg-deep) 76%, transparent),
+      color-mix(in srgb, var(--bg-deep) 76%, transparent)
+    ),
+    var(--chat-wallpaper);
+}
