@@ -694,3 +694,84 @@
   background: rgba(10, 10, 11, 0.82) !important;
 }
 
+/* ---------- Старость, затхлость и помятость ---------- */
+
+/* Мягкая виньетка и плёнка */
+[data-theme='silenthill'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background: radial-gradient(120% 95% at 50% 45%, transparent 52%, rgba(0, 0, 0, 0.3) 100%);
+}
+[data-theme='silenthill'] body::after {
+  opacity: 0.12 !important;
+  background-size: 150px 150px !important;
+}
+
+/* Пыль и царапины на фоне, но не поверх текста */
+[data-theme='silenthill'] .main::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("silenthill-grime.png");
+  background-size: 300px 300px;
+  opacity: 0.16;
+  mix-blend-mode: soft-light;
+}
+
+/* Панели — с заломами, но без тяжёлого налёта */
+[data-theme='silenthill'] .sidebar,
+[data-theme='silenthill'] .content,
+[data-theme='silenthill'] .members-panel {
+  background-image:
+    url("silenthill-grime.png"),
+    linear-gradient(108deg, transparent 36%, rgba(255, 255, 255, 0.055) 37%, rgba(0, 0, 0, 0.18) 38%, transparent 39%),
+    linear-gradient(63deg, transparent 67%, rgba(255, 255, 255, 0.045) 68%, rgba(0, 0, 0, 0.16) 69%, transparent 70%),
+    linear-gradient(148deg, transparent 81%, rgba(0, 0, 0, 0.14) 82%, transparent 83%) !important;
+  background-size: 300px 300px, cover, cover, cover !important;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat !important;
+  background-blend-mode: normal !important;
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.5),
+    inset 0 0 38px rgba(0, 0, 0, 0.22),
+    inset 3px 2px 0 rgba(255, 255, 255, 0.025),
+    inset -4px -3px 12px rgba(0, 0, 0, 0.28) !important;
+}
+[data-theme='silenthill'] .sidebar {
+  background-color: rgba(10, 10, 11, 0.82) !important;
+}
+[data-theme='silenthill'] .content {
+  background-color: rgba(14, 14, 15, 0.5) !important;
+}
+[data-theme='silenthill'] .members-panel {
+  background-color: rgba(10, 10, 11, 0.8) !important;
+}
+
+/* Текст остаётся читаемым */
+[data-theme='silenthill'] .msg-text,
+[data-theme='silenthill'] .msg-head b {
+  color: #ded6cc !important;
+}
+[data-theme='silenthill'] .chat-head .peer-name,
+[data-theme='silenthill'] .list-title,
+[data-theme='silenthill'] .set-block h4,
+[data-theme='silenthill'] .members-head,
+[data-theme='silenthill'] .sidebar-head {
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.5),
+    0 0 12px rgba(0, 0, 0, 0.28);
+}
+
+/* Кнопки и карточки — с пылью */
+[data-theme='silenthill'] .btn,
+[data-theme='silenthill'] .modal-card {
+  background-image: url("silenthill-grime.png") !important;
+  background-size: 280px 280px !important;
+  background-repeat: repeat !important;
+  background-blend-mode: soft-light !important;
+}
+
