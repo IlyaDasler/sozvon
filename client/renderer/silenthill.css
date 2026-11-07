@@ -104,16 +104,13 @@
 [data-theme='silenthill'] .rail-tile {
   border-radius: 8px;
   border: 1px solid rgba(170, 170, 168, 0.18);
-  background: rgba(18, 18, 19, 0.92);
   color: var(--text-2);
 }
 [data-theme='silenthill'] .rail-tile:hover {
   border-color: rgba(200, 200, 198, 0.32);
-  background: rgba(28, 28, 29, 0.95);
 }
 [data-theme='silenthill'] .rail-item.active .rail-tile {
-  border-color: #7d2f2f;
-  background: linear-gradient(150deg, #2a1717, #171416);
+  border-color: #8a4a2e;
   color: #d8c9c0;
   box-shadow: 0 0 16px rgba(162, 90, 54, 0.35), inset 0 0 18px rgba(0, 0, 0, 0.4);
 }
@@ -498,7 +495,7 @@
 
 /* Наведение на иконки каналов — без подложки, только свечение */
 [data-theme='silenthill'] .rail-tile:hover {
-  background: transparent !important;
+  background-color: transparent !important;
 }
 
 /* ---------- Ржавчина цветом: приглушённая, без яркого оранжевого ---------- */
@@ -549,13 +546,7 @@
 }
 
 [data-theme='silenthill'] .rail-item.active .rail-tile {
-  background-color: #3f2113 !important;
-  background-image:
-    radial-gradient(ellipse 34% 48% at 28% 24%, rgba(150, 96, 60, 0.24), transparent 72%),
-    radial-gradient(ellipse 40% 56% at 74% 76%, rgba(18, 7, 3, 0.7), transparent 74%),
-    radial-gradient(ellipse 24% 30% at 60% 36%, rgba(26, 10, 4, 0.6), transparent 72%),
-    linear-gradient(150deg, #4a2618 0%, #6b3a24 40%, #2f1910 100%) !important;
-  border-color: #7a4028 !important;
+  border-color: #8a4a2e !important;
   box-shadow:
     0 0 14px rgba(122, 64, 40, 0.28),
     inset 0 0 16px rgba(0, 0, 0, 0.55) !important;
