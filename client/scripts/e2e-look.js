@@ -3,7 +3,7 @@
 // Запуск (сервер должен работать): E2E_SHOTS=папка npx electron scripts/e2e-look.js [адрес сервера]
 const { api, befriend, register, js, waitFor, openClient, screenshot, sleep, runTest } = require('./e2e-lib');
 
-const THEMES = ['sozvon', 'midnight', 'light', 'forest', 'dusk', 'ferrari', 'glass'];
+const THEMES = ['sozvon', 'dark', 'midnight', 'light', 'neutron', 'frost', 'cold', 'ferrari', 'glass'];
 const SIZES = [
   [1280, 800],
   [940, 640],
@@ -129,15 +129,15 @@ runTest(async () => {
     return JSON.stringify(groups);
   })()`));
   const expectedGroups = [
-    { title: 'Классические темы', ids: ['sozvon', 'dark', 'midnight', 'light', 'forest', 'dusk'] },
-    { title: 'Новые темы', ids: ['neutron', 'frost', 'cold', 'ferrari', 'glass'] },
+    { title: 'Классические темы', ids: ['sozvon', 'dark', 'midnight', 'light', 'neutron', 'frost', 'cold'] },
+    { title: 'Новые темы', ids: ['ferrari', 'glass'] },
   ];
   if (JSON.stringify(picker) !== JSON.stringify(expectedGroups)) throw new Error(`Группы тем в оформлении: ${JSON.stringify(picker)}`);
   await js(win, `document.querySelector('[data-pick="ferrari"]').click(); true`);
   await sleep(350);
   if ((await js(win, `document.documentElement.dataset.theme`)) !== 'ferrari') throw new Error('«Феррари» не выбирается из оформления');
   await js(win, `closeSettings(); true`);
-  console.log('✔ все 7 тем в оформлении, «Феррари» выбирается');
+  console.log('✔ все темы в оформлении, «Феррари» выбирается');
   await js(win, `leaveRoomVoice(); setTheme('sozvon'); true`);
   await js(winB, `leaveRoomVoice(); true`);
 
