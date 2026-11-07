@@ -1,0 +1,314 @@
+/* ============================================================================
+   Туман — Silent Hill: выцветший серый интерфейс, плёночное зерно,
+   тяжёлый туман по краям и ржавый кровяной акцент.
+   ========================================================================== */
+
+[data-theme='silenthill'] body {
+  background: #0a0a0b;
+}
+[data-theme='silenthill'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.14;
+  background-image: url("silenthill-grain.png");
+  background-size: 160px 160px;
+  mix-blend-mode: overlay;
+}
+
+/* Улица в тумане на весь экран */
+[data-theme='silenthill'] .main {
+  background-image:
+    radial-gradient(110% 80% at 50% 32%, rgba(210, 210, 208, 0.1), transparent 64%),
+    linear-gradient(180deg, rgba(8, 8, 9, 0.2) 0%, rgba(8, 8, 9, 0.58) 100%),
+    url("silenthill-bg.jpg");
+  background-size: auto, auto, cover;
+  background-position: center, center, center;
+  background-repeat: no-repeat;
+  background-color: #0a0a0b;
+}
+/* Туман, стелющийся по интерфейсу */
+[data-theme='silenthill'] .main::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(55% 30% at 50% 72%, rgba(220, 220, 218, 0.16), transparent 70%),
+    radial-gradient(70% 36% at 18% 24%, rgba(190, 190, 188, 0.1), transparent 70%),
+    radial-gradient(80% 42% at 82% 58%, rgba(200, 200, 198, 0.08), transparent 70%),
+    linear-gradient(180deg, transparent 35%, rgba(8, 8, 9, 0.4) 100%);
+  mix-blend-mode: screen;
+  opacity: 0.85;
+}
+
+/* Панели — выцветшие бетонные плиты */
+[data-theme='silenthill'] .sidebar,
+[data-theme='silenthill'] .content,
+[data-theme='silenthill'] .members-panel {
+  border: 1px solid rgba(170, 170, 168, 0.16);
+  border-radius: 5px;
+  background: rgba(14, 14, 15, 0.7);
+  -webkit-backdrop-filter: blur(5px) saturate(45%);
+  backdrop-filter: blur(5px) saturate(45%);
+  box-shadow:
+    0 22px 54px rgba(0, 0, 0, 0.62),
+    inset 0 0 70px rgba(0, 0, 0, 0.4);
+}
+[data-theme='silenthill'] .sidebar,
+[data-theme='silenthill'] .members-panel {
+  background: rgba(10, 10, 11, 0.8);
+}
+[data-theme='silenthill'] .content {
+  background: rgba(14, 14, 15, 0.42);
+}
+
+/* Шапки — бетон с туманом */
+[data-theme='silenthill'] .chat-head,
+[data-theme='silenthill'] .friends-head,
+[data-theme='silenthill'] .sidebar-head,
+[data-theme='silenthill'] .members-head {
+  background-image: linear-gradient(180deg, rgba(24, 24, 25, 0.94), rgba(18, 18, 19, 0.82));
+  border-bottom: 1px solid rgba(170, 170, 168, 0.18);
+  border-radius: 5px 5px 0 0;
+}
+[data-theme='silenthill'] .chat-head .peer-name,
+[data-theme='silenthill'] .sidebar-head,
+[data-theme='silenthill'] .members-head,
+[data-theme='silenthill'] .list-title,
+[data-theme='silenthill'] .rs-room,
+[data-theme='silenthill'] .theme-group h4 {
+  font-family: Georgia, 'Times New Roman', serif;
+  letter-spacing: 0.04em;
+}
+[data-theme='silenthill'] .list-title {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 10px;
+  color: #9a9894;
+}
+
+/* Всё цветное — в серость */
+[data-theme='silenthill'] .avatar,
+[data-theme='silenthill'] .rail-tile img,
+[data-theme='silenthill'] .msg-image img,
+[data-theme='silenthill'] .msg-embed img,
+[data-theme='silenthill'] .attachment img {
+  filter: grayscale(0.75) contrast(1.05) brightness(0.95);
+}
+
+/* Рейл — ржавые плитки */
+[data-theme='silenthill'] .rail-tile {
+  border-radius: 8px;
+  border: 1px solid rgba(170, 170, 168, 0.18);
+  background: rgba(18, 18, 19, 0.92);
+  color: var(--text-2);
+}
+[data-theme='silenthill'] .rail-tile:hover {
+  border-color: rgba(200, 200, 198, 0.32);
+  background: rgba(28, 28, 29, 0.95);
+}
+[data-theme='silenthill'] .rail-item.active .rail-tile {
+  border-color: #7d2f2f;
+  background: linear-gradient(150deg, #2a1717, #171416);
+  color: #d8c9c0;
+  box-shadow: 0 0 16px rgba(155, 58, 58, 0.35), inset 0 0 18px rgba(0, 0, 0, 0.4);
+}
+[data-theme='silenthill'] .rail-item::before {
+  background: var(--accent);
+}
+[data-theme='silenthill'] .rail-sep {
+  background: rgba(180, 180, 178, 0.18);
+}
+
+/* Строки — без заливки, активная — ржавая полоса */
+[data-theme='silenthill'] .contact,
+[data-theme='silenthill'] .friend-row,
+[data-theme='silenthill'] .room-row,
+[data-theme='silenthill'] .friends-nav {
+  border: none;
+  border-bottom: 1px solid rgba(180, 180, 178, 0.06);
+  border-radius: 3px;
+  color: var(--text-2);
+}
+[data-theme='silenthill'] .contact:hover,
+[data-theme='silenthill'] .friend-row:hover,
+[data-theme='silenthill'] .room-row:hover,
+[data-theme='silenthill'] .friends-nav:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+[data-theme='silenthill'] .contact.active,
+[data-theme='silenthill'] .room-row.active,
+[data-theme='silenthill'] .friends-nav.active {
+  background: linear-gradient(90deg, rgba(155, 58, 58, 0.3), rgba(155, 58, 58, 0.03) 78%);
+  box-shadow: inset 2px 0 0 var(--accent);
+  border-bottom-color: transparent;
+}
+
+/* Кнопки — металл и ржавчина */
+[data-theme='silenthill'] .btn {
+  border-radius: 4px;
+  border: 1px solid rgba(170, 170, 168, 0.22);
+  background: rgba(26, 26, 27, 0.9);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+[data-theme='silenthill'] .btn:hover {
+  background: rgba(38, 38, 39, 0.95);
+  border-color: rgba(200, 200, 198, 0.32);
+}
+[data-theme='silenthill'] .btn.primary {
+  background: #7d2f2f;
+  border-color: #9b3a3a;
+  color: #f0eae4;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+[data-theme='silenthill'] .btn.primary:hover {
+  background: #8f3636;
+}
+[data-theme='silenthill'] .btn.success {
+  background: rgba(26, 26, 27, 0.9);
+  border-color: rgba(181, 160, 106, 0.35);
+  color: #d8cdb4;
+}
+[data-theme='silenthill'] .icon-btn,
+[data-theme='silenthill'] .round-btn,
+[data-theme='silenthill'] .composer-btn {
+  border-radius: 4px;
+  color: var(--muted);
+}
+[data-theme='silenthill'] .icon-btn:hover,
+[data-theme='silenthill'] .composer-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Поле ввода — тёмный бетон */
+[data-theme='silenthill'] .composer {
+  background: linear-gradient(0deg, rgba(8, 8, 9, 0.65), transparent);
+  border-top: 1px solid rgba(170, 170, 168, 0.12);
+}
+[data-theme='silenthill'] .composer-bar {
+  border-radius: 4px;
+  background: rgba(18, 18, 19, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(170, 170, 168, 0.18);
+}
+[data-theme='silenthill'] .composer-bar:focus-within {
+  box-shadow:
+    inset 0 0 0 1px rgba(155, 58, 58, 0.65),
+    0 0 0 3px rgba(155, 58, 58, 0.12);
+}
+[data-theme='silenthill'] .composer textarea::placeholder {
+  color: #777572;
+  letter-spacing: 0.02em;
+}
+
+/* Дата — старая табличка */
+[data-theme='silenthill'] .day span {
+  background: rgba(18, 18, 19, 0.85);
+  border: 1px solid rgba(170, 170, 168, 0.2);
+  border-radius: 2px;
+  color: #a9a7a2;
+  letter-spacing: 0.04em;
+  padding: 3px 12px;
+}
+[data-theme='silenthill'] .day::before,
+[data-theme='silenthill'] .day::after {
+  background: rgba(170, 170, 168, 0.14);
+}
+
+/* Сообщения */
+[data-theme='silenthill'] .msg:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+[data-theme='silenthill'] .msg-text {
+  color: #cfcdc8;
+}
+[data-theme='silenthill'] .msg-text a {
+  color: var(--link);
+}
+[data-theme='silenthill'] .msg .muted {
+  color: #8a8884;
+}
+
+/* Вкладки */
+[data-theme='silenthill'] .friend-tabs button {
+  border-radius: 2px;
+  color: var(--muted);
+}
+[data-theme='silenthill'] .friend-tabs button.active {
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+  background: rgba(155, 58, 58, 0.1);
+}
+[data-theme='silenthill'] .head-divider {
+  background: rgba(170, 170, 168, 0.14);
+}
+
+/* Окна и меню — бетон */
+[data-theme='silenthill'] .modal-card,
+[data-theme='silenthill'] .profile-card,
+[data-theme='silenthill'] .popup,
+[data-theme='silenthill'] .popup-menu,
+[data-theme='silenthill'] .notif-panel,
+[data-theme='silenthill'] .chat-theme-pop,
+[data-theme='silenthill'] .gif-popover,
+[data-theme='silenthill'] .emoji-popover {
+  border: 1px solid rgba(170, 170, 168, 0.22);
+  border-radius: 5px;
+  background: rgba(16, 16, 17, 0.95);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.65), inset 0 0 50px rgba(0, 0, 0, 0.5);
+}
+[data-theme='silenthill'] .modal-card h1,
+[data-theme='silenthill'] .modal-card h2,
+[data-theme='silenthill'] .modal-card h3 {
+  font-family: Georgia, 'Times New Roman', serif;
+  letter-spacing: 0.04em;
+}
+[data-theme='silenthill'] .theme-group h4 {
+  color: #9a9894;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 10px;
+}
+[data-theme='silenthill'] .theme-card {
+  border-radius: 3px;
+  border: 1px solid rgba(170, 170, 168, 0.16);
+}
+[data-theme='silenthill'] .theme-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(155, 58, 58, 0.35);
+}
+
+/* Скроллбар и выделение */
+[data-theme='silenthill'] ::-webkit-scrollbar {
+  width: 6px;
+}
+[data-theme='silenthill'] ::-webkit-scrollbar-thumb {
+  border-radius: 2px;
+  background: rgba(180, 180, 178, 0.22);
+}
+[data-theme='silenthill'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 180, 178, 0.36);
+}
+[data-theme='silenthill'] ::selection {
+  background: rgba(155, 58, 58, 0.45);
+  color: #f0eae4;
+}
+
+/* Превью темы */
+.theme-card[data-pick='silenthill'] .theme-preview {
+  background-image: linear-gradient(180deg, rgba(8, 8, 9, 0.2), rgba(8, 8, 9, 0.68)), url("silenthill-bg.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+[data-gfx='low'][data-theme='silenthill'] .sidebar,
+[data-gfx='low'][data-theme='silenthill'] .content,
+[data-gfx='low'][data-theme='silenthill'] .members-panel {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
