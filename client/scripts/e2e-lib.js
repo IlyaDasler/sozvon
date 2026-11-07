@@ -97,7 +97,9 @@ ipcMain.handle('update:status', () => ({ state: 'idle', current: 'e2e' }));
 ipcMain.handle('preview:fetch', (_e, url) => fetchPreview(String(url)));
 
 // root — папка с preload.js и renderer/ (по умолчанию текущая версия; для проверки совместимости — старая)
-async function openClient(name, auth, root = path.join(__dirname, '..')) {
+// opts.waitReady=false — не ждать подключения (тест запуска без сети)
+// opts.serverUrl — свой адрес сервера (localStorage customServer), если сессии ещё нет
+async function openClient(name, auth, root = path.join(__dirname, '..'), opts = {}) {
   const ses = session.fromPartition(`e2e-${name}`);
   applyPermissions(ses);
   ses.setDisplayMediaRequestHandler((_req, cb) => {
@@ -127,9 +129,14 @@ async function openClient(name, auth, root = path.join(__dirname, '..')) {
     if (ownCode && e.message.startsWith('Uncaught')) pageErrors.push(line);
   });
   await win.loadFile(path.join(root, 'renderer', 'index.html'));
-  await js(win, `localStorage.setItem('session', ${JSON.stringify(JSON.stringify({ base: SERVER, token: auth.token }))}); location.reload()`);
+  const storage = [];
+  if (auth) storage.push(`localStorage.setItem('session', ${JSON.stringify(JSON.stringify({ base: SERVER, token: auth.token }))})`);
+  if (opts.serverUrl) storage.push(`localStorage.setItem('customServer', ${JSON.stringify(JSON.stringify(opts.serverUrl))})`);
+  if (storage.length) await js(win, `${storage.join('; ')}; location.reload()`);
   await sleep(500);
-  await waitFor(win, `document.getElementById('conn-dot').classList.contains('ok')`, `${name}: подключение`);
+  if (opts.waitReady !== false) {
+    await waitFor(win, `document.getElementById('conn-dot').classList.contains('ok')`, `${name}: подключение`);
+  }
   return win;
 }
 

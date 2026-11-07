@@ -1393,6 +1393,19 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
+  <!-- Связь с сервером: показываем в центре, пока сервер не отвечает. pointer-events: none —
+       окно остаётся живым: можно открыть настройки, завершить звонок и т.п. -->
+  <div id="net-overlay" class="net-overlay hidden" role="status" aria-live="polite">
+    <div class="net-card">
+      <div class="net-icon" id="net-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M2 8.6a16 16 0 0 1 6-2.9M22 8.6a16 16 0 0 0-6.1-2.9M5 12.3a11 11 0 0 1 4.2-1.5M19 12.3a11 11 0 0 0-2.4-1M8.4 15.9a6 6 0 0 1 6.8-.6M12 19h.01M3 3l18 18"/></svg>
+      </div>
+      <h2 id="net-title">Нет соединения с сервером</h2>
+      <p id="net-text">Проверьте интернет — подключимся автоматически.</p>
+      <div class="net-spinner" id="net-spinner" aria-hidden="true"></div>
+      <button type="button" class="btn net-retry hidden" id="net-retry">Проверить ещё раз</button>
+    </div>
+  </div>
 
   <script src="markdown.js"></script>
   <script type="module" src="api.mjs"></script>

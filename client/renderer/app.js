@@ -148,9 +148,10 @@ function toast(text, ms = 4000) {
 function showScreen(name) {
   $('auth').classList.toggle('hidden', name !== 'auth');
   $('main').classList.toggle('hidden', name !== 'main');
+  // 'boot' — пока проверяем связь, не показываем ни вход, ни приложение
   // На экране входа окно фиксированное, после входа — свободное
-  window.desktop?.window?.authMode?.(name === 'auth');
-  document.documentElement.classList.toggle('auth-screen', name === 'auth');
+  window.desktop?.window?.authMode?.(name !== 'main');
+  document.documentElement.classList.toggle('auth-screen', name === 'auth' || name === 'boot');
 }
 
 const formatTime = (ts) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -577,9 +578,8 @@ function enterMain(user) {
   socket = new ServerSocket({
     onMessage: handleEvent,
     onStatus(ok) {
-      Api.online = ok;
-      $('conn-dot').classList.toggle('ok', ok);
-      $('conn-dot').title = ok ? 'Подключено к серверу' : 'Нет связи с сервером, переподключаемся…';
+      net.socketOk = ok;
+      renderConnDot();
       if (ok) {
         catchUpHistory();
         refreshUnread();
@@ -3096,6 +3096,103 @@ window.addEventListener('beforeunload', () => {
   leaveRoomVoice();
 });
 
+// ---------- Связь с сервером ----------
+// Windows с включённым VPN может считать, что интернет есть, хотя до сервера не достучаться.
+// Поэтому проверяем именно сервер: раз в 15 секунд спрашиваем /api/health, а также сразу —
+// при смене сети, возврате к окну и по кнопке «Проверить ещё раз».
+
+const net = {
+  reachable: null, // null — ещё проверяем, true/false — последний ответ сервера
+  socketOk: false,
+  pendingBoot: false, // сеть пропала во время запуска: продолжим, когда появится
+  timer: null,
+};
+
+function renderNetOverlay() {
+  const overlay = $('net-overlay');
+  if (!overlay) return;
+  const checking = net.reachable === null;
+  overlay.classList.toggle('hidden', net.reachable === true);
+  $('net-title').textContent = checking ? 'Подключаемся к серверу' : 'Нет соединения с сервером';
+  $('net-text').textContent = checking
+    ? 'Проверяем соединение…'
+    : 'Проверьте интернет — подключимся автоматически.';
+  $('net-icon').classList.toggle('waiting', checking);
+  $('net-spinner').classList.toggle('hidden', !checking);
+  $('net-retry').classList.toggle('hidden', checking);
+}
+
+function renderConnDot() {
+  Api.online = Boolean(net.socketOk && net.reachable !== false);
+  const dot = $('conn-dot');
+  if (!dot) return;
+  dot.classList.toggle('ok', Api.online);
+  dot.title =
+    net.reachable === false
+      ? 'Нет связи с сервером'
+      : Api.online
+        ? 'Подключено к серверу'
+        : 'Подключаемся к серверу…';
+}
+
+async function probeServer(timeout = 4000) {
+  if (!Api.base) return false;
+  try {
+    const res = await fetch(`${Api.base}/api/health`, {
+      headers: Api.versionHeaders?.() || {},
+      cache: 'no-store',
+      signal: AbortSignal.timeout(timeout),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Сервер ответил или перестал отвечать: обновляем карточку, точку и переподключаемся */
+function setServerReachable(ok) {
+  const recovered = net.reachable === false && ok;
+  net.reachable = ok;
+  renderNetOverlay();
+  renderConnDot();
+  if (!ok) {
+    // Сокет мог «зависнуть» вместе с сетью: сообщаем о разрыве (звонок перейдёт
+    // в «переподключаемся») и закрываем, подключимся заново после ответа сервера
+    if (socket) {
+      socket.onStatus?.(false);
+      socket.close();
+    }
+    return;
+  }
+  if (!recovered) return;
+  if (net.pendingBoot) {
+    resumeBoot();
+    return;
+  }
+  if (!state.providers.length) loadProviders(Api.base);
+  if (state.me && socket && !socket.ws) socket.connect();
+}
+
+/** Ручная проверка по кнопке: показываем «проверяем…», затем результат */
+async function checkServerNow() {
+  net.reachable = null;
+  renderNetOverlay();
+  setServerReachable(await probeServer());
+}
+
+function watchConnection() {
+  if (net.timer) return;
+  const tick = () => probeServer().then((ok) => setServerReachable(ok));
+  net.timer = setInterval(tick, 15_000);
+  for (const event of ['online', 'offline']) window.addEventListener(event, tick);
+  window.addEventListener('focus', tick);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) tick();
+  });
+}
+
+$('net-retry').onclick = () => checkServerNow();
+
 // ---------- Запуск ----------
 
 // Возврат из сервиса входа в браузере: в адресе одноразовый код, токен в адрес не попадает
@@ -3125,38 +3222,15 @@ async function completeWebOAuth() {
   }
 }
 
-async function boot() {
-  setAuthMode(false);
-  applySpeaker();
-  Api.onUpdateRequired = showVersionGate;
-  // Сервер по умолчанию общий; свой адрес вводят по ссылке «Свой сервер» (docs/self-hosting.md)
-  const applyServer = () => {
-    const url = isWeb ? location.origin : normalizeServer($('server-url').value) || DEFAULT_SERVER;
-    const host = url.replace(/^https?:\/\//, '');
-    $('server-hint').classList.toggle('hidden', isWeb || url === DEFAULT_SERVER);
-    $('server-current').textContent = host;
-    $('server-current-main').textContent = host;
-    return url;
-  };
-  $('server-url').value = (!isWeb && store.get('customServer', '')) || DEFAULT_SERVER;
-  $('server-url').onchange = () => {
-    if (isWeb) return;
-    const url = normalizeServer($('server-url').value) || DEFAULT_SERVER;
-    store.set('customServer', url === DEFAULT_SERVER ? '' : url);
-    $('server-url').value = url;
-    applyServer();
-    loadProviders(url);
-  };
-  const startServer = applyServer();
-  Api.base = startServer;
-  // Проверяем политику версий до входа: старый клиент сразу видит причину,
-  // а не ошибку входа «Сервер недоступен» после каждого действия.
+async function bootAfterConnection() {
+  // Провайдеры входа и политику версий спрашиваем заново: при запуске без сети
+  // первый раз они не ответили, а после восстановления должны появиться
+  await loadProviders(isWeb ? location.origin : Api.base);
   Api.get('/version')
     .then((policy) => {
       if (policy?.updateRequired) showVersionGate(policy);
     })
     .catch(() => {});
-  loadProviders(isWeb ? location.origin : startServer);
 
   // Вернулись из Яндекса — входим сразу, экран авторизации не показываем
   if (await completeWebOAuth()) return;
@@ -3183,10 +3257,65 @@ async function boot() {
       return enterMain(await Api.get('/me'));
     } catch (err) {
       if (err.status === 401) store.set('session', null);
+      if (err.network) {
+        // Сеть пропала между проверкой и запросом: возвращаемся к карточке «нет соединения»
+        net.pendingBoot = true;
+        showScreen('boot');
+        setServerReachable(false);
+        return;
+      }
       $('auth-error').textContent = err.status === 401 ? 'Сессия истекла, войдите заново' : err.message;
     }
   }
   showScreen('auth');
+}
+
+/** Запуск продолжился после появления сети: доводим вход или показываем авторизацию */
+async function resumeBoot() {
+  if (!net.pendingBoot) return;
+  net.pendingBoot = false;
+  await bootAfterConnection();
+}
+
+async function boot() {
+  setAuthMode(false);
+  applySpeaker();
+  Api.onUpdateRequired = showVersionGate;
+  // Сервер по умолчанию общий; свой адрес вводят по ссылке «Свой сервер» (docs/self-hosting.md)
+  const applyServer = () => {
+    const url = isWeb ? location.origin : normalizeServer($('server-url').value) || DEFAULT_SERVER;
+    const host = url.replace(/^https?:\/\//, '');
+    $('server-hint').classList.toggle('hidden', isWeb || url === DEFAULT_SERVER);
+    $('server-current').textContent = host;
+    $('server-current-main').textContent = host;
+    return url;
+  };
+  $('server-url').value = (!isWeb && store.get('customServer', '')) || DEFAULT_SERVER;
+  $('server-url').onchange = () => {
+    if (isWeb) return;
+    const url = normalizeServer($('server-url').value) || DEFAULT_SERVER;
+    store.set('customServer', url === DEFAULT_SERVER ? '' : url);
+    $('server-url').value = url;
+    applyServer();
+    Api.base = url;
+    loadProviders(url);
+    checkServerNow();
+  };
+  const startServer = applyServer();
+  Api.base = startServer;
+
+  // Пока не знаем, отвечает ли сервер, не показываем ни вход, ни приложение:
+  // иначе при запуске без сети мелькает форма входа без кнопки Яндекса
+  showScreen('boot');
+  renderNetOverlay();
+  renderConnDot();
+  watchConnection();
+  setServerReachable(await probeServer());
+  if (net.reachable === false) {
+    net.pendingBoot = true;
+    return;
+  }
+  await bootAfterConnection();
 }
 
 window.addEventListener('DOMContentLoaded', boot);
