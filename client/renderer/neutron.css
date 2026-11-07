@@ -1,0 +1,121 @@
+/* ============================================================================
+   Нейтрон — фиолетовый космос в духе Neutron Nova:
+   туманность на фоне, тёмные полупрозрачные панели с мягким размытием,
+   фиолетовое сияние и скруглённые формы.
+   ========================================================================== */
+
+[data-theme='neutron'] body {
+  background: #05030b;
+}
+
+/* Фон: звёздная туманность и лёгкое затемнение, чтобы интерфейс читался */
+[data-theme='neutron'] .main {
+  background:
+    linear-gradient(180deg, rgba(5, 3, 11, 0.06) 0%, rgba(5, 3, 11, 0.32) 100%),
+    url("neutron-scene.svg") center / cover no-repeat,
+    #05030b;
+}
+
+/* Панели — тёмное стекло с фиолетовой кромкой */
+[data-theme='neutron'] .sidebar,
+[data-theme='neutron'] .content,
+[data-theme='neutron'] .members-panel {
+  border: 1px solid rgba(176, 148, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(8, 4, 18, 0.44);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  backdrop-filter: blur(18px) saturate(130%);
+  box-shadow:
+    0 20px 55px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+[data-theme='neutron'] .content {
+  background: rgba(8, 4, 18, 0.24);
+}
+[data-theme='neutron'] .sidebar,
+[data-theme='neutron'] .members-panel {
+  background: rgba(8, 4, 18, 0.5);
+}
+
+/* Шапки, композер и всплывающие окна — тоже стекло */
+[data-theme='neutron'] .chat-head,
+[data-theme='neutron'] .friends-head,
+[data-theme='neutron'] .sidebar-head,
+[data-theme='neutron'] .members-head,
+[data-theme='neutron'] .composer,
+[data-theme='neutron'] .call-panel,
+[data-theme='neutron'] .modal-card,
+[data-theme='neutron'] .profile-card,
+[data-theme='neutron'] .popup,
+[data-theme='neutron'] .popup-menu,
+[data-theme='neutron'] .notif-panel {
+  background: rgba(16, 8, 34, 0.6);
+  -webkit-backdrop-filter: blur(20px) saturate(135%);
+  backdrop-filter: blur(20px) saturate(135%);
+  border-color: rgba(176, 148, 255, 0.16);
+}
+[data-theme='neutron'] .composer,
+[data-theme='neutron'] .chat-head,
+[data-theme='neutron'] .friends-head {
+  border-radius: 0;
+}
+[data-theme='neutron'] .modal-card,
+[data-theme='neutron'] .profile-card,
+[data-theme='neutron'] .popup {
+  border-radius: 14px;
+}
+
+/* Меньше эффектов — без размытия */
+[data-gfx='low'][data-theme='neutron'] .sidebar,
+[data-gfx='low'][data-theme='neutron'] .content,
+[data-gfx='low'][data-theme='neutron'] .members-panel,
+[data-gfx='low'][data-theme='neutron'] .chat-head,
+[data-gfx='low'][data-theme='neutron'] .composer,
+[data-gfx='low'][data-theme='neutron'] .modal-card {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Акценты: фиолетовое сияние */
+[data-theme='neutron'] .btn.primary {
+  background-image: linear-gradient(135deg, #603ecf, #8b6cff);
+  border: none;
+  box-shadow: 0 8px 24px rgba(124, 92, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+[data-theme='neutron'] .btn.primary:hover {
+  box-shadow: 0 10px 28px rgba(124, 92, 255, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+[data-theme='neutron'] .contact.active,
+[data-theme='neutron'] .room-row.active,
+[data-theme='neutron'] .friends-nav.active {
+  background: linear-gradient(90deg, rgba(96, 62, 207, 0.5), rgba(96, 62, 207, 0.08) 85%);
+  box-shadow: inset 3px 0 0 #8b6cff;
+  border-radius: 10px;
+}
+[data-theme='neutron'] .rail-item.active .rail-tile {
+  box-shadow: 0 0 18px rgba(124, 92, 255, 0.55);
+}
+[data-theme='neutron'] ::selection {
+  background: rgba(124, 92, 255, 0.45);
+}
+[data-theme='neutron'] ::-webkit-scrollbar-thumb {
+  background: rgba(124, 92, 255, 0.42);
+  border-radius: 8px;
+}
+[data-theme='neutron'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 92, 255, 0.62);
+}
+[data-theme='neutron'] .typing-dots span,
+[data-theme='neutron'] .conn-dot.ok {
+  background: #8b6cff;
+}
+[data-theme='neutron'] .msg-text a {
+  color: #c3b3ff;
+}
+
+/* Превью темы в настройках — космос */
+.theme-card[data-pick='neutron'] .theme-preview {
+  background-image: linear-gradient(180deg, rgba(5, 3, 11, 0.25), rgba(5, 3, 11, 0.7)), url("neutron-scene.svg");
+  background-size: cover;
+  background-position: center;
+}

@@ -130,7 +130,7 @@ runTest(async () => {
   })()`));
   const expectedGroups = [
     { title: 'Классические темы', ids: ['sozvon', 'dark', 'midnight', 'light', 'forest', 'dusk'] },
-    { title: 'Новые темы', ids: ['frost', 'cold', 'ferrari', 'glass'] },
+    { title: 'Новые темы', ids: ['neutron', 'frost', 'cold', 'ferrari', 'glass'] },
   ];
   if (JSON.stringify(picker) !== JSON.stringify(expectedGroups)) throw new Error(`Группы тем в оформлении: ${JSON.stringify(picker)}`);
   await js(win, `document.querySelector('[data-pick="ferrari"]').click(); true`);
