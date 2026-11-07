@@ -1,5 +1,4 @@
 // Читаемость темы «Стекло» на светлых фазах: подписи не должны сливаться с фоном.
-const fs = require('node:fs');
 const { api, register, js, sleep, openClient, runTest } = require('./e2e-lib');
 
 runTest(async () => {
@@ -27,7 +26,6 @@ runTest(async () => {
       sidebar: get('.sidebar','backgroundColor'),
     });
   })()`));
-  fs.writeFileSync('C:/Users/solom/Documents/deepseek-harness/default-workspace/_backup/ui33/contrast.json', JSON.stringify(info));
   if (info.theme !== 'glass' || info.daypart !== 'day') throw new Error(`не та тема/фаза: ${info.theme}/${info.daypart}`);
   if (info.roomName === 'rgb(154, 162, 196)') throw new Error('имя комнаты всё ещё сливается с фоном');
   if (!info.msgText || !info.msgText.startsWith('rgb(244, 246, 255')) throw new Error(`текст сообщения: ${info.msgText}`);
