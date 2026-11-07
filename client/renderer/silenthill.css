@@ -680,3 +680,17 @@
     rgba(10, 10, 11, 0.7) 100%) !important;
 }
 
+/* Симметрия: и слева, и справа панели — отдельные карточки с зазором */
+[data-theme='silenthill'] .sidebar,
+[data-theme='silenthill'] .content {
+  border: 1px solid rgba(170, 170, 168, 0.16) !important;
+  border-radius: 5px !important;
+}
+[data-theme='silenthill'] .content {
+  margin-left: 8px !important;
+  background: rgba(14, 14, 15, 0.55) !important;
+}
+[data-theme='silenthill'] .sidebar {
+  background: rgba(10, 10, 11, 0.82) !important;
+}
+
