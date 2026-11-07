@@ -665,3 +665,16 @@
   background: transparent !important;
 }
 
+/* Поле ввода без линий: только фон, без контура */
+[data-theme='silenthill'] .composer {
+  border-top: none !important;
+  background: linear-gradient(0deg, rgba(8, 8, 9, 0.55), transparent) !important;
+}
+[data-theme='silenthill'] .composer-bar {
+  box-shadow: none !important;
+  border: none !important;
+}
+[data-theme='silenthill'] .composer-bar:focus-within {
+  box-shadow: 0 0 0 2px rgba(162, 90, 54, 0.3) !important;
+}
+
