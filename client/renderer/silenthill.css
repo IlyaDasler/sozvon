@@ -444,3 +444,60 @@
 [data-theme='silenthill'] a {
   color: #c9a0a0 !important;
 }
+
+/* ---------- Иконки без подложек: только глиф ---------- */
+
+[data-theme='silenthill'] .icon-btn,
+[data-theme='silenthill'] .composer-btn {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+[data-theme='silenthill'] .icon-btn:hover,
+[data-theme='silenthill'] .icon-btn:active,
+[data-theme='silenthill'] .icon-btn:focus-visible,
+[data-theme='silenthill'] .composer-btn:hover,
+[data-theme='silenthill'] .composer-btn:focus-visible {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+}
+[data-theme='silenthill'] .icon-btn.off {
+  color: var(--danger) !important;
+}
+
+/* Панель действий над сообщением — без общей плашки */
+[data-theme='silenthill'] .msg-tools {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  gap: 2px;
+}
+[data-theme='silenthill'] .msg-tool {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+[data-theme='silenthill'] .msg-tool:hover {
+  background: transparent !important;
+  color: var(--text) !important;
+}
+[data-theme='silenthill'] .msg-tool.danger:hover {
+  color: var(--danger) !important;
+}
+
+/* Кнопка добавления канала — без рамки и плашки */
+[data-theme='silenthill'] .rail-add {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Наведение на иконки каналов — без подложки, только свечение */
+[data-theme='silenthill'] .rail-tile:hover {
+  background: transparent !important;
+}
+
