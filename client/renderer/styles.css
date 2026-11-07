@@ -699,6 +699,8 @@ video.mirror { transform: scaleX(-1); }
 .room-group.closed .room-group-title svg { transform: rotate(-90deg); }
 .room-icon { display: inline-grid; place-items: center; color: var(--muted); flex: none; }
 .room-icon.big { width: 36px; height: 36px; border-radius: 10px; background: var(--bg-3); color: var(--text); }
+.room-row .name { color: var(--text-2); }
+.room-row:hover .name, .room-row.active .name { color: var(--text); }
 .room-row.active .room-icon { color: var(--text); }
 /* Р Р€РЎвЂЎР В°РЎРѓРЎвЂљР Р…Р С‘Р С”Р С‘ Р С–Р С•Р В»Р С•РЎРѓР С•Р Р†Р С•Р в„– Р С”Р С•Р СР Р…Р В°РЎвЂљРЎвЂ№ Р Р† РЎРѓР С—Р С‘РЎРѓР С”Р Вµ: Р В±Р ВµР В· Р В»Р С‘Р Р…Р С‘Р С‘, РЎвЂЎРЎС“РЎвЂљРЎРЉ Р Р…Р С‘Р В¶Р Вµ Р С‘ Р С—РЎР‚Р В°Р Р†Р ВµР Вµ Р Р…Р В°Р В·Р Р†Р В°Р Р…Р С‘РЎРЏ */
 .voice-users { list-style: none; margin: 4px 0 6px; padding: 10px 0 0 8px; }
