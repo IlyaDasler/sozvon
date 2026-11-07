@@ -6,8 +6,6 @@ const THEMES = [
   { id: 'dark', name: 'Тёмная', hint: 'Классическая тёмная — графит и фиолетовый' },
   { id: 'midnight', name: 'Полночь', hint: 'Чёрная, для OLED' },
   { id: 'light', name: 'Светлая', hint: 'Для дня' },
-  { id: 'forest', name: 'Лес', hint: 'Тёмно-зелёная' },
-  { id: 'dusk', name: 'Сумерки', hint: 'Тёплая фиолетовая' },
   { id: 'frost', name: 'Акварель', hint: 'Пастельные разводы и полупрозрачные панели' },
   { id: 'cold', name: 'Холод', hint: 'Ледяная синева и прозрачное стекло' },
   { id: 'neutron', name: 'Нейтрон', hint: 'Фиолетовый космос и тёмное стекло' },
@@ -16,8 +14,8 @@ const THEMES = [
 ];
 
 const THEME_GROUPS = [
-  { title: 'Классические темы', ids: ['sozvon', 'dark', 'midnight', 'light', 'forest', 'dusk'] },
-  { title: 'Новые темы', ids: ['neutron', 'frost', 'cold', 'ferrari', 'glass'] },
+  { title: 'Классические темы', ids: ['sozvon', 'dark', 'midnight', 'light', 'neutron', 'frost', 'cold'] },
+  { title: 'Новые темы', ids: ['ferrari', 'glass'] },
 ];
 
 const currentTheme = () => document.documentElement.dataset.theme || 'glass';
