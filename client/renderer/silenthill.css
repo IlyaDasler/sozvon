@@ -669,3 +669,14 @@
   box-shadow: 0 0 0 2px rgba(162, 90, 54, 0.3) !important;
 }
 
+/* Панель участников — снова отдельный блок: зазор и скругления */
+[data-theme='silenthill'] .members-panel {
+  margin-left: 8px !important;
+  border: 1px solid rgba(170, 170, 168, 0.16) !important;
+  border-radius: 5px !important;
+  background: linear-gradient(270deg,
+    rgba(10, 10, 11, 0.86) 0%,
+    rgba(10, 10, 11, 0.8) 70%,
+    rgba(10, 10, 11, 0.7) 100%) !important;
+}
+
