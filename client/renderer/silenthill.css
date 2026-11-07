@@ -635,3 +635,33 @@
   border-right-color: transparent !important;
 }
 
+/* Полностью бесшовная стыковка панелей: без рамок, линий и резкого перехода */
+[data-theme='silenthill'] .sidebar,
+[data-theme='silenthill'] .content,
+[data-theme='silenthill'] .members-panel {
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+[data-theme='silenthill'] .sidebar {
+  background: linear-gradient(90deg,
+    rgba(10, 10, 11, 0.82) 0%,
+    rgba(10, 10, 11, 0.82) 84%,
+    rgba(14, 14, 15, 0.55) 100%) !important;
+}
+[data-theme='silenthill'] .content {
+  background: rgba(14, 14, 15, 0.55) !important;
+}
+[data-theme='silenthill'] .members-panel {
+  background: linear-gradient(270deg,
+    rgba(10, 10, 11, 0.82) 0%,
+    rgba(10, 10, 11, 0.82) 84%,
+    rgba(14, 14, 15, 0.55) 100%) !important;
+}
+[data-theme='silenthill'] .main-divider,
+[data-theme='silenthill'] .panel-resizer::after {
+  display: none !important;
+}
+[data-theme='silenthill'] .panel-resizer {
+  background: transparent !important;
+}
+
