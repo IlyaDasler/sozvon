@@ -610,3 +610,28 @@
   color: #a25a3e !important;
 }
 
+/* Шов между сайдбаром и чатом — без линии */
+[data-theme='silenthill'] .sidebar {
+  border-right-color: transparent !important;
+}
+[data-theme='silenthill'] .content {
+  border-left-color: transparent !important;
+}
+
+/* Шов между сайдбаром и чатом — без линии и зазора */
+[data-theme='silenthill'] .content {
+  margin-left: 0 !important;
+  border-left-color: transparent !important;
+}
+[data-theme='silenthill'] .sidebar {
+  border-right-color: transparent !important;
+}
+/* И между чатом и участниками */
+[data-theme='silenthill'] .members-panel {
+  margin-left: 0 !important;
+  border-left-color: transparent !important;
+}
+[data-theme='silenthill'] .content {
+  border-right-color: transparent !important;
+}
+
