@@ -168,17 +168,36 @@ func (s *Store) IsRoomMember(roomID, userID int64) (bool, error) {
 	return exists > 0, nil
 }
 
+// ReadBaseline — до какого id считать прочитанным там, где человек ещё ничего не отмечал
+// (значения, зафиксированные при появлении счётчиков; на свежей базе — нули).
+func (s *Store) ReadBaseline() (dm, room int64) {
+	row := s.db.QueryRow(`SELECT dm, room FROM read_baseline LIMIT 1`)
+	if err := row.Scan(&dm, &room); err != nil {
+		return 0, 0
+	}
+	return dm, room
+}
+
+// RoomNewestMessageID — самый новый id в комнате, включая ответы в тредах:
+// отметка прочтения должна закрывать и их, иначе тред навсегда остаётся «непрочитанным».
+func (s *Store) RoomNewestMessageID(roomID int64) (int64, error) {
+	var id int64
+	err := s.db.QueryRow(`SELECT COALESCE(MAX(id), 0) FROM room_messages WHERE room_id = ?`, roomID).Scan(&id)
+	return id, err
+}
+
 // UnreadRooms — комнаты с сообщениями после отметки прочтения (свои сообщения не считаем).
 func (s *Store) UnreadRooms(userID int64) ([]map[string]any, error) {
+	_, baseline := s.ReadBaseline()
 	rows, err := s.db.Query(`
-		SELECT r.id, COUNT(m.id) AS unread, MAX(m.id) AS last_id, COALESCE(rs.last_id, 0) AS read_id
+		SELECT r.id, COUNT(m.id) AS unread, MAX(m.id) AS last_id, COALESCE(rs.last_id, ?) AS read_id
 		FROM rooms r
 		JOIN room_messages m ON m.room_id = r.id AND m.from_id <> ?
 		LEFT JOIN read_state rs ON rs.user_id = ? AND rs.conv = 'room:' || r.id
 		WHERE r.id IN (SELECT room_id FROM room_members WHERE user_id = ?)
-		AND m.id > COALESCE(rs.last_id, 0)
+		AND m.id > COALESCE(rs.last_id, ?)
 		GROUP BY r.id
-		ORDER BY last_id DESC`, userID, userID, userID)
+		ORDER BY last_id DESC`, baseline, userID, userID, userID, baseline)
 	if err != nil {
 		return nil, err
 	}
