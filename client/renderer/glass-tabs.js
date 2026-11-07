@@ -14,7 +14,7 @@
   // Плашка-указатель живёт в «Стекле» и в тёмной теме (там только у вкладок друзей)
   const usesTabs = (root) =>
     themeName() === 'glass' ||
-    (['sozvon', 'dark', 'midnight', 'light', 'forest', 'dusk', 'frost', 'cold'].includes(themeName()) &&
+    (['sozvon', 'dark', 'midnight', 'light', 'forest', 'dusk', 'frost', 'cold', 'neutron'].includes(themeName()) &&
       root.id === 'friend-tabs');
   const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 

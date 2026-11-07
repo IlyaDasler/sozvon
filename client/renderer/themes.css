@@ -293,6 +293,39 @@
   --accent-contrast: #ffffff;
   color-scheme: dark;
 }
+/* Нейтрон: фиолетовый космос, тёмное стекло и мягкое сияние.
+   Вдохновлено темой Neutron Nova: полупрозрачные панели на фоне туманности. */
+[data-theme='neutron'] {
+  --bg-deep: #05030b;
+  --bg: rgba(10, 5, 22, 0.62);
+  --bg-2: rgba(8, 4, 18, 0.7);
+  --bg-3: rgba(20, 11, 38, 0.84);
+  --bg-4: rgba(28, 16, 52, 0.9);
+  --bg-5: rgba(40, 23, 72, 0.94);
+  --line: rgba(150, 120, 255, 0.16);
+  --line-strong: rgba(176, 148, 255, 0.32);
+  --text: #f4efff;
+  --text-2: #d6c9f2;
+  --muted: #a294c8;
+  --text-3: #7d6fa5;
+  --accent: #7c5cff;
+  --accent-theme: #603ecf;
+  --accent-2: #b49cff;
+  --accent-hover: #6847e8;
+  --accent-soft: color-mix(in srgb, var(--accent-theme) 22%, var(--bg-deep));
+  --on-accent: #ffffff;
+  --link: #b9a6ff;
+  --ok: #45d483;
+  --idle: #f2c14e;
+  --warn: #f2c14e;
+  --danger: #ff5f7a;
+  --danger-hover: #e84a66;
+  --glow: color-mix(in srgb, var(--accent) 38%, transparent);
+  --edge: #ffffff;
+  --ink: #000000;
+  --accent-contrast: #ffffff;
+  color-scheme: dark;
+}
 /* Феррари: карбон, алый Rosso Corsa и гоночный жёлтый.
    Только плоские поверхности и тонкие линии — без хрома, логотипов и «объёма». */
 [data-theme='ferrari'] {
