@@ -501,113 +501,112 @@
   background: transparent !important;
 }
 
-/* ---------- Ржавчина цветом: многослойные градиенты, без фотографий ---------- */
+/* ---------- Ржавчина цветом: приглушённая, без яркого оранжевого ---------- */
 
 [data-theme='silenthill'] .btn.primary {
-  background-color: #7f3f26 !important;
+  background-color: #5e3020 !important;
   background-image:
-    radial-gradient(ellipse 26% 38% at 14% 26%, rgba(224, 152, 92, 0.38), transparent 72%),
-    radial-gradient(ellipse 34% 48% at 68% 72%, rgba(32, 14, 6, 0.6), transparent 74%),
-    radial-gradient(ellipse 16% 24% at 46% 18%, rgba(206, 126, 72, 0.3), transparent 72%),
-    radial-gradient(ellipse 20% 30% at 86% 34%, rgba(38, 17, 8, 0.5), transparent 72%),
-    radial-gradient(ellipse 22% 26% at 38% 82%, rgba(188, 112, 60, 0.28), transparent 72%),
-    linear-gradient(145deg, #3f2113 0%, #6b3a24 26%, #a25a36 52%, #5a2f1e 76%, #8c4a2f 100%) !important;
-  border: 1px solid #4a2415 !important;
-  color: #f7e9d8 !important;
+    radial-gradient(ellipse 26% 38% at 14% 26%, rgba(160, 104, 66, 0.22), transparent 72%),
+    radial-gradient(ellipse 34% 48% at 68% 72%, rgba(22, 9, 4, 0.66), transparent 74%),
+    radial-gradient(ellipse 16% 24% at 46% 18%, rgba(142, 92, 58, 0.2), transparent 72%),
+    radial-gradient(ellipse 20% 30% at 86% 34%, rgba(24, 10, 4, 0.58), transparent 72%),
+    linear-gradient(145deg, #2f1910 0%, #4a2618 28%, #6b3a24 52%, #3f2113 76%, #5a2f1e 100%) !important;
+  border: 1px solid #3a1d12 !important;
+  color: #e8d5c0 !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 232, 205, 0.16),
-    inset 0 0 22px rgba(30, 12, 5, 0.4),
-    0 6px 18px rgba(30, 12, 5, 0.45) !important;
+    inset 0 1px 0 rgba(255, 226, 198, 0.08),
+    inset 0 0 22px rgba(18, 7, 3, 0.5),
+    0 6px 18px rgba(18, 7, 3, 0.45) !important;
 }
 [data-theme='silenthill'] .btn.primary:hover {
   background-image:
-    radial-gradient(ellipse 48% 70% at 16% 26%, rgba(224, 156, 98, 0.34), transparent 70%),
-    radial-gradient(ellipse 55% 85% at 76% 70%, rgba(43, 20, 9, 0.5), transparent 72%),
-    radial-gradient(circle at 52% 44%, rgba(244, 178, 122, 0.18), transparent 56%),
-    linear-gradient(145deg, #552a18, #8c4a2f 32%, #b26b3a 56%, #6f3a23 80%, #9c5533) !important;
+    radial-gradient(ellipse 26% 38% at 14% 26%, rgba(168, 110, 70, 0.24), transparent 72%),
+    radial-gradient(ellipse 34% 48% at 68% 72%, rgba(26, 11, 5, 0.62), transparent 74%),
+    radial-gradient(ellipse 16% 24% at 46% 18%, rgba(150, 98, 62, 0.22), transparent 72%),
+    linear-gradient(145deg, #381e13, #552c1b 30%, #74412a 56%, #47251a 80%, #643520) !important;
 }
 
 [data-theme='silenthill'] .contact.active,
 [data-theme='silenthill'] .room-row.active,
 [data-theme='silenthill'] .friends-nav.active {
-  background-color: #5a2f1e !important;
+  background-color: #3f2113 !important;
   background-image:
-    radial-gradient(ellipse 28% 120% at 10% 50%, rgba(210, 134, 78, 0.28), transparent 70%),
-    radial-gradient(ellipse 22% 100% at 58% 30%, rgba(36, 16, 7, 0.5), transparent 74%),
-    radial-gradient(ellipse 26% 110% at 36% 76%, rgba(190, 116, 66, 0.24), transparent 72%),
-    radial-gradient(ellipse 30% 130% at 82% 55%, rgba(32, 15, 7, 0.45), transparent 76%),
-    linear-gradient(90deg, rgba(74, 36, 21, 0.94) 0%, rgba(127, 63, 38, 0.72) 44%, rgba(90, 47, 30, 0.36) 72%, rgba(34, 17, 9, 0.12) 100%) !important;
-  box-shadow: inset 2px 0 0 #c27a44 !important;
+    radial-gradient(ellipse 28% 120% at 10% 50%, rgba(150, 98, 62, 0.18), transparent 70%),
+    radial-gradient(ellipse 22% 100% at 58% 30%, rgba(22, 9, 4, 0.6), transparent 74%),
+    radial-gradient(ellipse 26% 110% at 36% 76%, rgba(130, 84, 54, 0.16), transparent 72%),
+    radial-gradient(ellipse 30% 130% at 82% 55%, rgba(20, 8, 3, 0.55), transparent 76%),
+    linear-gradient(90deg, rgba(47, 25, 16, 0.96) 0%, rgba(84, 44, 28, 0.75) 44%, rgba(60, 32, 21, 0.4) 72%, rgba(24, 11, 6, 0.14) 100%) !important;
+  box-shadow: inset 2px 0 0 #8a4a2e !important;
 }
 [data-theme='silenthill'] .contact.active .name > div:first-child,
 [data-theme='silenthill'] .contact.active .name .ellipsis,
 [data-theme='silenthill'] .room-row.active .name,
 [data-theme='silenthill'] .friends-nav.active .name {
-  color: #f7e9da !important;
+  color: #eadbc9 !important;
 }
 [data-theme='silenthill'] .contact.active .name .muted {
-  color: #dcc6b0 !important;
+  color: #c6b09a !important;
 }
 
 [data-theme='silenthill'] .rail-item.active .rail-tile {
-  background-color: #5a2f1e !important;
+  background-color: #3f2113 !important;
   background-image:
-    radial-gradient(ellipse 34% 48% at 28% 24%, rgba(214, 136, 80, 0.34), transparent 72%),
-    radial-gradient(ellipse 40% 56% at 74% 76%, rgba(26, 11, 5, 0.65), transparent 74%),
-    radial-gradient(ellipse 24% 30% at 60% 36%, rgba(46, 21, 9, 0.5), transparent 72%),
-    linear-gradient(150deg, #6b3a24 0%, #8c4a2f 40%, #4a2415 100%) !important;
-  border-color: #a25a36 !important;
+    radial-gradient(ellipse 34% 48% at 28% 24%, rgba(150, 96, 60, 0.24), transparent 72%),
+    radial-gradient(ellipse 40% 56% at 74% 76%, rgba(18, 7, 3, 0.7), transparent 74%),
+    radial-gradient(ellipse 24% 30% at 60% 36%, rgba(26, 10, 4, 0.6), transparent 72%),
+    linear-gradient(150deg, #4a2618 0%, #6b3a24 40%, #2f1910 100%) !important;
+  border-color: #7a4028 !important;
   box-shadow:
-    0 0 16px rgba(162, 90, 54, 0.35),
-    inset 0 0 16px rgba(0, 0, 0, 0.45) !important;
+    0 0 14px rgba(122, 64, 40, 0.28),
+    inset 0 0 16px rgba(0, 0, 0, 0.55) !important;
 }
 
 [data-theme='silenthill'] .msg-thread-link {
-  background-color: #5a2f1e !important;
+  background-color: #3f2113 !important;
   background-image:
-    radial-gradient(ellipse 28% 80% at 20% 40%, rgba(216, 138, 82, 0.34), transparent 72%),
-    radial-gradient(ellipse 30% 90% at 76% 60%, rgba(30, 13, 6, 0.55), transparent 74%),
-    linear-gradient(135deg, #3f2113 0%, #6b3a24 40%, #a25a36 100%) !important;
-  color: #f2ddca !important;
-  border: 1px solid rgba(194, 122, 68, 0.45) !important;
+    radial-gradient(ellipse 28% 80% at 20% 40%, rgba(150, 96, 60, 0.24), transparent 72%),
+    radial-gradient(ellipse 30% 90% at 76% 60%, rgba(18, 7, 3, 0.62), transparent 74%),
+    linear-gradient(135deg, #2f1910 0%, #4a2618 40%, #6b3a24 100%) !important;
+  color: #dcc9b4 !important;
+  border: 1px solid rgba(138, 74, 46, 0.45) !important;
 }
 [data-theme='silenthill'] .msg-thread-link:hover {
-  color: #fff2e4 !important;
-  border-color: rgba(194, 122, 68, 0.7) !important;
+  color: #efe0cf !important;
+  border-color: rgba(138, 74, 46, 0.7) !important;
 }
 
 [data-theme='silenthill'] .badge,
 [data-theme='silenthill'] .rail-badge,
 [data-theme='silenthill'] .notif-badge {
-  background-color: #8a4a2a !important;
+  background-color: #6b3a24 !important;
   background-image:
-    radial-gradient(ellipse 60% 90% at 30% 30%, rgba(220, 150, 94, 0.3), transparent 70%),
-    linear-gradient(135deg, #7f3f26, #a25a36 60%, #6b3a24) !important;
-  color: #f7e9da !important;
+    radial-gradient(ellipse 60% 90% at 30% 30%, rgba(150, 96, 60, 0.24), transparent 70%),
+    linear-gradient(135deg, #4a2618, #6b3a24 60%, #3f2113) !important;
+  color: #e8d5c0 !important;
 }
 
 [data-theme='silenthill'] .friend-tabs button.active,
 [data-theme='silenthill'] .set-nav button.active,
 [data-theme='silenthill'] #privacy-subnav button.active {
-  background-color: #5a2f1e !important;
+  background-color: #3f2113 !important;
   background-image:
-    radial-gradient(ellipse 26% 110% at 18% 50%, rgba(214, 136, 80, 0.32), transparent 72%),
-    radial-gradient(ellipse 24% 100% at 74% 40%, rgba(30, 13, 6, 0.5), transparent 74%),
-    linear-gradient(100deg, #3f2113 0%, #6b3a24 55%, #8c4a2f 100%) !important;
-  color: #f7e9da !important;
-  box-shadow: inset 0 -2px 0 #c27a44 !important;
+    radial-gradient(ellipse 26% 110% at 18% 50%, rgba(150, 96, 60, 0.22), transparent 72%),
+    radial-gradient(ellipse 24% 100% at 74% 40%, rgba(18, 7, 3, 0.55), transparent 74%),
+    linear-gradient(100deg, #2f1910 0%, #4a2618 55%, #643520 100%) !important;
+  color: #e8d5c0 !important;
+  box-shadow: inset 0 -2px 0 #8a4a2e !important;
 }
 
 [data-theme='silenthill'] input,
 [data-theme='silenthill'] input[type='range'],
 [data-theme='silenthill'] select {
-  accent-color: #a25a36 !important;
+  accent-color: #7a4028 !important;
 }
 [data-theme='silenthill'] .meter-fill,
 [data-theme='silenthill'] .q-bars i.on {
-  background: #a25a36 !important;
+  background: #7a4028 !important;
 }
 [data-theme='silenthill'] .msg-tool.danger:hover {
-  color: #c06a4a !important;
+  color: #a25a3e !important;
 }
 
