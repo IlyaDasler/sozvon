@@ -343,3 +343,66 @@
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+
+/* ---------- Никакого системного синего: всё в серо-ржавой гамме ---------- */
+
+[data-theme='silenthill'] :focus-visible {
+  outline: 1px solid rgba(214, 212, 207, 0.5) !important;
+  outline-offset: 2px;
+}
+[data-theme='silenthill'] #friend-tabs > button:focus-visible,
+[data-theme='silenthill'] .friends-nav:focus-visible,
+[data-theme='silenthill'] .contact:focus-visible,
+[data-theme='silenthill'] .friend-row:focus-visible,
+[data-theme='silenthill'] .room-row:focus-visible,
+[data-theme='silenthill'] .rail-item:focus-visible,
+[data-theme='silenthill'] .rail-tile:focus-visible {
+  outline: 1px solid rgba(214, 212, 207, 0.45) !important;
+}
+
+/* Полоски слева от иконок каналов — светлые, а не синие */
+[data-theme='silenthill'] .rail-item::before,
+[data-theme='silenthill'] .rail-item.active::before {
+  background: rgba(214, 212, 207, 0.85) !important;
+}
+
+/* Кнопка «Создать канал» — грязно-жёлтая, без синей обводки */
+[data-theme='silenthill'] .rail-add {
+  color: #b5a06a !important;
+  background: transparent !important;
+  border: 1px solid rgba(181, 160, 106, 0.35) !important;
+}
+[data-theme='silenthill'] .rail-add:hover {
+  color: #e8e2da !important;
+  background: rgba(181, 160, 106, 0.12) !important;
+  border-color: rgba(181, 160, 106, 0.55) !important;
+}
+[data-theme='silenthill'] .rail-add:focus-visible {
+  outline: 1px solid rgba(181, 160, 106, 0.55) !important;
+}
+
+/* Иконки каналов — целиком, без увеличения и обрезки */
+[data-theme='silenthill'] .hub-tile {
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-color: #141415 !important;
+}
+[data-theme='silenthill'] .rail-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 3px;
+}
+/* Иконки каналов тоже выцветают, как и всё вокруг */
+[data-theme='silenthill'] .rail-tile {
+  filter: grayscale(0.8) contrast(1.05) brightness(0.9);
+}
+/* Маскот пустого экрана — не цветное пятно в сером мире */
+[data-theme='silenthill'] .mascot-art,
+[data-theme='silenthill'] .mascot,
+[data-theme='silenthill'] .empty img,
+[data-theme='silenthill'] .friends-empty img {
+  filter: grayscale(0.85) contrast(1.05) brightness(0.92);
+  opacity: 0.9;
+}
