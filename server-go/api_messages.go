@@ -387,10 +387,12 @@ func (a *server) readConv(w http.ResponseWriter, r *http.Request) {
 			fail(http.StatusNotFound, "Комната не найдена").write(w)
 			return
 		}
-		list, err := a.store.RoomMessages(id, 1, nil)
-		last := int64(0)
-		if err == nil && len(list) > 0 {
-			last = list[len(list)-1].ID
+		// Именно MAX(id), а не последнее корневое сообщение: ответы в тредах
+		// тоже должны закрываться отметкой, иначе счётчик непрочитанного не сбросить
+		last, err := a.store.RoomNewestMessageID(id)
+		if err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
 		}
 		if err := a.store.MarkRoomRead(user.ID, id, last); err != nil {
 			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)

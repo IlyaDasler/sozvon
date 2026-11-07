@@ -154,16 +154,16 @@ func (s *Store) DMPinnedIDs(a, b int64) ([]int64, error) {
 	return ids, rows.Err()
 }
 
-// UnreadDM — непрочитанные личные переписки: [{peerId,count,lastId}]
+// UnreadDM — непрочитанные личные переписки: [{peerId,count,lastId}].
+// Считаем только входящие: свои сообщения непрочитанными быть не могут.
 func (s *Store) UnreadDM(userID int64) ([]map[string]any, error) {
+	dmBaseline, _ := s.ReadBaseline()
 	rows, err := s.db.Query(`
-		SELECT peer, MAX(id) AS last_id,
-		       COALESCE((SELECT COALESCE(last_id, 0) FROM read_state WHERE user_id = ? AND conv = 'dm:' || peer), 0) AS read_id
-		FROM (
-			SELECT CASE WHEN from_id = ? THEN to_id ELSE from_id END AS peer, id
-			FROM messages WHERE from_id = ? OR to_id = ?
-		)
-		GROUP BY peer`, userID, userID, userID, userID)
+		SELECT m.from_id AS peer, MAX(m.id) AS last_id,
+		       COALESCE((SELECT last_id FROM read_state WHERE user_id = ? AND conv = 'dm:' || m.from_id), ?) AS read_id
+		FROM messages m
+		WHERE m.to_id = ?
+		GROUP BY m.from_id`, userID, dmBaseline, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -187,8 +187,8 @@ func (s *Store) UnreadDM(userID int64) ([]map[string]any, error) {
 	list := []map[string]any{}
 	for _, row := range pending {
 		var count int64
-		if err := s.db.QueryRow(`SELECT COUNT(*) FROM messages WHERE ((from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)) AND id > ?`,
-			row.peer, userID, userID, row.peer, row.readID).Scan(&count); err != nil {
+		if err := s.db.QueryRow(`SELECT COUNT(*) FROM messages WHERE from_id = ? AND to_id = ? AND id > ?`,
+			row.peer, userID, row.readID).Scan(&count); err != nil {
 			return nil, err
 		}
 		list = append(list, map[string]any{"peerId": row.peer, "count": count, "lastId": row.lastID, "lastRead": row.readID})
