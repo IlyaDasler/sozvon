@@ -37,7 +37,7 @@ html[data-theme='glass'][data-daypart='dawn'] .lg-aurora::after {
   background: linear-gradient(180deg, rgba(4, 8, 16, .30), rgba(4, 8, 16, .20));
 }
 html[data-theme='glass'][data-daypart='day'] .lg-aurora::after {
-  background: linear-gradient(180deg, rgba(4, 8, 16, .44), rgba(4, 8, 16, .30));
+  background: linear-gradient(180deg, rgba(4, 8, 16, .24), rgba(4, 8, 16, .14));
 }
 html[data-theme='glass'][data-daypart='sunset'] .lg-aurora::after {
   background: linear-gradient(180deg, rgba(4, 8, 16, .20), rgba(4, 8, 16, .12));
