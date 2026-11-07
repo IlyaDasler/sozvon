@@ -406,3 +406,41 @@
   filter: grayscale(0.85) contrast(1.05) brightness(0.92);
   opacity: 0.9;
 }
+
+/* ---------- Абсолютно все акценты — ржавые, даже если Windows даёт синий ---------- */
+
+[data-theme='silenthill'] h4,
+[data-theme='silenthill'] .set-block h4,
+[data-theme='silenthill'] .rs-body h4 {
+  color: #b5a06a !important;
+}
+[data-theme='silenthill'] .set-block h4 svg,
+[data-theme='silenthill'] .set-block h4 button {
+  color: #b5a06a !important;
+}
+[data-theme='silenthill'] input,
+[data-theme='silenthill'] select {
+  accent-color: #9b3a3a;
+}
+[data-theme='silenthill'] input[type='range'] {
+  accent-color: #9b3a3a;
+}
+[data-theme='silenthill'] .msg-thread-link {
+  background: rgba(155, 58, 58, 0.18) !important;
+  color: #d8c9c0 !important;
+}
+[data-theme='silenthill'] .msg-thread-link:hover {
+  background: rgba(155, 58, 58, 0.28) !important;
+  color: #f0eae4 !important;
+}
+[data-theme='silenthill'] .meter-fill,
+[data-theme='silenthill'] .q-bars i.on {
+  background: #9b3a3a !important;
+}
+[data-theme='silenthill'] .spinner,
+[data-theme='silenthill'] .loader {
+  border-top-color: #9b3a3a !important;
+}
+[data-theme='silenthill'] a {
+  color: #c9a0a0 !important;
+}

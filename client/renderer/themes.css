@@ -239,10 +239,10 @@
   --text-2: #b4b2ad;
   --muted: #8a8884;
   --text-3: #6c6a66;
-  --accent: #9b3a3a;
-  --accent-theme: #8a3030;
-  --accent-2: #b5a06a;
-  --accent-hover: #b04a4a;
+  --accent: #9b3a3a !important;
+  --accent-theme: #8a3030 !important;
+  --accent-2: #b5a06a !important;
+  --accent-hover: #b04a4a !important;
   --accent-soft: color-mix(in srgb, var(--accent) 20%, var(--bg-deep));
   --on-accent: #f0eae4;
   --link: #c9a0a0;

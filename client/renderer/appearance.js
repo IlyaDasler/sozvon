@@ -38,6 +38,7 @@ function setTheme(id) {
   store.set('theme', id);
   syncTitleBar();
   applyGlass();
+  refreshSystemColors();
   renderThemePicker();
 }
 
@@ -180,9 +181,18 @@ document.addEventListener(
 // ---------- Цвета из системы: акцент из macOS/Windows ----------
 
 const osAccentOn = () => store.get('osAccent', true) !== false;
+let lastSystemColors = null;
 
 function applySystemColors(info) {
+  if (info) lastSystemColors = info;
   const root = document.documentElement.style;
+  // «Туман» живёт по своей палитре: системный синий акцент его ломает
+  if (currentTheme() === 'silenthill') {
+    root.removeProperty('--accent');
+    root.removeProperty('--accent-2');
+    root.removeProperty('--accent-hover');
+    return;
+  }
   const accent = String(info?.accent || '').toLowerCase();
   if (osAccentOn() && /^#[0-9a-f]{6}$/.test(accent)) {
     root.setProperty('--accent', accent);
@@ -195,6 +205,15 @@ function applySystemColors(info) {
   }
   const toggle = $('os-accent');
   if (toggle) toggle.checked = osAccentOn();
+}
+
+/** Пересчитать акцент после смены темы: у «Тумана» он всегда свой */
+function refreshSystemColors() {
+  if (window.desktop?.system?.theme) {
+    window.desktop.system.theme().then(applySystemColors).catch(() => applySystemColors(lastSystemColors));
+  } else {
+    applySystemColors(lastSystemColors);
+  }
 }
 
 if (window.desktop?.system) {
