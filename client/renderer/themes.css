@@ -224,6 +224,39 @@
   color-scheme: light;
 }
 
+/* Туман: серый, обесцвеченный интерфейс поверх туманной улицы.
+   Безысходность, плёночное зерно и ржавый кровяной акцент. */
+[data-theme='silenthill'] {
+  --bg-deep: #0a0a0b;
+  --bg: rgba(14, 14, 15, 0.65);
+  --bg-2: rgba(11, 11, 12, 0.78);
+  --bg-3: rgba(20, 20, 21, 0.84);
+  --bg-4: rgba(30, 30, 31, 0.88);
+  --bg-5: rgba(42, 42, 43, 0.92);
+  --line: rgba(160, 160, 160, 0.16);
+  --line-strong: rgba(180, 180, 180, 0.28);
+  --text: #d6d4cf;
+  --text-2: #b4b2ad;
+  --muted: #8a8884;
+  --text-3: #6c6a66;
+  --accent: #9b3a3a;
+  --accent-theme: #8a3030;
+  --accent-2: #b5a06a;
+  --accent-hover: #b04a4a;
+  --accent-soft: color-mix(in srgb, var(--accent) 20%, var(--bg-deep));
+  --on-accent: #f0eae4;
+  --link: #c9a0a0;
+  --ok: #7f9a6e;
+  --idle: #b5a06a;
+  --warn: #b5a06a;
+  --danger: #b04a4a;
+  --danger-hover: #9b3a3a;
+  --glow: color-mix(in srgb, var(--accent) 26%, transparent);
+  --edge: #ffffff;
+  --ink: #000000;
+  --accent-contrast: #f0eae4;
+  color-scheme: dark;
+}
 /* Нейтрон: фиолетовый космос, тёмное стекло и мягкое сияние.
    Вдохновлено темой Neutron Nova: полупрозрачные панели на фоне туманности. */
 [data-theme='neutron'] {

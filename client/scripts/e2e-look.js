@@ -3,7 +3,7 @@
 // Запуск (сервер должен работать): E2E_SHOTS=папка npx electron scripts/e2e-look.js [адрес сервера]
 const { api, befriend, register, js, waitFor, openClient, screenshot, sleep, runTest } = require('./e2e-lib');
 
-const THEMES = ['sozvon', 'dark', 'midnight', 'light', 'neutron', 'frost', 'cold', 'ferrari', 'glass'];
+const THEMES = ['sozvon', 'dark', 'midnight', 'light', 'neutron', 'frost', 'cold', 'silenthill', 'ferrari', 'glass'];
 const SIZES = [
   [1280, 800],
   [940, 640],
@@ -130,7 +130,7 @@ runTest(async () => {
   })()`));
   const expectedGroups = [
     { title: 'Классические темы', ids: ['sozvon', 'dark', 'midnight', 'light', 'neutron', 'frost', 'cold'] },
-    { title: 'Новые темы', ids: ['ferrari', 'glass'] },
+    { title: 'Новые темы', ids: ['silenthill', 'ferrari', 'glass'] },
   ];
   if (JSON.stringify(picker) !== JSON.stringify(expectedGroups)) throw new Error(`Группы тем в оформлении: ${JSON.stringify(picker)}`);
   await js(win, `document.querySelector('[data-pick="ferrari"]').click(); true`);
