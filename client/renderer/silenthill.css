@@ -250,9 +250,26 @@
   box-shadow: none;
 }
 /* Фокус — ржавый, а не системный синий */
+[data-theme='silenthill'] #friend-tabs > button {
+  outline-color: rgba(155, 58, 58, 0.7);
+}
+[data-theme='silenthill'] #friend-tabs > button.active {
+  color: #e8e2da !important;
+  background: rgba(155, 58, 58, 0.12) !important;
+  box-shadow: inset 0 -2px 0 #9b3a3a !important;
+}
 [data-theme='silenthill'] #friend-tabs > button:focus-visible {
   outline: 2px solid rgba(155, 58, 58, 0.7);
   outline-offset: 1px;
+}
+[data-theme='silenthill'] #friend-tabs .glass-tab-indicator {
+  border-color: rgba(155, 58, 58, 0.5) !important;
+  background: rgba(155, 58, 58, 0.16) !important;
+  box-shadow: none !important;
+}
+[data-theme='silenthill'] .rail-item::before,
+[data-theme='silenthill'] .rail-item.active::before {
+  background: var(--accent) !important;
 }
 [data-theme='silenthill'] .friend-tabs .add-tab {
   background: none;
