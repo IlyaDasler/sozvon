@@ -31,7 +31,7 @@ const Api = {
         await new Promise((r) => setTimeout(r, 500));
         return this.request(method, path, body, false);
       }
-      throw new Error(this.netError());
+      throw this.networkError();
     }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -51,6 +51,14 @@ const Api = {
       : 'Сервер недоступен. Проверьте адрес и интернет.';
   },
 
+  // Ошибка «до сервера не дошли»: по ней экран запуска понимает, что нужно ждать сеть,
+  // а не показывать «сессия истекла» или другую ошибку сервера
+  networkError() {
+    const err = new Error(this.netError());
+    err.network = true;
+    return err;
+  },
+
   // Отправка файла как есть (например, картинки аватарки)
   async upload(method, path, blob) {
     let res;
@@ -62,7 +70,7 @@ const Api = {
       });
     } catch (err) {
       console.warn('Файл не дошёл до сервера:', method, path, err.message);
-      throw new Error(this.netError());
+      throw this.networkError();
     }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
