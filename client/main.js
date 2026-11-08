@@ -319,7 +319,17 @@ function releaseNotes(info) {
   return typeof notes === 'string' ? notes : '';
 }
 
+// Windows-обновления больше не ходят через GitHub: у российских провайдеров
+// release-assets.githubusercontent.com отдаёт 504. Наш сервер отдаёт latest.yml
+// и установщик из /updates/win, как macOS.
+const UPDATE_SERVER = 'https://135-106-226-12.sslip.io';
+function configureUpdateFeed() {
+  if (process.platform !== 'win32') return;
+  autoUpdater.setFeedURL({ provider: 'generic', url: `${UPDATE_SERVER}/updates/win` });
+}
+
 function setupUpdater({ checkNow = true } = {}) {
+  configureUpdateFeed();
   // Сами не качаем: сначала спрашиваем пользователя в окне обновления
   autoUpdater.autoDownload = false;
   // Автоустановка при выходе — только Windows: на macOS Squirrel.Mac ставит лишь подписанное
