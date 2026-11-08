@@ -124,6 +124,10 @@ func (a *server) secondFactorOK(user *store.User, code string) bool {
 
 func (a *server) totpSetup(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
+	if !a.userLimit(user.ID, "2fa", 10, time.Minute) {
+		fail(http.StatusTooManyRequests, "Слишком много попыток. Попробуйте позже").write(w)
+		return
+	}
 	var request struct {
 		Password string `json:"password"`
 	}
@@ -178,6 +182,10 @@ func (a *server) totpEnable(w http.ResponseWriter, r *http.Request) {
 
 func (a *server) totpDisable(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
+	if !a.userLimit(user.ID, "2fa", 10, time.Minute) {
+		fail(http.StatusTooManyRequests, "Слишком много попыток. Попробуйте позже").write(w)
+		return
+	}
 	var request struct {
 		Code string `json:"code"`
 	}

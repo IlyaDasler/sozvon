@@ -53,3 +53,19 @@ test('приватные адреса не годятся для превью: �
   for (const url of bad) assert.equal(previewableUrl(url), null, url);
   assert.ok(previewableUrl('https://example.com/page'));
 });
+
+test('IPv4-mapped, 6to4, NAT64 и Teredo не обходят SSRF-фильтр', () => {
+  const bad = [
+    'http://[::ffff:127.0.0.1]/',
+    'http://[::ffff:7f00:1]/',
+    'http://[::ffff:a9fe:a9fe]/',
+    'http://[::127.0.0.1]/',
+    'http://[2002:7f00:1::]/',
+    'http://[64:ff9b::7f00:1]/',
+    'http://[2001:0:7f00:1::]/',
+    'http://[fc00::1]/',
+    'http://[fe80::1]/',
+  ];
+  for (const url of bad) assert.equal(previewableUrl(url), null, url);
+  assert.ok(previewableUrl('https://[2606:4700:4700::1111]/'));
+});

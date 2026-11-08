@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -47,5 +48,23 @@ func TestLimiterIgnoresZeroLimit(t *testing.T) {
 		if !l.allow("unlimited", 0, time.Minute) {
 			t.Fatal("нулевой лимит должен отключать ограничение")
 		}
+	}
+}
+
+func TestClientIPIgnoresForwardedForFromPublicClient(t *testing.T) {
+	req := httptest.NewRequest("POST", "/api/login", nil)
+	req.RemoteAddr = "203.0.113.9:4321"
+	req.Header.Set("X-Forwarded-For", "1.2.3.4")
+	if got := clientIP(req); got != "203.0.113.9" {
+		t.Fatalf("подделанный X-Forwarded-For принят от публичного клиента: %s", got)
+	}
+}
+
+func TestClientIPTrustsForwardedForFromProxy(t *testing.T) {
+	req := httptest.NewRequest("POST", "/api/login", nil)
+	req.RemoteAddr = "127.0.0.1:4321"
+	req.Header.Set("X-Forwarded-For", "8.8.8.8")
+	if got := clientIP(req); got != "8.8.8.8" {
+		t.Fatalf("за прокси должен остаться адрес клиента, получили %s", got)
 	}
 }

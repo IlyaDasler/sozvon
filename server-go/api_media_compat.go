@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -24,6 +25,20 @@ var (
 	mediaID   = regexp.MustCompile(`^[a-f0-9]{32}$`)
 )
 
+func imageContentType(file string) string {
+	switch strings.ToLower(filepath.Ext(file)) {
+	case ".webp":
+		return "image/webp"
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".gif":
+		return "image/gif"
+	}
+	return ""
+}
+
 func (a *server) serveImageFrom(w http.ResponseWriter, r *http.Request, file string) {
 	handle, err := os.Open(file)
 	if err != nil {
@@ -31,12 +46,17 @@ func (a *server) serveImageFrom(w http.ResponseWriter, r *http.Request, file str
 		return
 	}
 	defer handle.Close()
-	head := make([]byte, 512)
-	count, _ := handle.Read(head)
-	_, _ = handle.Seek(0, io.SeekStart)
-	w.Header().Set("Content-Type", http.DetectContentType(head[:count]))
+	contentType := imageContentType(file)
+	if contentType == "" {
+		head := make([]byte, 512)
+		count, _ := handle.Read(head)
+		_, _ = handle.Seek(0, io.SeekStart)
+		contentType = http.DetectContentType(head[:count])
+	}
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
 	_, _ = io.Copy(w, handle)
 }
 

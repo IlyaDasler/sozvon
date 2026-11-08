@@ -56,6 +56,10 @@ func (a *server) verifyEmailCode(w http.ResponseWriter, purpose, email, code str
 }
 
 func (a *server) registerCode(w http.ResponseWriter, r *http.Request) {
+	if !a.authLimit(r, "email-code") {
+		fail(http.StatusTooManyRequests, "Слишком много запросов кодов. Попробуйте позже").write(w)
+		return
+	}
 	var body struct {
 		Email      string `json:"email"`
 		InviteCode string `json:"inviteCode"`
@@ -175,6 +179,10 @@ func (a *server) makeUsername(email string) string {
 }
 
 func (a *server) passwordCode(w http.ResponseWriter, r *http.Request) {
+	if !a.authLimit(r, "password-code") {
+		fail(http.StatusTooManyRequests, "Слишком много запросов кодов. Попробуйте позже").write(w)
+		return
+	}
 	var body struct {
 		Email string `json:"email"`
 	}
@@ -197,6 +205,10 @@ func (a *server) passwordCode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *server) passwordReset(w http.ResponseWriter, r *http.Request) {
+	if !a.authLimit(r, "password-reset") {
+		fail(http.StatusTooManyRequests, "Слишком много попыток. Попробуйте позже").write(w)
+		return
+	}
 	var body struct {
 		Email    string `json:"email"`
 		Code     string `json:"code"`
@@ -261,6 +273,10 @@ func (a *server) passwordReset(w http.ResponseWriter, r *http.Request) {
 
 func (a *server) emailCode(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
+	if !a.authLimit(r, "email-code") {
+		fail(http.StatusTooManyRequests, "Слишком много запросов кодов. Попробуйте позже").write(w)
+		return
+	}
 	var body struct {
 		Email string `json:"email"`
 	}

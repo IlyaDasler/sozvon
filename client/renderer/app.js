@@ -2096,8 +2096,13 @@ function readableText(hex) {
 }
 
 let colorResolve = null;
+let colorEscape = null;
 function closeColor(value) {
   $('color-modal').classList.add('hidden');
+  if (colorEscape) {
+    document.removeEventListener('keydown', colorEscape, true);
+    colorEscape = null;
+  }
   const done = colorResolve;
   colorResolve = null;
   done?.(value);
@@ -2121,12 +2126,13 @@ function askColor(current) {
   $('color-modal').classList.remove('hidden');
   setTimeout(() => { input.focus(); input.select(); }, 30);
   return new Promise((resolve) => {
+    if (colorResolve) closeColor(null);
     colorResolve = resolve;
     const onEscape = (e) => {
       if (e.key !== 'Escape') return;
-      document.removeEventListener('keydown', onEscape, true);
       closeColor(null);
     };
+    colorEscape = onEscape;
     document.addEventListener('keydown', onEscape, true);
   });
 }

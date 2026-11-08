@@ -50,13 +50,12 @@ func (a *server) serveMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	head := make([]byte, 512)
-	count, _ := file.Read(head)
-	// Читали только начало — возвращаемся, иначе браузер получит обрезанный файл
-	_, _ = file.Seek(0, io.SeekStart)
-	w.Header().Set("Content-Type", http.DetectContentType(head[:count]))
+	// Все сохранённые аватары/иконки — WebP; не позволяем браузеру
+	// «угадать» HTML/JS по содержимому (stored XSS).
+	w.Header().Set("Content-Type", "image/webp")
 	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
 	w.WriteHeader(http.StatusOK)
 	_, _ = io.Copy(w, file)
 }
@@ -255,6 +254,8 @@ func (a *server) serveHubIcon(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
 	http.ServeFile(w, r, filepath.Join(a.mediaDir(), hub.Icon+".webp"))
 }
 func (a *server) linkPreview(w http.ResponseWriter, r *http.Request) {

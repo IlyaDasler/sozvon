@@ -45,6 +45,9 @@ type server struct {
 	voice   *voiceManager
 	livekit livekit.Options
 	limits  *limiter
+	// Фиктивный хеш для выравнивания времени входа: не даёт отличить
+	// несуществующий логин от неверного пароля по скорости ответа.
+	dummyHash string
 }
 
 func authRandomID() string { return auth.RandomID(16) }
@@ -80,6 +83,8 @@ func main() {
 	}
 
 	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), oauth: oauth.Options{ClientID: cfg.YandexClientID, ClientSecret: cfg.YandexClientSecret, TestBase: cfg.OAuthTestBase}, preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}, limits: newLimiter()}
+	// Хеш для «пустой» проверки пароля (см. login): та же стоимость scrypt.
+	app.dummyHash, _ = auth.HashPassword(auth.RandomID(32))
 
 	router := app.routes()
 
@@ -87,6 +92,8 @@ func main() {
 		Addr:              ":" + cfg.Port,
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    64 << 10,
 	}
 	// Напоминания о событиях: раз в полминуты, как в серверной логике
 	go app.eventRemindersLoop()
@@ -110,9 +117,38 @@ func main() {
 }
 
 // routes — все маршруты сервера. Вынесено из main, чтобы проверять статику и API в тестах.
+func (a *server) securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("Permissions-Policy", "camera=(self), microphone=(self), display-capture=(self), geolocation=()")
+		h.Set("Strict-Transport-Security", "max-age=15552000")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// logRequests — свой логгер вместо chi.Logger: не пишет query-строку,
+// иначе одноразовые WS-билеты и токены оседают в журналах.
+func (a *server) logRequests(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		wrapped := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		next.ServeHTTP(wrapped, r)
+		slog.Info("http",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", wrapped.Status(),
+			"ms", time.Since(start).Milliseconds(),
+			"ip", clientIP(r),
+		)
+	})
+}
+
 func (a *server) routes() http.Handler {
 	router := chi.NewRouter()
-	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, middleware.Timeout(30*time.Second), middleware.Logger)
+	router.Use(middleware.RequestID, middleware.Recoverer, middleware.Timeout(30*time.Second), a.securityHeaders, a.logRequests)
 	router.Get("/api/files/{id}/{name}", a.serveFile)
 	router.Get("/api/avatars/{name}", a.serveMedia)
 	router.Get("/api/banners/{name}", a.serveBanner)
@@ -530,12 +566,19 @@ func (a *server) login(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusTooManyRequests, "Слишком много неудачных попыток. Попробуйте через 15 минут или восстановите пароль").write(w)
 		return
 	}
-	if err != nil || !auth.VerifyPassword(body.Password, userPasswordHash(user)) {
+	if err != nil {
+		// Тратим столько же времени, сколько на реальную проверку пароля:
+		// иначе по скорости ответа можно перебирать существующие логины.
+		_ = auth.VerifyPassword(body.Password, a.dummyHash)
 		a.loginFailed(login)
 		fail(http.StatusUnauthorized, "Неверная почта, логин или пароль").write(w)
 		return
 	}
-	a.loginSucceeded(login)
+	if !auth.VerifyPassword(body.Password, userPasswordHash(user)) {
+		a.loginFailed(login)
+		fail(http.StatusUnauthorized, "Неверная почта, логин или пароль").write(w)
+		return
+	}
 	if user.TotpSecret != "" && body.TotpCode == "" {
 		writeJSON(w, http.StatusForbidden, map[string]any{
 			"error":    "Введите код из приложения-аутентификатора",
@@ -544,9 +587,13 @@ func (a *server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !a.secondFactorOK(user, body.TotpCode) {
+		// Неверный второй фактор — тоже неудачная попытка входа:
+		// иначе TOTP можно перебирать, а счётчик обнуляется до проверки кода.
+		a.loginFailed(login)
 		fail(http.StatusUnauthorized, "Неверный код").write(w)
 		return
 	}
+	a.loginSucceeded(login)
 	token, err := a.openSession(user, r.UserAgent())
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)

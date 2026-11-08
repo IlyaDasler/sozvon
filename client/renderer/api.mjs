@@ -95,6 +95,7 @@ class ServerSocket {
     this.onUnauthorized = onUnauthorized;
     this.ws = null;
     this.retry = 0;
+    this.retryTimer = null;
     this.closed = false;
   }
 
@@ -139,7 +140,11 @@ class ServerSocket {
 
   retryLater() {
     const delay = Math.min(1000 * 2 ** this.retry++, 15000);
-    setTimeout(() => !this.closed && this.connect(), delay);
+    clearTimeout(this.retryTimer);
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      if (!this.closed) this.connect();
+    }, delay);
   }
 
   send(message) {
@@ -150,6 +155,8 @@ class ServerSocket {
 
   close() {
     this.closed = true;
+    clearTimeout(this.retryTimer);
+    this.retryTimer = null;
     this.ws?.close();
     this.ws = null;
   }

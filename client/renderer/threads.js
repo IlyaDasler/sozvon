@@ -210,9 +210,10 @@
       const oldServer = /не найдено|not found|404/i.test(err.message || '');
       thread.unsupported = oldServer;
       setComposerEnabled(!oldServer);
-      listEl().innerHTML = oldServer
-        ? '<div class="thread-empty muted small">Обсуждения появятся после обновления сервера до 3.0</div>'
-        : `<div class="error small">${err.message}</div>`;
+      const notice = document.createElement('div');
+      notice.className = oldServer ? 'thread-empty muted small' : 'error small';
+      notice.textContent = oldServer ? 'Обсуждения появятся после обновления сервера до 3.0' : err.message;
+      listEl().replaceChildren(notice);
     }
   }
 
