@@ -237,6 +237,12 @@ func (a *server) createOAuthUser(provider string, profile *oauth.Profile) (*stor
 }
 
 func (a *server) enterUser(w http.ResponseWriter, r *http.Request, user *store.User, created bool) {
+	// OAuth-вход не заменяет второй фактор: иначе включённый TOTP
+	// обходится одним паролем/аккаунтом сервиса.
+	if user.TotpSecret != "" {
+		fail(http.StatusForbidden, "У аккаунта включён второй фактор — войдите по логину и паролю").write(w)
+		return
+	}
 	token, err := a.openSession(user, r.UserAgent())
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
@@ -364,6 +370,10 @@ func (a *server) oauthWebCallback(w http.ResponseWriter, r *http.Request) {
 	entry := webCode{expires: time.Now().Add(webCodeTTL)}
 	if userID, _, exists, _ := a.store.FindIdentity(provider, profile.ProviderID); exists {
 		if user, err := a.store.UserByID(userID); err == nil {
+			if user.TotpSecret != "" {
+				http.Redirect(w, r, "/?oauth_error="+urlQueryEscape("У аккаунта включён второй фактор — войдите по логину и паролю"), http.StatusFound)
+				return
+			}
 			entry.token, _ = a.openSession(user, r.UserAgent())
 		}
 	} else if a.cfg.InviteCode != "" {

@@ -129,7 +129,7 @@ func (s *Store) CreateRoom(hubID, ownerID int64, name, kind string, private bool
 		return nil, err
 	}
 	defer tx.Rollback()
-	id, err := createRoomTx(tx, hubID, ownerID, name, kind, private, true)
+	id, err := createRoomTx(tx, hubID, ownerID, name, kind, private, !private)
 	if err != nil {
 		return nil, err
 	}
@@ -196,8 +196,8 @@ func createRoomTx(tx *sql.Tx, hubID, ownerID int64, name, kind string, private b
 	); err != nil {
 		return 0, err
 	}
-	// Все участники канала сразу в комнате, как rooms.create(...,{everyone:true}) в Node
-	if everyone {
+	// Все участники канала сразу в комнате, но только если комната не приватная
+	if everyone && !private {
 		if _, err := tx.Exec(
 			`INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) SELECT ?, user_id, ? FROM hub_members WHERE hub_id = ?`,
 			roomID, now, hubID,
@@ -372,6 +372,9 @@ func (s *Store) RoomsOf(userID int64) ([]*RoomRow, error) {
 		SELECT r.id FROM rooms r
 		JOIN hub_members m ON m.hub_id = r.hub_id
 		WHERE m.user_id = ?
+		  AND (r.private = 0 OR EXISTS (
+			SELECT 1 FROM room_members rm WHERE rm.room_id = r.id AND rm.user_id = m.user_id
+		  ))
 		ORDER BY r.position, r.id`, userID)
 	if err != nil {
 		return nil, err

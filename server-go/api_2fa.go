@@ -36,19 +36,25 @@ func totpCode(secret string, counter uint64) (string, error) {
 	return fmt.Sprintf("%06d", value%1_000_000), nil
 }
 
-func totpCheck(secret, value string, now time.Time) bool {
+func totpStep(secret, value string, now time.Time) (int64, bool) {
 	value = strings.TrimSpace(value)
 	if len(value) != 6 {
-		return false
+		return 0, false
 	}
-	counter := uint64(now.Unix() / 30)
+	counter := int64(now.Unix() / 30)
 	for _, step := range []int64{-1, 0, 1} {
-		expected, err := totpCode(secret, uint64(int64(counter)+step))
+		candidate := counter + step
+		expected, err := totpCode(secret, uint64(candidate))
 		if err == nil && subtle.ConstantTimeCompare([]byte(expected), []byte(value)) == 1 {
-			return true
+			return candidate, true
 		}
 	}
-	return false
+	return 0, false
+}
+
+func totpCheck(secret, value string, now time.Time) bool {
+	_, ok := totpStep(secret, value, now)
+	return ok
 }
 
 func totpSecret() (string, error) {
@@ -108,8 +114,9 @@ func (a *server) secondFactorOK(user *store.User, code string) bool {
 	if user.TotpSecret == "" {
 		return true
 	}
-	if totpCheck(user.TotpSecret, code, time.Now()) {
-		return true
+	if step, ok := totpStep(user.TotpSecret, code, time.Now()); ok {
+		used, err := a.store.UseTotpStep(user.ID, step)
+		return err == nil && used
 	}
 	recovery, _ := a.store.TotpRecovery(user.ID)
 	if recovery == "" {
@@ -157,7 +164,12 @@ func (a *server) totpEnable(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Code string `json:"code"`
 	}
-	if err := decode(r, &request); err != nil || !totpCheck(pending, request.Code, time.Now()) {
+	if err := decode(r, &request); err != nil {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	step, ok := totpStep(pending, request.Code, time.Now())
+	if !ok {
 		fail(http.StatusBadRequest, "Неверный код").write(w)
 		return
 	}
@@ -175,6 +187,8 @@ func (a *server) totpEnable(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	// Тот же код не должен сработать повторно при первом входе.
+	_, _ = a.store.UseTotpStep(user.ID, step)
 	fresh, _ := a.store.UserByID(user.ID)
 	self, _ := a.self(fresh)
 	writeJSON(w, http.StatusOK, map[string]any{"recoveryCodes": codes, "user": self})
