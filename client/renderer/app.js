@@ -66,9 +66,9 @@ function migratedAudioSettings() {
   return { ...rest, noiseLevel: noiseSuppression === false ? 0 : 3 };
 }
 
-/** Текущий уровень шумоподавления: 0…3 */
+/** Текущий уровень шумоподавления: 0…4 (4 — изоляция голоса) */
 function noiseLevelOf() {
-  return Math.min(3, Math.max(0, Number(state.settings?.noiseLevel ?? 0)));
+  return Math.min(4, Math.max(0, Number(state.settings?.noiseLevel ?? 0)));
 }
 const state = {
   me: null,
@@ -92,8 +92,8 @@ const state = {
   room: null, // голосовой канал комнаты: { session, roomId, joined, connectedAt }
   muted: store.get('muted', false),
   deafened: store.get('deafened', false),
-  // noiseLevel: 0 — выкл, 1 — мягкое, 2 — среднее, 3 — сильное. Старая галочка noiseSuppression
-  // превращается в «среднее», чтобы у людей не поменялось поведение после обновления
+  // noiseLevel: 0 — выкл, 1 — мягкое, 2 — среднее, 3 — сильное, 4 — только мой голос.
+  // Старая галочка noiseSuppression превращается в «среднее», чтобы у людей не поменялось поведение после обновления
   settings: { micId: '', speakerId: '', camId: '', noiseLevel: 3, ...migratedAudioSettings() },  registerMode: false,
   providers: [], // способы входа, включённые на сервере: [{ id, name }]
   inviteRequired: true, // требует ли сервер код приглашения при регистрации
@@ -2573,12 +2573,16 @@ async function startMicMeter() {
   $('mic-test-hint').textContent = '';
   const settings = formAudioSettings();
   const level = Number(settings.noiseLevel || 0);
+  const isolated = level >= 4 && voiceIsolationAvailable();
+  const neural = level > 0 && !isolated;
   let raw = null;
   let chain = null;
   try {
-    raw = await navigator.mediaDevices.getUserMedia(micConstraints({ ...settings, browserNoise: level === 0 }));
+    raw = await navigator.mediaDevices.getUserMedia(
+      micConstraints({ ...settings, browserNoise: !neural, voiceIsolation: isolated })
+    );
     let stream = raw;
-    if (level > 0 && typeof denoiseTrack === 'function') {
+    if (neural && typeof denoiseTrack === 'function') {
       try {
         chain = await denoiseTrack(raw.getAudioTracks()[0], level);
         stream = new MediaStream([chain.track]);
