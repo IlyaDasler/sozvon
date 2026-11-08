@@ -699,7 +699,7 @@
 [data-theme='silenthill'] .content,
 [data-theme='silenthill'] .members-panel {
   background-image: url("silenthill-scratches.png") !important;
-  background-size: 640px 640px !important;
+  background-size: 420px 420px !important;
   background-repeat: repeat !important;
   background-blend-mode: normal !important;
 }
