@@ -718,3 +718,24 @@
   background: rgba(30, 20, 15, 0.9) !important;
 }
 
+/* Поле «Добавить в друзья» — одна рамка, кнопка внутри поля */
+[data-theme='silenthill'] .friend-add-row input:focus-visible {
+  outline: none !important;
+}
+[data-theme='silenthill'] .friend-add-row .btn {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 12px !important;
+  color: #c48a4e !important;
+  font-weight: 600 !important;
+}
+[data-theme='silenthill'] .friend-add-row .btn:hover {
+  background: transparent !important;
+  color: #ead8c2 !important;
+}
+[data-theme='silenthill'] .friend-add-row:focus-within {
+  border-color: rgba(194, 122, 68, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(162, 90, 54, 0.16) !important;
+}
+
