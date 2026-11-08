@@ -109,7 +109,10 @@ function plistVersion(app) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sozvon-mac-e2e-'));
   const previousZip = path.join(root, previousName);
   console.log(`предыдущая версия: ${previousVersion}`);
-  await downloadFile(previousAsset.browser_download_url, previousZip);
+  // GitHub release-assets из России и на macOS-раннере отдаёт 504.
+  // Тест качает тот же предыдущий архив с нашего сервера обновлений.
+  const previousZipUrl = `https://135-106-226-12.sslip.io/updates/mac/${previousName}`;
+  await downloadFile(previousZipUrl, previousZip);
 
   const previousDir = path.join(root, 'previous');
   const unpack = spawnSync('ditto', ['-x', '-k', previousZip, previousDir], { encoding: 'utf8' });
