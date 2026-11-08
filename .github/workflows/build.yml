@@ -1,5 +1,10 @@
 name: Сборка
 
+env:
+  # GitHub release-assets периодически отдаёт 504; зеркало Electron стабильнее
+  ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+  ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
+
 on:
   push:
     branches: [main]
