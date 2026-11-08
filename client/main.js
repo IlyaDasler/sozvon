@@ -324,8 +324,13 @@ function releaseNotes(info) {
 // и установщик из /updates/win, как macOS.
 const UPDATE_SERVER = 'https://135-106-226-12.sslip.io';
 function configureUpdateFeed() {
-  if (process.platform !== 'win32') return;
-  autoUpdater.setFeedURL({ provider: 'generic', url: `${UPDATE_SERVER}/updates/win` });
+  if (process.platform === 'win32') {
+    autoUpdater.setFeedURL({ provider: 'generic', url: `${UPDATE_SERVER}/updates/win` });
+  } else if (process.platform === 'darwin') {
+    // Даже проверку обновлений не пускаем на GitHub: у российских провайдеров
+    // release-assets отдаёт 504. Сама установка на macOS всё равно идёт через mac-update.
+    autoUpdater.setFeedURL({ provider: 'generic', url: `${UPDATE_SERVER}/updates/mac` });
+  }
 }
 
 function setupUpdater({ checkNow = true } = {}) {
