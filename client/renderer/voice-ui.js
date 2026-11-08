@@ -878,15 +878,13 @@ async function startScreenShare() {
 
 // ---------- Шумоподавление ----------
 
-// Уровни: 0 — выкл, 1 — мягкое, 2 — среднее, 3 — сильное,
-// 4 — только мой голос (системная Voice Isolation подавляет и голоса рядом).
-// Интенсивность — доля очищенного звука в миксе (см. denoiseTrack в call.js).
+// Уровни: 0 — выкл, 1 — мягкое, 2 — среднее, 3 — сильное (системная Voice Isolation,
+// подавляет и голоса рядом). Интенсивность — доля очищенного звука в миксе (см. denoiseTrack в call.js).
 const NOISE_LEVELS = [
   { value: 0, name: 'Выключено' },
   { value: 1, name: 'Мягкое' },
   { value: 2, name: 'Среднее' },
   { value: 3, name: 'Сильное' },
-  { value: 4, name: 'Только мой голос' },
 ];
 let lastNoiseLevel = 3; // что включить, если человек выключил и снова нажал
 
@@ -907,7 +905,7 @@ function renderNoiseButton() {
 
 /** Уровень шумоподавления применяется сразу, без переподключения к разговору */
 async function setNoiseLevel(level) {
-  const value = Math.min(4, Math.max(0, Number(level) || 0));
+  const value = Math.min(3, Math.max(0, Number(level) || 0));
   if (value > 0) lastNoiseLevel = value;
   state.settings = { ...state.settings, noiseLevel: value };
   store.set('audio', state.settings);
@@ -919,11 +917,7 @@ async function setNoiseLevel(level) {
   const session = activeSession();
   if (session) await session.switchMic(state.settings).catch((err) => toast(mediaErrorText(err)));
   const name = NOISE_LEVELS.find((l) => l.value === value)?.name ?? '';
-  if (value === 4 && typeof voiceIsolationAvailable === 'function' && !voiceIsolationAvailable()) {
-    toast('Изоляция голоса недоступна на этом устройстве — включено сильное шумоподавление');
-  } else {
-    toast(value ? `Шумоподавление: ${name.toLowerCase()}` : 'Шумоподавление выключено');
-  }
+  toast(value ? `Шумоподавление: ${name.toLowerCase()}` : 'Шумоподавление выключено');
 }
 
 /** Меню уровня: одна и та же шкала в звонке, голосовом канале и по правой кнопке */
@@ -933,7 +927,7 @@ function openNoiseMenu(x, y) {
     label: 'Шумоподавление',
     value: noiseLevelOf(),
     min: 0,
-    max: 4,
+    max: 3,
     step: 1,
     valueLabel: (v) => NOISE_LEVELS.find((l) => l.value === v)?.name || '',
     oninput: (v) => setNoiseLevel(v),
