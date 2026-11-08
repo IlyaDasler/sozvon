@@ -38,6 +38,29 @@ function feedBase(base) {
   return null;
 }
 
+/** Обновление качаем только по HTTPS; http разрешён лишь для локального e2e. */
+function updateUrlAllowed(target) {
+  try {
+    const url = new URL(target);
+    if (url.protocol === 'https:') return true;
+    return (
+      url.protocol === 'http:' &&
+      process.env.SOZVON_UPDATE_TEST === '1' &&
+      (url.hostname === '127.0.0.1' || url.hostname === 'localhost')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function redirectTarget(location, current) {
+  try {
+    return new URL(location, current).toString();
+  } catch {
+    return null;
+  }
+}
+
 /** Путь к .app, из которого запущено приложение: …/Sozvon.app/Contents/MacOS/Sozvon */
 function bundlePath(exe = process.execPath) {
   let dir = path.dirname(exe);
@@ -126,13 +149,16 @@ function download(url, dest, onProgress = () => {}, expectedSize = 0) {
     };
     const go = (target, hops = 0) => {
       if (hops > 5) return fail(new Error('Слишком много перенаправлений'));
+      if (!updateUrlAllowed(target)) return fail(new Error('Обновление должно скачиваться по HTTPS'));
       arm();
       const client = target.startsWith('http:') ? http : https;
       client
         .get(target, { headers: { 'User-Agent': 'Sozvon-Updater' } }, (res) => {
           if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
             res.resume();
-            return go(res.headers.location, hops + 1);
+            const next = redirectTarget(res.headers.location, target);
+            if (!next) return fail(new Error('Некорректное перенаправление обновления'));
+            return go(next, hops + 1);
           }
           if (res.statusCode !== 200) {
             res.resume();
@@ -241,11 +267,14 @@ function getText(url) {
   return new Promise((resolve, reject) => {
     const go = (target, hops = 0) => {
       if (hops > 5) return reject(new Error('Слишком много перенаправлений'));
+      if (!updateUrlAllowed(target)) return reject(new Error('Список обновлений должен быть по HTTPS'));
       const client = target.startsWith('http:') ? http : https;
       const req = client.get(target, { headers: { 'User-Agent': 'Sozvon-Updater' } }, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           res.resume();
-          return go(res.headers.location, hops + 1);
+          const next = redirectTarget(res.headers.location, target);
+          if (!next) return reject(new Error('Некорректное перенаправление списка обновлений'));
+          return go(next, hops + 1);
         }
         if (res.statusCode !== 200) {
           res.resume();
@@ -267,7 +296,10 @@ function getText(url) {
 async function prepare({ version, onProgress, onStage = () => {}, base: clientBase = '' }) {
   const dir = workDir();
   fs.rmSync(dir, { recursive: true, force: true });
-  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  try {
+    fs.chmodSync(dir, 0o700);
+  } catch {}
 
   // Прод-клиент берёт файлы с нашего сервера, остальные — с GitHub.
   // Размер и sha512 берём из манифеста релиза — он публикуется вместе с архивом.

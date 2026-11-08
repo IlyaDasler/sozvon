@@ -237,6 +237,20 @@ func (s *Store) SetTotpRecovery(userID int64, recovery string) error {
 	return err
 }
 
+// UseTotpStep фиксирует успешный TOTP-шаг. Повторный код в том же окне
+// уже не пройдёт — это защита от replay.
+func (s *Store) UseTotpStep(userID, step int64) (bool, error) {
+	result, err := s.db.Exec(`UPDATE users SET totp_last_step = ? WHERE id = ? AND totp_last_step < ?`, step, userID, step)
+	if err != nil {
+		return false, err
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return changed > 0, nil
+}
+
 func (s *Store) UpdateProfile(userID int64, displayName, avatarColor, bio *string, bannerColor, nameColor *string) error {
 	if displayName != nil {
 		if _, err := s.db.Exec(`UPDATE users SET display_name = ? WHERE id = ?`, *displayName, userID); err != nil {

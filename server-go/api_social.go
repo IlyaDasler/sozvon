@@ -663,6 +663,17 @@ func (a *server) createRoom(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusNotFound, "Канал не найден").write(w)
 		return
 	}
+	// В комнату канала можно звать только участников этого канала:
+	// иначе через memberIds можно было добавить постороннего.
+	for _, memberID := range request.MemberIDs {
+		if memberID == user.ID {
+			continue
+		}
+		if ok, err := a.store.IsHubMember(request.HubID, memberID); err != nil || !ok {
+			fail(http.StatusBadRequest, "В комнату канала можно добавлять только участников канала").write(w)
+			return
+		}
+	}
 	room, err := a.store.CreateRoom(request.HubID, user.ID, name, request.Kind, request.Private)
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)

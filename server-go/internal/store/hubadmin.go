@@ -131,15 +131,15 @@ func (s *Store) AcceptHubInvite(hubID, userID int64) error {
 	if _, err := tx.Exec(`INSERT OR IGNORE INTO hub_members (hub_id, user_id, manager, created_at) VALUES (?, ?, 0, ?)`, hubID, userID, time.Now().UnixMilli()); err != nil {
 		return err
 	}
-	// В канале участник сразу попадает во все его комнаты (как hubs.join в Node)
-	if _, err := tx.Exec(`INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) SELECT id, ?, ? FROM rooms WHERE hub_id = ?`, userID, time.Now().UnixMilli(), hubID); err != nil {
+	// В канале участник сразу попадает во все его публичные комнаты (как hubs.join в Node)
+	if _, err := tx.Exec(`INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) SELECT id, ?, ? FROM rooms WHERE hub_id = ? AND private = 0`, userID, time.Now().UnixMilli(), hubID); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 
 func (s *Store) AddMemberToHubRooms(hubID, userID int64) error {
-	_, err := s.db.Exec(`INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) SELECT id, ?, ? FROM rooms WHERE hub_id = ?`, userID, time.Now().UnixMilli(), hubID)
+	_, err := s.db.Exec(`INSERT OR IGNORE INTO room_members (room_id, user_id, created_at) SELECT id, ?, ? FROM rooms WHERE hub_id = ? AND private = 0`, userID, time.Now().UnixMilli(), hubID)
 	return err
 }
 
