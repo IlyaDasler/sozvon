@@ -2562,7 +2562,7 @@ const settingsOpen = () => !$('settings').classList.contains('hidden');
 const formAudioSettings = () => ({ micId: $('set-mic').value, noiseLevel: Number($('set-ns-level').value) });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-let micTest = null; // { stream, meter } — живая полоска громкости в настройках
+let micTest = null; // { stream, meter, chain, raw } — живая полоска громкости в настройках
 let micTestRequest = 0;
 
 // Полоска двигается, когда говоришь: сразу видно, что микрофон выбран правильный
@@ -2571,17 +2571,39 @@ async function startMicMeter() {
   const listening = Boolean(micMonitor);
   stopMicMeter();
   $('mic-test-hint').textContent = '';
+  const settings = formAudioSettings();
+  const level = Number(settings.noiseLevel || 0);
+  let raw = null;
+  let chain = null;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia(micConstraints(formAudioSettings()));
-    if (request !== micTestRequest || !settingsOpen()) return stream.getTracks().forEach((t) => t.stop());
+    raw = await navigator.mediaDevices.getUserMedia(micConstraints({ ...settings, browserNoise: level === 0 }));
+    let stream = raw;
+    if (level > 0 && typeof denoiseTrack === 'function') {
+      try {
+        chain = await denoiseTrack(raw.getAudioTracks()[0], level);
+        stream = new MediaStream([chain.track]);
+      } catch {
+        // Нейросеть не загрузилась — включаем встроенное шумоподавление, как в звонке
+        await raw.getAudioTracks()[0]
+          .applyConstraints({ ...micConstraints({ ...settings, browserNoise: true }).audio, deviceId: undefined })
+          .catch(() => {});
+      }
+    }
+    if (request !== micTestRequest || !settingsOpen()) {
+      chain?.stop();
+      raw?.getTracks().forEach((t) => t.stop());
+      return;
+    }
     const fill = $('mic-meter');
-    const meter = new LevelMeter(stream, null, (level) => {
-      fill.style.width = `${Math.round(level * 100)}%`;
-      fill.classList.toggle('loud', level > 0.9);
+    const meter = new LevelMeter(stream, null, (levelValue) => {
+      fill.style.width = `${Math.round(levelValue * 100)}%`;
+      fill.classList.toggle('loud', levelValue > 0.9);
     });
-    micTest = { stream, meter };
+    micTest = { stream, meter, chain, raw };
     if (listening) startMicMonitor();
   } catch (err) {
+    chain?.stop();
+    raw?.getTracks().forEach((t) => t.stop());
     if (request === micTestRequest) $('mic-test-hint').textContent = mediaErrorText(err);
   }
 }
@@ -2589,7 +2611,9 @@ async function startMicMeter() {
 function stopMicMeter() {
   stopMicMonitor();
   micTest?.meter.stop();
+  micTest?.chain?.stop();
   micTest?.stream.getTracks().forEach((t) => t.stop());
+  micTest?.raw.getTracks().forEach((t) => t.stop());
   micTest = null;
   $('mic-meter').style.width = '0';
 }
