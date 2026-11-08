@@ -1402,6 +1402,23 @@ function messageRow(m, prev, list, actions, shown, fresh) {
       }, ' danger');
     row.append(tools);
   }
+  // Если у сообщения есть обсуждение — клик по нему открывает тред,
+  // а не требует попасть в маленькую иконку на панели действий.
+  if (actions?.chat?.kind === 'room' && Number(m.replies || 0) > 0 && actions.scope !== 'thread') {
+    row.classList.add('msg-has-thread');
+    row.title = 'Открыть обсуждение';
+    row.onclick = (e) => {
+      if (String(window.getSelection?.() || '').trim()) return;
+      const target = e.target;
+      if (
+        target.closest(
+          'a, button, input, textarea, select, video, audio, img, .avatar, .msg-tools, .msg-thread-link, .reaction-chip, .msg-embed, .msg-image, .attachment, .link-card'
+        )
+      )
+        return;
+      if (typeof openThread === 'function') openThread(m, actions.chat);
+    };
+  }
   return { row, look, text, content };
 }
 

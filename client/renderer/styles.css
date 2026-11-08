@@ -2922,3 +2922,7 @@ html[data-theme='glass'] .cam-select { background: rgba(255,255,255,0.06); borde
 @media (prefers-reduced-motion: reduce) {
   .net-spinner { animation-duration: 2s; }
 }
+
+/* Сообщение с обсуждением открывает тред по клику */
+.msg.msg-has-thread { cursor: pointer; }
+
