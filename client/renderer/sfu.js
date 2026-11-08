@@ -78,12 +78,6 @@ class SfuSession extends MediaSession {
     this.onChange();
   }
 
-  setMuted(muted, deafened) {
-    super.setMuted(muted, deafened);
-    const media = this.published?.mic?.mediaStreamTrack;
-    if (media) media.enabled = !muted;
-  }
-
   /** Дорожку слота заменили или убрали — публикуем новую вместо старой. По одной, чтобы не перепутать порядок */
   publish(slot) {
     this.publishing = this.publishing.then(async () => {
@@ -117,13 +111,6 @@ class SfuSession extends MediaSession {
       try {
         const pub = await lp.publishTrack(track, options);
         this.published[slot] = pub.track;
-        // LiveKit может пересоздать дорожку при публикации — состояние «микрофон
-        // выключен» переносим на опубликованную дорожку, иначе после смены шумодава
-        // звук снова уходит в комнату.
-        if (slot === 'mic') {
-          const media = pub.track?.mediaStreamTrack;
-          if (media) media.enabled = !this.local.muted;
-        }
         this.prevVideo = {};
       } catch (err) {
         console.warn('LiveKit: не удалось отправить', slot, err.message);
