@@ -183,7 +183,7 @@ async function denoiseTrack(raw, level = 2) {
     source.connect(hp);
     // Интенсивность — доля очищенного звука в миксе. Среднее и сильное уже
     // почти полностью нейросетевые: раньше 30% сырого фона шло в эфир.
-    const wetAmount = level >= 2 ? 1 : 0.75;
+    const wetAmount = level >= 3 ? 0.9 : level >= 2 ? 0.8 : 0.6;
     // После нейросети закрываем остаточный фон мягким гейтом: клавиатура и
     // дыхание комнаты не проходят в эфир, а короткая атака не съедает слово.
     const analyser = ctx.createAnalyser();
@@ -198,20 +198,20 @@ async function denoiseTrack(raw, level = 2) {
       const rms = Math.sqrt(sum / samples.length);
       // «Сильное» поднимает порог: тихий фон и клавиатура не открывают ворота,
       // «мягкое» наоборот оставляет больше живого звука комнаты.
-      const threshold = level >= 3 ? 0.028 : level >= 2 ? 0.022 : 0.018;
+      const threshold = level >= 3 ? 0.022 : level >= 2 ? 0.02 : 0.018;
       const now = performance.now();
       if (rms >= threshold) holdUntil = now + 160;
       const target = now < holdUntil ? 1 : 0.0005;
-      gate.gain.setTargetAtTime(target, ctx.currentTime, target > 0.5 ? 0.004 : 0.08);
+      gate.gain.setTargetAtTime(target, ctx.currentTime, target > 0.5 ? 0.004 : 0.1);
     }, 30);
     // Мягкий лимитер после гейта: убирает щелчки и клиппинг от резкого смеха/крика,
     // не сжимая обычный голос.
     const limiter = ctx.createDynamicsCompressor();
-    limiter.threshold.value = -3;
-    limiter.knee.value = 0;
-    limiter.ratio.value = 20;
-    limiter.attack.value = 0.003;
-    limiter.release.value = 0.12;
+    limiter.threshold.value = -4;
+    limiter.knee.value = 4;
+    limiter.ratio.value = 8;
+    limiter.attack.value = 0.004;
+    limiter.release.value = 0.15;
     if (wetAmount >= 1) {
       hp.connect(node).connect(analyser).connect(gate).connect(limiter).connect(dest);
     } else {
@@ -240,10 +240,22 @@ async function denoiseTrack(raw, level = 2) {
   }
 }
 
+/** Доступна ли системная изоляция голоса (подавляет и голоса рядом) */
+function voiceIsolationAvailable() {
+  try {
+    return navigator.mediaDevices.getSupportedConstraints().voiceIsolation === true;
+  } catch {
+    return false;
+  }
+}
+
 function micConstraints(settings = {}) {
   // Нейросеть и встроенное шумоподавление одновременно не нужны: портят голос дважды.
   // browserNoise=false включаем только как запасной путь, если RNNoise не загрузился.
   const browserNoise = settings.browserNoise !== false;
+  // Voice Isolation — системная изоляция голоса: подавляет не только фон, но и
+  // голоса рядом. Включается отдельным уровнем «Только мой голос».
+  const isolate = settings.voiceIsolation === true;
   return {
     audio: {
       deviceId: settings.micId ? { ideal: settings.micId } : undefined,
@@ -251,7 +263,7 @@ function micConstraints(settings = {}) {
       echoCancellation: true,
       noiseSuppression: browserNoise,
       autoGainControl: true,
-      voiceIsolation: browserNoise,
+      voiceIsolation: isolate,
     },
   };
 }
@@ -373,8 +385,11 @@ class LocalMedia {
     this.micChain?.stop();
     this.micChain = null;
     const level = Number(settings.noiseLevel ?? 0);
-    const neural = level > 0;
-    const stream = await navigator.mediaDevices.getUserMedia(micConstraints({ ...settings, browserNoise: !neural }));
+    const isolated = level >= 4 && voiceIsolationAvailable();
+    const neural = level > 0 && !isolated;
+    const stream = await navigator.mediaDevices.getUserMedia(
+      micConstraints({ ...settings, browserNoise: !neural, voiceIsolation: isolated })
+    );
     let track = stream.getAudioTracks()[0];
     if (neural) {
       try {
