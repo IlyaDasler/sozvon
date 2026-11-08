@@ -183,7 +183,9 @@ async function denoiseTrack(raw, level = 2) {
     source.connect(hp);
     // Интенсивность — доля очищенного звука в миксе. Среднее и сильное уже
     // почти полностью нейросетевые: раньше 30% сырого фона шло в эфир.
-    const wetAmount = level >= 3 ? 0.9 : level >= 2 ? 0.8 : 0.6;
+    // Снижаем долю нейросети, чтобы голос не становился «роботом»; встроенный
+    // шумодав Chromium остаётся как первый фильтр для скрипов кресла и клавиатуры.
+    const wetAmount = level >= 2 ? 0.7 : 0.5;
     // После нейросети закрываем остаточный фон мягким гейтом: клавиатура и
     // дыхание комнаты не проходят в эфир, а короткая атака не съедает слово.
     const analyser = ctx.createAnalyser();
@@ -254,7 +256,7 @@ function micConstraints(settings = {}) {
   // browserNoise=false включаем только как запасной путь, если RNNoise не загрузился.
   const browserNoise = settings.browserNoise !== false;
   // Voice Isolation — системная изоляция голоса: подавляет не только фон, но и
-  // голоса рядом. Включается отдельным уровнем «Только мой голос».
+  // голоса рядом. Включается на «сильном» уровне шумоподавления.
   const isolate = settings.voiceIsolation === true;
   return {
     audio: {
@@ -385,10 +387,12 @@ class LocalMedia {
     this.micChain?.stop();
     this.micChain = null;
     const level = Number(settings.noiseLevel ?? 0);
-    const isolated = level >= 4 && voiceIsolationAvailable();
+    // «Сильное» — это системная Voice Isolation: она лучше убирает голоса рядом,
+    // чем RNNoise, и не даёт роботизированного призвука.
+    const isolated = level >= 3 && voiceIsolationAvailable();
     const neural = level > 0 && !isolated;
     const stream = await navigator.mediaDevices.getUserMedia(
-      micConstraints({ ...settings, browserNoise: !neural, voiceIsolation: isolated })
+      micConstraints({ ...settings, browserNoise: true, voiceIsolation: isolated })
     );
     let track = stream.getAudioTracks()[0];
     if (neural) {
