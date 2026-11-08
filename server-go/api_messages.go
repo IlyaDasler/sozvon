@@ -18,7 +18,7 @@ func (a *server) messageJSON(message *store.Message) map[string]any {
 		"roomId":      message.RoomID,
 		"fromId":      message.FromID,
 		"text":        message.Text,
-		"attachments": attachmentsFromJSON(message.Attachments),
+		"attachments": a.attachmentsFromJSON(message.Attachments),
 		"preview":     previewValue(message.Preview),
 		"enc":         encValue(message.Enc),
 		"replyTo":     message.ReplyTo,

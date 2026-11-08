@@ -19,7 +19,7 @@ func (a *server) dmJSON(message *store.DMMessage) map[string]any {
 		"fromId":      message.FromID,
 		"toId":        message.ToID,
 		"text":        message.Text,
-		"attachments": attachmentsFromJSON(message.Attachments),
+		"attachments": a.attachmentsFromJSON(message.Attachments),
 		"preview":     nil,
 		"enc":         encValue(message.Enc),
 		"replyTo":     message.ReplyTo,
