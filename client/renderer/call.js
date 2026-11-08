@@ -169,7 +169,7 @@ async function noiseSuppressorNode(ctx) {
 
 /** Дорожка микрофона через нейросеть: { track — очищенная, stop() — отпустить всё } */
 async function denoiseTrack(raw, level = 2) {
-  const ctx = new AudioContext({ sampleRate: 48000 });
+  const ctx = new AudioContext({ sampleRate: 48000, latencyHint: 'interactive' });
   try {
     const node = await noiseSuppressorNode(ctx);
     const dest = ctx.createMediaStreamDestination();
@@ -196,21 +196,32 @@ async function denoiseTrack(raw, level = 2) {
       let sum = 0;
       for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
       const rms = Math.sqrt(sum / samples.length);
-      const threshold = level >= 3 ? 0.018 : 0.024;
+      // «Сильное» поднимает порог: тихий фон и клавиатура не открывают ворота,
+      // «мягкое» наоборот оставляет больше живого звука комнаты.
+      const threshold = level >= 3 ? 0.028 : level >= 2 ? 0.022 : 0.018;
       const now = performance.now();
-      if (rms >= threshold) holdUntil = now + 180;
-      const target = now < holdUntil ? 1 : 0.015;
-      gate.gain.setTargetAtTime(target, ctx.currentTime, target > 0.5 ? 0.006 : 0.08);
-    }, 35);
+      if (rms >= threshold) holdUntil = now + 160;
+      const target = now < holdUntil ? 1 : 0.0005;
+      gate.gain.setTargetAtTime(target, ctx.currentTime, target > 0.5 ? 0.004 : 0.08);
+    }, 30);
+    // Мягкий лимитер после гейта: убирает щелчки и клиппинг от резкого смеха/крика,
+    // не сжимая обычный голос.
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -3;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.12;
     if (wetAmount >= 1) {
-      hp.connect(node).connect(analyser).connect(gate).connect(dest);
+      hp.connect(node).connect(analyser).connect(gate).connect(limiter).connect(dest);
     } else {
       const wet = ctx.createGain();
       wet.gain.value = wetAmount;
       const dry = ctx.createGain();
       dry.gain.value = 1 - wetAmount;
-      hp.connect(node).connect(analyser).connect(gate).connect(wet).connect(dest);
-      hp.connect(dry).connect(dest);
+      hp.connect(node).connect(analyser).connect(gate).connect(wet).connect(limiter);
+      hp.connect(dry).connect(limiter);
+      limiter.connect(dest);
     }
     const track = dest.stream.getAudioTracks()[0];
     return {
@@ -229,17 +240,18 @@ async function denoiseTrack(raw, level = 2) {
   }
 }
 
-function micConstraints(settings) {
+function micConstraints(settings = {}) {
+  // Нейросеть и встроенное шумоподавление одновременно не нужны: портят голос дважды.
+  // browserNoise=false включаем только как запасной путь, если RNNoise не загрузился.
+  const browserNoise = settings.browserNoise !== false;
   return {
     audio: {
       deviceId: settings.micId ? { ideal: settings.micId } : undefined,
       // Эхоподавление нужно всегда, иначе без наушников друзья слышат сами себя
       echoCancellation: true,
-      // Нейросеть и встроенное шумоподавление одновременно не нужны: портят голос дважды.
-      // Встроенное включаем только как запасной путь, если нейросеть не загрузилась
-      noiseSuppression: true,
+      noiseSuppression: browserNoise,
       autoGainControl: true,
-      voiceIsolation: true,
+      voiceIsolation: browserNoise,
     },
   };
 }
@@ -362,7 +374,7 @@ class LocalMedia {
     this.micChain = null;
     const level = Number(settings.noiseLevel ?? 0);
     const neural = level > 0;
-    const stream = await navigator.mediaDevices.getUserMedia(micConstraints({ ...settings, browserNoise: false }));
+    const stream = await navigator.mediaDevices.getUserMedia(micConstraints({ ...settings, browserNoise: !neural }));
     let track = stream.getAudioTracks()[0];
     if (neural) {
       try {
