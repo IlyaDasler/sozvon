@@ -739,3 +739,21 @@
   box-shadow: 0 0 0 2px rgba(162, 90, 54, 0.16) !important;
 }
 
+/* Та же текстура царапин на всех меню, окнах и поповерах */
+[data-theme='silenthill'] .modal-card,
+[data-theme='silenthill'] .popup,
+[data-theme='silenthill'] .popup-menu,
+[data-theme='silenthill'] .status-menu,
+[data-theme='silenthill'] .room-events-menu,
+[data-theme='silenthill'] .profile-card,
+[data-theme='silenthill'] .chat-theme-pop,
+[data-theme='silenthill'] .notif-panel,
+[data-theme='silenthill'] .gif-popover,
+[data-theme='silenthill'] .emoji-popover,
+[data-theme='silenthill'] .picker-pop {
+  background-image: url("silenthill-scratches.png") !important;
+  background-size: 420px 420px !important;
+  background-repeat: repeat !important;
+  background-blend-mode: normal !important;
+}
+
