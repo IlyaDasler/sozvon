@@ -8,7 +8,7 @@ const THEMES = [
   { id: 'light', name: 'Светлая', hint: 'Для дня' },
   { id: 'frost', name: 'Акварель', hint: 'Пастельные разводы и полупрозрачные панели' },
   { id: 'cold', name: 'Холод', hint: 'Ледяная синева и прозрачное стекло' },
-  { id: 'silenthill', name: 'Туман', hint: 'Серый туман, безысходность и ржавый акцент' },
+  { id: 'silenthill', name: 'Забвение', hint: 'Серый туман, безысходность и ржавый акцент' },
   { id: 'neutron', name: 'Нейтрон', hint: 'Фиолетовый космос и тёмное стекло' },
   { id: 'ferrari', name: 'Феррари', hint: 'Карбон, алый Rosso Corsa и гоночный жёлтый' },
   { id: 'glass', name: 'Совон', hint: 'Совон — размытие, мягкий свет и живой лес; тема по умолчанию' },
@@ -186,7 +186,7 @@ let lastSystemColors = null;
 function applySystemColors(info) {
   if (info) lastSystemColors = info;
   const root = document.documentElement.style;
-  // «Туман» живёт по своей палитре: системный синий акцент его ломает
+  // «Забвение» живёт по своей палитре: системный синий акцент его ломает
   if (currentTheme() === 'silenthill') {
     root.removeProperty('--accent');
     root.removeProperty('--accent-2');
@@ -207,7 +207,7 @@ function applySystemColors(info) {
   if (toggle) toggle.checked = osAccentOn();
 }
 
-/** Пересчитать акцент после смены темы: у «Тумана» он всегда свой */
+/** Пересчитать акцент после смены темы: у «Забвения» он всегда свой */
 function refreshSystemColors() {
   if (window.desktop?.system?.theme) {
     window.desktop.system.theme().then(applySystemColors).catch(() => applySystemColors(lastSystemColors));
