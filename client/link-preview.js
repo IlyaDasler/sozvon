@@ -19,20 +19,32 @@ function ipv4Private(ip) {
     a === 0 || a === 10 || a === 127 ||
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
+    (a === 192 && (b === 0 || b === 168)) ||
     (a === 100 && b >= 64 && b <= 127) ||
+    (a === 198 && (b === 18 || b === 19 || b === 51)) ||
+    (a === 203 && b === 0) ||
     a >= 224
   );
+}
+
+/** IPv6, который нельзя запрашивать: mapped/compatible, ULA, link-local, multicast,
+ *  Teredo/6to4/NAT64 и документационные диапазоны. */
+function ipv6Blocked(host) {
+  const lower = host.toLowerCase();
+  if (lower === '::' || lower === '::1') return true;
+  // ::/96 — IPv4-compatible и ::ffff:0:0/96 — IPv4-mapped: любые формы внутрь не пускаем
+  if (lower.startsWith('::')) return true;
+  if (/^(0:){5}ffff:/.test(lower) || /^(0:){6}[0-9a-f]{1,4}:[0-9a-f]{1,4}$/.test(lower)) return true;
+  if (/^f[cd]/.test(lower) || /^fe[89ab]/.test(lower) || /^ff/.test(lower)) return true;
+  if (/^2001:0:/.test(lower) || /^2001:db8:/.test(lower) || /^2002:/.test(lower) || /^64:ff9b:/.test(lower)) return true;
+  return false;
 }
 
 /** Публичный ли адрес: не localhost, не домашняя сеть, не служебные диапазоны */
 function isPublicAddress(ip) {
   if (net.isIPv4(ip)) return !ipv4Private(ip);
   if (!net.isIPv6(ip)) return false;
-  const lower = ip.toLowerCase();
-  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(lower);
-  if (mapped) return !ipv4Private(mapped[1]);
-  return !(lower === '::' || lower === '::1' || /^f[cd]/.test(lower) || /^fe[89ab]/.test(lower));
+  return !ipv6Blocked(ip);
 }
 
 /** Адрес, для которого можно делать превью: только http/https и только наружу */

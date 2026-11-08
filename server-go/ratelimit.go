@@ -3,6 +3,7 @@ package main
 import (
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -16,12 +17,27 @@ type limitEntry struct {
 }
 
 type limiter struct {
-	mu      sync.Mutex
-	entries map[string]*limitEntry
+	mu        sync.Mutex
+	entries   map[string]*limitEntry
+	lastSweep time.Time
 }
 
 func newLimiter() *limiter {
 	return &limiter{entries: map[string]*limitEntry{}}
+}
+
+// sweepLocked удаляет истёкшие записи, чтобы карта не росла бесконечно.
+// Вызывается не чаще раза в минуту, под уже взятым мьютексом.
+func (l *limiter) sweepLocked(now time.Time) {
+	if now.Sub(l.lastSweep) < time.Minute {
+		return
+	}
+	l.lastSweep = now
+	for key, entry := range l.entries {
+		if entry.reset.Before(now) {
+			delete(l.entries, key)
+		}
+	}
 }
 
 // allow — не чаще max раз за window. Ключ — действие и субъект (адрес или id).
@@ -32,6 +48,7 @@ func (l *limiter) allow(key string, max int, window time.Duration) bool {
 	now := time.Now()
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	l.sweepLocked(now)
 	entry := l.entries[key]
 	if entry == nil || entry.reset.Before(now) {
 		l.entries[key] = &limitEntry{count: 1, reset: now.Add(window)}
@@ -46,6 +63,7 @@ func (l *limiter) hit(key string, window time.Duration) int {
 	now := time.Now()
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	l.sweepLocked(now)
 	entry := l.entries[key]
 	if entry == nil || entry.reset.Before(now) {
 		entry = &limitEntry{count: 0, reset: now.Add(window)}
@@ -72,19 +90,23 @@ func (l *limiter) forget(key string) {
 	l.mu.Unlock()
 }
 
-// clientIP — адрес за Caddy: сначала X-Forwarded-For, затем RemoteAddr.
+// clientIP — адрес клиента. X-Forwarded-For принимаем только от локального
+// прокси (Caddy/Docker-сеть): иначе клиент подделает заголовок и обойдёт лимиты.
 func clientIP(r *http.Request) string {
-	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		for index := 0; index < len(forwarded); index++ {
-			if forwarded[index] == ',' {
-				return forwarded[:index]
-			}
-		}
-		return forwarded
-	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		host = r.RemoteAddr
+	}
+	ip := net.ParseIP(host)
+	if ip == nil || !(ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast()) {
+		return host
+	}
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		for _, part := range strings.Split(forwarded, ",") {
+			if candidate := net.ParseIP(strings.TrimSpace(part)); candidate != nil {
+				return candidate.String()
+			}
+		}
 	}
 	return host
 }

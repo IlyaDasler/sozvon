@@ -727,12 +727,11 @@ func (a *server) patchRoom(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusNotFound, "Комната не найдена").write(w)
 		return
 	}
-	if room.HubID != nil {
-		member, _ := a.store.IsHubMember(*room.HubID, user.ID)
-		if !member && room.OwnerID != user.ID {
-			fail(http.StatusNotFound, "Комната не найдена").write(w)
-			return
-		}
+	// Менять комнату может только её владелец или менеджер канала,
+	// а не любой участник канала.
+	if !a.roomManager(room, user.ID) {
+		fail(http.StatusForbidden, "Нет прав на изменение комнаты").write(w)
+		return
 	}
 	var request struct {
 		Name         string          `json:"name"`
