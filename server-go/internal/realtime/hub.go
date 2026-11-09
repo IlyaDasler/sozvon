@@ -71,6 +71,24 @@ func (h *Hub) Send(userID int64, message any) {
 	}
 }
 
+// SendExcept — всем живым соединениям пользователя, кроме одного.
+// Нужно для звонка: ответившее устройство не должно получить «answered elsewhere»,
+// а остальные устройства обязаны погасить входящий звонок.
+func (h *Hub) SendExcept(userID int64, except *Conn, message any) {
+	h.mu.Lock()
+	set := h.users[userID]
+	conns := make([]*Conn, 0, len(set))
+	for conn := range set {
+		if conn != except {
+			conns = append(conns, conn)
+		}
+	}
+	h.mu.Unlock()
+	for _, conn := range conns {
+		conn.Send(message)
+	}
+}
+
 func (h *Hub) DropSession(userID int64, sid string) {
 	h.mu.Lock()
 	set := h.users[userID]
