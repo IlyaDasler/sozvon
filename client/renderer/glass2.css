@@ -543,3 +543,85 @@ html[data-theme='glass2'] .sidebar-head .icon-btn > svg {
     inset 0 0 0 1px rgba(210, 248, 255, 0.14),
     0 0 16px rgba(102, 229, 241, 0.10);
 }
+
+/* ---------- Вкладки друзей: без разделительной линии ---------- */
+[data-theme='glass2'] .friends-head,
+[data-theme='glass2'] .friend-tabs {
+  border-bottom: 0 !important;
+}
+[data-theme='glass2'] .friend-tabs {
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+}
+
+[data-theme='glass2'] .friend-tabs button {
+  position: relative;
+  z-index: 1;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(184, 236, 255, 0.13);
+  border-radius: 999px;
+  background: rgba(12, 24, 33, 0.20);
+  color: #c9e1e9;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    color 180ms ease,
+    box-shadow 220ms ease,
+    transform 180ms ease;
+}
+[data-theme='glass2'] .friend-tabs button:hover {
+  background: rgba(37, 63, 75, 0.36);
+  border-color: rgba(155, 240, 249, 0.34);
+  color: #ecfbff;
+}
+[data-theme='glass2'] .friend-tabs button.active {
+  color: #edfdff;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: translateY(-1px);
+}
+
+/* Подвижная стеклянная пилюля под активной вкладкой */
+[data-theme='glass2'] #friend-tabs .glass-tab-indicator {
+  z-index: 0;
+  border: 1px solid rgba(143, 240, 249, 0.48);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(121, 236, 246, 0.24), rgba(157, 145, 255, 0.12));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 0 18px rgba(104, 232, 244, 0.16);
+}
+
+/* Кнопка «Добавить в друзья» — такая же стеклянная пилюля, но с зелёным оттенком */
+[data-theme='glass2'] .friend-tabs .add-tab {
+  background: linear-gradient(135deg, rgba(112, 235, 171, 0.22), rgba(91, 201, 229, 0.10)) !important;
+  border-color: rgba(145, 243, 190, 0.38) !important;
+  color: #c9f8da !important;
+}
+[data-theme='glass2'] .friend-tabs .add-tab:hover {
+  background: linear-gradient(135deg, rgba(130, 248, 186, 0.32), rgba(110, 218, 240, 0.16)) !important;
+  border-color: rgba(166, 255, 204, 0.56) !important;
+  color: #ecfff4 !important;
+}
+[data-theme='glass2'] .friend-tabs .add-tab.active {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+/* Строка поиска друзей — прозрачное стекло, а не чёрная плашка */
+[data-theme='glass2'] .friend-search {
+  background: rgba(9, 19, 27, 0.34) !important;
+  border: 1px solid rgba(184, 236, 255, 0.18) !important;
+  border-radius: 13px !important;
+  color: #e6f5f9 !important;
+  -webkit-backdrop-filter: blur(12px) saturate(145%) brightness(0.86);
+  backdrop-filter: blur(12px) saturate(145%) brightness(0.86);
+}
+[data-theme='glass2'] .friend-search::placeholder {
+  color: #7f99a6;
+}
