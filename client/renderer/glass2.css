@@ -477,3 +477,27 @@
 [data-theme='glass2'] .status-item:hover {
   background: rgba(180, 240, 250, 0.08);
 }
+
+/* Подсказка рейла лежит внутри .main, но не должна становиться flex-элементом:
+   иначе при наведении на канал появляется огромный разрыв в столбце. */
+[data-theme='glass2'] .main > .rail-tip {
+  position: fixed !important;
+  z-index: 80;
+  height: auto !important;
+  max-height: none;
+  align-self: auto !important;
+}
+[data-theme='glass2'] .rail-tip {
+  padding: 7px 11px;
+  border: 1px solid rgba(184, 236, 255, 0.24);
+  border-radius: 11px;
+  background: linear-gradient(145deg, rgba(228, 254, 255, 0.14), rgba(12, 23, 32, 0.46));
+  -webkit-backdrop-filter: blur(18px) saturate(150%) brightness(0.84);
+  backdrop-filter: blur(18px) saturate(150%) brightness(0.84);
+  color: #eaf8fb;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
