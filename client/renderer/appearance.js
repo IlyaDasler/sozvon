@@ -11,13 +11,14 @@ const THEMES = [
   { id: 'silenthill', name: 'Забвение', hint: 'Серый туман, безысходность и ржавый акцент' },
   { id: 'neutron', name: 'Нейтрон', hint: 'Фиолетовый космос и тёмное стекло' },
   { id: 'ferrari', name: 'Феррари', hint: 'Карбон, алый Rosso Corsa и гоночный жёлтый' },
+  { id: 'glass2', name: 'Совон v2', hint: 'Тёмное стекло macOS: вечерний пейзаж и холодные блики' },
   { id: 'glass', name: 'Совон', hint: 'Совон — размытие, мягкий свет и живой лес; тема по умолчанию' },
   { id: 'fuji', name: 'Фуджи', hint: 'Фуджи — японский пейзаж, киноварь и золото, живой свет' },
 ];
 
 const THEME_GROUPS = [
   { title: 'Классические темы', ids: ['sozvon', 'dark', 'midnight', 'light', 'neutron', 'frost', 'cold'] },
-  { title: 'Новые темы', ids: ['silenthill', 'ferrari', 'glass', 'fuji'] },
+  { title: 'Новые темы', ids: ['silenthill', 'ferrari', 'glass', 'fuji', 'glass2'] },
 ];
 
 const currentTheme = () => document.documentElement.dataset.themeId || document.documentElement.dataset.theme || 'glass';
@@ -191,8 +192,8 @@ let lastSystemColors = null;
 function applySystemColors(info) {
   if (info) lastSystemColors = info;
   const root = document.documentElement.style;
-  // «Забвение» живёт по своей палитре: системный синий акцент его ломает
-  if (currentTheme() === 'silenthill') {
+  // «Забвение» и «Совон v2» живут по своей палитре: системный синий акцент их ломает
+  if (currentTheme() === 'silenthill' || currentTheme() === 'glass2') {
     root.removeProperty('--accent');
     root.removeProperty('--accent-2');
     root.removeProperty('--accent-hover');
