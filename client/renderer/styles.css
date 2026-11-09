@@ -2347,8 +2347,8 @@ input[type='radio']:disabled { opacity: .45; cursor: default; }
 .chat { min-width: 0; }
 .sidebar { min-width: 0; }
 
-@media (max-width: 1180px) {
-  /* Правая панель участников уступает место чату */
+@media (max-width: 900px) {
+  /* Правая панель участников уступает место чату только на узком окне */
   #members-panel:not(.drawer-open) { display: none !important; }
 }
 @media (max-width: 900px) {
