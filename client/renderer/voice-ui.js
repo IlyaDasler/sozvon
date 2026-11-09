@@ -719,6 +719,12 @@ function toggleScreen() {
   const session = activeSession();
   if (!session) return;
   if (noVideoRight()) return;
+  // В браузере нет нашего окна выбора источника: система уже показала свой выбор,
+  // а остановить показ из интерфейса иначе нечем. Повторное нажатие — стоп.
+  if (!window.desktop?.screen && session.local.tracks.screen) {
+    session.stopScreen();
+    return;
+  }
   openScreenPicker({ change: Boolean(session.local.tracks.screen) });
 }
 
