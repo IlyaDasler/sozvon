@@ -777,3 +777,8 @@ html[data-theme='glass2'] .sidebar-head .icon-btn:hover:not(:disabled) > svg {
     inset 0 1px 0 rgba(255, 255, 255, 0.26),
     0 0 18px rgba(116, 238, 170, 0.24);
 }
+
+/* Активная вкладка: только аккуратная стеклянная пилюля, без внешнего свечения */
+[data-theme='glass2'] #friend-tabs .glass-tab-indicator {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20) !important;
+}
