@@ -246,11 +246,11 @@
   --accent-soft: color-mix(in srgb, var(--accent) 20%, var(--bg-deep));
   --on-accent: #f0eae4;
   --link: #b08568;
-  --ok: #6f7f5e;
-  --idle: #9a7a4a;
-  --warn: #9a7a4a;
-  --danger: #8a3f2e;
-  --danger-hover: #743326;
+  --ok: #86a46e;
+  --idle: #c49a58;
+  --warn: #c49a58;
+  --danger: #b8563f;
+  --danger-hover: #9e4634;
   --glow: color-mix(in srgb, var(--accent) 26%, transparent);
   --edge: #ffffff;
   --ink: #000000;
