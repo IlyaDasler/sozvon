@@ -1,0 +1,163 @@
+/* Фуджи — японская тема на стеклянном движке «Совона».
+   Фон — четыре состояния одного пейзажа; панели остаются полупрозрачными,
+   акцент — киноварь, второй — тёплое золото. */
+
+html[data-theme='glass'][data-theme-id='fuji'] {
+  --bg-deep: #0a1220;
+  --bg: rgba(10, 18, 31, 0.62);
+  --bg-2: rgba(8, 15, 27, 0.72);
+  --bg-3: rgba(22, 33, 47, 0.58);
+  --bg-4: rgba(255, 255, 255, 0.10);
+  --bg-5: rgba(255, 255, 255, 0.16);
+  --line: rgba(240, 218, 177, 0.16);
+  --line-strong: rgba(240, 218, 177, 0.28);
+  --text: #f7f1e5;
+  --text-2: #ddd5c7;
+  --muted: #aeb9bd;
+  --text-3: #778a92;
+  --accent: #cf4e44;
+  --accent-theme: #cf4e44;
+  --accent-2: #e7b66e;
+  --accent-hover: #ad3c35;
+  --accent-soft: rgba(207, 78, 68, 0.20);
+  --on-accent: #fff8ed;
+  --link: #f0bd78;
+  --ok: #7fc7a3;
+  --idle: #e7b66e;
+  --warn: #e7b66e;
+  --danger: #e05d58;
+  --danger-hover: #c64a46;
+  --glass-blur: 30px;
+  --shadow: 0 24px 64px rgba(3, 7, 14, 0.55), 0 0 0 1px rgba(240, 218, 177, 0.08);
+  --header-shadow: 0 1px 0 rgba(240, 218, 177, 0.10);
+  color-scheme: dark;
+}
+
+/* Пейзаж: медленный «дыхательный» кен-бёрнс, как мягкое движение в «Совоне» */
+html[data-theme-id='fuji'] .lg-aurora {
+  animation: fuji-kenburns 36s ease-in-out infinite alternate;
+  transform-origin: 50% 42%;
+  will-change: transform;
+}
+
+html[data-theme-id='fuji'] .lg-aurora::after {
+  background:
+    linear-gradient(180deg, rgba(4, 10, 20, 0.34), rgba(4, 10, 20, 0.18) 48%, rgba(4, 10, 20, 0.36));
+}
+
+html[data-theme-id='fuji'][data-daypart='dawn'] .lg-aurora::after {
+  background: linear-gradient(180deg, rgba(8, 14, 30, 0.26), rgba(8, 14, 30, 0.14));
+}
+
+html[data-theme-id='fuji'][data-daypart='day'] .lg-aurora::after {
+  background: linear-gradient(180deg, rgba(4, 10, 20, 0.16), rgba(4, 10, 20, 0.08));
+}
+
+html[data-theme-id='fuji'][data-daypart='sunset'] .lg-aurora::after {
+  background: linear-gradient(180deg, rgba(24, 12, 20, 0.22), rgba(24, 12, 20, 0.12));
+}
+
+html[data-theme-id='fuji'][data-daypart='night'] .lg-aurora::after {
+  background: linear-gradient(180deg, rgba(3, 7, 16, 0.38), rgba(3, 7, 16, 0.28));
+}
+
+@keyframes fuji-kenburns {
+  from { transform: scale(1.015) translate3d(0, 0, 0); }
+  to { transform: scale(1.065) translate3d(-0.6%, -0.4%, 0); }
+}
+
+/* Киноварная печать вместо холодной синей подсветки */
+html[data-theme-id='fuji'] .rail-item.active::before {
+  background: var(--accent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+html[data-theme-id='fuji'] .rail-item.active .rail-tile {
+  background: color-mix(in srgb, var(--accent) 30%, rgba(10, 18, 31, 0.72));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent),
+    0 8px 24px rgba(2, 6, 14, 0.35);
+}
+html[data-theme-id='fuji'] .rail-item.active .rail-tile.folder-tile {
+  background: color-mix(in srgb, var(--accent) 24%, rgba(10, 18, 31, 0.72));
+}
+html[data-theme-id='fuji'] .room-row.active {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent);
+}
+html[data-theme-id='fuji'] .room-row.active .name,
+html[data-theme-id='fuji'] .room-row.active .room-icon {
+  color: var(--text);
+}
+
+html[data-theme-id='fuji'] .sidebar {
+  background-color: rgba(7, 14, 25, 0.46);
+}
+html[data-theme-id='fuji'] .content {
+  background-color: rgba(7, 14, 25, 0.10);
+}
+html[data-theme-id='fuji'] .chat {
+  background-color: rgba(7, 14, 25, 0.16);
+}
+
+html[data-theme-id='fuji'] .sidebar-head,
+html[data-theme-id='fuji'] .chat-head {
+  background-color: rgba(7, 14, 25, 0.46);
+  border-color: rgba(240, 218, 177, 0.12);
+}
+
+html[data-theme-id='fuji'] .set-block,
+html[data-theme-id='fuji'] .set-nav,
+html[data-theme-id='fuji'] .theme-preview {
+  background-color: rgba(7, 14, 25, 0.44);
+}
+
+/* Тонкая «бумажная» кромка у стеклянных карточек */
+html[data-theme-id='fuji'] .modal-card,
+html[data-theme-id='fuji'] .notif-panel,
+html[data-theme-id='fuji'] .reaction-pop {
+  border-color: rgba(240, 218, 177, 0.22);
+}
+
+/* Заголовки — спокойная японская антиква; основной текст остаётся системным */
+html[data-theme-id='fuji'] .auth-headline,
+html[data-theme-id='fuji'] .auth-word,
+html[data-theme-id='fuji'] .sidebar-head .name,
+html[data-theme-id='fuji'] .chat-head .name,
+html[data-theme-id='fuji'] .theme-group h4,
+html[data-theme-id='fuji'] .set-head h2,
+html[data-theme-id='fuji'] .modal-card h2 {
+  font-family: 'Yu Mincho', 'Hiragino Mincho ProN', 'Noto Serif JP', 'Times New Roman', serif;
+  letter-spacing: 0.035em;
+}
+
+
+.theme-preview[data-theme='fuji'] {
+  --bg: #0d1a2a;
+  --bg-2: #0a1523;
+  --bg-3: #1b2b3a;
+  --bg-4: #2c3d4b;
+  --muted: #c2c9c5;
+  --accent: #cf4e44;
+  background: linear-gradient(145deg, #12243a, #293443 55%, #6b3b39);
+  background-image: linear-gradient(180deg, rgba(8, 15, 27, 0.20), rgba(8, 15, 27, 0.55)), url('fuji-day.jpg');
+  background-position: center;
+  background-size: cover;
+}
+
+.theme-preview[data-theme='fuji'] .tp-side {
+  background: rgba(7, 14, 25, 0.62);
+}
+
+.theme-preview[data-theme='fuji'] .tp-side i:first-child {
+  background: #cf4e44;
+}
+
+.theme-preview[data-theme='fuji'] .tp-main i {
+  background: #d8d2c4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme-id='fuji'] .lg-aurora {
+    animation: none;
+  }
+}

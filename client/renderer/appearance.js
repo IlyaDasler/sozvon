@@ -12,14 +12,15 @@ const THEMES = [
   { id: 'neutron', name: 'Нейтрон', hint: 'Фиолетовый космос и тёмное стекло' },
   { id: 'ferrari', name: 'Феррари', hint: 'Карбон, алый Rosso Corsa и гоночный жёлтый' },
   { id: 'glass', name: 'Совон', hint: 'Совон — размытие, мягкий свет и живой лес; тема по умолчанию' },
+  { id: 'fuji', name: 'Фуджи', hint: 'Фуджи — японский пейзаж, киноварь и золото, живой свет' },
 ];
 
 const THEME_GROUPS = [
   { title: 'Классические темы', ids: ['sozvon', 'dark', 'midnight', 'light', 'neutron', 'frost', 'cold'] },
-  { title: 'Новые темы', ids: ['silenthill', 'ferrari', 'glass'] },
+  { title: 'Новые темы', ids: ['silenthill', 'ferrari', 'glass', 'fuji'] },
 ];
 
-const currentTheme = () => document.documentElement.dataset.theme || 'glass';
+const currentTheme = () => document.documentElement.dataset.themeId || document.documentElement.dataset.theme || 'glass';
 
 /** Кнопки окна Windows — в цвета полосы окна текущей темы */
 function syncTitleBar() {
@@ -34,11 +35,15 @@ function setTheme(id) {
   document.documentElement.classList.add('theme-switching');
   clearTimeout(themeSwitchTimer);
   themeSwitchTimer = setTimeout(() => document.documentElement.classList.remove('theme-switching'), 400);
-  document.documentElement.dataset.theme = id;
+  // Фуджи использует весь стеклянный движок «Совона», но со своей палитрой
+  // и своим пейзажем. data-theme остаётся glass, data-theme-id хранит выбор.
+  document.documentElement.dataset.theme = id === 'fuji' ? 'glass' : id;
+  document.documentElement.dataset.themeId = id;
   store.set('theme', id);
   syncTitleBar();
   applyGlass();
   refreshSystemColors();
+  window.sozvonDaypart?.refresh?.();
   renderThemePicker();
 }
 

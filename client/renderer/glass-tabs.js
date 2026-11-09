@@ -11,9 +11,13 @@
   ];
 
   const themeName = () => document.documentElement.dataset.theme || '';
-  // Плашка-указатель живёт в «Стекле» и в тёмной теме (там только у вкладок друзей)
+  const themeId = () => document.documentElement.dataset.themeId || themeName();
+  // Плашка-указатель живёт в «Стекле» и в тёмной теме (там только у вкладок друзей).
+  // В «Глубине» и «Фуджи» она обязана двигаться и по рейлу каналов, включая
+  // выделенный раздел-папку, а не только по вкладкам друзей.
   const usesTabs = (root) =>
     themeName() === 'glass' ||
+    (root.id === 'rail-list' && (themeId() === 'sozvon' || themeId() === 'fuji')) ||
     (['sozvon', 'dark', 'midnight', 'light', 'frost', 'cold', 'neutron', 'silenthill'].includes(themeName()) &&
       root.id === 'friend-tabs');
   const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
