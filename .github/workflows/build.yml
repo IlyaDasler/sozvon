@@ -278,8 +278,7 @@ jobs:
         run: |
           set -euo pipefail
           install -d -m700 ~/.ssh
-          printf '%s
-' "$SSH_KEY" > ~/.ssh/sozvon_deploy
+          echo "$SSH_KEY" > ~/.ssh/sozvon_deploy
           chmod 600 ~/.ssh/sozvon_deploy
           ssh-keyscan -H 135.106.226.12 >> ~/.ssh/known_hosts
           rsync -az --delete --exclude 'updates/'             -e "ssh -i ~/.ssh/sozvon_deploy -o StrictHostKeyChecking=yes"             client/renderer/ root@135.106.226.12:/opt/sozvon-web/
