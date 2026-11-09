@@ -92,12 +92,25 @@
 }
 
 /* Всё цветное — в серость */
-[data-theme='silenthill'] .avatar,
 [data-theme='silenthill'] .rail-tile img,
 [data-theme='silenthill'] .msg-image img,
 [data-theme='silenthill'] .msg-embed img,
 [data-theme='silenthill'] .attachment img {
   filter: grayscale(0.75) contrast(1.05) brightness(0.95);
+}
+
+/* Статусы остаются цветными, как в остальных темах, — даже внутри аватарок */
+[data-theme='silenthill'] .status-dot.s-online,
+[data-theme='silenthill'] .avatar .status.s-online {
+  background: #4ade80 !important;
+}
+[data-theme='silenthill'] .status-dot.s-idle,
+[data-theme='silenthill'] .avatar .status.s-idle {
+  background: #f0b232 !important;
+}
+[data-theme='silenthill'] .status-dot.s-dnd,
+[data-theme='silenthill'] .avatar .status.s-dnd {
+  background: #f2555a !important;
 }
 
 /* Рейл — ржавые плитки */
