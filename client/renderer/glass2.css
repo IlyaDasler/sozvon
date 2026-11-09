@@ -85,8 +85,8 @@
   border-radius: 22px;
   overflow: hidden;
 }
-[data-theme='glass2'] .content {
-  margin-left: 0;
+html[data-theme='glass2'] .content {
+  margin-left: 0 !important;
   border-radius: 22px;
   overflow: hidden;
   background:
