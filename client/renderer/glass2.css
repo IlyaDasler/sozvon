@@ -520,3 +520,26 @@ html[data-theme='glass2'] .content {
   margin: auto;
   flex: none;
 }
+
+/* В шапке сайдбара кнопка 28 px, а значок был 17 px — из-за полупикселя
+   (5,5 px с каждой стороны) сглаживание визуально сдвигало иконку. Берём 18 px:
+   ровно по 5 px с каждой стороны, без дробных центров. */
+html[data-theme='glass2'] .sidebar-head .icon-btn > svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* У маленьких кнопок blur фона даёт неровное пятно, из-за которого кажется,
+   что иконка стоит не по центру. Делаем подложку ровной и симметричной. */
+[data-theme='glass2'] :is(.icon-btn, .round-btn, .nav-btn, .composer-btn) {
+  background: rgba(14, 25, 34, 0.42);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: inset 0 0 0 1px rgba(210, 248, 255, 0.06);
+}
+[data-theme='glass2'] :is(.icon-btn, .round-btn, .nav-btn, .composer-btn):hover {
+  background: rgba(34, 58, 70, 0.56);
+  box-shadow:
+    inset 0 0 0 1px rgba(210, 248, 255, 0.14),
+    0 0 16px rgba(102, 229, 241, 0.10);
+}
