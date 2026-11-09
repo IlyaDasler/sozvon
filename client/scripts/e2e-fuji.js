@@ -30,12 +30,25 @@ runTest(async () => {
     if (s.phase !== phase || !s.bg.includes(`fuji-${phase}.jpg`)) throw new Error(`Фаза ${phase} не применилась: ${state}`);
   }
 
+  // Один и тот же указатель переезжает с верхнего раздела на канал,
+  // а не остаётся отдельной плашкой только в списке каналов.
+  await js(w, `selectContact(null); true`);
+  await sleep(350);
+  const homeMarker = await js(w, `(() => { const h=document.querySelector('#rail-home-item.active'); const i=document.querySelector('#rail > .glass-tab-indicator'); return JSON.stringify({home:Boolean(h), hidden:i?.hidden !== false, y:i?.getBoundingClientRect().y || 0}); })()`);
+  const hm = JSON.parse(homeMarker);
+  if (!hm.home || hm.hidden) throw new Error(`верхний раздел не подсвечен: ${homeMarker}`);
+  await js(w, `openHub(${hub.id}); true`);
+  await sleep(350);
+  const hubMarker = await js(w, `(() => { const i=document.querySelector('#rail > .glass-tab-indicator'); return JSON.stringify({hidden:i?.hidden !== false, y:i?.getBoundingClientRect().y || 0}); })()`);
+  const hm2 = JSON.parse(hubMarker);
+  if (hm2.hidden || hm2.y <= hm.y) throw new Error(`указатель не переехал с верхнего раздела: ${homeMarker} -> ${hubMarker}`);
+
   // Указатель рейла виден и в Фуджи, и в «Глубине»; раскрытая папка тоже
   // остаётся выделенным разделом, а не теряет подсветку.
   for (const id of ['fuji', 'sozvon']) {
     await js(w, `setTheme('${id}'); store.set('rail:' + state.me.id, { items: [{ folder: 'f-test', name: 'Тест', hubs: [${hub.id}, ${hub2.id}], collapsed: false }] }); renderRail(); true`);
     await sleep(500);
-    const rail = await js(w, `(() => { const head=document.querySelector('.rail-item.folder-head.active'); const ind=document.querySelector('#rail-list > .glass-tab-indicator'); return JSON.stringify({head:Boolean(head), hidden:ind?.hidden !== false, width:ind?.style.width || ''}); })()`);
+    const rail = await js(w, `(() => { const head=document.querySelector('.rail-item.folder-head.active'); const ind=document.querySelector('#rail > .glass-tab-indicator'); return JSON.stringify({head:Boolean(head), hidden:ind?.hidden !== false, width:ind?.style.width || ''}); })()`);
     const r = JSON.parse(rail);
     if (!r.head) throw new Error(`В ${id} папка не стала активным разделом`);
     if (r.hidden) throw new Error(`В ${id} указатель рейла не появился`);
