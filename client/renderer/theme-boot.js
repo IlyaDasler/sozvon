@@ -3,8 +3,10 @@
   try {
     const theme = JSON.parse(localStorage.getItem('theme'));
     // Убранные темы (forest, dusk) и любые неизвестные значения — на «Глубину»
-    const allowed = ['sozvon', 'dark', 'midnight', 'light', 'frost', 'cold', 'neutron', 'silenthill', 'ferrari', 'glass'];
-    document.documentElement.dataset.theme = allowed.includes(theme) ? theme : (theme ? 'sozvon' : 'glass');
+    const allowed = ['sozvon', 'dark', 'midnight', 'light', 'frost', 'cold', 'neutron', 'silenthill', 'ferrari', 'glass', 'fuji'];
+    const picked = allowed.includes(theme) ? theme : (theme ? 'sozvon' : 'glass');
+    document.documentElement.dataset.theme = picked === 'fuji' ? 'glass' : picked;
+    document.documentElement.dataset.themeId = picked;
   } catch {}
   // В браузере нет окна приложения: полоса с кнопками «назад/вперёд» и перетаскиванием не нужна
   if (!window.desktop) document.documentElement.classList.add('is-web');
