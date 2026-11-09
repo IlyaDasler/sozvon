@@ -122,7 +122,7 @@ html[data-theme='glass2'] .content {
 [data-theme='glass2'] .sidebar-head,
 [data-theme='glass2'] .members-head,
 [data-theme='glass2'] .friends-head {
-  height: 56px;
+  height: 68px;
   background: transparent;
   border-bottom: 1px solid rgba(178, 232, 248, 0.11);
   border-radius: 22px 22px 0 0;
