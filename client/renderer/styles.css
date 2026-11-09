@@ -2926,3 +2926,7 @@ html[data-theme='glass'] .cam-select { background: rgba(255,255,255,0.06); borde
 /* Сообщение с обсуждением открывает тред по клику */
 .msg.msg-has-thread { cursor: pointer; }
 
+
+/* Windows: кнопки окна системные — у них есть Snap Layouts Windows 11 */
+html.is-win .win-controls { display: none !important; }
+html.is-win .titlebar { padding-right: 146px; }
