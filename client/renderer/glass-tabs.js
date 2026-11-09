@@ -19,6 +19,7 @@
   // выделенный раздел-папку, а не только по вкладкам друзей.
   const usesTabs = (root) =>
     themeName() === 'glass' ||
+    themeName() === 'glass2' ||
     (root.id === 'rail' && (themeId() === 'sozvon' || themeId() === 'fuji')) ||
     (['sozvon', 'dark', 'midnight', 'light', 'frost', 'cold', 'neutron', 'silenthill'].includes(themeName()) &&
       root.id === 'friend-tabs');
