@@ -1,0 +1,8 @@
+[Unit]
+Description=Созвон: обновить веб-версию до последнего релиза
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sozvon-web-sync

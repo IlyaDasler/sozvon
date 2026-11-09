@@ -7,13 +7,19 @@
     { id: 'friend-tabs', vertical: false },
     { id: 'set-nav', vertical: true },
     { id: 'privacy-subnav', vertical: true },
-    { id: 'rail-list', vertical: true, selector: '.rail-item.active .rail-tile', inflate: 7 },
+    // Один указатель на весь рейл: верхний раздел, папки и каналы
+    // перетекают друг в друга, а не живут двумя отдельными плашками.
+    { id: 'rail', vertical: true, selector: '.rail-item.active .rail-tile', inflate: 7, scrollRoot: 'rail-list' },
   ];
 
   const themeName = () => document.documentElement.dataset.theme || '';
-  // Плашка-указатель живёт в «Стекле» и в тёмной теме (там только у вкладок друзей)
+  const themeId = () => document.documentElement.dataset.themeId || themeName();
+  // Плашка-указатель живёт в «Стекле» и в тёмной теме (там только у вкладок друзей).
+  // В «Глубине» и «Фуджи» она обязана двигаться и по рейлу каналов, включая
+  // выделенный раздел-папку, а не только по вкладкам друзей.
   const usesTabs = (root) =>
     themeName() === 'glass' ||
+    (root.id === 'rail' && (themeId() === 'sozvon' || themeId() === 'fuji')) ||
     (['sozvon', 'dark', 'midnight', 'light', 'frost', 'cold', 'neutron', 'silenthill'].includes(themeName()) &&
       root.id === 'friend-tabs');
   const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -24,7 +30,7 @@
     return buttons.find((b) => b.classList.contains('active') || b.getAttribute('aria-selected') === 'true') || null;
   }
 
-  function create(root, vertical, selector, inflate = 0) {
+  function create(root, vertical, selector, inflate = 0, scrollRoot = null) {
     if (root.dataset.glassTabs === '1') return null;
     root.dataset.glassTabs = '1';
     root.classList.add('glass-tabs');
@@ -77,6 +83,8 @@
 
     const onScroll = () => place(false);
     root.addEventListener('scroll', onScroll, { passive: true });
+    const scrollParent = scrollRoot ? document.getElementById(scrollRoot) : null;
+    scrollParent?.addEventListener('scroll', onScroll, { passive: true });
     new ResizeObserver(() => place(false)).observe(root);
     new MutationObserver((records) => {
       if (records.some((r) => r.type === 'attributes' || r.type === 'childList')) place();
@@ -88,9 +96,9 @@
   }
 
   function init() {
-    for (const { id, vertical, selector, inflate } of GROUPS) {
+    for (const { id, vertical, selector, inflate, scrollRoot } of GROUPS) {
       const root = document.getElementById(id);
-      if (root) create(root, vertical, selector, inflate);
+      if (root) create(root, vertical, selector, inflate, scrollRoot);
     }
   }
 
