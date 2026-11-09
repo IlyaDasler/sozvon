@@ -257,6 +257,39 @@
   --accent-contrast: #f0eae4;
   color-scheme: dark;
 }
+/* Совон v2: тёмное macOS-стекло, вечерний пейзаж и холодные блики. */
+[data-theme='glass2'] {
+  --bg-deep: #03080d;
+  --bg: rgba(8, 16, 23, 0.42);
+  --bg-2: rgba(7, 14, 21, 0.56);
+  --bg-3: rgba(17, 31, 42, 0.62);
+  --bg-4: rgba(25, 43, 56, 0.74);
+  --bg-5: rgba(36, 57, 72, 0.82);
+  --line: rgba(176, 230, 244, 0.13);
+  --line-strong: rgba(176, 238, 250, 0.26);
+  --text: #edf8fb;
+  --text-2: #c2d8e0;
+  --muted: #89a3b0;
+  --text-3: #617d8b;
+  --accent: #8ff0f6 !important;
+  --accent-theme: #65cbd8 !important;
+  --accent-2: #b9a7ff !important;
+  --accent-hover: #b8fbff !important;
+  --accent-soft: color-mix(in srgb, var(--accent) 18%, var(--bg-deep));
+  --on-accent: #031015;
+  --link: #9fefff;
+  --ok: #4ade80;
+  --idle: #f0b232;
+  --warn: #f0b232;
+  --danger: #f2555a;
+  --danger-hover: #de464b;
+  --glow: color-mix(in srgb, var(--accent) 34%, transparent);
+  --edge: #ffffff;
+  --ink: #000000;
+  --accent-contrast: #031015;
+  --sidebar-w: 268px;
+  color-scheme: dark;
+}
 /* Нейтрон: фиолетовый космос, тёмное стекло и мягкое сияние.
    Вдохновлено темой Neutron Nova: полупрозрачные панели на фоне туманности. */
 [data-theme='neutron'] {

@@ -1,0 +1,453 @@
+/* ============================================================================
+   Совон v2 — отдельная тема: тёмное macOS-стекло, вечерний пейзаж за панелями,
+   графит, холодные блики и большие скругления.
+   ========================================================================== */
+
+[data-theme='glass2'] body {
+  background: #03080d;
+}
+
+[data-theme='glass2'] .main {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 6px 10px 10px;
+  padding: 12px;
+  gap: 12px;
+  background: transparent;
+  border-radius: 26px;
+}
+[data-theme='glass2'] .main::before {
+  content: '';
+  position: absolute;
+  inset: -4%;
+  z-index: 0;
+  pointer-events: none;
+  background: url('glass2-wallpaper.jpg') center 38% / cover no-repeat;
+  filter: brightness(0.66) contrast(1.12) saturate(0.78) hue-rotate(14deg);
+  animation: glass2-drift 34s ease-in-out infinite alternate;
+}
+[data-theme='glass2'] .main::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(80% 70% at 18% 8%, rgba(130, 235, 245, 0.12), transparent 56%),
+    radial-gradient(70% 60% at 86% 90%, rgba(154, 138, 255, 0.10), transparent 60%),
+    linear-gradient(180deg, rgba(1, 7, 12, 0.24), rgba(1, 5, 9, 0.48));
+}
+[data-theme='glass2'] .main > * {
+  position: relative;
+  z-index: 1;
+}
+@keyframes glass2-drift {
+  from { transform: scale(1.02) translate3d(-0.6%, -0.4%, 0); }
+  to { transform: scale(1.06) translate3d(0.8%, 0.6%, 0); }
+}
+
+/* Полоса окна — тоже стекло, но темнее, чтобы не спорить с панелями */
+[data-theme='glass2'] .titlebar {
+  height: 34px;
+  background: rgba(4, 10, 16, 0.45);
+  border-bottom: 1px solid rgba(175, 230, 245, 0.10);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+  backdrop-filter: blur(22px) saturate(135%);
+}
+
+/* ---------- Четыре плавающие стеклянные колонки ---------- */
+
+[data-theme='glass2'] .rail,
+[data-theme='glass2'] .sidebar,
+[data-theme='glass2'] .content,
+[data-theme='glass2'] .members-panel {
+  border: 1px solid rgba(184, 236, 255, 0.22);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(224, 252, 255, 0.11), rgba(9, 18, 27, 0.27) 34%, rgba(2, 7, 11, 0.46) 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(18px) saturate(145%);
+  box-shadow:
+    0 26px 64px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24);
+}
+[data-theme='glass2'] .rail {
+  width: 70px;
+  padding: 10px 0;
+  gap: 7px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+[data-theme='glass2'] .sidebar {
+  width: var(--sidebar-w, 268px);
+  border-radius: 22px;
+  overflow: hidden;
+}
+[data-theme='glass2'] .content {
+  border-radius: 22px;
+  overflow: hidden;
+  background:
+    linear-gradient(150deg, rgba(215, 250, 255, 0.08), rgba(9, 18, 27, 0.19) 42%, rgba(2, 7, 11, 0.40));
+}
+[data-theme='glass2'] .members-panel {
+  width: 258px;
+  margin-left: 0;
+  border-radius: 22px;
+  overflow: hidden;
+  background:
+    linear-gradient(160deg, rgba(215, 250, 255, 0.09), rgba(9, 17, 26, 0.24) 36%, rgba(2, 7, 11, 0.44));
+}
+
+/* Тонкий блик по верхней кромке панелей */
+[data-theme='glass2'] .sidebar::after,
+[data-theme='glass2'] .content::after,
+[data-theme='glass2'] .members-panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(220, 255, 255, 0.42), transparent);
+}
+
+/* ---------- Шапки: без плотной заливки ---------- */
+
+[data-theme='glass2'] .chat-head,
+[data-theme='glass2'] .sidebar-head,
+[data-theme='glass2'] .members-head,
+[data-theme='glass2'] .friends-head {
+  height: 56px;
+  background: transparent;
+  border-bottom: 1px solid rgba(178, 232, 248, 0.11);
+  border-radius: 22px 22px 0 0;
+}
+[data-theme='glass2'] .chat-head .peer-name,
+[data-theme='glass2'] .list-title,
+[data-theme='glass2'] .theme-group h4,
+[data-theme='glass2'] .h4,
+[data-theme='glass2'] h4,
+[data-theme='glass2'] .set-block h4 {
+  color: #edf8fb;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+[data-theme='glass2'] .list-title {
+  color: #8fe8f2;
+  letter-spacing: 0.13em;
+  font-size: 10px;
+}
+[data-theme='glass2'] .chat-head .chat-sub,
+[data-theme='glass2'] .members .muted {
+  color: #8ba4b1;
+}
+
+/* ---------- Рейл ---------- */
+
+[data-theme='glass2'] .rail-list {
+  gap: 8px;
+  padding: 10px 0 14px;
+}
+[data-theme='glass2'] .rail-item {
+  width: 70px;
+}
+[data-theme='glass2'] .rail-item::before {
+  display: none;
+}
+[data-theme='glass2'] .rail-tile {
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(184, 236, 255, 0.16);
+  border-radius: 15px;
+  background: rgba(18, 31, 41, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 6px 16px rgba(0, 0, 0, 0.22);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+[data-theme='glass2'] .rail-tile:hover {
+  transform: none;
+  border-color: rgba(155, 239, 248, 0.60);
+  background: rgba(30, 55, 68, 0.52);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 0 0 3px rgba(120, 230, 240, 0.10),
+    0 10px 26px rgba(0, 0, 0, 0.30);
+}
+[data-theme='glass2'] .rail-item.active .rail-tile {
+  border-color: rgba(148, 244, 251, 0.82);
+  background: rgba(35, 80, 92, 0.46);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.30),
+    0 0 0 1px rgba(134, 238, 247, 0.34),
+    0 0 22px rgba(91, 224, 240, 0.22),
+    0 12px 28px rgba(0, 0, 0, 0.32);
+}
+[data-theme='glass2'] .rail-home {
+  width: 46px;
+  height: 46px;
+}
+[data-theme='glass2'] .rail-sep {
+  width: 32px;
+  height: 1px;
+  margin: 5px 0;
+  background: rgba(178, 232, 248, 0.18);
+}
+
+/* ---------- Списки и строки ---------- */
+
+[data-theme='glass2'] .contact,
+[data-theme='glass2'] .friend-row,
+[data-theme='glass2'] .room-row,
+[data-theme='glass2'] .friends-nav {
+  border: 1px solid transparent;
+  border-radius: 12px;
+  margin: 2px 8px;
+  color: #c8dbe3;
+}
+[data-theme='glass2'] .contact:hover,
+[data-theme='glass2'] .friend-row:hover,
+[data-theme='glass2'] .room-row:hover,
+[data-theme='glass2'] .friends-nav:hover {
+  background: rgba(180, 240, 250, 0.08);
+  border-color: rgba(180, 240, 250, 0.12);
+}
+[data-theme='glass2'] .contact.active,
+[data-theme='glass2'] .room-row.active,
+[data-theme='glass2'] .friends-nav.active {
+  background:
+    linear-gradient(100deg, rgba(120, 230, 242, 0.16), rgba(150, 150, 255, 0.05) 80%);
+  border-color: rgba(150, 238, 248, 0.28);
+  box-shadow: inset 2px 0 0 rgba(139, 240, 249, 0.82), 0 8px 22px rgba(0, 0, 0, 0.14);
+}
+[data-theme='glass2'] .contact.active .name > div:first-child,
+[data-theme='glass2'] .room-row.active .name {
+  color: #b8f8ff;
+}
+
+/* ---------- Кнопки: стеклянные пилюли ---------- */
+
+[data-theme='glass2'] .btn,
+[data-theme='glass2'] .icon-btn,
+[data-theme='glass2'] .round-btn,
+[data-theme='glass2'] .nav-btn,
+[data-theme='glass2'] .composer-btn {
+  border: 1px solid rgba(184, 236, 255, 0.16);
+  border-radius: 11px;
+  background: rgba(16, 28, 38, 0.38);
+  color: #dcecf2;
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+[data-theme='glass2'] .btn:hover,
+[data-theme='glass2'] .icon-btn:hover,
+[data-theme='glass2'] .round-btn:hover,
+[data-theme='glass2'] .nav-btn:hover {
+  border-color: rgba(151, 240, 249, 0.48);
+  background: rgba(35, 60, 72, 0.52);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 0 18px rgba(102, 229, 241, 0.12);
+}
+[data-theme='glass2'] .btn.primary {
+  border-color: rgba(172, 251, 255, 0.60);
+  background: linear-gradient(145deg, rgba(154, 246, 248, 0.95), rgba(101, 190, 216, 0.92));
+  color: #031015;
+  box-shadow: 0 8px 24px rgba(72, 208, 222, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+[data-theme='glass2'] .btn.success {
+  border-color: rgba(88, 226, 155, 0.42);
+  background: rgba(57, 190, 126, 0.18);
+  color: #b8f4d1;
+}
+[data-theme='glass2'] .btn.danger {
+  background: linear-gradient(145deg, #e56b73, #b84654);
+  border-color: rgba(255, 178, 182, 0.5);
+  color: #fff;
+}
+
+/* ---------- Поле ввода: большая стеклянная пилюля ---------- */
+
+[data-theme='glass2'] .composer {
+  padding: 10px 12px 12px;
+  background: transparent;
+}
+[data-theme='glass2'] .composer-bar {
+  min-height: 46px;
+  border: 1px solid rgba(184, 236, 255, 0.18);
+  border-radius: 17px;
+  background: rgba(8, 17, 24, 0.46);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.20),
+    0 10px 28px rgba(0, 0, 0, 0.22);
+}
+[data-theme='glass2'] .composer-bar:focus-within {
+  border-color: rgba(143, 240, 249, 0.64);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 0 0 3px rgba(112, 230, 241, 0.10),
+    0 10px 30px rgba(0, 0, 0, 0.24);
+}
+[data-theme='glass2'] .composer textarea::placeholder {
+  color: #78909c;
+}
+
+/* ---------- Сообщения ---------- */
+
+[data-theme='glass2'] #messages {
+  padding: 4px 12px 8px;
+}
+[data-theme='glass2'] .msg {
+  margin: 4px 0;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 15px;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+[data-theme='glass2'] .msg:hover {
+  background: rgba(171, 235, 247, 0.055);
+  border-color: rgba(171, 235, 247, 0.09);
+}
+[data-theme='glass2'] .msg.cont {
+  margin-top: 0;
+  border-radius: 10px;
+  padding-top: 2px;
+}
+[data-theme='glass2'] .msg-text {
+  color: #e7f2f6;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+[data-theme='glass2'] .msg-head b {
+  color: #b8f2fa;
+  font-weight: 600;
+}
+[data-theme='glass2'] .msg-head time,
+[data-theme='glass2'] .msg .muted,
+[data-theme='glass2'] .msg-edited {
+  color: #8ba4b1;
+}
+[data-theme='glass2'] .msg-text a {
+  color: #9fefff;
+}
+[data-theme='glass2'] .msg.mentions-me {
+  background: linear-gradient(95deg, rgba(117, 238, 248, 0.15), rgba(151, 147, 255, 0.04) 84%);
+  border-color: rgba(125, 238, 247, 0.22);
+  box-shadow: inset 2px 0 0 rgba(132, 240, 249, 0.82);
+}
+[data-theme='glass2'] .day span {
+  padding: 4px 12px;
+  border: 1px solid rgba(184, 236, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(6, 14, 20, 0.46);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  color: #b8f4fa;
+}
+[data-theme='glass2'] .day::before,
+[data-theme='glass2'] .day::after {
+  background: rgba(178, 232, 248, 0.15);
+}
+
+/* ---------- Карточки, меню, настройки ---------- */
+
+[data-theme='glass2'] .modal-card,
+[data-theme='glass2'] .popup-menu,
+[data-theme='glass2'] .status-menu,
+[data-theme='glass2'] .profile-card,
+[data-theme='glass2'] .notif-panel,
+[data-theme='glass2'] .chat-theme-pop,
+[data-theme='glass2'] .picker-pop,
+[data-theme='glass2'] .gif-popover,
+[data-theme='glass2'] .emoji-popover {
+  border: 1px solid rgba(184, 236, 255, 0.22);
+  border-radius: 20px;
+  background:
+    linear-gradient(145deg, rgba(226, 253, 255, 0.14), rgba(15, 27, 37, 0.78) 34%, rgba(4, 10, 16, 0.92));
+  -webkit-backdrop-filter: blur(34px) saturate(160%);
+  backdrop-filter: blur(34px) saturate(160%);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+[data-theme='glass2'] .profile-card .pc-avatar.avatar {
+  box-shadow: 0 0 0 6px rgba(4, 10, 16, 0.7);
+}
+
+/* ---------- Поля, поиск, мелочи ---------- */
+
+[data-theme='glass2'] .search-bar,
+[data-theme='glass2'] .friend-add-row,
+[data-theme='glass2'] .rs-field,
+[data-theme='glass2'] .set-field,
+[data-theme='glass2'] .friend-search {
+  border: 1px solid rgba(184, 236, 255, 0.15);
+  border-radius: 11px;
+  background: rgba(8, 17, 24, 0.40);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+}
+[data-theme='glass2'] input:focus,
+[data-theme='glass2'] textarea:focus,
+[data-theme='glass2'] select:focus {
+  outline: none;
+  border-color: rgba(143, 240, 249, 0.60) !important;
+  box-shadow: 0 0 0 3px rgba(112, 230, 241, 0.10);
+}
+[data-theme='glass2'] .badge,
+[data-theme='glass2'] .count,
+[data-theme='glass2'] .notif-badge {
+  background: #8ff0f6;
+  color: #031015;
+  box-shadow: 0 0 12px rgba(126, 235, 244, 0.45);
+}
+[data-theme='glass2'] .tab.active,
+[data-theme='glass2'] .friend-tab.active {
+  color: #b8f8ff;
+}
+[data-theme='glass2'] .tab::after,
+[data-theme='glass2'] .friend-tab::after {
+  background: #8ff0f6;
+  box-shadow: 0 0 10px rgba(126, 235, 244, 0.5);
+}
+[data-theme='glass2'] ::selection {
+  background: rgba(128, 238, 248, 0.34);
+  color: #031015;
+}
+[data-theme='glass2'] :focus-visible {
+  outline: 1px solid rgba(143, 240, 249, 0.75) !important;
+  outline-offset: 2px;
+}
+[data-theme='glass2'] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+[data-theme='glass2'] ::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(165, 226, 238, 0.22);
+  background-clip: padding-box;
+}
+[data-theme='glass2'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(165, 226, 238, 0.38);
+  background-clip: padding-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme='glass2'] .main::before {
+    animation: none;
+  }
+}
+@media (max-width: 900px) {
+  [data-theme='glass2'] .main {
+    margin: 4px 6px 6px;
+    padding: 8px;
+    gap: 8px;
+  }
+}

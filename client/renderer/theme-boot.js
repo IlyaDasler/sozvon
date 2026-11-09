@@ -3,7 +3,7 @@
   try {
     const theme = JSON.parse(localStorage.getItem('theme'));
     // Убранные темы (forest, dusk) и любые неизвестные значения — на «Глубину»
-    const allowed = ['sozvon', 'dark', 'midnight', 'light', 'frost', 'cold', 'neutron', 'silenthill', 'ferrari', 'glass', 'fuji'];
+    const allowed = ['sozvon', 'dark', 'midnight', 'light', 'frost', 'cold', 'neutron', 'silenthill', 'ferrari', 'glass', 'fuji', 'glass2'];
     const picked = allowed.includes(theme) ? theme : (theme ? 'sozvon' : 'glass');
     document.documentElement.dataset.theme = picked === 'fuji' ? 'glass' : picked;
     document.documentElement.dataset.themeId = picked;
