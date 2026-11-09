@@ -1233,3 +1233,8 @@
     ),
     var(--chat-wallpaper);
 }
+
+/* «Глубина»: рейл каналов отвечает той же пружинной анимацией, что и стекло */
+:is([data-theme='sozvon']) .rail-tile.rail-pop {
+  animation: rail-pop 280ms var(--ease-spring);
+}

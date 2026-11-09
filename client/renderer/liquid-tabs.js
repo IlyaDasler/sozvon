@@ -5,7 +5,7 @@
 // Рейл каналов: плитка пружинно «вспухает» при переключении.
 (() => {
   const reduced = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  const isGlass = () => document.documentElement.dataset.theme === 'glass';
+  const isGlass = () => ['glass', 'sozvon', 'fuji'].includes(document.documentElement.dataset.themeId || document.documentElement.dataset.theme);
 
   // ---------- Рейл каналов: пружинное «вспухание» плитки при переключении ----------
   function railPop(tile) {

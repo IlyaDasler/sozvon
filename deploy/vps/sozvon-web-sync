@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Держит веб-версию на /opt/sozvon-web в состоянии последнего GitHub-релиза.
+# Запускается systemd-таймером; вручную: sudo /usr/local/bin/sozvon-web-sync
+set -euo pipefail
+
+REPO=${SOZVON_REPO:-IlyaDasler/sozvon}
+WEB_ROOT=${WEB_ROOT:-/opt/sozvon-web}
+STAMP="$WEB_ROOT/.release"
+API="https://api.github.com/repos/$REPO/releases/latest"
+LOCK=/run/sozvon-web-sync.lock
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+exec 9>"$LOCK"
+flock -n 9 || exit 0
+
+TAG=$(curl -fsSL --max-time 20 -H 'User-Agent: sozvon-web-sync' "$API" |
+  python3 -c 'import json,sys; print(json.load(sys.stdin).get("tag_name", ""))' 2>/dev/null || true)
+if [ -z "$TAG" ] || [[ "$TAG" != v* ]]; then
+  echo "нет тега последнего релиза — веб не трогаю" >&2
+  exit 0
+fi
+if [ -f "$STAMP" ] && [ "$(cat "$STAMP")" = "$TAG" ]; then
+  exit 0
+fi
+
+echo "обновляю веб до $TAG"
+curl -fsSL --max-time 90 -H 'User-Agent: sozvon-web-sync' \
+  -o "$TMP/source.tar.gz" "https://codeload.github.com/$REPO/tar.gz/refs/tags/$TAG"
+tar -xzf "$TMP/source.tar.gz" -C "$TMP"
+SOURCE=$(find "$TMP" -type d -path '*/client/renderer' -print -quit)
+if [ -z "$SOURCE" ] || [ ! -f "$SOURCE/index.html" ]; then
+  echo "в исходниках $TAG нет client/renderer — оставляю старую веб-версию" >&2
+  exit 1
+fi
+
+# updates/ — большие архивы приложения; их веб-синк не трогает.
+rsync -a --delete --exclude 'updates/' "$SOURCE/" "$WEB_ROOT/"
+printf '%s\n' "$TAG" > "$STAMP"
+echo "веб обновлён до $TAG"

@@ -223,7 +223,13 @@ func (a *server) callAccept(conn *realtime.Conn, user *store.User, message map[s
 	a.calls.mu.Lock()
 	timer, ringing := call.ringing[user.ID]
 	if !ringing {
+		// Пока это устройство думало, звонок уже приняли на другом.
+		// Поздний accept не должен оставлять второе устройство звонить.
+		member, alreadyMember := call.members[user.ID]
 		a.calls.mu.Unlock()
+		if alreadyMember && member.conn != conn {
+			conn.Send(map[string]any{"type": "call:ended", "callId": id, "reason": "answered-elsewhere"})
+		}
 		return
 	}
 	timer.Stop()
@@ -251,6 +257,9 @@ func (a *server) callAccept(conn *realtime.Conn, user *store.User, message map[s
 			}
 			a.hub.Send(memberID, map[string]any{"type": "call:accepted", "callId": id})
 		}
+		// Другие устройства этого же человека тоже должны перестать звонить.
+		// Ответившему соединению событие не нужно: у него уже идёт новый звонок.
+		a.hub.SendExcept(user.ID, conn, map[string]any{"type": "call:ended", "callId": id, "reason": "answered-elsewhere"})
 		return
 	}
 	conn.Send(map[string]any{"type": "call:joined", "callId": id, "peers": peers})

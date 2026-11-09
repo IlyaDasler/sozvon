@@ -15,8 +15,8 @@ html[data-theme='glass'] #rail-list .rail-item {
 html[data-theme='glass'] #rail-list .glass-tab-indicator {
   z-index: 0;
   border-radius: 18px;
-  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
-  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 68%, transparent);
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent), 0 6px 18px rgba(0,0,0,.24);
 }
 html[data-theme='glass'] #privacy-subnav {
@@ -89,8 +89,8 @@ html[data-theme='glass'] #rail-list .rail-item {
 html[data-theme='glass'] #rail-list .glass-tab-indicator {
   z-index: 0;
   border-radius: 18px;
-  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
-  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 68%, transparent);
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent), 0 6px 18px rgba(0,0,0,.24);
 }
 html[data-theme='glass'] #privacy-subnav {
@@ -112,3 +112,61 @@ html[data-theme='glass'] #privacy-subnav > .glass-tab-indicator { border-radius:
 
 /* «Добавить в друзья» — такая же плашка, но текст остаётся зелёным */
 html[data-theme='glass'] #friend-tabs > .add-tab.active { color: var(--ok) !important; }
+/* Верхний раздел рейла — «Друзья»: та же плашка и та же анимация, что у каналов */
+#rail-home-item {
+  position: relative;
+  isolation: isolate;
+}
+#rail-home-item .rail-home {
+  position: relative;
+  z-index: 1;
+}
+#rail-home-item .glass-tab-indicator {
+  z-index: 0;
+  border-radius: 18px;
+  border-color: color-mix(in srgb, var(--accent) 68%, transparent);
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent), 0 6px 18px rgba(0,0,0,.24);
+}
+:is(html[data-theme='sozvon'], html[data-theme='glass'][data-theme-id='fuji']) #rail-home-item.active .rail-home {
+  background: transparent !important;
+}
+:is(html[data-theme='sozvon'], html[data-theme='glass'][data-theme-id='fuji']) #rail-list .rail-item.active .rail-tile {
+  background: transparent !important;
+}
+:is(html[data-theme='sozvon'], html[data-theme='glass'][data-theme-id='fuji']) #rail-list .glass-tab-indicator {
+  z-index: 0;
+  border-radius: 18px;
+  border-color: color-mix(in srgb, var(--accent) 68%, transparent);
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent), 0 6px 18px rgba(0,0,0,.24);
+}
+
+/* Один «роллер» на весь рейл: верхний раздел, папки и каналы */
+#rail {
+  position: relative;
+  isolation: isolate;
+}
+#rail > .rail-item,
+#rail > .rail-list {
+  position: relative;
+  z-index: 1;
+}
+#rail > .glass-tab-indicator {
+  z-index: 0;
+  border-radius: 18px;
+  border-color: color-mix(in srgb, var(--accent) 68%, transparent);
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent),
+    0 6px 18px rgba(0,0,0,.24);
+}
+:is(html[data-theme='sozvon'], html[data-theme='glass'][data-theme-id='fuji']) #rail > .rail-item.active .rail-home,
+:is(html[data-theme='sozvon'], html[data-theme='glass'][data-theme-id='fuji']) #rail > .rail-item.active .rail-tile:not(.has-image) {
+  background: transparent !important;
+}
+
+html[data-theme='glass'] #rail > .rail-item.active .rail-home {
+  background: transparent !important;
+}

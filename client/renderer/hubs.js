@@ -296,9 +296,11 @@ function folderItem(folder) {
   tile.onclick = () => saveLayout(updateFolder(currentLayout(), folder.folder, { collapsed: !folder.collapsed }));
 
   const inside = folder.hubs.includes(state.view);
+  // Выделенный раздел остаётся видимым в рейле и тогда, когда папка раскрыта:
+  // указатель темы подсвечивает саму папку, а не только её свёрнутую иконку.
   const head = railItem(tile, {
-    active: folder.collapsed && inside,
-    unread: folder.collapsed && folder.hubs.some(hubUnread),
+    active: inside,
+    unread: folder.hubs.some(hubUnread),
     draggable: true,
   });
   head.classList.add('folder-head');

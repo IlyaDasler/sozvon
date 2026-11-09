@@ -118,7 +118,7 @@ jobs:
               } catch {}
               Start-Sleep -Milliseconds 500
             }
-            node scripts/run-e2e.js e2e-layout e2e-look e2e-spacing e2e-hubs e2e-contrast e2e-room-groups e2e-threads e2e-groups e2e-chat e2e-friends e2e-unread e2e-call-in-room
+            node scripts/run-e2e.js e2e-layout e2e-look e2e-spacing e2e-hubs e2e-contrast e2e-fuji e2e-call-multi-device e2e-screen-web-stop e2e-room-groups e2e-threads e2e-groups e2e-chat e2e-friends e2e-unread e2e-call-in-room
             $code = $LASTEXITCODE
           } finally {
             Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
@@ -264,3 +264,22 @@ jobs:
             client/dist/*.exe.blockmap
             client/dist/latest.yml
             client/dist/SHA256SUMS-win.txt
+
+  # Веб-версия обновляется сразу после тега, а не только по таймеру на сервере.
+  web:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Выложить renderer на сервер
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -d -m700 ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/sozvon_deploy
+          chmod 600 ~/.ssh/sozvon_deploy
+          ssh-keyscan -H 135.106.226.12 >> ~/.ssh/known_hosts
+          rsync -az --delete --exclude 'updates/'             -e "ssh -i ~/.ssh/sozvon_deploy -o StrictHostKeyChecking=yes"             client/renderer/ root@135.106.226.12:/opt/sozvon-web/
+          ssh -i ~/.ssh/sozvon_deploy -o StrictHostKeyChecking=yes root@135.106.226.12             "printf '%s\n' '${GITHUB_REF_NAME}' > /opt/sozvon-web/.release"
