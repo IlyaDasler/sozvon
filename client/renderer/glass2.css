@@ -36,7 +36,7 @@
   background:
     radial-gradient(80% 70% at 18% 8%, rgba(130, 235, 245, 0.12), transparent 56%),
     radial-gradient(70% 60% at 86% 90%, rgba(154, 138, 255, 0.10), transparent 60%),
-    linear-gradient(180deg, rgba(1, 7, 12, 0.24), rgba(1, 5, 9, 0.48));
+    linear-gradient(180deg, rgba(1, 7, 12, 0.16), rgba(1, 5, 9, 0.38));
 }
 [data-theme='glass2'] .main > * {
   position: relative;
@@ -65,9 +65,9 @@
   border: 1px solid rgba(184, 236, 255, 0.22);
   border-radius: 22px;
   background:
-    linear-gradient(145deg, rgba(224, 252, 255, 0.09), rgba(9, 18, 27, 0.14) 34%, rgba(2, 7, 11, 0.30) 100%);
-  -webkit-backdrop-filter: blur(18px) saturate(145%);
-  backdrop-filter: blur(18px) saturate(145%);
+    linear-gradient(145deg, rgba(235, 255, 255, 0.07), rgba(9, 18, 27, 0.03) 34%, rgba(2, 7, 11, 0.12) 100%);
+  -webkit-backdrop-filter: blur(26px) saturate(150%) brightness(0.78);
+  backdrop-filter: blur(26px) saturate(150%) brightness(0.78);
   box-shadow:
     0 26px 64px rgba(0, 0, 0, 0.46),
     inset 0 1px 0 rgba(255, 255, 255, 0.24),
@@ -89,7 +89,7 @@
   border-radius: 22px;
   overflow: hidden;
   background:
-    linear-gradient(150deg, rgba(215, 250, 255, 0.06), rgba(9, 18, 27, 0.10) 42%, rgba(2, 7, 11, 0.26));
+    linear-gradient(150deg, rgba(215, 250, 255, 0.05), rgba(9, 18, 27, 0.02) 42%, rgba(2, 7, 11, 0.08));
 }
 [data-theme='glass2'] .members-panel {
   width: 258px;
@@ -97,7 +97,7 @@
   border-radius: 22px;
   overflow: hidden;
   background:
-    linear-gradient(160deg, rgba(215, 250, 255, 0.07), rgba(9, 17, 26, 0.12) 36%, rgba(2, 7, 11, 0.30));
+    linear-gradient(160deg, rgba(215, 250, 255, 0.06), rgba(9, 17, 26, 0.03) 36%, rgba(2, 7, 11, 0.10));
 }
 
 /* Тонкий блик по верхней кромке панелей */
@@ -133,7 +133,7 @@
 [data-theme='glass2'] h4,
 [data-theme='glass2'] .set-block h4 {
   color: #edf8fb;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
 }
 [data-theme='glass2'] .list-title {
   color: #8fe8f2;
@@ -162,7 +162,7 @@
   height: 46px;
   border: 1px solid rgba(184, 236, 255, 0.16);
   border-radius: 15px;
-  background: rgba(18, 31, 41, 0.25);
+  background: rgba(18, 31, 41, 0.15);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
     0 6px 16px rgba(0, 0, 0, 0.22);
@@ -239,7 +239,7 @@
 [data-theme='glass2'] .composer-btn {
   border: 1px solid rgba(184, 236, 255, 0.16);
   border-radius: 11px;
-  background: rgba(16, 28, 38, 0.25);
+  background: rgba(16, 28, 38, 0.14);
   color: #e6f4f8;
   -webkit-backdrop-filter: blur(16px) saturate(140%);
   backdrop-filter: blur(16px) saturate(140%);
@@ -281,7 +281,7 @@
   min-height: 46px;
   border: 1px solid rgba(184, 236, 255, 0.18);
   border-radius: 17px;
-  background: rgba(8, 17, 24, 0.30);
+  background: rgba(8, 17, 24, 0.16);
   -webkit-backdrop-filter: blur(24px) saturate(150%);
   backdrop-filter: blur(24px) saturate(150%);
   box-shadow:
@@ -322,7 +322,7 @@
 }
 [data-theme='glass2'] .msg-text {
   color: #e7f2f6;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 [data-theme='glass2'] .msg-head b {
   color: #b8f2fa;
@@ -345,7 +345,7 @@
   padding: 4px 12px;
   border: 1px solid rgba(184, 236, 255, 0.18);
   border-radius: 999px;
-  background: rgba(6, 14, 20, 0.30);
+  background: rgba(6, 14, 20, 0.18);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   color: #b8f4fa;
@@ -389,7 +389,7 @@
 [data-theme='glass2'] .friend-search {
   border: 1px solid rgba(184, 236, 255, 0.15);
   border-radius: 11px;
-  background: rgba(8, 17, 24, 0.28);
+  background: rgba(8, 17, 24, 0.15);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
   backdrop-filter: blur(16px) saturate(140%);
 }
