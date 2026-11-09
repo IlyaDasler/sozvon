@@ -73,8 +73,10 @@ function createWindow({ show = true } = {}) {
     autoHideMenuBar: true,
     // Своя полоса окна в цветах темы: системную прячем, кнопки «свернуть, развернуть, закрыть» Windows
     // рисует поверх полосы страницы; их цвета страница присылает при смене темы (window:titlebar)
-    // macOS: hiddenInset оставляет системные «светофоры» поверх страницы, отступ делаем в CSS
+    // macOS: hiddenInset оставляет системные «светофоры» поверх страницы, отступ делаем в CSS.
+    // Windows: системные кнопки окна поверх полосы — у них работают Snap Layouts Windows 11.
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    ...(process.platform === 'win32' ? { titleBarOverlay: { color: '#17181c', symbolColor: '#d6d4cf', height: TITLEBAR_H } } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -89,7 +91,13 @@ function createWindow({ show = true } = {}) {
   if (saved?.maximized) show ? win.maximize() : win.once('show', () => win.maximize());
   trackWindow(win, stateFile);
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-  // Кнопки окна рисует страница: нативных Windows-кнопок больше нет
+  // Кнопки окна — системные (Windows Snap Layouts), но их цвета берём из темы
+  ipcMain.on('window:titlebar', (_event, colors) => {
+    if (process.platform !== 'win32' || !win || win.isDestroyed()) return;
+    const color = /^#[0-9a-f]{6}$/i.test(String(colors?.color || '')) ? colors.color : '#17181c';
+    const symbolColor = /^#[0-9a-f]{6}$/i.test(String(colors?.symbolColor || '')) ? colors.symbolColor : '#d6d4cf';
+    win.setTitleBarOverlay({ color, symbolColor, height: TITLEBAR_H });
+  });
   ipcMain.on('window:minimize', () => win.minimize());
   ipcMain.on('window:toggle-maximize', () => {
     // На экране входа разворачивать нельзя
