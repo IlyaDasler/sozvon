@@ -208,7 +208,7 @@ html[data-theme='glass2'] .content {
 [data-theme='glass2'] .friends-nav {
   border: 1px solid transparent;
   border-radius: 12px;
-  margin: 2px 8px;
+  margin: 12px 8px 0;
   color: #c8dbe3;
 }
 [data-theme='glass2'] .contact:hover,
