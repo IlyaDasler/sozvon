@@ -502,3 +502,21 @@ html[data-theme='glass2'] .content {
     0 16px 38px rgba(0, 0, 0, 0.42),
     inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
+
+/* Все иконочные кнопки: значок строго по центру, без сдвигов от line-height,
+   border-box и вложенных grid-правил. */
+[data-theme='glass2'] :is(.icon-btn, .round-btn, .nav-btn, .composer-btn) {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 0;
+}
+[data-theme='glass2'] :is(.icon-btn, .round-btn, .nav-btn, .composer-btn) > svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  margin: auto;
+  flex: none;
+}
