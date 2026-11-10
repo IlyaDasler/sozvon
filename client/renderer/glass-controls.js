@@ -57,6 +57,9 @@
   // ---------- Collapsible: секции настроек можно свернуть ----------
   function addCollapsible(block) {
     if (block.dataset.collapseReady === '1') return;
+    // Блок выбора темы не сворачиваем: карточки должны быть сразу доступны,
+    // а не выглядеть как выпадающий селект «Тема».
+    if (block.querySelector('#theme-grid')) return;
     const heading = block.querySelector(':scope > h4');
     if (!heading) return;
     block.dataset.collapseReady = '1';
