@@ -12,6 +12,13 @@
       fn();
     }
   };
+  // В мобильных листах не должно быть десктопных подсказок клавиш:
+  // «Удалить (Shift — без вопроса)» превращается в «Удалить».
+  const touchLabel = (text) =>
+    String(text || '')
+      .replace(/\s*\([^)]*(?:Shift|Ctrl|Alt|Esc|Enter|Cmd|⌘|клавиш|без вопроса)[^)]*\)\s*$/i, '')
+      .trim();
+
   const buzz = (ms = 8) => {
     if (navigator.userActivation?.isActive) navigator.vibrate?.(ms);
   };
@@ -148,7 +155,7 @@
     const add = (label, run) => {
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = label;
+      button.textContent = touchLabel(label);
       button.onclick = () => {
         closeRoomSheet();
         run();
@@ -294,7 +301,8 @@
         hubLongPressed = true;
         buzz(12);
         const r = tile.getBoundingClientRect();
-        showMenu(Math.min(r.right + 4, innerWidth - 220), r.top, hubMenuItems(hub));
+        const items = hubMenuItems(hub).map((item) => (item && item.label ? { ...item, label: touchLabel(item.label) } : item));
+        showMenu(Math.min(r.right + 4, innerWidth - 220), r.top, items);
       }, 550);
     },
     { passive: true }
@@ -326,7 +334,7 @@
     for (const tool of tools) {
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = tool.title;
+      button.textContent = touchLabel(tool.title);
       button.onclick = () => {
         closeMsgSheet();
         if (tool.title === 'Реакция' && typeof openReactions === 'function' && messageRow.message && messageRow.actions) {
