@@ -120,7 +120,7 @@ jobs:
               } catch {}
               Start-Sleep -Milliseconds 500
             }
-            node scripts/run-e2e.js e2e-layout e2e-look e2e-spacing e2e-hubs e2e-contrast e2e-fuji e2e-themes e2e-mobile e2e-mobile-frames e2e-mobile-friends e2e-mobile-utility e2e-mobile-wallpapers e2e-mobile-formfactors e2e-mobile-matrix e2e-mobile-samsung e2e-mobile-message e2e-mobile-voice e2e-mobile-call e2e-mobile-settings e2e-call-multi-device e2e-screen-web-stop e2e-room-groups e2e-threads e2e-groups e2e-chat e2e-friends e2e-unread e2e-call-in-room
+            node scripts/run-e2e.js e2e-layout e2e-look e2e-spacing e2e-hubs e2e-contrast e2e-fuji e2e-themes e2e-mobile e2e-mobile-frames e2e-mobile-friends e2e-mobile-utility e2e-mobile-wallpapers e2e-mobile-formfactors e2e-mobile-matrix e2e-mobile-swipe e2e-mobile-samsung e2e-mobile-message e2e-mobile-voice e2e-mobile-call e2e-mobile-settings e2e-call-multi-device e2e-screen-web-stop e2e-room-groups e2e-threads e2e-groups e2e-chat e2e-friends e2e-unread e2e-call-in-room
             $code = $LASTEXITCODE
           } finally {
             Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
