@@ -377,3 +377,24 @@ html[data-theme='glass'][data-theme-id='glass'] .members-head {
   background: rgba(255, 255, 255, 0.025);
   border-bottom: 1px solid rgba(255, 255, 255, 0.10);
 }
+
+/* «Совон»: без двойных рамок и без лишней мутности боковых панелей */
+html[data-theme='glass'][data-theme-id='glass'] .sidebar,
+html[data-theme='glass'][data-theme-id='glass'] .content,
+html[data-theme='glass'][data-theme-id='glass'] .members-panel {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.085), rgba(22, 34, 53, 0.24) 42%, rgba(7, 13, 23, 0.34));
+  -webkit-backdrop-filter: blur(15px) saturate(150%) brightness(0.92);
+  backdrop-filter: blur(15px) saturate(150%) brightness(0.92);
+  border: 0 !important;
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.32),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.20);
+}
+html[data-theme='glass'][data-theme-id='glass'] .rail {
+  background: rgba(255, 255, 255, 0.025);
+  -webkit-backdrop-filter: blur(10px) saturate(135%);
+  backdrop-filter: blur(10px) saturate(135%);
+  border-right: 0 !important;
+}
