@@ -364,25 +364,37 @@ html.auth-screen #mobile-backdrop {
   #mobile-hubs::-webkit-scrollbar {
     display: none;
   }
+  #mobile-hubs {
+    scroll-snap-type: x proximity;
+    padding: 6px 10px 10px !important;
+  }
   .mobile-hub {
     flex: none;
-    max-width: 150px;
+    max-width: 170px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    padding: 7px 12px;
-    border: 0;
-    border-radius: 10px;
-    background: var(--bg-4);
+    padding: 10px 14px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-3) 78%, transparent);
     color: var(--text-2);
     font: inherit;
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
+    scroll-snap-align: start;
+    -webkit-tap-highlight-color: transparent;
   }
   .mobile-hub.active {
-    background: color-mix(in srgb, var(--accent) 22%, var(--bg-3));
+    background: color-mix(in srgb, var(--accent) 20%, var(--bg-2));
+    border-color: color-mix(in srgb, var(--accent) 38%, transparent);
     color: var(--text);
   }
+  .mobile-hub:active { transform: scale(.97); }
 }
 
 
@@ -1361,5 +1373,80 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     background: var(--bg-deep) !important;
     border-top: 1px solid var(--line) !important;
     box-shadow: none !important;
+  }
+}
+
+/* ---------- Touch, not mouse ----------
+   На телефоне не должно быть «залипшего» hover после касания и
+   десктопных анимаций transform/filter, из-за которых дёргаются темы. */
+@media (hover: none), (pointer: coarse) {
+  .rail-tile:hover,
+  .contact:hover,
+  .friend-row:hover,
+  .room-row:hover,
+  .friends-nav:hover,
+  .btn:hover,
+  .icon-btn:hover,
+  .round-btn:hover,
+  .hub-menu-btn:hover,
+  .mobile-hub:hover,
+  .theme-card:hover,
+  .theme-card:hover .theme-preview,
+  .msg:hover .msg-tools,
+  .message:hover .msg-tools,
+  .room-row:hover .room-tools,
+  .friend-row:hover .friend-actions {
+    transform: none !important;
+    filter: none !important;
+    box-shadow: none !important;
+    transition: none !important;
+  }
+  /* Действия, которые на ПК открываются наведением, на телефоне — только
+     через долгое нажатие/лист, а не висят поверх строки. */
+  .msg-tools,
+  .message .msg-tools,
+  .room-row .room-tools,
+  .friend-row .friend-actions {
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  .msg-tools:focus-within,
+  .message:focus-within .msg-tools,
+  .room-row:focus-within .room-tools,
+  .room-row:active .room-tools,
+  .friend-row:focus-within .friend-actions {
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  .rail-tile:active,
+  .contact:active,
+  .friend-row:active,
+  .room-row:active,
+  .btn:active,
+  .icon-btn:active,
+  .round-btn:active,
+  .hub-menu-btn:active,
+  .mobile-hub:active {
+    transform: scale(.98);
+    transition: transform 80ms ease-out;
+  }
+  /* Никаких layout/transform-анимаций на мобильном: только цвет/прозрачность. */
+  *,
+  *::before,
+  *::after {
+    transition-property: color, background-color, border-color, opacity, fill, stroke !important;
+    transition-duration: 120ms !important;
+  }
+}
+
+/* На телефоне темы не «дышат» кен-бёрнсом: это читается как дёрганый фон
+   и жрёт GPU. Статичный кадр выглядит дороже и не мешает читать текст. */
+@media (max-width: 900px) {
+  html[data-theme-id='fuji'] .lg-aurora,
+  [data-theme='glass2'] .main::before,
+  [data-theme='glass2'] .main::after {
+    animation: none !important;
   }
 }

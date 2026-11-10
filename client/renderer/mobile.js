@@ -6,7 +6,7 @@
   if (!window.desktop) document.documentElement.classList.add('pwa');
 
   const transition = (fn) => {
-    if (typeof document.startViewTransition === 'function' && document.documentElement.dataset.performance === 'high' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (innerWidth > 900 && typeof document.startViewTransition === 'function' && document.documentElement.dataset.performance === 'high' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       document.startViewTransition(fn);
     } else {
       fn();
@@ -97,6 +97,11 @@ else if (sidebar) sidebar.prepend(hubsBar);
   const renderHubs = () => {
     if (!hubsBar) return;
     const hubs = typeof state !== 'undefined' && state.hubs ? [...state.hubs.values()] : [];
+    // Не пересоздаём кнопки каждую секунду: иначе касание попадает в уже
+    // удалённый узел, а полоса мигает. Обновляем только при реальном изменении.
+    const signature = (state?.view ?? '') + '|' + hubs.map((h) => `${h.id}:${h.name}`).join('|');
+    if (hubsBar.dataset.signature === signature) return;
+    hubsBar.dataset.signature = signature;
     const items = [];
     const home = document.createElement('button');
     home.type = 'button';
