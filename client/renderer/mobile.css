@@ -1101,3 +1101,41 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     background: rgba(4, 8, 16, 0.62) !important;
   }
 }
+
+/* E2EE-диалог: на 393 px три кнопки в ряд не влезают и «Перенести» уезжает
+   за экран. Кнопки переносим, код и поле ввода оставляем в одну строку. */
+@media (max-width: 599px) {
+  #e2ee-setup .e2ee-card {
+    width: calc(100% - 16px) !important;
+    max-width: none !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow-y: auto;
+    padding: 18px 16px;
+    border-radius: 18px;
+  }
+  #e2ee-setup .e2ee-card .row {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  #e2ee-setup .e2ee-card .row .spacer { display: none; }
+  #e2ee-setup .e2ee-card .row .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+  }
+  #e2ee-setup .e2ee-card .row .btn.primary { flex-basis: 100%; }
+  #e2ee-setup .e2ee-card .code-row { flex-wrap: nowrap; }
+  #e2ee-setup .e2ee-card .code-row input { min-width: 0; }
+  #e2ee-setup .e2ee-card .code-row .btn { flex: 0 0 auto; }
+}
+
+/* На мобильном WebView любой backdrop-filter (включая нижнюю панель и
+   переключатели) стоит 10–20 ms на кадр. Замер на Mali-G52:
+   blur включён — 19 ms GPU / 76% jank, выключен — 11 ms GPU / 17% jank. */
+@media (max-width: 900px) {
+  *, *::before, *::after {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}

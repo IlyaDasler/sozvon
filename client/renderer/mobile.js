@@ -6,7 +6,7 @@
   if (!window.desktop) document.documentElement.classList.add('pwa');
 
   const transition = (fn) => {
-    if (typeof document.startViewTransition === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (typeof document.startViewTransition === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches && !matchMedia('(hover: none) and (pointer: coarse)').matches) {
       document.startViewTransition(fn);
     } else {
       fn();
