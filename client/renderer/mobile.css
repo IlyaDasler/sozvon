@@ -495,3 +495,68 @@ html.pwa body.mobile-list .sidebar {
     display: none !important;
   }
 }
+
+
+/* ---------- Одно окно вместо «окна в окне» ----------
+   На телефоне и фолде внешняя рамка — только у .main. Рейл, список комнат
+   и чат становятся секциями одного стеклянного окна: без своих радиусов,
+   фонов и теней. Внутри остаются только разделители 1 px. */
+@media (max-width: 900px) {
+  #main.main,
+  .main {
+    padding: 0 !important;
+    gap: 0 !important;
+    margin: 6px !important;
+    width: calc(100% - 12px) !important;
+    height: calc(100% - 12px) !important;
+    border-radius: 20px !important;
+    border: 1px solid color-mix(in srgb, var(--line) 88%, transparent) !important;
+    background: color-mix(in srgb, var(--bg-deep) 34%, transparent) !important;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, .28) !important;
+    overflow: hidden !important;
+  }
+  #main .rail,
+  #main .sidebar,
+  #main .content,
+  #main .chat,
+  #main #chat,
+  #main #room-view,
+  #main #hub-empty {
+    border-radius: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    margin: 0 !important;
+  }
+  #main .rail,
+  #main .sidebar {
+    border-right: 1px solid var(--line) !important;
+  }
+  #main .rail {
+    width: 62px !important;
+  }
+  #main .content {
+    width: 100%;
+  }
+  #main .chat-head {
+    border-radius: 0 !important;
+  }
+  #main .chat {
+    overflow: hidden;
+  }
+}
+@media (max-width: 599px) {
+  #main.main,
+  .main {
+    margin: max(6px, env(safe-area-inset-top)) 6px 6px !important;
+    height: calc(100% - max(12px, env(safe-area-inset-top))) !important;
+    border-radius: 18px !important;
+  }
+  body.mobile-list .sidebar {
+    border-right: 0 !important;
+    border-radius: 0 !important;
+  }
+  body.mobile-notifications #notif-panel {
+    border-radius: 0 !important;
+  }
+}
