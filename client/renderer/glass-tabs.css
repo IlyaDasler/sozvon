@@ -350,3 +350,30 @@ html[data-theme='glass'] .thread-people .avatar {
 html[data-theme='glass'] .thread-people .avatar + .avatar {
   margin-left: -6px;
 }
+
+/* «Совон»: настоящее матовое стекло вместо простой прозрачной рамки */
+html[data-theme='glass'][data-theme-id='glass'] .sidebar,
+html[data-theme='glass'][data-theme-id='glass'] .content,
+html[data-theme='glass'][data-theme-id='glass'] .members-panel {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.10), rgba(22, 34, 53, 0.28) 42%, rgba(7, 13, 23, 0.40));
+  -webkit-backdrop-filter: blur(28px) saturate(155%) brightness(0.86);
+  backdrop-filter: blur(28px) saturate(155%) brightness(0.86);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.20);
+}
+html[data-theme='glass'][data-theme-id='glass'] .rail {
+  background: rgba(255, 255, 255, 0.035);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+html[data-theme='glass'][data-theme-id='glass'] .sidebar-head,
+html[data-theme='glass'][data-theme-id='glass'] .chat-head,
+html[data-theme='glass'][data-theme-id='glass'] .members-head {
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
