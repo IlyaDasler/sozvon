@@ -3,7 +3,7 @@
 const $ = (id) => document.getElementById(id);
 const isWeb = location.protocol.startsWith('http');
 // В Capacitor WebView origin — https://localhost, а API живёт на отдельном сервере.
-const nativeApiBase = () => (window.Capacitor?.isNativePlatform?.() ? 'http://10.0.2.2:3001' : '');
+const nativeApiBase = () => (window.Capacitor?.isNativePlatform?.() ? 'https://135-106-226-12.sslip.io' : '');
 
 const DEFAULT_SERVER = 'https://135-106-226-12.sslip.io';
 // Тот же сервер по старому адресу без HTTPS: вход переносим на новый адрес, токен остаётся действительным

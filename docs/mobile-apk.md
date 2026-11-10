@@ -36,3 +36,28 @@ cd android
 ## Статус
 
 APK **собирается**, но это debug-сборка с локальным API. Публичный APK не выпускается.
+
+
+## Внутренний release-ключ
+
+Ключ создан:
+
+```text
+_secrets/sozvon-internal-release.jks
+_secrets/keystore.properties
+```
+
+SHA-256:
+
+```text
+92:5F:88:D1:4E:F4:E3:84:57:91:54:FF:8B:03:E0:91:61:BC:1A:8B:DC:D0:01:AD:77:91:22:DB:BD:76:EB:1B
+```
+
+Release APK с прод-API и FCM:
+
+```text
+client/android/app/build/outputs/apk/release/app-release.apk
+```
+
+**Ключ нельзя терять.** Бэкап `_secrets` обязателен. Для Google Play лучше
+использовать Play App Signing и отдельный upload key.
