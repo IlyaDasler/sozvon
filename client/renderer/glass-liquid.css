@@ -36,6 +36,10 @@ html[data-theme='glass'] .screen { position: relative; z-index: 1; }
 html[data-theme='glass'][data-daypart='dawn'] .lg-aurora::after {
   background: linear-gradient(180deg, rgba(4, 8, 16, .30), rgba(4, 8, 16, .20));
 }
+html[data-theme='glass'][data-daypart='morning'] .lg-aurora::after {
+  background: linear-gradient(180deg, rgba(4, 8, 16, .26), rgba(4, 8, 16, .16));
+}
+
 html[data-theme='glass'][data-daypart='day'] .lg-aurora::after {
   background: linear-gradient(180deg, rgba(4, 8, 16, .24), rgba(4, 8, 16, .14));
 }
@@ -47,6 +51,10 @@ html[data-theme='glass'][data-daypart='sunset'] .lg-aurora::after {
 html[data-theme='glass'][data-daypart='dawn'] {
   --text-2: #e3e8f7;
   --muted: #c5cee4;
+}
+html[data-theme='glass'][data-daypart='morning'] {
+  --text-2: #e5e9f6;
+  --muted: #c8d0e5;
 }
 html[data-theme='glass'][data-daypart='day'] {
   --text-2: #e8ecf8;

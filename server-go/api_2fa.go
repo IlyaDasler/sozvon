@@ -156,6 +156,10 @@ func (a *server) totpSetup(w http.ResponseWriter, r *http.Request) {
 
 func (a *server) totpEnable(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
+	if !a.userLimit(user.ID, "2fa", 10, time.Minute) {
+		fail(http.StatusTooManyRequests, "Слишком много попыток. Попробуйте позже").write(w)
+		return
+	}
 	pending, err := a.store.TotpPending(user.ID)
 	if err != nil || pending == "" {
 		fail(http.StatusBadRequest, "Сначала настройте второй фактор").write(w)
