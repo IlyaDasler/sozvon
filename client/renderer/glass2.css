@@ -1329,3 +1329,20 @@ html[data-theme='glass2'] body {
   color: #9ff3fa;
   transform: translateY(1px);
 }
+
+/* Участники в правой панели: подсветка по теме, а не тёмная плашка */
+[data-theme='glass2'] .member-item {
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+[data-theme='glass2'] .member-item:hover {
+  background: rgba(180, 240, 250, 0.08) !important;
+  border-color: rgba(180, 240, 250, 0.13);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
