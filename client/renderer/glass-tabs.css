@@ -178,3 +178,14 @@ html[data-theme='glass'] #rail > .rail-item.active .rail-home {
 :is(html[data-theme='sozvon'], html[data-theme='glass'][data-theme-id='fuji']) #rail-list .glass-tab-indicator {
   display: none !important;
 }
+
+/* Тема «Совон»: активный канал без стеклянной плашки и без заливки плитки.
+   «Фуджи» тоже использует glass, поэтому ограничиваемся data-theme-id='glass'. */
+html[data-theme='glass'][data-theme-id='glass'] #rail > .glass-tab-indicator,
+html[data-theme='glass'][data-theme-id='glass'] #rail-list .glass-tab-indicator {
+  display: none !important;
+}
+html[data-theme='glass'][data-theme-id='glass'] #rail-list .rail-item.active .rail-tile {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
