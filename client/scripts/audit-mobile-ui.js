@@ -24,6 +24,20 @@ runTest(async () => {
   };
   await report('home');
 
+  // Вкладки друзей: активная не должна превращаться в плавающую капсулу
+  const friendTabs = JSON.parse(await js(w, `(() => {
+    const tabs=[...document.querySelectorAll('#friend-tabs button')];
+    return JSON.stringify(tabs.map(b=>({text:(b.textContent||'').trim(),w:b.getBoundingClientRect().width,h:b.getBoundingClientRect().height})));
+  })()`));
+  if (!friendTabs.length) throw new Error('нет вкладок друзей');
+  if (friendTabs.some(t => t.h < 40)) throw new Error('вкладка друзей меньше 40px: '+JSON.stringify(friendTabs));
+  await js(w, `document.querySelectorAll('#friend-tabs button')[2]?.click(); true`);
+  await sleep(300);
+  const indicator = await js(w, `(() => { const i=document.querySelector('#friend-tabs .glass-tab-indicator'); return i ? getComputedStyle(i).display : 'none'; })()`);
+  if (indicator !== 'none') throw new Error('glass-tab-indicator виден на телефоне: '+indicator);
+  await screenshot(w, 'audit-01b-friend-tabs');
+  await js(w, `document.querySelectorAll('#friend-tabs button')[0]?.click(); true`);
+
   await js(w, `document.querySelector('#mobile-nav [data-mobile="channels"]').click(); true`);
   await sleep(500); await screenshot(w, 'audit-02-channels'); await report('channels');
 
@@ -68,4 +82,14 @@ runTest(async () => {
     if (!visible) throw new Error('privacy page не открылась: '+page);
   }
   await screenshot(w, 'audit-07-privacy-crypto');
+
+  await js(w, `showPrivacyPage('profile'); true`);
+  await sleep(300);
+  const before = await js(w, `Boolean(state.me?.privacy?.typing)`);
+  await js(w, `document.querySelector('[data-privacy-toggle="typing"]').click(); true`);
+  await sleep(700);
+  const after = await js(w, `Boolean(state.me?.privacy?.typing)`);
+  if (before === after) throw new Error('privacy toggle typing не сохранился');
+  await js(w, `document.querySelector('[data-privacy-toggle="typing"]').click(); true`);
+  await sleep(500);
 });
