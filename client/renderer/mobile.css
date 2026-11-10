@@ -1318,3 +1318,39 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     border-radius: 0 !important;
   }
 }
+
+/* Аватар канала в шапке. На телефоне рейл скрыт, поэтому без него канал
+   терял идентичность при открытии. */
+.hub-menu-avatar { display: none; }
+@media (max-width: 900px) {
+  #hub-menu-btn {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+  }
+  #hub-menu-btn .hub-menu-avatar {
+    display: block;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    background-color: var(--hub-color, var(--bg-4));
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 28px;
+    text-align: center;
+    overflow: hidden;
+  }
+}
+
+/* Верхние хабы на телефоне — отдельная полоса над сайдбаром,
+   она тоже должна начинаться ниже статус-бара. */
+@media (max-width: 900px) {
+  #mobile-hubs {
+    padding-top: calc(8px + var(--mobile-safe-top)) !important;
+  }
+}

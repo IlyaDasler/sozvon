@@ -59,7 +59,21 @@ runTest(async () => {
   await js(w, `document.querySelector('#room-list .room-row').click(); true`);
   await waitFor(w, `!document.body.classList.contains('mobile-list')`, 'список закрылся после выбора комнаты');
 
-  const back = await js(w, `Boolean([...document.querySelectorAll('.mobile-chat-back')].some(b=>b.getClientRects().length))`);
+  const channel = JSON.parse(await js(w, `(() => {
+    const av = document.getElementById('hub-menu-avatar');
+    const r = av?.getBoundingClientRect();
+    return JSON.stringify({
+      display: av ? getComputedStyle(av).display : 'none',
+      w: r?.width || 0,
+      h: r?.height || 0,
+      focused: document.activeElement?.id || '',
+      hasBack: [...document.querySelectorAll('.mobile-chat-back')].some(b=>b.getClientRects().length),
+    });
+  })()`));
+  if (channel.display === 'none' || channel.w < 20 || channel.h < 20) throw new Error(`аватар канала пропал: ${JSON.stringify(channel)}`);
+  if (channel.focused === 'room-message-input') throw new Error('клавиатура открылась сама при входе в комнату');
+
+  const back = channel.hasBack;
   if (!back) throw new Error('в комнате нет кнопки «назад» на телефоне');
 
   await js(w, `document.querySelector('.mobile-chat-back')?.click(); true`);
