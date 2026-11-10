@@ -67,7 +67,7 @@ async function renderGifPopover() {
   for (const url of gifUrls.splice(0)) URL.revokeObjectURL(url);
   grid.replaceChildren();
   const add = Object.assign(document.createElement('button'), { type: 'button', className: 'gif-add', textContent: '+ Добавить' });
-  add.title = 'Добавить гифки с компьютера';
+  add.title = 'Добавить гифки с устройства';
   add.onclick = () => gifPopover.pick.click();
   grid.append(add);
   for (const g of await listGifs()) {
