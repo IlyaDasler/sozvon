@@ -39,6 +39,7 @@ type oauthTicket struct {
 type webFlow struct {
 	provider string
 	verifier string
+	returnTo string
 	expires  time.Time
 }
 
@@ -316,6 +317,10 @@ func (a *server) oauthWebStart(w http.ResponseWriter, r *http.Request) {
 	sum := sha256.Sum256([]byte(verifier))
 	challenge := base64.RawURLEncoding.EncodeToString(sum[:])
 	redirect := a.publicBase(r) + "/api/oauth/" + provider + "/callback"
+	returnTo := strings.TrimSpace(r.URL.Query().Get("returnTo"))
+	if returnTo != "https://localhost" && returnTo != "capacitor://localhost" && returnTo != "sozvon://oauth" {
+		returnTo = ""
+	}
 	url, err := a.oauth.BuildURL(state, challenge, redirect)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
@@ -328,7 +333,7 @@ func (a *server) oauthWebStart(w http.ResponseWriter, r *http.Request) {
 			delete(oauthState.flows, key)
 		}
 	}
-	oauthState.flows[state] = webFlow{provider: provider, verifier: verifier, expires: now.Add(webFlowTTL)}
+	oauthState.flows[state] = webFlow{provider: provider, verifier: verifier, returnTo: returnTo, expires: now.Add(webFlowTTL)}
 	oauthState.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{
 		Name: stateCookie, Value: state, Path: "/api/oauth",
@@ -357,13 +362,23 @@ func (a *server) oauthWebCallback(w http.ResponseWriter, r *http.Request) {
 		delete(oauthState.flows, state)
 	}
 	oauthState.mu.Unlock()
+	returnTo := ""
+	if ok {
+		returnTo = flow.returnTo
+	}
+	redirectWith := func(query string) string {
+		if returnTo == "" {
+			return "/?" + query
+		}
+		return returnTo + "?" + query
+	}
 	if !ok || code == "" {
-		http.Redirect(w, r, "/?oauth_error="+urlQueryEscape("Ответ сервиса не прошёл проверку, попробуйте ещё раз"), http.StatusFound)
+		http.Redirect(w, r, redirectWith("oauth_error="+urlQueryEscape("Ответ сервиса не прошёл проверку, попробуйте ещё раз")), http.StatusFound)
 		return
 	}
 	profile, err := a.oauth.FetchProfile(code, flow.verifier)
 	if err != nil {
-		http.Redirect(w, r, "/?oauth_error="+urlQueryEscape(err.Error()), http.StatusFound)
+		http.Redirect(w, r, redirectWith("oauth_error="+urlQueryEscape(err.Error())), http.StatusFound)
 		return
 	}
 	webCodeValue := auth.RandomID(24)
@@ -371,7 +386,7 @@ func (a *server) oauthWebCallback(w http.ResponseWriter, r *http.Request) {
 	if userID, _, exists, _ := a.store.FindIdentity(provider, profile.ProviderID); exists {
 		if user, err := a.store.UserByID(userID); err == nil {
 			if user.TotpSecret != "" {
-				http.Redirect(w, r, "/?oauth_error="+urlQueryEscape("У аккаунта включён второй фактор — войдите по логину и паролю"), http.StatusFound)
+				http.Redirect(w, r, redirectWith("oauth_error="+urlQueryEscape("У аккаунта включён второй фактор — войдите по логину и паролю")), http.StatusFound)
 				return
 			}
 			entry.token, _ = a.openSession(user, r.UserAgent())
@@ -390,7 +405,7 @@ func (a *server) oauthWebCallback(w http.ResponseWriter, r *http.Request) {
 	oauthState.mu.Lock()
 	oauthState.codes[webCodeValue] = entry
 	oauthState.mu.Unlock()
-	http.Redirect(w, r, "/?oauth_code="+webCodeValue, http.StatusFound)
+	http.Redirect(w, r, redirectWith("oauth_code="+webCodeValue), http.StatusFound)
 }
 
 func urlQueryEscape(value string) string {
