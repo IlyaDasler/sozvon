@@ -321,3 +321,14 @@ html[data-theme='glass'][data-theme-id='glass'] .room-tool.chat:focus-visible {
   border-color: transparent !important;
   outline: none !important;
 }
+
+/* «Совон»: при наведении на действия канала — только цвет/увеличение иконки, без плашки */
+html[data-theme='glass'][data-theme-id='glass'] .room-tool:hover,
+html[data-theme='glass'][data-theme-id='glass'] .room-tool:focus,
+html[data-theme='glass'][data-theme-id='glass'] .room-tool:focus-visible {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  outline: none !important;
+  color: var(--text) !important;
+}
