@@ -456,6 +456,8 @@ $('folder-cancel').onclick = () => $('folder-edit').classList.add('hidden');
 
 /** items: { label, icon, onclick, danger } или 'sep'; пустые (false) пропускаются */
 function showMenu(x, y, items) {
+  // Старая подсказка кнопки не должна висеть поверх открытого меню
+  document.querySelectorAll('.app-tip, .rail-tip').forEach((el) => el.classList.add('hidden'));
   const menu = $('popup-menu');
   menu.replaceChildren();
   for (const item of items.filter(Boolean)) {

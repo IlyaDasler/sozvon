@@ -29,6 +29,9 @@
       el.dataset.tip = text;
       el.removeAttribute('title');
     }
+    // Пока открыто контекстное меню, подсказки не показываем: иначе
+    // «Меню канала» всплывает поверх самого меню.
+    if (!document.getElementById('popup-menu')?.classList.contains('hidden')) return;
     const box = ensureTip();
     box.textContent = text;
     box.classList.remove('hidden');
