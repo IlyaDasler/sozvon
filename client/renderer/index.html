@@ -568,7 +568,7 @@
                 <span>Размытие <b id="glass-blur-value">26 px</b></span>
                 <input type="range" id="glass-blur" min="0" max="40" step="2" value="26">
               </label>
-              <span class="hint-text">Чем выше прозрачность, тем сильнее видно фон. На слабом компьютере уменьшите размытие или поставьте 0.</span>
+              <span class="hint-text">Чем выше прозрачность, тем сильнее видно фон. На слабом устройстве уменьшите размытие или поставьте 0.</span>
             </div>
             <div class="set-block hidden">
               <h4>Форма и подсветка</h4>
@@ -585,7 +585,7 @@
                 <option value="grotesk">Гротеск (Arial)</option>
                 <option value="mono">Моноширинный</option>
               </select></label>
-              <label class="check"><input type="checkbox" id="os-accent" checked> Брать цвет акцента из системы — приложение в одном стиле с Mac или Windows</label>
+              <label class="check"><input type="checkbox" id="os-accent" checked> Брать цвет акцента из системы — приложение в одном стиле с системой</label>
               <span class="hint-text">Скругление действует во всех темах, подсветка — только в «Совоне».</span>
             </div>
           </div>
@@ -602,7 +602,7 @@
                 <select id="set-speaker"></select>
               </label>
               <label class="field">
-                <span>Шумоподавление нейросетью <em class="muted small">— клавиатура, вентилятор, улица убираются на вашем компьютере, без интернета</em></span>
+                <span>Шумоподавление нейросетью <em class="muted small">— клавиатура, вентилятор, улица убираются на вашем устройстве, без интернета</em></span>
                 <input type="range" id="set-ns-level" min="0" max="3" step="1" value="2">
                 <span class="noise-ticks"><span>Выкл</span><span>Мягко</span><span>Средне</span><span>Сильно</span></span>
               </label>
@@ -627,7 +627,7 @@
                 <kbd id="ptt-key">не назначена</kbd>
                 <button type="button" class="btn" id="ptt-assign">Назначить</button>
               </div>
-              <span class="hint-text">Работает и в игре. Подойдёт любая клавиша или боковая кнопка мыши; Esc — отменить назначение.</span>
+              <span class="hint-text">Работает и в игре. Подойдёт кнопка гарнитуры или клавиша; Esc — отменить назначение.</span>
             </div>
             <div class="set-block">
               <h4>Проверка звука</h4>
@@ -642,7 +642,7 @@
             </div>
             <div class="set-block">
               <h4>Свои звуки</h4>
-              <span class="hint-text">Звонок, уведомления, вход и выход из голоса можно заменить своими файлами (MP3, WAV, OGG, до 30 секунд). Они хранятся только на этом компьютере.</span>
+              <span class="hint-text">Звонок, уведомления, вход и выход из голоса можно заменить своими файлами (MP3, WAV, OGG, до 30 секунд). Они хранятся только на этом устройстве.</span>
               <div class="custom-sounds" id="custom-sounds"></div>
             </div>
             <div class="set-block">
@@ -657,7 +657,7 @@
               <label class="check"><input type="checkbox" id="set-notify-desktop"> Уведомления на рабочем столе, когда окно свёрнуто</label>
               <label class="check"><input type="checkbox" id="set-notify-preview"> Показывать текст сообщения в уведомлении</label>
               <label class="check"><input type="checkbox" id="set-notify-sound"> Звук уведомлений</label>
-              <span class="hint-text">В статусе «Не беспокоить» на рабочий стол ничего не приходит и звонки не звенят — всё остаётся в колокольчике.</span>
+              <span class="hint-text">В статусе «Не беспокоить» на устройство ничего не приходит и звонки не звенят — всё остаётся в колокольчике.</span>
             </div>
           </div>
 
@@ -1226,7 +1226,7 @@
           <label class="screen-mode"><input type="radio" name="screen-mode" value="720p90"><b>720p</b><span>90 кадров/с</span><em>~7 Мбит/с на зрителя</em></label>
         </div>
         <label class="check"><input type="checkbox" id="screen-text" checked> Для текста — держать чёткость, а не плавность (код, документы)</label>
-        <label class="check"><input type="checkbox" id="screen-audio"> Передавать звук компьютера</label>
+        <label class="check"><input type="checkbox" id="screen-audio"> Передавать звук устройства</label>
         <span class="hint-text">Звук самого Созвона в трансляцию не попадает — друзья не услышат собственные голоса. Если интернет не тянет, картинка сама станет чуть мягче, но плавность останется.</span>
       </div>
       <p class="error" id="screen-error"></p>

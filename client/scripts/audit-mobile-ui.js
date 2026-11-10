@@ -37,4 +37,22 @@ runTest(async () => {
 
   await js(w, `document.querySelector('#set-nav [data-tab="look"]').click(); true`);
   await sleep(600); await screenshot(w, 'audit-05-look'); await report('look');
+
+  await js(w, `document.querySelector('#set-nav [data-tab="privacy"]').click(); true`);
+  await sleep(600); await screenshot(w, 'audit-06-privacy'); await report('privacy');
+  const privacy = JSON.parse(await js(w, `(() => {
+    const nav=document.getElementById('privacy-subnav');
+    const nr=nav?.getBoundingClientRect();
+    return JSON.stringify({nav: nav ? {display:getComputedStyle(nav).display,w:nr.width,h:nr.height} : null,
+      pages:[...document.querySelectorAll('#settings [data-privacy-page]')].map(p=>({p:p.dataset.privacyPage,hidden:p.classList.contains('hidden'),h:p.getBoundingClientRect().height})),
+      buttons:[...document.querySelectorAll('#privacy-subnav [data-privacy]')].map(b=>({p:b.dataset.privacy,display:getComputedStyle(b).display,w:b.getBoundingClientRect().width,h:b.getBoundingClientRect().height}))});
+  })()`));
+  console.log('privacy-dom', JSON.stringify(privacy));
+  for (const page of ['data','profile','contact','crypto']) {
+    await js(w, `document.querySelector('#privacy-subnav [data-privacy="${page}"]').click(); true`);
+    await sleep(250);
+    const visible = await js(w, `!document.querySelector('#settings [data-privacy-page="${page}"]').classList.contains('hidden')`);
+    if (!visible) throw new Error('privacy page не открылась: '+page);
+  }
+  await screenshot(w, 'audit-07-privacy-crypto');
 });

@@ -2719,7 +2719,7 @@ async function renderCameraList() {
     list.append(button);
   }
   $('camera-hint').textContent = options.length <= 1
-    ? 'Камеры не найдены — проверьте подключение и разрешение Windows/macOS.'
+    ? 'Камеры не найдены — проверьте подключение и разрешение камеры.'
     : 'Выберите камеру — картинка обновится сразу.';
 }
 
