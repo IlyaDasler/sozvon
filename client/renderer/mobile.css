@@ -885,9 +885,6 @@ body.mobile-room-sheet #mobile-room-backdrop {
 }
 
 @media (max-width: 900px) {
-  #chat-theme-btn {
-    display: none !important;
-  }
   #room-list .room-row {
     min-height: 44px;
   }
