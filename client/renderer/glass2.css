@@ -782,3 +782,11 @@ html[data-theme='glass2'] .sidebar-head .icon-btn:hover:not(:disabled) > svg {
 [data-theme='glass2'] #friend-tabs .glass-tab-indicator {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20) !important;
 }
+
+/* При наведении — только внутренний блик, без внешнего ореола */
+[data-theme='glass2'] .friend-tabs button:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+[data-theme='glass2'] .friend-tabs .add-tab:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
