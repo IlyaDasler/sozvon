@@ -1456,3 +1456,16 @@ html[data-theme='glass2'] body {
   height: 32px;
   flex: none;
 }
+
+/* Обсуждение: чуть плотнее стекло и стандартный порядок кнопок */
+[data-theme='glass2'] .thread-panel {
+  background: linear-gradient(145deg, rgba(228, 254, 255, 0.13), rgba(9, 18, 26, 0.50) 34%, rgba(2, 7, 11, 0.68));
+  -webkit-backdrop-filter: blur(22px) saturate(150%) brightness(0.78);
+  backdrop-filter: blur(22px) saturate(150%) brightness(0.78);
+}
+[data-theme='glass2'] #thread-expand {
+  order: 1;
+}
+[data-theme='glass2'] #thread-close {
+  order: 2;
+}
