@@ -276,7 +276,7 @@ html[data-theme='glass'][data-theme-id='glass'] .notif-panel::after {
   left: calc(var(--notif-tail, 22px) + 1px);
   width: 14px;
   height: 7px;
-  background: #1c2334;
+  background: inherit;
   border: 0;
   border-radius: 0;
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
