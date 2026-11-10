@@ -60,7 +60,7 @@ runTest(async () => {
   await waitFor(w, `!document.body.classList.contains('mobile-list')`, 'список закрылся после выбора комнаты');
 
   const channel = JSON.parse(await js(w, `(() => {
-    const av = document.getElementById('hub-menu-avatar');
+    const av = document.getElementById('room-hub-avatar');
     const r = av?.getBoundingClientRect();
     return JSON.stringify({
       display: av ? getComputedStyle(av).display : 'none',
