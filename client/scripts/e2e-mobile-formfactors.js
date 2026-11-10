@@ -6,8 +6,12 @@ runTest(async()=>{
  const foldOuter=await probe(344,882);
  const foldInner=await probe(673,841);
  const flipOpen=await probe(396,935);
+ const phoneLandscape=await probe(844,390);
+ const tiny=await probe(320,568);
  if(foldOuter.rail!=='none'||foldOuter.sidebar!=='none'||foldOuter.nav==='none')throw new Error('fold outer must be phone');
  if(foldInner.rail==='none'||foldInner.sidebar==='none'||foldInner.nav!=='none')throw new Error('fold inner must be workspace');
  if(flipOpen.rail!=='none'||flipOpen.sidebar!=='none'||flipOpen.nav==='none')throw new Error('flip open must be a tall phone, not workspace');
+ if(phoneLandscape.rail!=='none'||phoneLandscape.sidebar!=='none'||phoneLandscape.nav==='none')throw new Error('phone landscape must stay compact, not workspace');
+ if(tiny.nav==='none'||tiny.rail!=='none'||tiny.sidebar!=='none')throw new Error('320px phone must stay compact');
  console.log('✔ fold outer = phone, fold inner = workspace, flip open = tall phone');
 });
