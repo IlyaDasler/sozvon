@@ -5,12 +5,14 @@
   const root = document.documentElement;
   const GLASS_SCENES = {
     dawn: 'glass-dawn.jpg',
-    day: 'glass-dawn.jpg',
+    morning: 'glass-morning.jpg',
+    day: 'glass-day.jpg',
     sunset: 'glass-evening.jpg',
     night: 'glass-night.jpg',
   };
   const FUJI_SCENES = {
     dawn: 'fuji-dawn.jpg',
+    morning: 'fuji-dawn.jpg',
     day: 'fuji-sunset.jpg',
     sunset: 'fuji-sunset.jpg',
     night: 'fuji-night.jpg',
@@ -48,8 +50,9 @@
       const m = Number(parts.find((p) => p.type === 'minute')?.value);
       if (Number.isFinite(h)) hour = h + (Number.isFinite(m) ? m / 60 : 0);
     } catch {}
-    if (hour >= 5 && hour < 8) return 'dawn';
-    if (hour >= 8 && hour < 17) return 'day';
+    if (hour >= 5 && hour < 7) return 'dawn';
+    if (hour >= 7 && hour < 12) return 'morning';
+    if (hour >= 12 && hour < 17) return 'day';
     if (hour >= 17 && hour < 21) return 'sunset';
     return 'night';
   }
