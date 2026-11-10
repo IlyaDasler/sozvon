@@ -90,7 +90,9 @@
   const sidebar = document.querySelector('.sidebar');
   const hubsBar = document.createElement('div');
   hubsBar.id = 'mobile-hubs';
-  if (sidebar) sidebar.prepend(hubsBar);
+  const sidebarHead = sidebar?.querySelector('.sidebar-head');
+if (sidebarHead) sidebarHead.after(hubsBar);
+else if (sidebar) sidebar.prepend(hubsBar);
 
   const renderHubs = () => {
     if (!hubsBar) return;
