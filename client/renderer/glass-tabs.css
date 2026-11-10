@@ -240,3 +240,16 @@ html[data-theme='glass'][data-theme-id='glass'] #friend-tabs > button:hover {
 html[data-theme='glass'][data-theme-id='glass'] {
   --titlebar-solid: #1f496f;
 }
+
+/* «Совон»: язычок уведомлений — треугольник в цвет панели, а не ромб с рамкой */
+html[data-theme='glass'][data-theme-id='glass'] .notif-panel::before {
+  top: -7px;
+  width: 14px;
+  height: 7px;
+  background: rgba(22, 27, 42, 0.92);
+  border: 0;
+  border-radius: 0;
+  transform: none;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  box-shadow: none;
+}
