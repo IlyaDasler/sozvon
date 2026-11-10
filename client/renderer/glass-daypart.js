@@ -11,7 +11,7 @@
   };
   const FUJI_SCENES = {
     dawn: 'fuji-dawn.jpg',
-    day: 'fuji-day.jpg',
+    day: 'fuji-sunset.jpg',
     sunset: 'fuji-sunset.jpg',
     night: 'fuji-night.jpg',
   };
