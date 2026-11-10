@@ -253,3 +253,33 @@ html[data-theme='glass'][data-theme-id='glass'] .notif-panel::before {
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
   box-shadow: none;
 }
+
+/* «Совон»: язычок — часть рамки панели: внешний треугольник-рамка + внутренняя заливка */
+html[data-theme='glass'][data-theme-id='glass'] .notif-panel::before {
+  content: '';
+  top: -8px;
+  left: var(--notif-tail, 22px);
+  width: 16px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 0;
+  border-radius: 0;
+  transform: none;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  box-shadow: none;
+  z-index: 0;
+}
+html[data-theme='glass'][data-theme-id='glass'] .notif-panel::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: calc(var(--notif-tail, 22px) + 1px);
+  width: 14px;
+  height: 7px;
+  background: #1c2334;
+  border: 0;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  pointer-events: none;
+  z-index: 0;
+}
