@@ -2,9 +2,13 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self' http: https: ws: wss: blob:; media-src 'self' blob: mediastream: http: https:; img-src 'self' data: blob: http: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.instagram.com https://www.tiktok.com">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0e1222">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Созвон</title>
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="themes.css">
@@ -22,6 +26,7 @@
 <link rel="stylesheet" href="fuji.css">
   <link rel="stylesheet" href="glass-tabs.css">
   <link rel="stylesheet" href="glass2.css">
+  <link rel="stylesheet" href="mobile.css">
   <script src="theme-boot.js"></script>
   <script src="liquid-tabs.js" defer></script>
   <script src="glass-tabs.js" defer></script>
@@ -1454,6 +1459,7 @@
   <script src="crop.js"></script>
   <script src="layers.js"></script>
   <script src="nav.js"></script>
+  <script src="mobile.js"></script>
   <script src="web-refresh.js"></script>
 </body>
 </html>

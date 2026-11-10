@@ -1,0 +1,387 @@
+/* Мобильный веб / PWA: телефон, фолд и флип.
+   До 599 px — одна колонка и нижняя навигация; 600–900 px — две колонки;
+   на фолде с двумя сегментами панели расходятся вокруг петли. */
+
+:root {
+  --mobile-nav-h: 60px;
+  --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+#mobile-nav,
+#mobile-backdrop {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  /* Рейл на телефоне/фолде занимает слишком много места: каналы и комнаты уже в сайдбаре */
+  .rail {
+    display: none !important;
+  }
+  .main {
+    gap: 8px;
+    padding: max(6px, env(safe-area-inset-top, 0px)) 6px max(6px, var(--mobile-safe-bottom)) !important;
+  }
+  .sidebar {
+    width: clamp(230px, 30vw, 280px) !important;
+    flex: none;
+  }
+  .content {
+    width: 100%;
+    min-width: 0;
+  }
+  .chat-head {
+    padding: 0 10px;
+  }
+  .chat-head .icon-btn {
+    width: 30px;
+    height: 30px;
+  }
+  .composer {
+    padding: 0 8px max(8px, var(--mobile-safe-bottom));
+  }
+  .composer textarea {
+    padding-top: 15px;
+    padding-bottom: 15px;
+  }
+  .msg {
+    padding-left: 10px;
+    padding-right: 10px;
+    margin-left: -10px;
+    margin-right: -10px;
+  }
+  .set-card {
+    width: calc(100% - 16px) !important;
+    height: calc(100% - 16px) !important;
+    max-height: none !important;
+    margin: 8px;
+  }
+  .settings-card .rs-nav {
+    width: 190px;
+  }
+  .auth {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-y: auto;
+  }
+  .auth-hero {
+    display: none;
+  }
+  .auth-panel {
+    min-width: 0;
+    padding: 20px 16px max(20px, var(--mobile-safe-bottom));
+  }
+  .auth-card {
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 599px) {
+  #mobile-nav {
+    position: fixed;
+    z-index: 8;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    min-height: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom));
+    padding: 6px 8px var(--mobile-safe-bottom);
+    background: color-mix(in srgb, var(--bg-deep) 88%, transparent);
+    border-top: 1px solid var(--line);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+  #mobile-nav button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0;
+    padding: 4px 2px;
+    border: 0;
+    border-radius: 12px;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 10px;
+    cursor: pointer;
+  }
+  #mobile-nav button svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  #mobile-nav button.active {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  .main {
+    padding-top: 0 !important;
+    padding-bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom)) !important;
+  }
+  .content {
+    border-radius: 10px;
+  }
+  .chat-head {
+    min-height: 50px;
+  }
+  .chat-head .chat-sub,
+  .chat-head .peer-meta {
+    display: none;
+  }
+  .messages {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .msg {
+    gap: 9px;
+    padding: 6px 8px;
+    margin-left: -8px;
+    margin-right: -8px;
+  }
+  .msg .avatar {
+    width: 32px;
+    height: 32px;
+    flex: none;
+  }
+  .msg-text {
+    max-width: 100%;
+    font-size: 14.5px;
+  }
+  .msg-text.emoji-only {
+    font-size: 34px;
+  }
+  .msg-actions,
+  .msg-tools {
+    gap: 2px;
+  }
+  .composer-bar .composer-btn {
+    width: 34px;
+  }
+  .composer textarea {
+    font-size: 16px; /* не даём Android/iOS зумить поле */
+  }
+  /* Сайдбар — выдвижной список каналов на всю высоту, а не вторая колонка */
+  .sidebar {
+    display: none;
+    position: fixed !important;
+    z-index: 9;
+    top: 28px;
+    bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom));
+    left: 0;
+    width: min(88vw, 380px) !important;
+    max-width: none;
+    margin: 0;
+    border-radius: 0 16px 16px 0;
+    border-left: 0;
+    box-shadow: 18px 0 60px rgba(0, 0, 0, .45);
+  }
+  body.mobile-list .sidebar {
+    display: flex;
+  }
+  body.mobile-list #mobile-backdrop {
+    display: block;
+    position: fixed;
+    z-index: 7;
+    inset: 28px 0 0;
+    border: 0;
+    background: rgba(2, 5, 10, .48);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+  }
+  .settings-card .rs-nav {
+    width: 100%;
+    flex: none;
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .settings-card .rs-nav > * {
+    flex: none;
+  }
+  .settings-card {
+    flex-direction: column;
+  }
+  .set-foot {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .modal-card.set-card {
+    border-radius: 14px;
+  }
+  .theme-group-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .theme-preview {
+    height: 52px;
+  }
+  #members-panel.drawer-open,
+  .thread-panel.drawer-open {
+    top: 28px;
+    bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom));
+  }
+}
+
+/* Фолд/флип в разложенном виде: две колонки без рейла */
+@media (min-width: 600px) and (max-width: 900px) {
+  .main {
+    gap: 10px;
+  }
+  .sidebar {
+    position: static !important;
+    display: flex !important;
+    border-radius: 16px;
+  }
+  body.mobile-list .sidebar {
+    display: flex;
+  }
+  #mobile-nav,
+  #mobile-backdrop {
+    display: none !important;
+  }
+  .main {
+    padding-bottom: max(6px, var(--mobile-safe-bottom)) !important;
+  }
+}
+
+/* Android foldables: две сегментированные области — держим между ними воздух */
+@media (horizontal-viewport-segments: 2) {
+  .main {
+    column-gap: 14px !important;
+  }
+}
+
+@media (vertical-viewport-segments: 2) {
+  .main {
+    row-gap: 14px !important;
+  }
+}
+
+/* Кнопка «назад» в шапке чата: только на телефоне, desktop не меняем */
+.mobile-chat-back { display: none; }
+html.auth-screen #mobile-nav,
+html.auth-screen #mobile-backdrop {
+  display: none !important;
+}
+@media (max-width: 599px) {
+  .chat-head .mobile-chat-back {
+    display: grid;
+    flex: none;
+    margin-right: 2px;
+  }
+}
+
+@media (max-width: 599px) {
+  .chat-head .peer-meta {
+    display: flex !important;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .chat-head .peer-name {
+    font-size: 15px;
+    font-weight: 650;
+  }
+  .chat-head .peer-status,
+  .chat-head .peer-meta > .muted,
+  .chat-head #room-sub {
+    display: none !important;
+  }
+  .chat-head .mobile-chat-back[hidden] {
+    display: none !important;
+  }
+}
+
+@media (max-width: 599px) {
+  .friends-head {
+    overflow: hidden;
+  }
+  #friend-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  #friend-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  #friend-tabs > button {
+    flex: none;
+  }
+}
+@media (min-width: 600px) and (max-width: 900px) {
+  .chat-head .peer-meta {
+    display: flex !important;
+    flex-direction: column;
+  }
+  .chat-head .peer-status {
+    display: none !important;
+  }
+}
+
+@media (max-width: 599px) {
+  .chat-head > .spacer {
+    display: none;
+  }
+}
+
+@media (max-width: 599px) {
+  /* Список каналов сам по себе достаточно плотный: затемнение позади него
+     только мешает читать текст, поэтому открываем его непрозрачной панелью. */
+  body.mobile-list #mobile-backdrop {
+    display: none !important;
+  }
+  body.mobile-list .content {
+    visibility: hidden;
+  }
+  body.mobile-list .sidebar {
+    width: 100vw !important;
+    background: var(--bg-deep) !important;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+#mobile-hubs {
+  display: none;
+}
+@media (max-width: 900px) {
+  #mobile-hubs {
+    display: flex;
+    flex: none;
+    gap: 6px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--line);
+  }
+  #mobile-hubs::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-hub {
+    flex: none;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--bg-4);
+    color: var(--text-2);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .mobile-hub.active {
+    background: color-mix(in srgb, var(--accent) 22%, var(--bg-3));
+    color: var(--text);
+  }
+}
