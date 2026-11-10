@@ -94,7 +94,7 @@ function createWindow({ show = true } = {}) {
   // Кнопки окна — системные (Windows Snap Layouts), но их цвета берём из темы
   ipcMain.on('window:titlebar', (_event, colors) => {
     if (process.platform !== 'win32' || !win || win.isDestroyed()) return;
-    const color = /^#[0-9a-f]{6}$/i.test(String(colors?.color || '')) ? colors.color : '#17181c';
+    const color = /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(String(colors?.color || '')) ? colors.color : '#17181c';
     const symbolColor = /^#[0-9a-f]{6}$/i.test(String(colors?.symbolColor || '')) ? colors.symbolColor : '#d6d4cf';
     win.setTitleBarOverlay({ color, symbolColor, height: TITLEBAR_H });
   });
