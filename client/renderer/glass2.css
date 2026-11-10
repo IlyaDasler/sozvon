@@ -1180,3 +1180,46 @@ html[data-theme='glass2'] body {
 [data-theme='glass2'] .msg-tool {
   border-radius: 12px;
 }
+
+/* Кнопки действий у канала: ровная квадратная подложка по теме */
+[data-theme='glass2'] .room-tools {
+  gap: 4px;
+}
+[data-theme='glass2'] .room-tool {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  line-height: 0;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: rgba(13, 26, 35, 0.22);
+  color: #9fb8c3;
+  opacity: 0.62;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 160ms ease,
+    box-shadow 180ms ease,
+    opacity 160ms ease;
+}
+[data-theme='glass2'] .room-tool > svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  margin: auto;
+}
+[data-theme='glass2'] .room-row:hover .room-tool,
+[data-theme='glass2'] .room-row.active .room-tool {
+  opacity: 0.9;
+}
+[data-theme='glass2'] .room-tool:hover {
+  opacity: 1;
+  color: #effdff;
+  background: rgba(42, 76, 90, 0.54);
+  border-color: rgba(152, 240, 249, 0.50);
+  box-shadow:
+    inset 0 0 0 1px rgba(210, 248, 255, 0.12),
+    0 0 14px rgba(103, 231, 243, 0.14);
+}
