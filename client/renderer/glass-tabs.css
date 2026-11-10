@@ -224,3 +224,9 @@ html[data-theme='glass'][data-theme-id='glass'] .friends-head,
 html[data-theme='glass'][data-theme-id='glass'] .members-head {
   height: 65px;
 }
+
+/* «Совон»: чётный размер иконок у кнопок 28–30 px, иначе центр попадает на полпикселя */
+html[data-theme='glass'][data-theme-id='glass'] .icon-btn > svg {
+  width: 18px;
+  height: 18px;
+}
