@@ -827,3 +827,49 @@ html[data-theme='glass2'] .sidebar-head .icon-btn:hover:not(:disabled) > svg {
   border-color: rgba(143, 240, 249, 0.62);
   box-shadow: none;
 }
+
+/* ---------- Поле ввода: одна рамка у всей строки, нормальные кнопки ---------- */
+[data-theme='glass2'] .composer-bar {
+  align-items: center;
+  gap: 4px;
+  min-height: 46px;
+  padding: 6px 8px;
+}
+[data-theme='glass2'] .composer-bar textarea,
+[data-theme='glass2'] .composer-bar textarea:hover,
+[data-theme='glass2'] .composer-bar textarea:focus,
+[data-theme='glass2'] .composer-bar textarea:focus-visible {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  border-radius: 0 !important;
+  min-height: 32px;
+  padding: 7px 6px;
+}
+[data-theme='glass2'] .composer-btn {
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+[data-theme='glass2'] .composer-btn > svg {
+  width: 18px;
+  height: 18px;
+}
+[data-theme='glass2'] .composer-btn.gif > b {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 1px 3px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  line-height: 1.1;
+}
+[data-theme='glass2'] .composer-btn.send {
+  color: #a9f8ff;
+}
