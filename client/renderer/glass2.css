@@ -23,7 +23,10 @@
   inset: -4%;
   z-index: 0;
   pointer-events: none;
-  background: url('glass2-wallpaper.jpg') center 38% / cover no-repeat;
+  background-image: var(--glass2-bg, url('glass2-wallpaper.jpg'));
+  background-position: center 38%;
+  background-size: cover;
+  background-repeat: no-repeat;
   filter: brightness(0.66) contrast(1.12) saturate(0.78) hue-rotate(14deg);
   animation: glass2-drift 34s ease-in-out infinite alternate;
 }
@@ -1777,4 +1780,118 @@ html[data-theme='glass2'] body {
   background: rgba(180, 240, 250, 0.07) !important;
   border-color: rgba(143, 240, 249, 0.14) !important;
   color: #e6f8fc !important;
+}
+
+/* Кнопка смены фона на карточке темы «Стекло» */
+.theme-card {
+  position: relative;
+}
+.theme-bg-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(184, 236, 255, 0.28);
+  border-radius: 9px;
+  background: rgba(8, 17, 24, 0.64);
+  color: #dff9fd;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+.theme-bg-btn svg {
+  width: 15px;
+  height: 15px;
+}
+.theme-bg-btn:hover {
+  border-color: rgba(152, 240, 249, 0.60);
+  background: rgba(42, 76, 90, 0.60);
+  box-shadow: 0 0 14px rgba(103, 231, 243, 0.18);
+  transform: scale(1.06);
+}
+
+/* Окно выбора фона */
+.glass2-bg-card {
+  position: relative;
+  width: min(560px, calc(100% - 32px));
+  padding: 22px;
+  border: 1px solid rgba(184, 236, 255, 0.24);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(228, 254, 255, 0.12), rgba(10, 20, 29, 0.92) 42%, rgba(3, 9, 14, 0.97));
+  -webkit-backdrop-filter: blur(28px) saturate(150%) brightness(0.78);
+  backdrop-filter: blur(28px) saturate(150%) brightness(0.78);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.20);
+}
+.glass2-bg-card h3 {
+  padding-right: 46px;
+  margin-bottom: 6px;
+  color: #edf9fc;
+}
+.glass2-bg-close {
+  position: absolute !important;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+}
+.glass2-bg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+.glass2-bg-option {
+  position: relative;
+  padding: 0;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid rgba(184, 236, 255, 0.20);
+  border-radius: 14px;
+  background-color: #071018;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+.glass2-bg-option::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 46%, rgba(2, 7, 11, 0.85));
+  pointer-events: none;
+}
+.glass2-bg-option span {
+  position: absolute;
+  left: 10px;
+  bottom: 9px;
+  z-index: 1;
+  color: #eafcff;
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+.glass2-bg-option:hover {
+  border-color: rgba(152, 240, 249, 0.56);
+  transform: scale(1.015);
+  box-shadow: 0 0 20px rgba(103, 231, 243, 0.16);
+}
+.glass2-bg-option.selected {
+  border-color: rgba(152, 240, 249, 0.82);
+  box-shadow:
+    0 0 0 2px rgba(103, 231, 243, 0.16),
+    0 0 22px rgba(103, 231, 243, 0.24);
 }

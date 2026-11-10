@@ -11,7 +11,7 @@ const THEMES = [
   { id: 'silenthill', name: 'Забвение', hint: 'Серый туман, безысходность и ржавый акцент' },
   { id: 'neutron', name: 'Нейтрон', hint: 'Фиолетовый космос и тёмное стекло' },
   { id: 'ferrari', name: 'Феррари', hint: 'Карбон, алый Rosso Corsa и гоночный жёлтый' },
-  { id: 'glass2', name: 'Совон v2', hint: 'Тёмное стекло macOS: вечерний пейзаж и холодные блики' },
+  { id: 'glass2', name: 'Стекло', hint: 'Прозрачное стекло macOS: пейзаж за панелями и холодные блики' },
   { id: 'glass', name: 'Совон', hint: 'Совон — размытие, мягкий свет и живой лес; тема по умолчанию' },
   { id: 'fuji', name: 'Фуджи', hint: 'Фуджи — японский пейзаж, киноварь и золото, живой свет' },
 ];
@@ -22,6 +22,24 @@ const THEME_GROUPS = [
 ];
 
 const currentTheme = () => document.documentElement.dataset.themeId || document.documentElement.dataset.theme || 'glass';
+
+// ---------- Фон темы «Стекло» ----------
+const GLASS2_BACKGROUNDS = [
+  { id: 'mountain', file: 'glass2-wallpaper.jpg', label: 'Горный вечер' },
+  { id: 'night', file: 'glass2-wallpaper-2.jpg', label: 'Ночной лес' },
+];
+
+function glass2Background() {
+  const id = store.get('glass2Bg', 'mountain');
+  return GLASS2_BACKGROUNDS.find((item) => item.id === id) || GLASS2_BACKGROUNDS[0];
+}
+
+function applyGlass2Background() {
+  document.documentElement.style.setProperty('--glass2-bg', `url("${glass2Background().file}")`);
+}
+
+applyGlass2Background();
+
 
 /** Кнопки окна Windows — в цвета полосы окна текущей темы */
 function syncTitleBar() {
@@ -41,6 +59,7 @@ function setTheme(id) {
   document.documentElement.dataset.theme = id === 'fuji' ? 'glass' : id;
   document.documentElement.dataset.themeId = id;
   store.set('theme', id);
+  applyGlass2Background();
   syncTitleBar();
   applyGlass();
   refreshSystemColors();
@@ -101,6 +120,26 @@ function themeCard(t) {
   name.className = 'theme-name';
   name.textContent = t.name;
   card.append(name);
+  if (t.id === 'glass2') {
+    const bg = document.createElement('span');
+    bg.className = 'theme-bg-btn';
+    bg.setAttribute('role', 'button');
+    bg.tabIndex = 0;
+    bg.title = 'Сменить фон темы';
+    bg.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/></svg>';
+    bg.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openGlass2BackgroundPicker();
+    };
+    bg.onkeydown = (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      event.stopPropagation();
+      openGlass2BackgroundPicker();
+    };
+    card.append(bg);
+  }
   card.onclick = () => setTheme(t.id);
   return card;
 }
@@ -123,6 +162,55 @@ function renderThemePicker() {
     grid.append(section);
   }
 }
+// ---------- Выбор фона «Стекла» ----------
+let glass2BgModal = null;
+
+function openGlass2BackgroundPicker() {
+  if (!glass2BgModal) {
+    glass2BgModal = document.createElement('div');
+    glass2BgModal.id = 'glass2-bg-modal';
+    glass2BgModal.className = 'modal hidden';
+    glass2BgModal.innerHTML = `
+      <div class="modal-card glass2-bg-card">
+        <button type="button" class="icon-btn glass2-bg-close" title="Закрыть"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        <h3>Фон темы «Стекло»</h3>
+        <p class="muted small">Выберите пейзаж, который будет виден за стеклянными панелями.</p>
+        <div class="glass2-bg-grid"></div>
+      </div>`;
+    document.body.append(glass2BgModal);
+    glass2BgModal.addEventListener('click', (event) => {
+      if (event.target === glass2BgModal) closeGlass2BackgroundPicker();
+    });
+    glass2BgModal.querySelector('.glass2-bg-close').onclick = closeGlass2BackgroundPicker;
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeGlass2BackgroundPicker();
+    });
+  }
+  const grid = glass2BgModal.querySelector('.glass2-bg-grid');
+  grid.replaceChildren();
+  const current = glass2Background().id;
+  for (const bg of GLASS2_BACKGROUNDS) {
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = `glass2-bg-option${bg.id === current ? ' selected' : ''}`;
+    option.style.backgroundImage = `url("${bg.file}")`;
+    const label = document.createElement('span');
+    label.textContent = bg.label;
+    option.append(label);
+    option.onclick = () => {
+      store.set('glass2Bg', bg.id);
+      applyGlass2Background();
+      closeGlass2BackgroundPicker();
+    };
+    grid.append(option);
+  }
+  glass2BgModal.classList.remove('hidden');
+}
+
+function closeGlass2BackgroundPicker() {
+  glass2BgModal?.classList.add('hidden');
+}
+
 // ---------- Форма углов и «живая» подсветка стекла ----------
 
 const uiRadius = () => Math.min(24, Math.max(6, Number(store.get('uiRadius', 12))));
