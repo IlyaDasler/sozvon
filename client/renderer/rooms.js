@@ -573,6 +573,8 @@ function renderRoomView() {
   const room = roomById(state.selectedRoomId);
   if (!room) return;
   $('room-icon').innerHTML = roomIcon(room);
+  const roomHub = typeof hubById === 'function' ? hubById(room.hubId) : null;
+  if (roomHub && typeof fillHubIcon === 'function') fillHubIcon($('room-hub-avatar'), roomHub);
   // Свой фон комнаты — под перепиской и разговором
   $('room-view').classList.toggle('has-bg', Boolean(room.backgroundUrl));
   $('room-view').style.setProperty('--room-bg', room.backgroundUrl ? `url("${Api.base}${room.backgroundUrl}")` : 'none');

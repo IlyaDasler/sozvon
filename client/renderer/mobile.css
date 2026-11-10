@@ -1512,3 +1512,25 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     color: var(--ok) !important;
   }
 }
+
+/* Аватар канала в шапке открытой комнаты. На телефоне сайдбар скрыт,
+   поэтому это единственное место, где канал сохраняет идентичность. */
+.room-hub-avatar { display: none; }
+@media (max-width: 900px) {
+  .room-hub-avatar {
+    display: block;
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    background-color: var(--hub-color, var(--bg-4));
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 26px;
+    text-align: center;
+    overflow: hidden;
+  }
+}
