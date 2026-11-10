@@ -542,6 +542,14 @@
 
   // Свайп по нижней панели переключает вкладки, не требуя точного попадания.
   let navTouch = null;
+  let navSwiped = false;
+  // После свайпа браузер всё равно шлёт click на кнопку, под которой начался жест.
+  nav.addEventListener('click', (event) => {
+    if (!navSwiped) return;
+    event.preventDefault();
+    event.stopPropagation();
+    navSwiped = false;
+  }, true);
   nav.addEventListener(
     'touchstart',
     (event) => {
@@ -558,8 +566,10 @@
       const dy = event.changedTouches[0].clientY - navTouch.y;
       navTouch = null;
       if (Math.abs(dx) < 32 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
-      const current = tabOrder.findIndex((name) => nav.querySelector(`[data-mobile="${name}"]`).classList.contains('active'));
+      const found = tabOrder.findIndex((name) => nav.querySelector(`[data-mobile="${name}"]`).classList.contains('active'));
+      const current = found < 0 ? 0 : found;
       const next = Math.max(0, Math.min(tabOrder.length - 1, current + (dx < 0 ? 1 : -1)));
+      navSwiped = true;
       switchTab(tabOrder[next]);
       buzz();
     },

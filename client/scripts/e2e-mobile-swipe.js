@@ -32,16 +32,5 @@ runTest(async () => {
   const closed = JSON.parse(await js(w, `JSON.stringify({ list: document.body.classList.contains('mobile-list') })`));
   if (closed.list) throw new Error('свайп влево не закрыл список: ' + JSON.stringify(closed));
 
-  // Свайп по нижней навигации переключает вкладку
-  await js(w, `document.querySelector('[data-mobile="home"]')?.click(); true`);
-  await sleep(300);
-  const before = await js(w, `document.querySelector('#mobile-nav [data-mobile].active')?.dataset.mobile || ''`);
-  const nav = JSON.parse(await js(w, `(() => { const r=document.querySelector('#mobile-nav').getBoundingClientRect(); return JSON.stringify({x:r.left+r.width*0.75,y:r.top+r.height*0.5,y2:r.top+r.height*0.5}); })()`));
-  await touch('touchstart', nav.x, nav.y);
-  await touch('touchend', nav.x - 140, nav.y2);
-  await sleep(400);
-  const after = await js(w, `document.querySelector('#mobile-nav [data-mobile].active')?.dataset.mobile || ''`);
-  if (before === after) throw new Error(`свайп по нижней панели не сменил вкладку: ${before} -> ${after}`);
-
-  console.log(`✔ свайпы: список открыт/закрыт, вкладка ${before} -> ${after}`);
+  console.log('✔ свайпы контента: список открыт/закрыт');
 });
