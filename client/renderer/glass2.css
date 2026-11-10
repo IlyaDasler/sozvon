@@ -1232,3 +1232,42 @@ html[data-theme='glass2'] body {
   transform: scale(1.18);
   filter: drop-shadow(0 0 5px rgba(132, 240, 249, 0.55));
 }
+
+/* Кнопки «плюс» — рейл и заголовки каналов */
+[data-theme='glass2'] .rail-add,
+[data-theme='glass2'] .room-section .icon-btn,
+[data-theme='glass2'] .rs-add,
+[data-theme='glass2'] .list-title .icon-btn {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 160ms ease,
+    box-shadow 180ms ease,
+    transform 170ms cubic-bezier(.2, 1.2, .3, 1);
+}
+[data-theme='glass2'] .rail-add > svg,
+[data-theme='glass2'] .room-section .icon-btn > svg,
+[data-theme='glass2'] .rs-add > svg,
+[data-theme='glass2'] .list-title .icon-btn > svg {
+  transition:
+    transform 170ms cubic-bezier(.2, 1.2, .3, 1),
+    filter 170ms ease;
+}
+[data-theme='glass2'] .rail-add:hover,
+[data-theme='glass2'] .room-section .icon-btn:hover,
+[data-theme='glass2'] .rs-add:hover,
+[data-theme='glass2'] .list-title .icon-btn:hover {
+  color: #effdff;
+  border-color: rgba(152, 240, 249, 0.50) !important;
+  background: rgba(42, 76, 90, 0.50) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(210, 248, 255, 0.12),
+    0 0 14px rgba(103, 231, 243, 0.14);
+}
+[data-theme='glass2'] .rail-add:hover > svg,
+[data-theme='glass2'] .room-section .icon-btn:hover > svg,
+[data-theme='glass2'] .rs-add:hover > svg,
+[data-theme='glass2'] .list-title .icon-btn:hover > svg {
+  transform: scale(1.18);
+  filter: drop-shadow(0 0 5px rgba(132, 240, 249, 0.55));
+}
