@@ -513,25 +513,27 @@
       const dy = t.clientY - touch.y;
       const was = touch;
       touch = null;
-      if (Math.abs(dx) < 55 && Math.abs(dy) < 55) return;
-      if (was.topEdge && dy > 70 && Math.abs(dy) > Math.abs(dx)) {
+      if (Math.abs(dx) < 32 && Math.abs(dy) < 32) return;
+      if (was.topEdge && dy > 55 && Math.abs(dy) > Math.abs(dx)) {
         openNotifications();
         return;
       }
-      if (document.body.classList.contains('mobile-notifications') && dy > 70 && Math.abs(dy) > Math.abs(dx)) {
+      if (document.body.classList.contains('mobile-notifications') && dy > 55 && Math.abs(dy) > Math.abs(dx)) {
         closeNotifications();
         setActive('home');
         return;
       }
-      if (Math.abs(dx) < Math.abs(dy) * 1.3) return;
-      if (document.body.classList.contains('mobile-list') && dx < -60) {
+      // Не требуем строго горизонтального жеста: палец на телефоне всегда
+      // уходит по диагонали, а прежний порог 1.3 отбрасывал половину свайпов.
+      if (Math.abs(dx) < 42 || Math.abs(dx) < Math.abs(dy) * 1.08) return;
+      if (document.body.classList.contains('mobile-list') && dx < -42) {
         hideList();
         buzz();
-      } else if (was.leftEdge && dx > 60) {
+      } else if (was.leftEdge && dx > 42) {
         showList();
-      } else if (was.rightEdge && dx < -60) {
+      } else if (was.rightEdge && dx < -42) {
         openNotifications();
-      } else if (!document.body.classList.contains('mobile-list') && dx > 80 && event.target.closest('.content')) {
+      } else if (!document.body.classList.contains('mobile-list') && dx > 42 && !event.target.closest('button, a, .rail, #mobile-nav')) {
         showList();
       }
     },
@@ -555,7 +557,7 @@
       const dx = event.changedTouches[0].clientX - navTouch.x;
       const dy = event.changedTouches[0].clientY - navTouch.y;
       navTouch = null;
-      if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+      if (Math.abs(dx) < 32 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
       const current = tabOrder.findIndex((name) => nav.querySelector(`[data-mobile="${name}"]`).classList.contains('active'));
       const next = Math.max(0, Math.min(tabOrder.length - 1, current + (dx < 0 ? 1 : -1)));
       switchTab(tabOrder[next]);

@@ -1034,3 +1034,25 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   input:not([type='checkbox']):not([type='range']):not([type='radio']),
   textarea, select { font-size: 16px; }
 }
+
+/* Mali/Adreno в WebView: полноэкранный backdrop-filter даёт 30–40 ms
+   на кадр. На мобильных оставляем тон и прозрачность, без blur. */
+@media (max-width: 900px) {
+  #mobile-backdrop,
+  #mobile-room-backdrop,
+  #mobile-msg-backdrop,
+  .profile-card,
+  .dialog,
+  .sheet,
+  .modal,
+  [data-theme='glass'] .main,
+  [data-theme='glass'] .rail,
+  [data-theme='glass'] .sidebar,
+  [data-theme='glass'] .content {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  #mobile-backdrop, #mobile-room-backdrop, #mobile-msg-backdrop {
+    background: rgba(4, 8, 16, 0.62) !important;
+  }
+}
