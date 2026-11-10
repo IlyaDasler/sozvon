@@ -895,3 +895,11 @@ body.mobile-room-sheet #mobile-room-backdrop {
     min-height: 48px;
   }
 }
+
+/* Ferrari: на телефоне центр кадра попадал в колесо. Смещаем фокус
+   на корпус машины и оставляем тёмный градиент для читаемости. */
+@media (max-width: 900px) {
+  [data-theme='ferrari'] body {
+    background-position: 72% 58% !important;
+  }
+}
