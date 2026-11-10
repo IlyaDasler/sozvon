@@ -1895,3 +1895,16 @@ html[data-theme='glass2'] body {
     0 0 0 2px rgba(103, 231, 243, 0.16),
     0 0 22px rgba(103, 231, 243, 0.24);
 }
+
+/* Белая полоска слева: активный канал, непрочитанное и наведение */
+[data-theme='glass2'] .rail-item::before {
+  display: block !important;
+  left: 1px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #eafcff;
+  box-shadow: 0 0 8px rgba(180, 240, 250, 0.45);
+}
+[data-theme='glass2'] .rail-item.unread::before { height: 8px; opacity: 0.8; }
+[data-theme='glass2'] .rail-item:hover::before { height: 18px; opacity: 0.8; }
+[data-theme='glass2'] .rail-item.active::before { height: 36px; opacity: 1; }
