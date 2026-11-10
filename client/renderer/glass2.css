@@ -966,3 +966,22 @@ html[data-theme='glass2'] .sidebar-head .icon-btn:hover:not(:disabled) > svg {
     0 0 0 2px rgba(104, 232, 244, 0.16),
     0 0 16px rgba(104, 232, 244, 0.35) !important;
 }
+
+/* Иконки каналов: картинка доходит до скруглённых краёв плитки,
+   поэтому скругляется сама, а не только подложка. */
+[data-theme='glass2'] .rail-tile.has-image {
+  background-size: 100% !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  border-radius: 14px;
+  overflow: hidden;
+}
+/* Клик/наведение не должны увеличивать саму картинку канала */
+[data-theme='glass2'] .rail-tile.has-image:hover,
+[data-theme='glass2'] .rail-tile.has-image:focus,
+[data-theme='glass2'] .rail-item.active .rail-tile.has-image {
+  transform: none !important;
+}
+[data-theme='glass2'] .rail-tile.has-image:hover img {
+  transform: none;
+}
