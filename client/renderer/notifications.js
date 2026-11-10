@@ -127,8 +127,12 @@ const notifKey = () => `notifications:${state.me?.id}`;
 const loadNotifs = () => store.get(notifKey(), []);
 const saveNotifs = (list) => store.set(notifKey(), list.slice(0, NOTIF_LIMIT));
 
+// Личные сообщения не дублируем в колокольчике: их показывает бейдж
+// у иконки приложения в рейле.
+const bellNotifs = () => loadNotifs().filter((n) => n.kind !== 'message');
+
 function renderNotifBadge() {
-  const unread = loadNotifs().filter((n) => !n.read).length;
+  const unread = bellNotifs().filter((n) => !n.read).length;
   $('notif-badge').textContent = unread > 99 ? '99+' : unread;
   $('notif-badge').classList.toggle('hidden', !unread);
 }
@@ -136,7 +140,7 @@ function renderNotifBadge() {
 function renderNotifPanel() {
   const list = $('notif-list');
   list.replaceChildren();
-  const items = loadNotifs();
+  const items = bellNotifs();
   $('notif-empty').classList.toggle('hidden', items.length > 0);
   for (const n of items) {
     const row = document.createElement('button');
