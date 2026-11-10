@@ -560,3 +560,91 @@ html.pwa body.mobile-list .sidebar {
     border-radius: 0 !important;
   }
 }
+
+
+/* ---------- Друзья на телефоне: заголовок и вкладки в две строки ----------
+   Раньше пять вкладок делили одну строку с заголовком, из-за чего первая
+   вкладка обрезалась, а «Заблокированные» уезжали за край. Теперь заголовок
+   стоит отдельно, вкладки — горизонтальная лента с собственным скроллом. */
+@media (max-width: 900px) {
+  .friends-head {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    height: auto !important;
+    min-height: 0 !important;
+    gap: 7px !important;
+    padding: 9px 12px 8px !important;
+    background: transparent !important;
+    border-bottom: 1px solid var(--line) !important;
+  }
+  .friends-head .head-divider {
+    display: none !important;
+  }
+  .friends-title {
+    height: 24px;
+    font-size: 15px !important;
+    letter-spacing: -0.01em;
+  }
+  .friends-title svg {
+    width: 19px;
+    height: 19px;
+  }
+  #friend-tabs {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    gap: 6px !important;
+    width: 100%;
+    min-width: 0;
+    padding: 0 18px 2px 0 !important;
+    overflow-x: auto !important;
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 20px), transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 20px), transparent 100%);
+    overflow-y: hidden;
+    scrollbar-width: none;
+    scroll-padding-inline: 2px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+  #friend-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  #friend-tabs > button {
+    flex: 0 0 auto !important;
+    height: 30px !important;
+    padding: 0 11px !important;
+    border: 1px solid transparent !important;
+    border-radius: 9px !important;
+    background: transparent !important;
+    color: var(--muted) !important;
+    font-size: 12px !important;
+    font-weight: 500;
+    scroll-snap-align: start;
+    white-space: nowrap;
+  }
+  #friend-tabs > button:hover {
+    color: var(--text) !important;
+    background: color-mix(in srgb, var(--text) 7%, transparent) !important;
+  }
+  #friend-tabs > button.active {
+    color: var(--text) !important;
+    background: color-mix(in srgb, var(--accent) 20%, var(--bg-3)) !important;
+    border-color: color-mix(in srgb, var(--accent) 28%, var(--line)) !important;
+    box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
+  }
+  #friend-tabs > button.add-tab {
+    color: var(--text-2) !important;
+    background: color-mix(in srgb, var(--text) 7%, transparent) !important;
+    border-color: var(--line) !important;
+  }
+  #friend-tabs > button.add-tab.active {
+    color: var(--text) !important;
+    background: color-mix(in srgb, var(--accent) 18%, var(--bg-3)) !important;
+  }
+  .friends-body {
+    padding: 10px 12px 16px !important;
+  }
+}
