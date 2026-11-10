@@ -48,6 +48,10 @@ runTest(async () => {
 
   await js(w, `openSettings(); true`);
   await sleep(800); await screenshot(w, 'audit-04-settings'); await report('settings');
+  console.log('settings-profile', await js(w, `(() => {
+    const b=document.querySelector('#set-nav [data-tab="profile"]'); const c=getComputedStyle(b);
+    return JSON.stringify({bg:c.backgroundColor,bgi:c.backgroundImage,border:c.border,shadow:c.boxShadow,outline:c.outline,cls:b.className,body:document.body.className});
+  })()`));
 
   // Все семь разделов должны открываться именно как кнопки, а не только через showSettingsTab()
   for (const tab of ['profile','look','sound','notify','account','privacy','about']) {

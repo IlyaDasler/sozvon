@@ -1625,3 +1625,42 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (max-width: 900px) {
   .desktop-only { display: none !important; }
 }
+
+/* ---------- Корень настроек: список, а не выделенная строка ----------
+   На ПК «Профиль» подсвечен как активный раздел. На телефоне корень —
+   это меню: ни одна строка не должна выглядеть уже выбранной. */
+@media (max-width: 900px) {
+  body.mobile-settings:not(.mobile-settings-section) #settings .set-nav button[data-tab] {
+    position: relative;
+    min-height: 52px;
+    padding: 0 38px 0 16px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: var(--text) !important;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: left;
+  }
+  body.mobile-settings:not(.mobile-settings-section) #settings .set-nav button[data-tab]::after {
+    content: '';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid var(--muted);
+    border-bottom: 1.5px solid var(--muted);
+    transform: translateY(-50%) rotate(-45deg);
+  }
+  body.mobile-settings:not(.mobile-settings-section) #settings .set-nav button[data-tab].active,
+  body.mobile-settings:not(.mobile-settings-section) #settings .set-nav button[data-tab]:hover,
+  body.mobile-settings:not(.mobile-settings-section) #settings .set-nav button[data-tab]:focus {
+    background: transparent !important;
+    color: var(--text) !important;
+    box-shadow: none !important;
+  }
+  body.mobile-settings:not(.mobile-settings-section) #settings .set-nav button[data-tab]:active {
+    background: color-mix(in srgb, var(--bg-3) 80%, transparent) !important;
+  }
+}
