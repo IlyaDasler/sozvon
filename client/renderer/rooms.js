@@ -557,6 +557,7 @@ function selectRoom(id) {
 
   $('chat').classList.add('hidden');
   $('room-view').classList.toggle('hidden', !room);
+  document.body.classList.toggle('mobile-room-open', Boolean(room));
   $('empty-state').classList.toggle('hidden', Boolean(room) || state.view !== 'home');
   renderHubChrome();
   renderVoice();
