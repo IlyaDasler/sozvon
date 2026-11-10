@@ -283,3 +283,9 @@ html[data-theme='glass'][data-theme-id='glass'] .notif-panel::after {
   pointer-events: none;
   z-index: 0;
 }
+
+/* Без отдельной внешней рамки: хвостик — только заливка панели */
+html[data-theme='glass'][data-theme-id='glass'] .notif-panel::before {
+  content: none !important;
+  display: none !important;
+}
