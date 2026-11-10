@@ -540,42 +540,6 @@
     { passive: true }
   );
 
-  // Свайп по нижней панели переключает вкладки, не требуя точного попадания.
-  let navTouch = null;
-  let navSwiped = false;
-  // После свайпа браузер всё равно шлёт click на кнопку, под которой начался жест.
-  nav.addEventListener('click', (event) => {
-    if (!navSwiped) return;
-    event.preventDefault();
-    event.stopPropagation();
-    navSwiped = false;
-  }, true);
-  nav.addEventListener(
-    'touchstart',
-    (event) => {
-      if (event.touches.length !== 1) return;
-      navTouch = { x: event.touches[0].clientX, y: event.touches[0].clientY };
-    },
-    { passive: true }
-  );
-  nav.addEventListener(
-    'touchend',
-    (event) => {
-      if (!navTouch) return;
-      const dx = event.changedTouches[0].clientX - navTouch.x;
-      const dy = event.changedTouches[0].clientY - navTouch.y;
-      navTouch = null;
-      if (Math.abs(dx) < 32 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
-      const found = tabOrder.findIndex((name) => nav.querySelector(`[data-mobile="${name}"]`).classList.contains('active'));
-      const current = found < 0 ? 0 : found;
-      const next = Math.max(0, Math.min(tabOrder.length - 1, current + (dx < 0 ? 1 : -1)));
-      navSwiped = true;
-      switchTab(tabOrder[next]);
-      buzz();
-    },
-    { passive: true }
-  );
-
   // Единый порядок закрытия для Android back и системной кнопки.
   // Возвращает true, если событие поглощено приложением.
   window.mobileBack = () => {
