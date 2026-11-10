@@ -1493,3 +1493,47 @@ html[data-theme='glass2'] body {
   left: auto;
   z-index: 2;
 }
+
+/* ---------- Выпадающие списки в стиле темы ---------- */
+[data-theme='glass2'] .gs-select {
+  border: 1px solid rgba(184, 236, 255, 0.20);
+  border-radius: 11px;
+  background: rgba(9, 20, 28, 0.38);
+  -webkit-backdrop-filter: blur(14px) saturate(145%) brightness(0.88);
+  backdrop-filter: blur(14px) saturate(145%) brightness(0.88);
+  color: #d9eef3;
+}
+[data-theme='glass2'] .gs-select:hover {
+  border-color: rgba(152, 240, 249, 0.42);
+}
+[data-theme='glass2'] .gs-select[aria-expanded='true'] {
+  border-color: rgba(152, 240, 249, 0.56);
+}
+[data-theme='glass2'] .gs-menu {
+  border: 1px solid rgba(184, 236, 255, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(228, 254, 255, 0.13), rgba(11, 22, 31, 0.76) 36%, rgba(3, 9, 14, 0.92));
+  -webkit-backdrop-filter: blur(22px) saturate(150%) brightness(0.82);
+  backdrop-filter: blur(22px) saturate(150%) brightness(0.82);
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+[data-theme='glass2'] .gs-option {
+  border-radius: 9px;
+  color: #cfe6ee;
+}
+[data-theme='glass2'] .gs-option.is-active {
+  background: rgba(180, 240, 250, 0.10);
+  color: #f3feff;
+}
+[data-theme='glass2'] .gs-option.is-selected {
+  color: #b8f8ff;
+}
+/* Роль в списке участников — компактный селект */
+[data-theme='glass2'] .member-actions .gs-select {
+  width: auto;
+  min-width: 128px;
+  max-width: 150px;
+  height: 30px;
+}
