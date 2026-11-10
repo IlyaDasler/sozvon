@@ -903,3 +903,18 @@ body.mobile-room-sheet #mobile-room-backdrop {
     background-position: 72% 58% !important;
   }
 }
+
+/* Название хаба на телефоне — статичный заголовок, а не выпадающий селект.
+   Действия хаба открываются долгим нажатием на его иконку. */
+@media (max-width: 900px) {
+  #hub-menu-btn {
+    pointer-events: none !important;
+    background: transparent !important;
+    border: 0 !important;
+    padding-left: 10px !important;
+    cursor: default !important;
+  }
+  #hub-menu-btn > svg {
+    display: none !important;
+  }
+}
