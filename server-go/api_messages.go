@@ -237,6 +237,7 @@ func (a *server) sendRoomMessage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	a.broadcastRoomMessage(roomID, message, request.MentionAll, threadRoot, mentions)
+	a.pushRoomMessage(roomID, user.ID, text)
 	body := withMeta(a.messageJSON(message), message)
 	if len(mentions) > 0 {
 		body["mentions"] = mentions

@@ -151,6 +151,7 @@ func (a *server) sendDM(w http.ResponseWriter, r *http.Request) {
 	event := map[string]any{"type": "message", "message": a.dmJSON(message)}
 	a.hub.Send(user.ID, event)
 	a.hub.Send(peerID, event)
+	a.pushDM(user.ID, peerID, text)
 	writeJSON(w, http.StatusOK, a.dmJSON(message))
 }
 
