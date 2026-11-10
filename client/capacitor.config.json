@@ -1,5 +1,12 @@
 {
   "appId": "ru.ilyadasler.sozvon.mobile",
   "appName": "Созвон",
-  "webDir": "renderer"
+  "webDir": "renderer",
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "DEFAULT",
+      "hidden": false
+    }
+  }
 }
