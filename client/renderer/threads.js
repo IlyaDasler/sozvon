@@ -192,6 +192,8 @@
     listEl().innerHTML = '<div class="thread-empty muted small">Загружаем обсуждение…</div>';
     try {
       const rows = await Api.get(`/rooms/${roomId}/messages/${rootId}/thread`);
+      // Тред могли закрыть, пока шёл запрос: не трогаем уже снятую панель.
+      if (!thread || thread.rootId !== rootId) return;
       const known = new Map((state.roomHistory.get(roomId) || []).map((m) => [m.id, m]));
       for (const m of rows) {
         const cached = known.get(m.id);
@@ -205,6 +207,7 @@
       setComposerEnabled(true);
       input()?.focus();
     } catch (err) {
+      if (!thread || thread.rootId !== rootId) return;
       // Старый сервер не знает про треды: не показываем «не найдено», объясняем причину
       // и ГЛУШИМ отправку, чтобы ответ не улетел обычным сообщением в общий чат
       const oldServer = /не найдено|not found|404/i.test(err.message || '');
