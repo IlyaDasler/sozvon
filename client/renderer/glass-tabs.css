@@ -238,7 +238,7 @@ html[data-theme='glass'] #friend-tabs > button:hover {
 
 /* Цвет системных кнопок окна — тёплый нейтральный, под новый рассветный фон */
 html[data-theme='glass'] {
-  --titlebar-solid: transparent;
+  --titlebar-solid: #00000000;
 }
 
 /* «Совон»: язычок уведомлений — треугольник в цвет панели, а не ромб с рамкой */
