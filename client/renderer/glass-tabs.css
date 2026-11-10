@@ -368,7 +368,7 @@ html[data-theme='glass'] .members-head {
 
 /* «Фуджи»: тот же макет, что у «Совона», но акценты и системные кнопки — киноварь/золото */
 html[data-theme='glass'][data-theme-id='fuji'] {
-  --titlebar-solid: #2a1b1e;
+  --titlebar-solid: #00000000;
 }
 html[data-theme='glass'][data-theme-id='fuji'] .rail-item::before {
   background: var(--accent-2);
