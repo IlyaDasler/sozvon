@@ -1483,3 +1483,13 @@ html[data-theme='glass2'] body {
 [data-theme='glass2'] .thread-head {
   background: rgba(8, 18, 26, 0.30);
 }
+
+/* Крестик в окнах приглашения/создания комнаты — в правом верхнем углу */
+[data-theme='glass2'] .invite-card .invite-close,
+[data-theme='glass2'] .room-card .invite-close {
+  position: absolute !important;
+  top: 12px;
+  right: 12px;
+  left: auto;
+  z-index: 2;
+}
