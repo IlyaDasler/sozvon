@@ -27,6 +27,7 @@ const currentTheme = () => document.documentElement.dataset.themeId || document.
 const GLASS2_BACKGROUNDS = [
   { id: 'mountain', file: 'glass2-wallpaper.jpg', label: 'Горный вечер' },
   { id: 'night', file: 'glass2-wallpaper-2.jpg', label: 'Ночной лес' },
+  { id: 'aurora', file: 'glass2-wallpaper-3.jpg', label: 'Северное сияние' },
 ];
 
 function glass2Background() {
