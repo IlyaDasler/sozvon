@@ -1154,9 +1154,34 @@ kbd {
 }
 /* Лёгкий хвост попапа: панель приходит из колокольчика */
 .notif-panel::before {
-  content: ''; position: absolute; top: -6px; left: var(--notif-tail, 22px); right: auto; width: 12px; height: 12px;
-  background: inherit; border-left: 1px solid var(--line); border-top: 1px solid var(--line);
-  transform: rotate(45deg); border-top-left-radius: 3px;
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: var(--notif-tail, 22px);
+  right: auto;
+  width: 16px;
+  height: 8px;
+  background: var(--line-strong);
+  border: 0;
+  border-radius: 0;
+  transform: none;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  box-shadow: none;
+  z-index: 0;
+}
+.notif-panel::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: calc(var(--notif-tail, 22px) + 1px);
+  width: 14px;
+  height: 7px;
+  background: var(--notif-tail-fill, var(--bg-3));
+  border: 0;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  pointer-events: none;
+  z-index: 0;
 }
 .notif-panel > * { position: relative; z-index: 1; }
 .notif-list { min-height: 0; flex: 1 1 auto; }
