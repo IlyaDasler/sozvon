@@ -125,6 +125,74 @@
     buzz();
   };
 
+  // Лист действий комнаты: открыть, настройки, пригласить. Появляется
+  // долгим нажатием, поэтому строка списка остаётся чистой.
+  const roomSheet = document.createElement('div');
+  roomSheet.id = 'mobile-room-sheet';
+  const roomBackdrop = document.createElement('button');
+  roomBackdrop.type = 'button';
+  roomBackdrop.id = 'mobile-room-backdrop';
+  roomBackdrop.setAttribute('aria-label', 'Закрыть действия комнаты');
+  document.body.append(roomBackdrop, roomSheet);
+  const closeRoomSheet = () => document.body.classList.remove('mobile-room-sheet');
+  roomBackdrop.onclick = closeRoomSheet;
+  const openRoomSheet = (roomId) => {
+    const room = typeof roomById === 'function' ? roomById(roomId) : null;
+    if (!room) return;
+    roomSheet.replaceChildren();
+    const title = document.createElement('div');
+    title.className = 'sheet-title';
+    title.textContent = room.name;
+    roomSheet.append(title);
+    const add = (label, run) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.onclick = () => {
+        closeRoomSheet();
+        run();
+      };
+      roomSheet.append(button);
+    };
+    add('Открыть чат', () => {
+      if (typeof openRoomChat === 'function') openRoomChat(room.id);
+    });
+    add('Настройки комнаты', () => {
+      if (typeof openRoomManage === 'function') openRoomManage(room.id);
+    });
+    add('Пригласить в комнату', () => {
+      if (typeof openRoomInvite === 'function') openRoomInvite(room.id);
+    });
+    document.body.classList.add('mobile-room-sheet');
+  };
+
+  // На раскрытом фолде нет нижних вкладок: уведомления и настройки живут
+  // в нижней части рейла, как навигационные иконки мобильного приложения.
+  const railEl = document.getElementById('rail');
+  let railUtility = null;
+  let railUtilityBadge = null;
+  if (railEl) {
+    railUtility = document.createElement('div');
+    railUtility.id = 'mobile-rail-utility';
+    railUtility.innerHTML = `
+      <button type="button" id="mobile-rail-notifs" title="Уведомления" aria-label="Уведомления">
+        <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        <span class="mobile-badge hidden"></span>
+      </button>
+      <button type="button" id="mobile-rail-settings" title="Настройки" aria-label="Настройки">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></svg>
+      </button>`;
+    railEl.append(railUtility);
+    railUtility.querySelector('#mobile-rail-notifs').onclick = (event) => {
+      event.stopPropagation();
+      openNotifications();
+    };
+    railUtility.querySelector('#mobile-rail-settings').onclick = () => {
+      if (typeof openSettings === 'function') openSettings();
+    };
+    railUtilityBadge = railUtility.querySelector('.mobile-badge');
+  }
+
   const switchTab = (name) => {
     closeNotifications();
     if (name === 'home') {
@@ -165,12 +233,27 @@
     const value = source && !source.classList.contains('hidden') ? source.textContent : '';
     badge.textContent = value;
     badge.classList.toggle('hidden', !value);
+    if (railUtilityBadge) {
+      railUtilityBadge.textContent = value;
+      railUtilityBadge.classList.toggle('hidden', !value);
+    }
   };
   syncBadge();
   setInterval(syncBadge, 600);
 
   // Панель уведомлений закрылась — снимаем полноэкранный режим.
   if (panel) {
+    const head = panel.querySelector('.notif-head');
+    if (head && !head.querySelector('#notif-close')) {
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.id = 'notif-close';
+      close.title = 'Закрыть';
+      close.setAttribute('aria-label', 'Закрыть уведомления');
+      close.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+      close.onclick = closeNotifications;
+      head.append(close);
+    }
     new MutationObserver(() => {
       if (panel.classList.contains('hidden')) document.body.classList.remove('mobile-notifications');
     }).observe(panel, { attributes: true, attributeFilter: ['class'] });
@@ -185,6 +268,43 @@
         hideList();
         syncBack();
       }
+    },
+    true
+  );
+
+  // Долгое нажатие на комнату открывает её настройки: на сенсорном экране
+  // не нужно держать три мелкие иконки в каждой строке.
+  let roomPressTimer = null;
+  let roomLongPressed = false;
+  const cancelRoomPress = () => {
+    if (roomPressTimer) clearTimeout(roomPressTimer);
+    roomPressTimer = null;
+  };
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (event.pointerType === 'mouse') return;
+      const row = event.target.closest('.room-row');
+      if (!row || event.target.closest('button')) return;
+      cancelRoomPress();
+      roomPressTimer = setTimeout(() => {
+        roomLongPressed = true;
+        buzz(12);
+        openRoomSheet(Number(row.dataset.room));
+      }, 550);
+    },
+    { passive: true }
+  );
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+    document.addEventListener(type, cancelRoomPress, { passive: true });
+  }
+  document.addEventListener(
+    'click',
+    (event) => {
+      if (!roomLongPressed) return;
+      roomLongPressed = false;
+      event.preventDefault();
+      event.stopPropagation();
     },
     true
   );

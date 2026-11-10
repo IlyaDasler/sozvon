@@ -648,3 +648,253 @@ html.pwa body.mobile-list .sidebar {
     padding: 10px 12px 16px !important;
   }
 }
+
+
+/* ---------- Мобильная навигация без дублей ПК ---------- */
+#mobile-rail-utility {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  /* На телефоне и фолде верхние колокольчик и шестерёнка не нужны:
+     уведомления — вкладка снизу, настройки — в нижней навигации или рейле. */
+  #notif-btn,
+  #settings-btn {
+    display: none !important;
+  }
+  /* Белая полоска у активного хаба — это десктопный маркер, на сенсорном
+     экране она выглядит как случайный артефакт. */
+  .rail-item::before,
+  #rail .rail-item::before {
+    display: none !important;
+  }
+  #rail .rail-item.active .rail-tile {
+    background: color-mix(in srgb, var(--accent) 18%, var(--bg-3)) !important;
+    border-radius: 14px !important;
+  }
+  /* Инструменты комнаты появляются по долгому нажатию, а не висят
+     тремя мелкими иконками на каждой строке. */
+  #room-list .room-tools {
+    display: none !important;
+  }
+  #rail .rail-item,
+  #rail .rail-tile {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  #rail .rail-tile {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 900px) {
+  #mobile-rail-utility {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex: none;
+    padding: 5px 0 2px;
+    border-top: 1px solid var(--line);
+  }
+  #mobile-rail-utility button {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 13px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  #mobile-rail-utility button:hover,
+  #mobile-rail-utility button:active {
+    background: color-mix(in srgb, var(--text) 8%, transparent);
+    color: var(--text);
+  }
+  #mobile-rail-utility button svg {
+    width: 21px;
+    height: 21px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  #mobile-rail-utility .mobile-badge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--on-accent, #fff);
+    font-size: 9px;
+    line-height: 16px;
+    text-align: center;
+  }
+}
+
+/* Уведомления — полноэкранный раздел не только на телефоне, но и на фолде. */
+@media (max-width: 900px) {
+  body.mobile-notifications #notif-panel {
+    position: fixed !important;
+    z-index: 20;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: max(10px, env(safe-area-inset-top)) 14px 18px;
+    border: 0;
+    border-radius: 0;
+    background: var(--bg-deep) !important;
+    overflow-y: auto;
+    animation: mobile-notifs-in 220ms cubic-bezier(.2, .8, .2, 1);
+  }
+  body.mobile-notifications #notif-panel::after {
+    display: none !important;
+  }
+  body.mobile-notifications #notif-panel .notif-head {
+    padding: 6px 2px 14px;
+  }
+  body.mobile-notifications #notif-panel .notif-head b {
+    font-size: 22px;
+    letter-spacing: -0.02em;
+  }
+  #notif-close {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border: 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--text) 8%, transparent);
+    color: var(--text-2);
+    cursor: pointer;
+  }
+  #notif-close svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+}
+@media (max-width: 599px) {
+  body.mobile-notifications #notif-panel {
+    bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom)) !important;
+  }
+  body.mobile-notifications #notif-panel .notif-head b {
+    font-size: 22px;
+  }
+}
+
+/* Сенсорные размеры там, где раньше были наведенческие 26–30 px. */
+@media (pointer: coarse) and (max-width: 900px) {
+  .chat-head .icon-btn,
+  .chat-head .btn.success {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .sidebar-head .icon-btn {
+    min-width: 38px;
+    min-height: 38px;
+  }
+  #friend-tabs > button {
+    height: 34px !important;
+  }
+  .friend-search {
+    height: 42px !important;
+  }
+  .composer textarea {
+    min-height: 44px;
+  }
+  .msg-actions .icon-btn {
+    min-width: 34px;
+    min-height: 34px;
+  }
+}
+
+/* Нижний лист действий комнаты — вместо трёх мелких иконок на строке */
+#mobile-room-sheet {
+  display: none;
+}
+body.mobile-room-sheet #mobile-room-sheet {
+  display: block;
+  position: fixed;
+  z-index: 25;
+  left: 8px;
+  right: 8px;
+  bottom: calc(10px + var(--mobile-safe-bottom));
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-2);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .48);
+  animation: mobile-sheet-in 180ms cubic-bezier(.2, .8, .2, 1);
+}
+body.mobile-room-sheet #mobile-room-backdrop {
+  display: block;
+  position: fixed;
+  z-index: 24;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, .42);
+}
+#mobile-room-sheet .sheet-title {
+  padding: 6px 10px 10px;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--text);
+}
+#mobile-room-sheet button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+}
+#mobile-room-sheet button:active {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+@keyframes mobile-sheet-in {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+@media (max-width: 599px) {
+  body.mobile-room-sheet #mobile-room-sheet {
+    bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom) + 8px);
+  }
+}
+
+@media (max-width: 900px) {
+  #chat-theme-btn {
+    display: none !important;
+  }
+  #room-list .room-row {
+    min-height: 44px;
+  }
+  #room-list .room-row .name {
+    font-size: 13.5px;
+  }
+  #mobile-nav button {
+    min-height: 48px;
+  }
+}
