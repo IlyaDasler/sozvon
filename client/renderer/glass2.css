@@ -1352,3 +1352,21 @@ html[data-theme='glass2'] body {
   transform: scale(1.08) !important;
   transition: transform 180ms cubic-bezier(.2, 1.2, .3, 1);
 }
+
+/* Участники обсуждения — в строку, а не столбиком */
+[data-theme='glass2'] .thread-people {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+[data-theme='glass2'] .thread-people .avatar {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  font-size: 8px;
+  box-shadow: 0 0 0 1px rgba(220, 250, 255, 0.14);
+}
+[data-theme='glass2'] .thread-people .avatar + .avatar {
+  margin-left: -6px;
+}
