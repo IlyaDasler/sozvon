@@ -2949,11 +2949,20 @@ html[data-theme='glass'] .cam-select { background: rgba(255,255,255,0.06); borde
 
 /* Windows: кнопки окна системные — у них есть Snap Layouts Windows 11 */
 html.is-win .win-controls { display: none !important; }
-html.is-win .titlebar { padding-right: 146px; }\n
+html.is-win .titlebar { padding-right: 146px; }
+
 
 /* Язычок уведомлений убираем: панель живет как самостоятельная карточка */
 .notif-panel::before,
 .notif-panel::after {
   display: none !important;
   content: none !important;
+}
+
+/* Подсказки должны быть выше окон настроек и других модалок */
+.app-tip {
+  z-index: 2000 !important;
+}
+.rail-tip {
+  z-index: 2000 !important;
 }
