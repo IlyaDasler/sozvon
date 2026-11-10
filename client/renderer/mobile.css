@@ -1450,3 +1450,65 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     animation: none !important;
   }
 }
+
+/* ---------- Мобильные вкладки друзей ----------
+   На ПК это компактные pill-кнопки. На телефоне они превращались в
+   огромный «В сети» с рамкой. Для touch — строка вкладок с подчёркиванием,
+   как в Telegram, без плавающей капсулы. */
+@media (max-width: 900px) {
+  .friend-tabs {
+    gap: 2px;
+    padding: 0 8px;
+    border-bottom: 1px solid var(--line);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .friend-tabs::-webkit-scrollbar { display: none; }
+  .friend-tabs button {
+    position: relative;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 11px;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 600;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .friend-tabs button:hover,
+  .friend-tabs button:focus,
+  .friend-tabs button:focus-visible {
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none;
+  }
+  .friend-tabs button.active {
+    background: transparent !important;
+    color: var(--text) !important;
+  }
+  .friend-tabs button.active::after {
+    content: '';
+    position: absolute;
+    left: 11px;
+    right: 11px;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: var(--accent);
+  }
+  .friend-tabs button:active { color: var(--text); }
+  .friend-tabs .add-tab,
+  .friend-tabs .add-tab:hover,
+  .friend-tabs .add-tab.active {
+    height: 32px;
+    min-height: 32px;
+    align-self: center;
+    margin-left: 4px;
+    padding: 0 10px;
+    border-radius: 8px !important;
+    background: color-mix(in srgb, var(--ok) 18%, transparent) !important;
+    color: var(--ok) !important;
+  }
+}
