@@ -132,7 +132,8 @@ html[data-theme='glass'] #friend-tabs > .add-tab.active { color: var(--ok) !impo
   background: transparent !important;
 }
 :is(html[data-theme='sozvon'], html[data-theme='glass'][data-theme-id='fuji']) #rail-list .rail-item.active .rail-tile {
-  background: transparent !important;
+  /* Только цвет фона: background сбрасывал background-image и картинка канала исчезала */
+  background-color: transparent !important;
 }
 :is(html[data-theme='sozvon'], html[data-theme='glass'][data-theme-id='fuji']) #rail-list .glass-tab-indicator {
   z-index: 0;
