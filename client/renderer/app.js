@@ -2058,24 +2058,17 @@ let pickedBanner = null;
 let pickedName = null;
 
 async function fillDeviceSelect(select, kind, selected) {
-  let devices = await navigator.mediaDevices.enumerateDevices();
-  // Без разрешения названия устройств пустые. Для камеры тоже просим доступ:
-  // иначе в списке нет нормальных имён, а «Проверить камеру» молча падает.
-  if (devices.some((d) => d.kind === kind && !d.label)) {
-    try {
-      const s = await navigator.mediaDevices.getUserMedia(
-        kind === 'videoinput' ? { video: true } : { audio: true }
-      );
-      s.getTracks().forEach((t) => t.stop());
-      devices = await navigator.mediaDevices.enumerateDevices();
-    } catch {}
-  }
+  // enumerateDevices не включает камеру/микрофон. Никакого getUserMedia здесь:
+  // настройки не должны зажигать индикатор доступа. Без разрешения Android
+  // отдаёт устройства с пустыми label — показываем нейтральные названия.
+  const devices = await navigator.mediaDevices.enumerateDevices();
   select.replaceChildren(new Option('По умолчанию', ''));
   let n = 0;
   for (const d of devices) {
     if (d.kind !== kind || d.deviceId === 'default' || d.deviceId === 'communications') continue;
     n++;
-    select.append(new Option(d.label || (kind === 'videoinput' ? `Камера ${n}` : 'Устройство'), d.deviceId));
+    const fallback = kind === 'videoinput' ? `Камера ${n}` : kind === 'audioinput' ? `Микрофон ${n}` : `Устройство ${n}`;
+    select.append(new Option(d.label || fallback, d.deviceId));
   }
   select.value = [...select.options].some((o) => o.value === selected) ? selected : '';
   if (select.id === 'set-cam') updateCamLabel();
@@ -2555,7 +2548,7 @@ async function openSettings(tab) {
   } catch (err) {
     console.warn(err);
   }
-  startMicMeter();
+  // Микрофон включается только по кнопке «Проверить микрофон»/«Слушать себя».
 }
 
 function closeSettings() {
