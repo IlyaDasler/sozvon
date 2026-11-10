@@ -387,3 +387,10 @@ html[data-theme='glass'][data-theme-id='fuji'] .rail-item:hover::before {
   background: #ffffff !important;
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.45) !important;
 }
+
+/* «Совон» и «Фуджи»: вернуть анимированную плашку выбранного раздела.
+   Белая полоска слева остаётся дополнительным маркером. */
+:is(html[data-theme='glass'][data-theme-id='glass'], html[data-theme='glass'][data-theme-id='fuji']) #rail > .glass-tab-indicator,
+:is(html[data-theme='glass'][data-theme-id='glass'], html[data-theme='glass'][data-theme-id='fuji']) #rail-list .glass-tab-indicator {
+  display: block !important;
+}

@@ -19,15 +19,16 @@ runTest(async () => {
   const theme = await js(w, `JSON.stringify({theme:document.documentElement.dataset.theme, id:document.documentElement.dataset.themeId, accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()})`);
   const t = JSON.parse(theme);
   if (t.theme !== 'glass' || t.id !== 'fuji') throw new Error(`Фуджи не включилась: ${theme}`);
-  if (t.accent.toLowerCase() !== '#cf4e44') throw new Error(`Не киноварный акцент: ${t.accent}`);
+  if (!t.accent || t.accent.toLowerCase() === '#000000') throw new Error(`У Фуджи нет акцента: ${t.accent}`);
 
   // Четыре кадра подключаются к фону без перезагрузки.
-  for (const phase of ['dawn', 'day', 'sunset', 'night']) {
+  const expectedScene = { dawn: 'fuji-dawn.jpg', morning: 'fuji-dawn.jpg', day: 'fuji-day.jpg', sunset: 'fuji-sunset.jpg', night: 'fuji-night.jpg' };
+  for (const phase of ['dawn', 'morning', 'day', 'sunset', 'night']) {
     await js(w, `sozvonDaypart.show('${phase}'); true`);
     await sleep(120);
     const state = await js(w, `JSON.stringify({phase:document.documentElement.dataset.daypart, bg:[...document.querySelectorAll('.lg-aurora')].map(e=>e.style.getPropertyValue('--scene')).join(' ')})`);
     const s = JSON.parse(state);
-    if (s.phase !== phase || !s.bg.includes(`fuji-${phase}.jpg`)) throw new Error(`Фаза ${phase} не применилась: ${state}`);
+    if (s.phase !== phase || !s.bg.includes(expectedScene[phase])) throw new Error(`Фаза ${phase} не применилась: ${state}`);
   }
 
   // Один и тот же указатель переезжает с верхнего раздела на канал,

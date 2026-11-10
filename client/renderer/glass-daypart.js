@@ -3,23 +3,10 @@
 // Intl пользователя. При смене — мягкое перекрёстное затухание двух слоёв.
 (() => {
   const root = document.documentElement;
-  const GLASS_SCENES = {
-    dawn: 'glass-dawn.jpg',
-    morning: 'glass-morning.jpg',
-    day: 'glass-day.jpg',
-    sunset: 'glass-evening.jpg',
-    night: 'glass-night.jpg',
-  };
-  const FUJI_SCENES = {
-    dawn: 'fuji-dawn.jpg',
-    morning: 'fuji-dawn.jpg',
-    day: 'fuji-sunset.jpg',
-    sunset: 'fuji-sunset.jpg',
-    night: 'fuji-night.jpg',
-  };
-  const sceneSet = () =>
-    document.documentElement.dataset.themeId === 'fuji' ? FUJI_SCENES : GLASS_SCENES;
-  let scenes = sceneSet();
+  const core = window.SozvonDaypartCore;
+  if (!core) return;
+  const { GLASS_SCENES, FUJI_SCENES, sceneSet, phaseAt } = core;
+  let scenes = sceneSet(document.documentElement.dataset.themeId);
   const first = document.querySelector('.lg-aurora');
   if (!first) return;
   const second = document.createElement('div');
@@ -35,26 +22,6 @@
   for (const src of [...Object.values(GLASS_SCENES), ...Object.values(FUJI_SCENES)]) {
     const img = new Image();
     img.src = src;
-  }
-
-  function phaseAt(ms, timeZone) {
-    let hour = 12;
-    try {
-      const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone,
-        hour: '2-digit',
-        minute: '2-digit',
-        hourCycle: 'h23',
-      }).formatToParts(new Date(ms));
-      const h = Number(parts.find((p) => p.type === 'hour')?.value);
-      const m = Number(parts.find((p) => p.type === 'minute')?.value);
-      if (Number.isFinite(h)) hour = h + (Number.isFinite(m) ? m / 60 : 0);
-    } catch {}
-    if (hour >= 5 && hour < 7) return 'dawn';
-    if (hour >= 7 && hour < 12) return 'morning';
-    if (hour >= 12 && hour < 17) return 'day';
-    if (hour >= 17 && hour < 21) return 'sunset';
-    return 'night';
   }
 
   function zone() {
@@ -128,7 +95,7 @@
 
   // Смена темы меняет весь набор кадров; переключаем без ожидания таймера.
   function refresh() {
-    scenes = sceneSet();
+    scenes = sceneSet(document.documentElement.dataset.themeId);
     current = '';
     const phase = phaseAt(Date.now(), zone());
     const layer = layers[active];

@@ -49,6 +49,10 @@ html[data-theme-id='fuji'][data-daypart='dawn'] .lg-aurora::after {
   background: linear-gradient(180deg, rgba(8, 14, 30, 0.26), rgba(8, 14, 30, 0.14));
 }
 
+html[data-theme-id='fuji'][data-daypart='morning'] .lg-aurora::after {
+  background: linear-gradient(180deg, rgba(8, 14, 30, 0.24), rgba(8, 14, 30, 0.14));
+}
+
 html[data-theme-id='fuji'][data-daypart='day'] .lg-aurora::after {
   background: linear-gradient(180deg, rgba(4, 10, 20, 0.16), rgba(4, 10, 20, 0.08));
 }
