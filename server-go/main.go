@@ -117,6 +117,30 @@ func main() {
 }
 
 // routes — все маршруты сервера. Вынесено из main, чтобы проверять статику и API в тестах.
+// Capacitor WebView работает с origin https://localhost; разрешаем только его.
+func (a *server) mobileCORS(next http.Handler) http.Handler {
+	allowed := map[string]bool{
+		"https://localhost":     true,
+		"capacitor://localhost": true,
+		"http://localhost":      true,
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if allowed[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Client-Version")
+			w.Header().Set("Access-Control-Max-Age", "600")
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (a *server) securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
@@ -148,7 +172,7 @@ func (a *server) logRequests(next http.Handler) http.Handler {
 
 func (a *server) routes() http.Handler {
 	router := chi.NewRouter()
-	router.Use(middleware.RequestID, middleware.Recoverer, middleware.Timeout(30*time.Second), a.securityHeaders, a.logRequests)
+	router.Use(middleware.RequestID, middleware.Recoverer, middleware.Timeout(30*time.Second), a.mobileCORS, a.securityHeaders, a.logRequests)
 	router.Get("/api/files/{id}/{name}", a.serveFile)
 	router.Get("/api/avatars/{name}", a.serveMedia)
 	router.Get("/api/banners/{name}", a.serveBanner)
