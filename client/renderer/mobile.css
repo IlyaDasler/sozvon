@@ -172,7 +172,7 @@
     display: none;
     position: fixed !important;
     z-index: 9;
-    top: 28px;
+    top: var(--mobile-safe-top) !important;
     bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom));
     left: 0;
     width: min(88vw, 380px) !important;
@@ -189,7 +189,7 @@
     display: block;
     position: fixed;
     z-index: 7;
-    inset: 28px 0 0;
+    inset: var(--mobile-safe-top) 0 0;
     border: 0;
     background: rgba(2, 5, 10, .48);
     -webkit-backdrop-filter: blur(3px);
@@ -223,7 +223,7 @@
   }
   #members-panel.drawer-open,
   .thread-panel.drawer-open {
-    top: 28px;
+    top: var(--mobile-safe-top);
     bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom));
   }
 }
@@ -356,7 +356,7 @@ html.auth-screen #mobile-backdrop {
     display: flex;
     flex: none;
     gap: 6px;
-    padding: 8px 10px;
+    padding: 6px 10px 8px;
     overflow-x: auto;
     scrollbar-width: none;
     border-bottom: 1px solid var(--line);
@@ -401,13 +401,13 @@ html.pwa .main {
   padding-top: max(8px, var(--mobile-safe-top, 28px)) !important;
 }
 html.pwa .sidebar {
-  top: 0 !important;
+  top: var(--mobile-safe-top) !important;
 }
 html.pwa #mobile-nav {
   min-height: calc(64px + var(--mobile-safe-bottom));
 }
 html.pwa body.mobile-list .sidebar {
-  top: 0;
+  top: var(--mobile-safe-top) !important;
 }
 
 /* Уведомления — отдельный экран, а не всплывающая кнопка */
@@ -993,7 +993,7 @@ body.mobile-room-sheet #mobile-room-backdrop {
     display: flex !important;
     position: fixed !important;
     z-index: 9;
-    top: 0;
+    top: var(--mobile-safe-top) !important;
     bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom));
     left: 0;
     width: min(88vw, 380px) !important;
@@ -1349,8 +1349,17 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 /* Верхние хабы на телефоне — отдельная полоса над сайдбаром,
    она тоже должна начинаться ниже статус-бара. */
+
+/* Одна мобильная шапка: на раскрытом фолде рейл уже переключает каналы,
+   поэтому горизонтальная полоса хабов только дублирует его. */
+@media (min-width: 600px) and (min-height: 620px) {
+  #mobile-hubs { display: none !important; }
+}
+/* Нижняя навигация не должна просвечивать профилем и контентом. */
 @media (max-width: 900px) {
-  #mobile-hubs {
-    padding-top: calc(8px + var(--mobile-safe-top)) !important;
+  #mobile-nav {
+    background: var(--bg-deep) !important;
+    border-top: 1px solid var(--line) !important;
+    box-shadow: none !important;
   }
 }
