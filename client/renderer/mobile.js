@@ -33,6 +33,11 @@
     }
   };
   cleanTitles();
+  new MutationObserver(cleanTitles).observe(document.body, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['title'],
+  });
 
   const nav = document.createElement('nav');
   nav.id = 'mobile-nav';
