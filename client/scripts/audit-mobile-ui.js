@@ -66,6 +66,19 @@ runTest(async () => {
     await js(w, `document.getElementById('mobile-settings-back').click(); true`);
     await sleep(200);
   }
+  // Уведомления: оба видимых переключателя должны менять состояние
+  await js(w, `document.querySelector('#set-nav [data-tab="notify"]').click(); true`);
+  await sleep(300);
+  for (const id of ['set-notify-preview','set-notify-sound']) {
+    const before = await js(w, `document.getElementById('${id}').checked`);
+    await js(w, `document.getElementById('${id}').click(); true`);
+    await sleep(250);
+    const after = await js(w, `document.getElementById('${id}').checked`);
+    if (before === after) throw new Error('уведомление не переключилось: '+id);
+  }
+  await js(w, `document.getElementById('mobile-settings-back').click(); true`);
+  await sleep(200);
+
   await js(w, `document.querySelector('#set-nav [data-tab="look"]').click(); true`);
   await sleep(600); await screenshot(w, 'audit-05-look'); await report('look');
 
