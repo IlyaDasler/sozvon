@@ -1,4 +1,4 @@
-// Samsung: обычные телефоны, Fold outer/inner, Flip open/cover.
+// Samsung: обычные телефоны, Fold outer/inner, Flip open.
 const { register, js, sleep, openClient, runTest } = require('./e2e-lib');
 
 runTest(async () => {
@@ -23,11 +23,8 @@ runTest(async () => {
     { name: 'Fold 8 Ultra outer', w: 411, h: 960, mode: 'compact' },
     { name: 'Fold 8 Ultra inner', w: 954, h: 859, mode: 'workspace' },
     { name: 'Flip 5 open', w: 396, h: 915, mode: 'compact' },
-    { name: 'Flip 5 cover', w: 274, h: 285, mode: 'cover' },
     { name: 'Flip 7 open', w: 411, h: 1006, mode: 'compact' },
-    { name: 'Flip 7 cover', w: 361, h: 399, mode: 'cover' },
     { name: 'Flip 8 open', w: 411, h: 960, mode: 'compact' },
-    { name: 'Flip 8 cover', w: 361, h: 399, mode: 'cover' },
   ];
   const failures = [];
   for (const c of cases) {
@@ -39,7 +36,7 @@ runTest(async () => {
       await js(w, `(() => {
         const css = (s) => { const e=document.querySelector(s); return e ? getComputedStyle(e).display : null; };
         return JSON.stringify({
-          vw: innerWidth, scroll: document.documentElement.scrollWidth,
+          vw: innerWidth, scroll: document.documentElement.scrollWidth,\n          windowWidth: document.documentElement.dataset.windowWidth,
           cover: document.body.classList.contains('cover-mode'),
           coverVisible: css('#cover-screen'),
           rail: css('#rail'), nav: css('#mobile-nav'), main: css('.main'),
@@ -47,13 +44,10 @@ runTest(async () => {
       })()`)
     );
     if (data.scroll > data.vw + 2) failures.push(`${c.name}: scroll ${data.scroll} > ${data.vw}`);
-    if (c.mode === 'cover') {
-      if (!data.cover || data.coverVisible === 'none' || data.main !== 'none') failures.push(`${c.name}: обложка не включилась ${JSON.stringify(data)}`);
-    } else if (data.cover) failures.push(`${c.name}: ошибочно включилась обложка`);
     if (c.mode === 'workspace' && (data.rail === 'none' || data.nav !== 'none')) failures.push(`${c.name}: нет Workspace ${JSON.stringify(data)}`);
     if (c.mode === 'compact' && data.nav === 'none') failures.push(`${c.name}: нет нижней навигации ${JSON.stringify(data)}`);
   }
   w.setSize(390, 844);
   if (failures.length) throw new Error(failures.slice(0, 6).join('; '));
-  console.log('✔ Samsung: S23/S24 Ultra/A, Fold 5/6/7/8/8 Ultra, Flip 5/7/8 open+cover');
+  console.log('✔ Samsung: S23/S24 Ultra/A, Fold 5/6/7/8/8 Ultra, Flip 5/7/8 open');
 });

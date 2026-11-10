@@ -472,7 +472,7 @@ html.pwa body.mobile-list .sidebar {
 
 /* Внутренний экран фолда — не «телефон с двумя колонками», а рабочий стол:
    рейл хабов + список комнат + сам чат. Снаружи остаётся обычный телефон. */
-@media (min-width: 640px) and (max-width: 900px) {
+@media (min-width: 600px) and (max-width: 900px) {
   .rail {
     display: flex !important;
     width: 62px !important;
@@ -688,7 +688,7 @@ html.pwa body.mobile-list .sidebar {
   }
 }
 
-@media (min-width: 640px) and (max-width: 900px) {
+@media (min-width: 600px) and (max-width: 900px) {
   #mobile-rail-utility {
     display: flex;
     flex-direction: column;
@@ -1027,71 +1027,10 @@ body.mobile-msg-sheet #mobile-msg-backdrop {
   }
 }
 
-/* ---------- Samsung Flip: экран обложки ----------
-   PWA не умеет надёжно спросить модель устройства, но обложка — это
-   маленький почти квадратный viewport. Показываем часы и события,
-   а полный интерфейс остаётся за кнопкой. */
-#cover-screen { display: none; }
-body.cover-mode #cover-screen {
-  position: fixed;
-  z-index: 40;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 18px;
-  background:
-    radial-gradient(120% 80% at 50% 20%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
-    var(--bg-deep);
-  color: var(--text);
-  text-align: center;
-}
-body.cover-mode #titlebar,
-body.cover-mode .main,
-body.cover-mode #mobile-nav,
-body.cover-mode #mobile-backdrop,
-body.cover-mode #mobile-hubs,
-body.cover-mode .rail,
-body.cover-mode .sidebar,
-body.cover-mode .content,
-body.cover-mode .titlebar,
-body.cover-mode #cover-hint {
-  display: none !important;
-}
-.cover-clock {
-  font-size: clamp(48px, 16vw, 76px);
-  font-weight: 300;
-  letter-spacing: -0.06em;
-  line-height: 1;
-}
-.cover-date {
-  font-size: 13px;
-  color: var(--muted);
-}
-.cover-events {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 8px 14px;
-  border: 1px solid var(--line);
-  border-radius: 99px;
-  background: color-mix(in srgb, var(--text) 6%, transparent);
-  font-size: 13px;
-}
-.cover-events b {
-  color: var(--accent);
-}
-#cover-open {
-  min-height: 44px;
-  margin-top: 8px;
-  padding: 0 18px;
-  border: 1px solid var(--line);
-  border-radius: 99px;
-  background: color-mix(in srgb, var(--accent) 20%, var(--bg-3));
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
+/* Android WebView: не даём системному text-size-adjust ломать сетку,
+   а поля держим 16px, чтобы фокус не вызывал принудительный zoom. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@media (max-width: 900px) {
+  input:not([type='checkbox']):not([type='range']):not([type='radio']),
+  textarea, select { font-size: 16px; }
 }
