@@ -100,6 +100,15 @@ runTest(async () => {
   }
   await screenshot(w, 'audit-07-privacy-crypto');
 
+  // В видимом мобильном тексте не должно оставаться PC-лексики
+  const visibleText = await js(w, `document.body.innerText`);
+  const banned = ['рабочий стол','рабочем столе','Windows','macOS','компьютер','мышь','Ctrl','Shift','Esc'];
+  for (const word of banned) {
+    if (visibleText.toLowerCase().includes(word.toLowerCase())) throw new Error('PC-текст в мобильном UI: '+word);
+  }
+  const badTitles = JSON.parse(await js(w, `JSON.stringify([...document.querySelectorAll('[title]')].map(e=>e.title).filter(t=>/(Ctrl|Shift|Esc|Windows|macOS)/.test(t)))`));
+  if (badTitles.length) throw new Error('PC-title: '+badTitles.join('; '));
+
   await js(w, `showPrivacyPage('profile'); true`);
   await sleep(300);
   const before = await js(w, `Boolean(state.me?.privacy?.typing)`);
