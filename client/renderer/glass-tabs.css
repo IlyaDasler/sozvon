@@ -181,17 +181,17 @@ html[data-theme='glass'] #rail > .rail-item.active .rail-home {
 
 /* Тема «Совон»: активный канал без стеклянной плашки и без заливки плитки.
    «Фуджи» тоже использует glass, поэтому ограничиваемся data-theme-id='glass'. */
-html[data-theme='glass'][data-theme-id='glass'] #rail > .glass-tab-indicator,
-html[data-theme='glass'][data-theme-id='glass'] #rail-list .glass-tab-indicator {
+html[data-theme='glass'] #rail > .glass-tab-indicator,
+html[data-theme='glass'] #rail-list .glass-tab-indicator {
   display: none !important;
 }
-html[data-theme='glass'][data-theme-id='glass'] #rail-list .rail-item.active .rail-tile {
+html[data-theme='glass'] #rail-list .rail-item.active .rail-tile {
   background-color: transparent !important;
   box-shadow: none !important;
 }
 
 /* «Совон»: белые полоски активного/непрочитанного канала слева от иконок */
-html[data-theme='glass'][data-theme-id='glass'] .rail-item::before {
+html[data-theme='glass'] .rail-item::before {
   display: block !important;
   left: 2px;
   width: 3px;
@@ -199,50 +199,50 @@ html[data-theme='glass'][data-theme-id='glass'] .rail-item::before {
   background: #ffffff;
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.45);
 }
-html[data-theme='glass'][data-theme-id='glass'] .rail-item.unread::before {
+html[data-theme='glass'] .rail-item.unread::before {
   height: 8px;
   opacity: 0.75;
 }
-html[data-theme='glass'][data-theme-id='glass'] .rail-item:hover::before {
+html[data-theme='glass'] .rail-item:hover::before {
   height: 18px;
   opacity: 0.8;
 }
-html[data-theme='glass'][data-theme-id='glass'] .rail-item.active::before {
+html[data-theme='glass'] .rail-item.active::before {
   height: 36px;
   opacity: 1;
 }
 
 /* «Совон»: верхнюю иконку приложения и её белую полоску опускаем к нижней линии */
-html[data-theme='glass'][data-theme-id='glass'] #rail-home-item {
+html[data-theme='glass'] #rail-home-item {
   transform: translateY(12px);
 }
 
 /* «Совон»: нижняя линия шапок опускается до линии под иконкой приложения (102px) */
-html[data-theme='glass'][data-theme-id='glass'] .sidebar-head,
-html[data-theme='glass'][data-theme-id='glass'] .chat-head,
-html[data-theme='glass'][data-theme-id='glass'] .friends-head,
-html[data-theme='glass'][data-theme-id='glass'] .members-head {
+html[data-theme='glass'] .sidebar-head,
+html[data-theme='glass'] .chat-head,
+html[data-theme='glass'] .friends-head,
+html[data-theme='glass'] .members-head {
   height: 65px;
 }
 
 /* «Совон»: чётный размер иконок у кнопок 28–30 px, иначе центр попадает на полпикселя */
-html[data-theme='glass'][data-theme-id='glass'] .icon-btn > svg {
+html[data-theme='glass'] .icon-btn > svg {
   width: 18px;
   height: 18px;
 }
 
 /* «Совон»: форма подсветки при наведении — как у активной вкладки (капсула) */
-html[data-theme='glass'][data-theme-id='glass'] #friend-tabs > button:hover {
+html[data-theme='glass'] #friend-tabs > button:hover {
   border-radius: 999px !important;
 }
 
 /* Цвет системных кнопок окна под синюю полосу «Совона» */
-html[data-theme='glass'][data-theme-id='glass'] {
+html[data-theme='glass'] {
   --titlebar-solid: #1f496f;
 }
 
 /* «Совон»: язычок уведомлений — треугольник в цвет панели, а не ромб с рамкой */
-html[data-theme='glass'][data-theme-id='glass'] .notif-panel::before {
+html[data-theme='glass'] .notif-panel::before {
   top: -7px;
   width: 14px;
   height: 7px;
@@ -255,7 +255,7 @@ html[data-theme='glass'][data-theme-id='glass'] .notif-panel::before {
 }
 
 /* «Совон»: язычок — часть рамки панели: внешний треугольник-рамка + внутренняя заливка */
-html[data-theme='glass'][data-theme-id='glass'] .notif-panel::before {
+html[data-theme='glass'] .notif-panel::before {
   content: '';
   top: -8px;
   left: var(--notif-tail, 22px);
@@ -269,7 +269,7 @@ html[data-theme='glass'][data-theme-id='glass'] .notif-panel::before {
   box-shadow: none;
   z-index: 0;
 }
-html[data-theme='glass'][data-theme-id='glass'] .notif-panel::after {
+html[data-theme='glass'] .notif-panel::after {
   content: '';
   position: absolute;
   top: -6px;
@@ -285,17 +285,17 @@ html[data-theme='glass'][data-theme-id='glass'] .notif-panel::after {
 }
 
 /* Без отдельной внешней рамки: хвостик — только заливка панели */
-html[data-theme='glass'][data-theme-id='glass'] .notif-panel::before {
+html[data-theme='glass'] .notif-panel::before {
   content: none !important;
   display: none !important;
 }
 
 /* «Совон»: язычок из того же материала, что и панель, с контуром */
-html[data-theme='glass'][data-theme-id='glass'] .notif-panel::before {
+html[data-theme='glass'] .notif-panel::before {
   display: none !important;
   content: none !important;
 }
-html[data-theme='glass'][data-theme-id='glass'] .notif-panel::after {
+html[data-theme='glass'] .notif-panel::after {
   top: -7px;
   left: calc(var(--notif-tail, 22px) + 1px);
   width: 14px;
@@ -312,10 +312,10 @@ html[data-theme='glass'][data-theme-id='glass'] .notif-panel::after {
 }
 
 /* «Совон»: у иконки чата такая же прозрачная подложка, как у остальных действий */
-html[data-theme='glass'][data-theme-id='glass'] .room-tool.chat,
-html[data-theme='glass'][data-theme-id='glass'] .room-tool.chat:hover,
-html[data-theme='glass'][data-theme-id='glass'] .room-tool.chat:focus,
-html[data-theme='glass'][data-theme-id='glass'] .room-tool.chat:focus-visible {
+html[data-theme='glass'] .room-tool.chat,
+html[data-theme='glass'] .room-tool.chat:hover,
+html[data-theme='glass'] .room-tool.chat:focus,
+html[data-theme='glass'] .room-tool.chat:focus-visible {
   background: transparent !important;
   box-shadow: none !important;
   border-color: transparent !important;
@@ -323,9 +323,9 @@ html[data-theme='glass'][data-theme-id='glass'] .room-tool.chat:focus-visible {
 }
 
 /* «Совон»: при наведении на действия канала — только цвет/увеличение иконки, без плашки */
-html[data-theme='glass'][data-theme-id='glass'] .room-tool:hover,
-html[data-theme='glass'][data-theme-id='glass'] .room-tool:focus,
-html[data-theme='glass'][data-theme-id='glass'] .room-tool:focus-visible {
+html[data-theme='glass'] .room-tool:hover,
+html[data-theme='glass'] .room-tool:focus,
+html[data-theme='glass'] .room-tool:focus-visible {
   background: transparent !important;
   box-shadow: none !important;
   border-color: transparent !important;
@@ -352,16 +352,29 @@ html[data-theme='glass'] .thread-people .avatar + .avatar {
 }
 
 /* «Совон»: линия под «Участниками» чуть ниже, чтобы совпасть с линией соседней панели */
-html[data-theme='glass'][data-theme-id='glass'] .members-head {
+html[data-theme='glass'] .members-head {
   height: 71px;
 }
 
 /* «Совон»: точная высота шапки участников под общую линию (102px), с учётом её смещения */
-html[data-theme='glass'][data-theme-id='glass'] .members-head {
+html[data-theme='glass'] .members-head {
   height: 61px;
 }
 
 /* «Совон»: у шапки участников верх на 2 px выше, поэтому высота 67 px даёт общую линию 102 px */
-html[data-theme='glass'][data-theme-id='glass'] .members-head {
+html[data-theme='glass'] .members-head {
   height: 67px;
+}
+
+/* «Фуджи»: тот же макет, что у «Совона», но акценты и системные кнопки — киноварь/золото */
+html[data-theme='glass'][data-theme-id='fuji'] {
+  --titlebar-solid: #2a1b1e;
+}
+html[data-theme='glass'][data-theme-id='fuji'] .rail-item::before {
+  background: var(--accent-2);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--accent-2) 45%, transparent);
+}
+html[data-theme='glass'][data-theme-id='fuji'] .rail-item.active::before {
+  background: var(--accent);
+  box-shadow: 0 0 11px color-mix(in srgb, var(--accent) 55%, transparent);
 }
