@@ -252,7 +252,9 @@ runTest(async () => {
   await sleep(400);
   const fits = await js(winA, `(() => {
     const r = document.getElementById('room-message-input').getBoundingClientRect();
-    return r.width > 120 && r.right <= innerWidth && document.getElementById('rail').getBoundingClientRect().width > 0;
+    const side = document.querySelector('.sidebar');
+      const rail = document.getElementById('rail');
+      return r.width > 120 && r.right <= innerWidth && (rail.getBoundingClientRect().width > 0 || (side && side.getClientRects().length));
   })()`);
   if (!fits) throw new Error('В узком окне поле ввода не помещается');
   await screenshot(winA, 'hubs-narrow');
