@@ -6,7 +6,7 @@
   if (!window.desktop) document.documentElement.classList.add('pwa');
 
   const transition = (fn) => {
-    if (typeof document.startViewTransition === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches && !matchMedia('(hover: none) and (pointer: coarse)').matches) {
+    if (typeof document.startViewTransition === 'function' && document.documentElement.dataset.performance === 'high' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       document.startViewTransition(fn);
     } else {
       fn();
@@ -565,6 +565,16 @@
     },
     { passive: true }
   );
+
+  // Единый порядок закрытия для Android back и системной кнопки.
+  // Возвращает true, если событие поглощено приложением.
+  window.mobileBack = () => {
+    if (document.body.classList.contains('mobile-msg-sheet')) { closeMsgSheet(); return true; }
+    if (document.body.classList.contains('mobile-room-sheet')) { closeRoomSheet(); return true; }
+    if (document.body.classList.contains('mobile-notifications')) { closeNotifications(); setActive('home'); return true; }
+    if (document.body.classList.contains('mobile-list')) { hideList(); return true; }
+    return false;
+  };
 
   if (!window.desktop && 'serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});

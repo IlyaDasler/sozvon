@@ -31,25 +31,29 @@
   };
 
   // Перехватываем только результат: исходные обработчики остаются в app.js.
-  const baseShow = window.showSettingsTab;
-  window.showSettingsTab = function (tab) {
+  const baseShow = showSettingsTab;
+  showSettingsTab = function (tab) {
     baseShow(tab);
     if (!mq.matches) return;
     if (typeof tab === 'string') section(tab);
     else home();
   };
 
-  const baseOpen = window.openSettings;
-  window.openSettings = async function (tab) {
+  const baseOpen = openSettings;
+  openSettings = async function (tab) {
     await baseOpen(tab);
     if (!mq.matches) return;
     if (typeof tab === 'string') section(tab);
-    else home();
+    else {
+      home();
+      // baseOpen мог вызвать showSettingsTab('profile') уже после нашего home
+      setTimeout(() => { if (!document.body.classList.contains('mobile-settings-section')) return; home(); }, 0);
+    }
     if (!history.state?.mobileSettings) history.pushState({ mobileSettings: true }, '');
   };
 
-  const baseClose = window.closeSettings;
-  window.closeSettings = function () {
+  const baseClose = closeSettings;
+  closeSettings = function () {
     baseClose();
     document.body.classList.remove('mobile-settings', 'mobile-settings-section');
     back.classList.add('hidden');
@@ -58,13 +62,13 @@
   back.onclick = () => {
     // Возврат на список разделов через историю: Android back делает то же.
     if (document.body.classList.contains('mobile-settings-section')) history.back();
-    else window.closeSettings();
+    else closeSettings();
   };
 
   // Android back: из раздела — в список, из списка — закрыть настройки.
   addEventListener('popstate', () => {
     if (!mq.matches || document.getElementById('settings').classList.contains('hidden')) return;
     if (document.body.classList.contains('mobile-settings-section')) home();
-    else window.closeSettings();
+    else closeSettings();
   });
 })();

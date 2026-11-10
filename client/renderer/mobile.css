@@ -1130,13 +1130,31 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #e2ee-setup .e2ee-card .code-row .btn { flex: 0 0 auto; }
 }
 
-/* На мобильном WebView любой backdrop-filter (включая нижнюю панель и
-   переключатели) стоит 10–20 ms на кадр. Замер на Mali-G52:
-   blur включён — 19 ms GPU / 76% jank, выключен — 11 ms GPU / 17% jank. */
+/* На слабых GPU (Mali-G52 и ниже) любой backdrop-filter стоит 10–20 ms
+   на кадр. На мощных телефонах стекло сохраняем: тир выставляет performance.js.
+   low — без blur, balanced — blur только на нижней панели, high — полный. */
 @media (max-width: 900px) {
-  *, *::before, *::after {
+  html[data-performance='low'] *,
+  html[data-performance='low'] *::before,
+  html[data-performance='low'] *::after {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+  }
+  html[data-performance='balanced'] #mobile-backdrop,
+  html[data-performance='balanced'] #mobile-room-backdrop,
+  html[data-performance='balanced'] #mobile-msg-backdrop,
+  html[data-performance='balanced'] .main,
+  html[data-performance='balanced'] .sidebar,
+  html[data-performance='balanced'] .content,
+  html[data-performance='balanced'] .modal-card,
+  html[data-performance='balanced'] .dialog-card,
+  html[data-performance='balanced'] .profile-card {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  html[data-performance='balanced'] #mobile-nav {
+    -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
+    backdrop-filter: blur(8px) saturate(120%) !important;
   }
 }
 
