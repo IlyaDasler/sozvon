@@ -350,3 +350,8 @@ html[data-theme='glass'] .thread-people .avatar {
 html[data-theme='glass'] .thread-people .avatar + .avatar {
   margin-left: -6px;
 }
+
+/* «Совон»: линия под «Участниками» чуть ниже, чтобы совпасть с линией соседней панели */
+html[data-theme='glass'][data-theme-id='glass'] .members-head {
+  height: 71px;
+}
