@@ -236,9 +236,9 @@ html[data-theme='glass'] #friend-tabs > button:hover {
   border-radius: 999px !important;
 }
 
-/* Цвет системных кнопок окна под синюю полосу «Совона» */
+/* Цвет системных кнопок окна — тёплый нейтральный, под новый рассветный фон */
 html[data-theme='glass'] {
-  --titlebar-solid: #1f496f;
+  --titlebar-solid: #2a1f22;
 }
 
 /* «Совон»: язычок уведомлений — треугольник в цвет панели, а не ромб с рамкой */
