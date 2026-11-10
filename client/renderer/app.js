@@ -2,6 +2,8 @@
 
 const $ = (id) => document.getElementById(id);
 const isWeb = location.protocol.startsWith('http');
+// В Capacitor WebView origin — https://localhost, а API живёт на отдельном сервере.
+const nativeApiBase = () => (window.Capacitor?.isNativePlatform?.() ? 'http://10.0.2.2:3001' : '');
 
 const DEFAULT_SERVER = 'https://135-106-226-12.sslip.io';
 // Тот же сервер по старому адресу без HTTPS: вход переносим на новый адрес, токен остаётся действительным
@@ -288,7 +290,7 @@ function renderAuthFields() {
 let codeTimer = null;
 
 async function sendEmailCode() {
-  const base = isWeb ? location.origin : normalizeServer($('server-url').value);
+  const base = nativeApiBase() || (isWeb ? location.origin : normalizeServer($('server-url').value));
   const email = $('auth-email').value.trim();
   if (!email) {
     $('auth-error').textContent = 'Введите почту';
@@ -448,7 +450,7 @@ async function runOAuth(provider, mode, extra = {}) {
 }
 
 async function oauthLogin(provider) {
-  const base = isWeb ? location.origin : normalizeServer($('server-url').value);
+  const base = nativeApiBase() || (isWeb ? location.origin : normalizeServer($('server-url').value));
   if (!base) return ($('auth-error').textContent = 'Укажите адрес сервера');
   // В браузере код принимает сервер и возвращает нас сюда с токеном
   if (isWeb) {
@@ -512,7 +514,7 @@ $('auth-toggle').onclick = (e) => {
 
 $('auth-form').onsubmit = async (e) => {
   e.preventDefault();
-  const base = isWeb ? location.origin : normalizeServer($('server-url').value);
+  const base = nativeApiBase() || (isWeb ? location.origin : normalizeServer($('server-url').value));
   const mode = state.authMode || 'login';
   const username = $('auth-username').value.trim();
   const email = $('auth-email').value.trim();
