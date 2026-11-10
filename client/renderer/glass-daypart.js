@@ -4,8 +4,8 @@
 (() => {
   const root = document.documentElement;
   const GLASS_SCENES = {
-    dawn: 'glass-morning.jpg',
-    day: 'glass-day.jpg',
+    dawn: 'glass-dawn.jpg',
+    day: 'glass-dawn.jpg',
     sunset: 'glass-evening.jpg',
     night: 'glass-night.jpg',
   };
