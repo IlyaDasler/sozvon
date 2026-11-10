@@ -1664,3 +1664,12 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     background: color-mix(in srgb, var(--bg-3) 80%, transparent) !important;
   }
 }
+
+/* Android WebView подсвечивает нажатый элемент серым/синим прямоугольником.
+   На мобильном это читается как «клик мышью». Убираем системный highlight,
+   оставляя собственные :active-состояния. */
+@media (max-width: 900px) {
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+  }
+}
