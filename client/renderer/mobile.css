@@ -391,7 +391,7 @@ html.auth-screen #mobile-backdrop {
   }
   .mobile-hub.active {
     background: color-mix(in srgb, var(--accent) 20%, var(--bg-2));
-    border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+    border-color: transparent;
     color: var(--text);
   }
   .mobile-hub:active { transform: scale(.97); }
@@ -1532,5 +1532,27 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     line-height: 26px;
     text-align: center;
     overflow: hidden;
+  }
+}
+
+/* ---------- Мобильный скролл: без полосы и без «прыжка» ----------
+   Тонкая полоса справа читается как окно браузера, а не приложение. */
+@media (max-width: 900px) {
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  *::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important;
+  }
+  /* В открытой комнате нижняя навигация не нужна: назад — в шапке.
+     Это освобождает место композеру и убирает «планшетную» полосу. */
+  body.mobile-room-open #mobile-nav {
+    display: none !important;
+  }
+  body.mobile-room-open #main.main {
+    padding-bottom: var(--mobile-safe-bottom) !important;
   }
 }

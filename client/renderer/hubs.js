@@ -153,6 +153,9 @@ const leaveSelectedRoom = () => (currentHub() ? openHub(state.view) : selectRoom
 /** Боковая панель и центр под то, что открыто: дом (друзья и личные сообщения) или канал */
 function renderHubChrome() {
   const hub = currentHub();
+  // Класс нижней навигации должен сбрасываться и при уходе из комнаты,
+  // а не только при selectRoom(null).
+  document.body.classList.toggle('mobile-room-open', Boolean(state.selectedRoomId));
   $('home-nav').classList.toggle('hidden', Boolean(hub));
   $('room-list').classList.toggle('hidden', !hub);
   $('head-home').classList.toggle('hidden', Boolean(hub));
