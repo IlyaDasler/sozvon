@@ -360,3 +360,8 @@ html[data-theme='glass'][data-theme-id='glass'] .members-head {
 html[data-theme='glass'][data-theme-id='glass'] .members-head {
   height: 61px;
 }
+
+/* «Совон»: у шапки участников верх на 2 px выше, поэтому высота 67 px даёт общую линию 102 px */
+html[data-theme='glass'][data-theme-id='glass'] .members-head {
+  height: 67px;
+}
