@@ -1674,3 +1674,36 @@ html[data-theme='glass2'] body {
   transform: scale(1.18);
   filter: drop-shadow(0 0 5px rgba(132, 240, 249, 0.55));
 }
+
+/* Кнопка «Создать канал» внизу рейла */
+[data-theme='glass2'] .rail {
+  padding-bottom: 12px;
+}
+[data-theme='glass2'] #rail-add {
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(184, 236, 255, 0.24);
+  border-radius: 18px;
+  background: rgba(13, 26, 35, 0.30);
+  color: #8ff0f6;
+}
+[data-theme='glass2'] #rail-add > svg {
+  width: 23px;
+  height: 23px;
+  transition:
+    transform 170ms cubic-bezier(.2, 1.2, .3, 1),
+    filter 170ms ease;
+}
+[data-theme='glass2'] #rail-add:hover {
+  color: #b8fbff;
+  border-color: rgba(152, 240, 249, 0.62) !important;
+  background: rgba(42, 76, 90, 0.46) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(210, 248, 255, 0.14),
+    0 0 18px rgba(103, 231, 243, 0.22) !important;
+  transform: none !important;
+}
+[data-theme='glass2'] #rail-add:hover > svg {
+  transform: scale(1.20);
+  filter: drop-shadow(0 0 6px rgba(132, 240, 249, 0.60));
+}
