@@ -171,3 +171,10 @@ html[data-theme='glass'] #friend-tabs > .add-tab.active { color: var(--ok) !impo
 html[data-theme='glass'] #rail > .rail-item.active .rail-home {
   background: transparent !important;
 }
+
+/* «Глубина»/«Фуджи»: у активного канала не должно быть стеклянной плашки,
+   выбранный канал виден по белой полоске слева */
+:is(html[data-theme='sozvon'], html[data-theme='glass'][data-theme-id='fuji']) #rail > .glass-tab-indicator,
+:is(html[data-theme='sozvon'], html[data-theme='glass'][data-theme-id='fuji']) #rail-list .glass-tab-indicator {
+  display: none !important;
+}
