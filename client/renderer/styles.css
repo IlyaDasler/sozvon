@@ -1755,9 +1755,13 @@ kbd {
 .hub-tile.huge { width: 96px; height: 96px; border-radius: 28px; display: grid; place-items: center; font-size: 34px; font-weight: 700; flex: none; }
 
 .rail-badge {
-  position: absolute; right: 2px; bottom: 2px; z-index: 5; min-width: 15px; height: 15px; padding: 0 4px;
-  border-radius: 8px; background: var(--danger); color: #fff; box-shadow: 0 0 0 2px var(--bg-deep);
-  font-size: 10px; font-weight: 700; line-height: 15px; text-align: center; pointer-events: none;
+  position: absolute;
+  right: calc((100% - var(--rail-tile, 46px)) / 2 - 2px);
+  bottom: calc((100% - var(--rail-tile, 46px)) / 2 - 2px);
+  z-index: 5;
+  min-width: 14px; height: 14px; padding: 0 3px;
+  border-radius: 7px; background: var(--danger); color: #fff; box-shadow: 0 0 0 2px var(--bg-deep);
+  font-size: 9px; font-weight: 700; line-height: 14px; text-align: center; pointer-events: none;
 }
 .rail-voice {
   position: absolute; right: 8px; bottom: -3px; width: 18px; height: 18px; border-radius: 50%;
