@@ -84,7 +84,7 @@
     right: 0;
     bottom: 0;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 2px;
     min-height: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom));
     padding: 6px 8px var(--mobile-safe-bottom);
@@ -383,5 +383,115 @@ html.auth-screen #mobile-backdrop {
   .mobile-hub.active {
     background: color-mix(in srgb, var(--accent) 22%, var(--bg-3));
     color: var(--text);
+  }
+}
+
+
+/* В мобильном приложении верхние «назад/вперёд» не нужны: навигация — жестами
+   и нижними вкладками. В PWA убираем и полосу окна. */
+@media (max-width: 900px) {
+  #nav-back,
+  #nav-forward {
+    display: none !important;
+  }
+}
+html.pwa #titlebar {
+  display: none;
+}
+html.pwa .main {
+  padding-top: max(8px, env(safe-area-inset-top)) !important;
+}
+html.pwa .sidebar {
+  top: 0 !important;
+}
+html.pwa #mobile-nav {
+  min-height: calc(64px + var(--mobile-safe-bottom));
+}
+html.pwa body.mobile-list .sidebar {
+  top: 0;
+}
+
+/* Уведомления — отдельный экран, а не всплывающая кнопка */
+@media (max-width: 599px) {
+  #notif-btn {
+    display: none !important;
+  }
+  #mobile-nav button .mobile-badge {
+    position: absolute;
+    top: 3px;
+    left: calc(50% + 8px);
+    min-width: 15px;
+    height: 15px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--on-accent, #fff);
+    font-size: 9px;
+    line-height: 15px;
+    text-align: center;
+  }
+  #mobile-nav button {
+    position: relative;
+  }
+  body.mobile-notifications #notif-panel {
+    position: fixed !important;
+    z-index: 20;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom)) !important;
+    width: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: max(10px, env(safe-area-inset-top)) 12px 18px;
+    border: 0;
+    border-radius: 0;
+    background: var(--bg-deep) !important;
+    overflow-y: auto;
+    animation: mobile-notifs-in 220ms cubic-bezier(.2, .8, .2, 1);
+  }
+  body.mobile-notifications #notif-panel::after {
+    display: none !important;
+  }
+  body.mobile-notifications #notif-panel .notif-head {
+    padding: 6px 2px 14px;
+  }
+  body.mobile-notifications #notif-panel .notif-head b {
+    font-size: 22px;
+    letter-spacing: -0.02em;
+  }
+  body.mobile-notifications #notif-panel .notif-empty,
+  body.mobile-notifications #notif-panel .notif-item {
+    border-radius: 12px;
+  }
+}
+@keyframes mobile-notifs-in {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Внутренний экран фолда — не «телефон с двумя колонками», а рабочий стол:
+   рейл хабов + список комнат + сам чат. Снаружи остаётся обычный телефон. */
+@media (min-width: 640px) and (max-width: 900px) {
+  .rail {
+    display: flex !important;
+    width: 62px !important;
+    flex: none;
+  }
+  .rail .rail-item,
+  .rail .rail-btn,
+  .rail .add-hub {
+    width: 46px;
+    height: 46px;
+  }
+  .rail .rail-tile {
+    width: 44px;
+    height: 44px;
+  }
+  .sidebar {
+    width: 226px !important;
+  }
+  #mobile-hubs {
+    display: none !important;
   }
 }

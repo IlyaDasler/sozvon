@@ -363,8 +363,8 @@ runTest(async () => {
     if (row.overflow.length) throw new Error(`На ${width}px вылезают за экран: ${row.overflow.join(', ')}`);
     if (width < 600 && row.sidebarVisible) throw new Error(`На ${width}px сайдбар должен быть скрыт`);
     if (width >= 600 && !row.sidebarVisible) throw new Error(`На ${width}px сайдбар должен быть виден`);
-    if (width <= 900 && row.railVisible) throw new Error(`На ${width}px рейл должен быть скрыт`);
-    if (width > 900 && !row.railVisible) throw new Error(`На ${width}px рейл должен быть виден`);
+    if (width < 640 && row.railVisible) throw new Error(`На ${width}px рейл должен быть скрыт`);
+    if (width >= 640 && !row.railVisible) throw new Error(`На ${width}px рейл должен быть виден`);
   }
   win.setSize(1280, 900);
   await sleep(400);

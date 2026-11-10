@@ -1,7 +1,20 @@
-// Мобильная оболочка поверх существующего интерфейса: нижняя навигация,
-// выдвижной список каналов и двухколоночный фолд. Не трогает desktop-разметку.
+// Мобильная оболочка PWA: вкладки, жесты, уведомления отдельным экраном.
+// Внутренний экран фолда — рабочий стол (рейл + комнаты + чат), снаружи — телефон.
 (() => {
   if (document.getElementById('mobile-nav')) return;
+
+  if (!window.desktop) document.documentElement.classList.add('pwa');
+
+  const transition = (fn) => {
+    if (typeof document.startViewTransition === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.startViewTransition(fn);
+    } else {
+      fn();
+    }
+  };
+  const buzz = (ms = 8) => {
+    if (navigator.userActivation?.isActive) navigator.vibrate?.(ms);
+  };
 
   const nav = document.createElement('nav');
   nav.id = 'mobile-nav';
@@ -15,6 +28,11 @@
       <svg viewBox="0 0 24 24"><path d="M4 5.5h16M4 12h16M4 18.5h10"/><circle cx="19" cy="18.5" r="1.6"/></svg>
       <span>Каналы</span>
     </button>
+    <button type="button" data-mobile="notifications" title="Уведомления">
+      <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      <span>Уведомления</span>
+      <span class="mobile-badge hidden"></span>
+    </button>
     <button type="button" data-mobile="settings" title="Настройки">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></svg>
       <span>Ещё</span>
@@ -27,8 +45,41 @@
   backdrop.setAttribute('aria-label', 'Закрыть список каналов');
   document.body.append(backdrop);
 
-  // Переключатель каналов: на телефоне/фолде рейл скрыт, поэтому хабы
-  // выбираются горизонтальной полосой в начале списка.
+  const buttons = [...nav.querySelectorAll('button')];
+  const tabOrder = ['home', 'channels', 'notifications', 'settings'];
+  const setActive = (name) => {
+    for (const button of buttons) button.classList.toggle('active', button.dataset.mobile === name);
+  };
+  const pushLayer = () => {
+    if (history.state?.mobileLayer) return;
+    history.pushState({ mobileLayer: true }, '');
+  };
+  const dropLayer = () => {
+    if (history.state?.mobileLayer) history.replaceState(null, '');
+  };
+  const closeNotifications = () => {
+    document.body.classList.remove('mobile-notifications');
+    if (typeof closeNotifPanel === 'function' && !document.getElementById('notif-panel')?.classList.contains('hidden')) closeNotifPanel();
+    dropLayer();
+  };
+  const hideList = () => {
+    document.body.classList.remove('mobile-list');
+    if (!document.body.classList.contains('mobile-notifications')) setActive('home');
+    dropLayer();
+  };
+  const showList = () => {
+    closeNotifications();
+    pushLayer();
+    transition(() => {
+      document.body.classList.add('mobile-list');
+      setActive('channels');
+      renderHubs();
+    });
+    buzz();
+  };
+
+  // Переключатель каналов: на телефоне рейл скрыт, поэтому хабы выбираются
+  // горизонтальной полосой в начале списка.
   const sidebar = document.querySelector('.sidebar');
   const hubsBar = document.createElement('div');
   hubsBar.id = 'mobile-hubs';
@@ -63,41 +114,77 @@
   renderHubs();
   setInterval(renderHubs, 1000);
 
-  const buttons = [...nav.querySelectorAll('button')];
-  const setActive = (name) => {
-    for (const button of buttons) button.classList.toggle('active', button.dataset.mobile === name);
-  };
-  const hideList = () => {
-    document.body.classList.remove('mobile-list');
-    setActive('home');
-  };
-  const showList = () => {
-    document.body.classList.add('mobile-list');
-    setActive('channels');
-    renderHubs();
+  const panel = document.getElementById('notif-panel');
+  const openNotifications = () => {
+    hideList();
+    pushLayer();
+    if (panel && panel.parentElement !== document.body) document.body.append(panel);
+    if (typeof openNotifPanel === 'function') openNotifPanel();
+    document.body.classList.add('mobile-notifications');
+    setActive('notifications');
+    buzz();
   };
 
-  nav.querySelector('[data-mobile="home"]').onclick = () => {
-    hideList();
-    if (typeof selectContact === 'function') selectContact(null);
-    syncBack();
+  const switchTab = (name) => {
+    closeNotifications();
+    if (name === 'home') {
+      hideList();
+      if (typeof selectContact === 'function') selectContact(null);
+      setActive('home');
+    } else if (name === 'channels') {
+      showList();
+    } else if (name === 'notifications') {
+      openNotifications();
+    } else if (name === 'settings') {
+      hideList();
+      if (typeof openSettings === 'function') openSettings();
+      setActive('settings');
+    }
   };
+
+  nav.querySelector('[data-mobile="home"]').onclick = () => switchTab('home');
   nav.querySelector('[data-mobile="channels"]').onclick = () => {
     if (document.body.classList.contains('mobile-list')) hideList();
     else showList();
   };
-  nav.querySelector('[data-mobile="settings"]').onclick = () => {
-    hideList();
-    if (typeof openSettings === 'function') openSettings();
+  nav.querySelector('[data-mobile="notifications"]').onclick = (event) => {
+    event.stopPropagation();
+    if (document.body.classList.contains('mobile-notifications')) {
+      closeNotifications();
+      setActive('home');
+    } else openNotifications();
   };
+  nav.querySelector('[data-mobile="settings"]').onclick = () => switchTab('settings');
   backdrop.onclick = hideList;
+
+  // Бейдж событий живёт в нижней вкладке, а не на колокольчике.
+  const badge = nav.querySelector('.mobile-badge');
+  const syncBadge = () => {
+    if (!badge) return;
+    const source = document.getElementById('notif-badge');
+    const value = source && !source.classList.contains('hidden') ? source.textContent : '';
+    badge.textContent = value;
+    badge.classList.toggle('hidden', !value);
+  };
+  syncBadge();
+  setInterval(syncBadge, 600);
+
+  // Панель уведомлений закрылась — снимаем полноэкранный режим.
+  if (panel) {
+    new MutationObserver(() => {
+      if (panel.classList.contains('hidden')) document.body.classList.remove('mobile-notifications');
+    }).observe(panel, { attributes: true, attributeFilter: ['class'] });
+  }
 
   // Выбор комнаты/контакта закрывает список, чтобы сразу открылся чат.
   document.addEventListener(
     'click',
     (event) => {
       if (!document.body.classList.contains('mobile-list')) return;
-      if (event.target.closest('.room-row, .contact, .friend-row, .rail-home')) { hideList(); syncBack(); }
+      if (event.target.closest('.room-row, .contact, .friend-row, .rail-home')) {
+        hideList();
+        syncBack();
+      }
     },
     true
   );
@@ -119,14 +206,21 @@
   const syncBack = (button = [...document.querySelectorAll('.mobile-chat-back')].find((item) => item.getClientRects().length) || [...document.querySelectorAll('.mobile-chat-back')].at(-1)) => {
     if (!button) return;
     const app = typeof state !== 'undefined' ? state : window.state;
-    const inRoom = Boolean(app?.room || app?.selectedRoomId);
-    const inChat = Boolean(inRoom || app?.selectedId);
+    const onFriends = Boolean(document.querySelector('.friends-head')?.getClientRects().length);
+    const inRoom = Boolean(app?.room || app?.selectedRoomId) && !onFriends;
+    const inChat = Boolean(inRoom || app?.selectedId) && !onFriends;
     button.hidden = !inChat;
-    if (!document.body.classList.contains('mobile-list')) setActive(inRoom ? 'channels' : 'home');
+    if (!document.body.classList.contains('mobile-list') && !document.body.classList.contains('mobile-notifications'))
+      setActive(inRoom ? 'channels' : 'home');
   };
   addChatBack();
   document.addEventListener('DOMContentLoaded', addChatBack);
-  const observer = new MutationObserver(() => { addChatBack(); syncBack(); });
+  const observer = new MutationObserver(() => {
+    addChatBack();
+    syncBack();
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  setInterval(() => syncBack(), 250);
   const originalHeader = typeof window.renderChatHeader === 'function' ? window.renderChatHeader : null;
   if (originalHeader) {
     window.renderChatHeader = function (...args) {
@@ -135,10 +229,99 @@
       return result;
     };
   }
-  setInterval(() => syncBack(), 250);
-  observer.observe(document.body, { childList: true, subtree: true });
 
-  if (typeof window !== 'undefined' && !window.desktop && 'serviceWorker' in navigator) {
+  // Системная кнопка/жест «назад» в Android закрывает верхний мобильный слой.
+  window.addEventListener('popstate', () => {
+    if (document.body.classList.contains('mobile-notifications')) {
+      document.body.classList.remove('mobile-notifications');
+      if (typeof closeNotifPanel === 'function') closeNotifPanel();
+      setActive('home');
+    } else if (document.body.classList.contains('mobile-list')) {
+      document.body.classList.remove('mobile-list');
+      setActive('home');
+    }
+  });
+
+  // Жесты: правый свайп от левого края — каналы, левый от правого — события,
+  // свайп влево по открытому списку — назад, свайп вниз по событиям — закрыть.
+  let touch = null;
+  document.addEventListener(
+    'touchstart',
+    (event) => {
+      if (event.touches.length !== 1) return;
+      if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      const t = event.touches[0];
+      touch = {
+        x: t.clientX,
+        y: t.clientY,
+        leftEdge: t.clientX < 26,
+        rightEdge: t.clientX > innerWidth - 26,
+        topEdge: t.clientY < 28,
+      };
+    },
+    { passive: true }
+  );
+  document.addEventListener(
+    'touchend',
+    (event) => {
+      if (!touch) return;
+      const t = event.changedTouches[0];
+      const dx = t.clientX - touch.x;
+      const dy = t.clientY - touch.y;
+      const was = touch;
+      touch = null;
+      if (Math.abs(dx) < 55 && Math.abs(dy) < 55) return;
+      if (was.topEdge && dy > 70 && Math.abs(dy) > Math.abs(dx)) {
+        openNotifications();
+        return;
+      }
+      if (document.body.classList.contains('mobile-notifications') && dy > 70 && Math.abs(dy) > Math.abs(dx)) {
+        closeNotifications();
+        setActive('home');
+        return;
+      }
+      if (Math.abs(dx) < Math.abs(dy) * 1.3) return;
+      if (document.body.classList.contains('mobile-list') && dx < -60) {
+        hideList();
+        buzz();
+      } else if (was.leftEdge && dx > 60) {
+        showList();
+      } else if (was.rightEdge && dx < -60) {
+        openNotifications();
+      } else if (!document.body.classList.contains('mobile-list') && dx > 80 && event.target.closest('.content')) {
+        showList();
+      }
+    },
+    { passive: true }
+  );
+
+  // Свайп по нижней панели переключает вкладки, не требуя точного попадания.
+  let navTouch = null;
+  nav.addEventListener(
+    'touchstart',
+    (event) => {
+      if (event.touches.length !== 1) return;
+      navTouch = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    },
+    { passive: true }
+  );
+  nav.addEventListener(
+    'touchend',
+    (event) => {
+      if (!navTouch) return;
+      const dx = event.changedTouches[0].clientX - navTouch.x;
+      const dy = event.changedTouches[0].clientY - navTouch.y;
+      navTouch = null;
+      if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+      const current = tabOrder.findIndex((name) => nav.querySelector(`[data-mobile="${name}"]`).classList.contains('active'));
+      const next = Math.max(0, Math.min(tabOrder.length - 1, current + (dx < 0 ? 1 : -1)));
+      switchTab(tabOrder[next]);
+      buzz();
+    },
+    { passive: true }
+  );
+
+  if (!window.desktop && 'serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
 })();

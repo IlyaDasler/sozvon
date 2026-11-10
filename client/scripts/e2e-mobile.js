@@ -16,6 +16,38 @@ runTest(async () => {
     throw new Error('мобильная навигация скрыта на телефоне');
   }
 
+  if (await js(w, `getComputedStyle(document.getElementById('nav-back')).display !== 'none'`)) {
+    throw new Error('верхняя кнопка «назад» осталась на телефоне');
+  }
+
+  // Отдельный экран уведомлений, без колокольчика
+  await js(w, `document.querySelector('#mobile-nav [data-mobile="notifications"]').click(); true`);
+  await waitFor(w, `document.body.classList.contains('mobile-notifications')`, 'экран уведомлений');
+  await sleep(260);
+  const notifs = await js(w, `(() => { const p=document.getElementById('notif-panel').getBoundingClientRect(); return JSON.stringify({top:p.top,left:p.left,width:p.width,viewport:innerWidth,bell:getComputedStyle(document.getElementById('notif-btn')).display}); })()`);
+  const nn = JSON.parse(notifs);
+  if (nn.top > 2 || nn.left > 2 || nn.width < nn.viewport - 2 || nn.bell !== 'none') {
+    throw new Error(`уведомления не на весь экран: ${notifs}`);
+  }
+  await js(w, `document.querySelector('#mobile-nav [data-mobile="notifications"]').click(); true`);
+  await waitFor(w, `!document.body.classList.contains('mobile-notifications')`, 'экран уведомлений закрылся');
+
+  // Жест от левого края открывает каналы, обратный свайп закрывает
+  const swipe = (x1, x2, y) => js(w, `(() => {
+    const t1 = new Touch({ identifier: 1, target: document.body, clientX: ${x1}, clientY: ${y} });
+    const t2 = new Touch({ identifier: 1, target: document.body, clientX: ${x2}, clientY: ${y} });
+    document.body.dispatchEvent(new TouchEvent('touchstart', { touches: [t1], changedTouches: [t1], bubbles: true }));
+    document.body.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [t2], bubbles: true }));
+    return true;
+  })()`);
+  await swipe(8, 170, 500);
+  await waitFor(w, `document.body.classList.contains('mobile-list')`, 'свайп от левого края открыл каналы');
+  await swipe(360, 180, 500);
+  await waitFor(w, `!document.body.classList.contains('mobile-list')`, 'свайп влево закрыл каналы');
+  await swipe(382, 250, 500);
+  await waitFor(w, `document.body.classList.contains('mobile-notifications')`, 'свайп от правого края открыл события');
+  await js(w, `document.querySelector('#mobile-nav [data-mobile="home"]').click(); true`);
+
   await js(w, `document.querySelector('#mobile-nav [data-mobile="channels"]').click(); true`);
   await waitFor(w, `document.body.classList.contains('mobile-list')`, 'список каналов открылся');
   if (!(await js(w, `getComputedStyle(document.querySelector('.sidebar')).display !== 'none'`))) {
@@ -44,9 +76,10 @@ runTest(async () => {
   // Складываем фолд: на широкой внутренней панели должна быть двухколоночная раскладка
   w.setSize(673, 841);
   await sleep(500);
-  const fold = await js(w, `JSON.stringify({nav:getComputedStyle(document.getElementById('mobile-nav')).display, sidebar:getComputedStyle(document.querySelector('.sidebar')).display})`);
+  const fold = await js(w, `JSON.stringify({nav:getComputedStyle(document.getElementById('mobile-nav')).display, sidebar:getComputedStyle(document.querySelector('.sidebar')).display, rail:getComputedStyle(document.getElementById('rail')).display})`);
   const f = JSON.parse(fold);
   if (f.nav !== 'none' || f.sidebar === 'none') throw new Error(`фолд не перешёл в две колонки: ${fold}`);
+  if (f.rail === 'none') throw new Error(`на раскрытом фолде нет рабочего рейла: ${fold}`);
 
   // Экран входа на телефоне не должен разъезжаться
   const auth = await openClient('mob-auth', null, undefined, { waitReady: false });
