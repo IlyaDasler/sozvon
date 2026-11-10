@@ -45,5 +45,5 @@ runTest(async () => {
   }
   w.setSize(390, 844);
   if (failures.length) throw new Error(failures.slice(0, 6).join('; '));
-  console.log('✔ Samsung: S23/S24 Ultra/A, Fold 5/6 outer+inner, Flip open+cover');
+  console.log('✔ Samsung: S23/S24 Ultra/A, Fold 5/6/7/8 outer+inner, Flip 5/7/8 open+cover');
 });
