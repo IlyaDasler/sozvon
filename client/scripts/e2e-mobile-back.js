@@ -1,0 +1,12 @@
+const {register,js,sleep,openClient,runTest}=require('./e2e-lib');
+runTest(async()=>{const a=await register('back'+Date.now().toString(36).slice(-4),'Аня');const w=await openClient('back',a);w.show();w.focus();w.setSize(390,844);await sleep(700);
+await js(w,`openSettings('look'); true`);await sleep(300);const s1=await js(w,`document.body.className`);
+const b1=await js(w,`window.sozvonBack()`);await sleep(350);const s2=await js(w,`document.body.className`);
+const b2=await js(w,`window.sozvonBack()`);await sleep(300);const s3=await js(w,`document.body.className`);
+await js(w,`document.querySelector('#mobile-nav [data-mobile="channels"]').click(); true`);await sleep(300);const l1=await js(w,`document.body.className`);const b3=await js(w,`window.sozvonBack()`);await sleep(300);const l2=await js(w,`document.body.className`);
+console.log(JSON.stringify({s1,b1,s2,b2,s3,l1,b3,l2}));
+if(s1!=='mobile-settings mobile-settings-section')throw new Error('settings section');
+if(s2!=='mobile-settings')throw new Error('settings home');
+if(s3!=='')throw new Error('settings close');
+if(!l1.includes('mobile-list')||l2!=='')throw new Error('list back');
+});
