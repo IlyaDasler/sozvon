@@ -352,10 +352,11 @@ func (a *server) oauthWebCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	state := r.URL.Query().Get("state")
 	code := r.URL.Query().Get("code")
-	cookie, _ := r.Cookie(stateCookie)
 	oauthState.mu.Lock()
 	flow, ok := oauthState.flows[state]
-	if ok && (cookie == nil || cookie.Value != state || flow.provider != provider || flow.expires.Before(time.Now())) {
+	// state уже одноразовый и связан с серверным verifier; cookie в WebView
+	// может не отправляться при cross-site redirect Яндекса, поэтому не требуем её.
+	if ok && (flow.provider != provider || flow.expires.Before(time.Now())) {
 		ok = false
 	}
 	if ok {
