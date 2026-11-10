@@ -1306,3 +1306,26 @@ html[data-theme='glass2'] body {
   background: rgba(184, 236, 255, 0.14);
   margin: 5px 8px;
 }
+
+/* Кнопка с названием канала, открывающая меню: подсветка в стиле темы */
+[data-theme='glass2'] .hub-menu-btn {
+  border-radius: 12px;
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    color 160ms ease;
+}
+[data-theme='glass2'] .hub-menu-btn:hover,
+[data-theme='glass2'] .hub-menu-btn:focus,
+[data-theme='glass2'] .hub-menu-btn:focus-visible {
+  outline: none !important;
+  background: rgba(180, 240, 250, 0.09) !important;
+  box-shadow: inset 0 0 0 1px rgba(180, 240, 250, 0.13);
+}
+[data-theme='glass2'] .hub-menu-btn svg {
+  transition: color 160ms ease, transform 160ms ease;
+}
+[data-theme='glass2'] .hub-menu-btn:hover svg {
+  color: #9ff3fa;
+  transform: translateY(1px);
+}
