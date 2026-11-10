@@ -1154,3 +1154,29 @@ html[data-theme='glass2'] body {
 [data-theme='glass2'] .msg-tool.danger:hover svg {
   filter: drop-shadow(0 0 5px rgba(242, 110, 118, 0.55));
 }
+
+/* ---------- Все подсказки — в стекле темы ---------- */
+[data-theme='glass2'] .app-tip,
+[data-theme='glass2'] .rail-tip,
+[data-theme='glass2'] .tip {
+  padding: 7px 11px;
+  border: 1px solid rgba(184, 236, 255, 0.24);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(228, 254, 255, 0.14), rgba(12, 23, 32, 0.52));
+  -webkit-backdrop-filter: blur(18px) saturate(150%) brightness(0.84);
+  backdrop-filter: blur(18px) saturate(150%) brightness(0.84);
+  color: #eaf8fb;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.40),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+/* Меню действий у сообщения — заметно более скруглённое */
+[data-theme='glass2'] .msg-tools {
+  border-radius: 17px;
+  padding: 4px;
+}
+[data-theme='glass2'] .msg-tool {
+  border-radius: 12px;
+}
