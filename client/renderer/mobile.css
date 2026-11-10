@@ -918,3 +918,48 @@ body.mobile-room-sheet #mobile-room-backdrop {
     display: none !important;
   }
 }
+
+/* ---------- Короткий экран / телефон в альбомной ориентации ----------
+   Нельзя включать Workspace только по ширине: 844×390 — это телефон
+   боком, а не раскрытый фолд. Оставляем одну колонку и нижние вкладки. */
+@media (max-width: 900px) and (max-height: 619px) {
+  .rail,
+  #rail {
+    display: none !important;
+  }
+  .sidebar {
+    display: none !important;
+  }
+  #mobile-nav {
+    display: grid !important;
+  }
+  #mobile-rail-utility {
+    display: none !important;
+  }
+  #mobile-hubs {
+    display: flex !important;
+  }
+  .main {
+    margin: max(6px, env(safe-area-inset-top)) 6px 6px !important;
+    height: calc(100% - max(12px, env(safe-area-inset-top))) !important;
+    padding-bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom)) !important;
+    border-radius: 18px !important;
+  }
+  body.mobile-list .sidebar {
+    display: flex !important;
+    position: fixed !important;
+    z-index: 9;
+    top: 0;
+    bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom));
+    left: 0;
+    width: min(88vw, 380px) !important;
+    background: var(--bg-deep) !important;
+    border-radius: 0 16px 16px 0 !important;
+  }
+  body.mobile-list .content {
+    visibility: hidden;
+  }
+  #room-list .room-tools {
+    display: none !important;
+  }
+}
