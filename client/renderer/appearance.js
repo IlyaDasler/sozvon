@@ -45,7 +45,10 @@ applyGlass2Background();
 /** Кнопки окна Windows — в цвета полосы окна текущей темы */
 function syncTitleBar() {
   const css = getComputedStyle(document.documentElement);
-  window.desktop?.titleBar?.({ color: css.getPropertyValue('--bg-deep').trim(), symbolColor: css.getPropertyValue('--text-2').trim() });
+  // Нативные кнопки окна не умеют быть прозрачными: берём цвет полосы темы,
+  // иначе под ними остаётся чёрный прямоугольник.
+  const color = css.getPropertyValue('--titlebar-solid').trim() || css.getPropertyValue('--bg-deep').trim();
+  window.desktop?.titleBar?.({ color, symbolColor: css.getPropertyValue('--text-2').trim() });
 }
 syncTitleBar();
 
