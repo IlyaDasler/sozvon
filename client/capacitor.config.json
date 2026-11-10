@@ -8,5 +8,13 @@
       "style": "DEFAULT",
       "hidden": false
     }
+  },
+  "server": {
+    "allowNavigation": [
+      "*.yandex.ru",
+      "yandex.ru",
+      "135-106-226-12.sslip.io",
+      "localhost"
+    ]
   }
 }

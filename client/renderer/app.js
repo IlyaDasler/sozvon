@@ -390,7 +390,7 @@ async function loadProviders(base) {
   let emailCodes = false;
   // В приложении ответ принимает Electron, в браузере — сервер (переадресация), поэтому список нужен везде
   const versionHeaders = Api.versionHeaders?.() || {};
-  if (base && (window.desktop?.oauth || isWeb)) {
+  if (base && (window.desktop?.oauth || isWeb || isNativeShell)) {
     try {
       const res = await fetch(`${base}/api/oauth/providers`, { headers: versionHeaders, signal: AbortSignal.timeout(5000) });
       if (res.ok) providers = await res.json();
@@ -455,7 +455,8 @@ async function oauthLogin(provider) {
   if (!base) return ($('auth-error').textContent = 'Укажите адрес сервера');
   // В браузере и в нативной оболочке код принимает сервер и возвращает нас сюда с токеном
   if (isWeb || isNativeShell) {
-    location.href = `${base}/api/oauth/${provider}/web`;
+    const returnTo = isNativeShell ? '?returnTo=' + encodeURIComponent('https://localhost') : '';
+    location.href = `${base}/api/oauth/${provider}/web${returnTo}`;
     return;
   }
   const buttons = $('auth-form').querySelectorAll('button');
