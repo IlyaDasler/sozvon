@@ -12,7 +12,15 @@
 | Fold 5 внутри | 673×841 | Workspace |
 | Fold 6 внутри | 690×829 | Workspace |
 | Flip 5 раскрыт | 396×915 | compact, высокий телефон |
+| Fold 7 снаружи | 360×840 | compact |
+| Fold 7 внутри | 728×656 | Workspace |
+| Fold 8 снаружи (proj.) | 360×860 | compact |
+| Fold 8 внутри (proj.) | 736×672 | Workspace |
 | Flip 5 обложка | 328×360 | cover/glance |
+| Flip 7 раскрыт | 360×840 | compact |
+| Flip 7 обложка | 328×360 | cover/glance |
+| Flip 8 раскрыт (proj.) | 360×860 | compact |
+| Flip 8 обложка (proj.) | 328×370 | cover/glance |
 
 ## Обложка Flip
 
@@ -23,5 +31,5 @@ PWA не получает модель устройства. Обложка оп
 
 ## Проверка
 
-`e2e-mobile-samsung` проходит все восемь размеров, проверяет отсутствие
+`e2e-mobile-samsung` проходит все размеры, включая Fold/Flip 7 и проектные 8, проверяет отсутствие
 горизонтального скролла, правильный rail/nav и включение cover-режима.
