@@ -157,7 +157,10 @@ function renderHubChrome() {
   $('room-list').classList.toggle('hidden', !hub);
   $('head-home').classList.toggle('hidden', Boolean(hub));
   $('hub-menu-btn').classList.toggle('hidden', !hub);
-  if (hub) $('hub-menu-name').textContent = hub.name;
+  if (hub) {
+    $('hub-menu-name').textContent = hub.name;
+    fillHubIcon($('hub-menu-avatar'), hub);
+  }
   $('hub-muted').classList.toggle('hidden', !hub || !hubMuted(hub.id));
   const empty = Boolean(hub) && !state.selectedRoomId;
   $('hub-empty').classList.toggle('hidden', !empty);

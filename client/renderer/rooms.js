@@ -565,7 +565,7 @@ function selectRoom(id) {
 
   renderRoomView();
   renderRoomMessages();
-  roomComposer.focus();
+  // Не открываем клавиатуру при переходе в комнату: только по тапу в поле ввода.
   if (!state.roomHistory.has(room.id)) loadHistory(roomHistory(room.id));
 }
 
