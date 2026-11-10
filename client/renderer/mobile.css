@@ -4,7 +4,6 @@
 
 :root {
   --mobile-nav-h: 60px;
-  --mobile-safe-bottom: var(--mobile-safe-bottom, 10px);
 }
 
 #mobile-nav,
@@ -1272,12 +1271,26 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* Edge-to-edge: фон приложения уходит под системный трей, а контент
    получает только безопасный inset. Никаких чёрных полос сверху. */
 :root {
-  --mobile-safe-top: var(--safe-area-inset-top, var(--mobile-safe-top, 28px));
-  --mobile-safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
-  --mobile-safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --mobile-safe-top: max(28px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  --mobile-safe-left: max(0px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
+  --mobile-safe-right: max(0px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
+  --mobile-safe-bottom: max(24px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
 }
 @media (max-width: 900px) {
   html, body { background: var(--bg-deep); }
+  /* #main.main из «одного окна» выше по специфичности — перебиваем его. */
+  #main.main, .main {
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+  #main.main {
+    padding-top: var(--mobile-safe-top) !important;
+    padding-left: max(6px, var(--mobile-safe-left)) !important;
+    padding-right: max(6px, var(--mobile-safe-right)) !important;
+  }
   .main {
     margin: 0 !important;
     border-radius: 0 !important;
@@ -1287,6 +1300,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   }
   #mobile-nav {
     padding-bottom: var(--mobile-safe-bottom) !important;
+  }
+  @media (max-width: 599px) {
+    #main.main { padding-bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom)) !important; }
   }
   body.mobile-settings #settings .set-card { padding-top: 0 !important; }
 }
