@@ -1,5 +1,5 @@
 // Портретные обои на телефоне и обычные на фолде: проверяем оба art direction.
-const { api, register, js, sleep, openClient, runTest } = require('./e2e-lib');
+const { api, register, js, waitFor, sleep, openClient, runTest } = require('./e2e-lib');
 
 runTest(async () => {
   const a = await register('wall' + Date.now().toString(36).slice(-4), 'Аня');
@@ -10,10 +10,15 @@ runTest(async () => {
   await sleep(700);
 
   const check = async (theme, phase, asset) => {
-    await js(w, `setTheme('${theme}'); selectContact(null); sozvonDaypart?.show('${phase}'); true`);
-    await sleep(500);
-    const bg = await js(w, `getComputedStyle(document.querySelector('.lg-aurora')).backgroundImage`);
-    if (!bg.includes(asset)) throw new Error(`${theme}/${phase}: ждали ${asset}, получили ${bg}`);
+    await js(w, `setTheme('${theme}'); selectContact(null); true`);
+    await waitFor(w, `typeof sozvonDaypart !== 'undefined'`, `${theme}: daypart`);
+    await js(w, `sozvonDaypart.show('${phase}'); true`);
+    await waitFor(
+      w,
+      `getComputedStyle(document.querySelector('.lg-aurora')).backgroundImage.includes('${asset}')`,
+      `${theme}/${phase}: ${asset}`,
+      6000
+    );
   };
 
   w.setSize(390, 844);
