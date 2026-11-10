@@ -1,7 +1,8 @@
 // Интерфейс: вход, список друзей, чат и звонки. Каналы — в hubs.js, комнаты — в rooms.js, панель разговора — в voice-ui.js
 
 const $ = (id) => document.getElementById(id);
-const isWeb = location.protocol.startsWith('http');
+const isNativeShell = Boolean(window.Capacitor?.isNativePlatform?.());
+const isWeb = !isNativeShell && location.protocol.startsWith('http');
 // В Capacitor WebView origin — https://localhost, а API живёт на отдельном сервере.
 const nativeApiBase = () => (window.Capacitor?.isNativePlatform?.() ? 'https://135-106-226-12.sslip.io' : '');
 
@@ -452,8 +453,8 @@ async function runOAuth(provider, mode, extra = {}) {
 async function oauthLogin(provider) {
   const base = nativeApiBase() || (isWeb ? location.origin : normalizeServer($('server-url').value));
   if (!base) return ($('auth-error').textContent = 'Укажите адрес сервера');
-  // В браузере код принимает сервер и возвращает нас сюда с токеном
-  if (isWeb) {
+  // В браузере и в нативной оболочке код принимает сервер и возвращает нас сюда с токеном
+  if (isWeb || isNativeShell) {
     location.href = `${base}/api/oauth/${provider}/web`;
     return;
   }
