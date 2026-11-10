@@ -303,6 +303,43 @@
     document.addEventListener(type, cancelHubPress, { passive: true });
   }
 
+  // Нижний лист действий сообщения. Берём уже существующие кнопки msg-tools,
+  // поэтому на мобильном остаётся весь набор: ответ, тред, пересылка, реакция,
+  // изменение, удаление, закреп.
+  const msgSheet = document.createElement('div');
+  msgSheet.id = 'mobile-msg-sheet';
+  const msgBackdrop = document.createElement('button');
+  msgBackdrop.type = 'button';
+  msgBackdrop.id = 'mobile-msg-backdrop';
+  msgBackdrop.setAttribute('aria-label', 'Закрыть действия сообщения');
+  document.body.append(msgBackdrop, msgSheet);
+  const closeMsgSheet = () => document.body.classList.remove('mobile-msg-sheet');
+  msgBackdrop.onclick = closeMsgSheet;
+  const openMsgSheet = (messageRow) => {
+    const tools = [...messageRow.querySelectorAll('.msg-tools .msg-tool')];
+    if (!tools.length) return;
+    msgSheet.replaceChildren();
+    const title = document.createElement('div');
+    title.className = 'sheet-title';
+    title.textContent = 'Сообщение';
+    msgSheet.append(title);
+    for (const tool of tools) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = tool.title;
+      button.onclick = () => {
+        closeMsgSheet();
+        if (tool.title === 'Реакция' && typeof openReactions === 'function' && messageRow.message && messageRow.actions) {
+          openReactions(messageRow.message, messageRow.actions.chat, button);
+          return;
+        }
+        tool.click();
+      };
+      msgSheet.append(button);
+    }
+    document.body.classList.add('mobile-msg-sheet');
+  };
+
   // Долгое нажатие на комнату открывает её настройки: на сенсорном экране
   // не нужно держать три мелкие иконки в каждой строке.
   let roomPressTimer = null;
@@ -332,14 +369,60 @@
   document.addEventListener(
     'click',
     (event) => {
-      if (!roomLongPressed && !hubLongPressed) return;
+      if (!roomLongPressed && !hubLongPressed && !msgLongPressed) return;
+      const source = event.target.closest('.msg, .room-row, #rail .rail-item[data-hub], .mobile-hub');
       roomLongPressed = false;
       hubLongPressed = false;
+      msgLongPressed = false;
+      // Гасим только клик по самой строке, а не по backdrop/кнопкам листа.
+      if (!source) return;
       event.preventDefault();
       event.stopPropagation();
     },
     true
   );
+
+  // Долгое нажатие на сообщение — мобильные действия вместо hover-панели.
+  let msgPressTimer = null;
+  let msgLongPressed = false;
+  let msgStart = null;
+  const cancelMsgPress = () => {
+    if (msgPressTimer) clearTimeout(msgPressTimer);
+    msgPressTimer = null;
+  };
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (event.pointerType === 'mouse') return;
+      const row = event.target.closest('.msg');
+      if (!row || event.target.closest('a, button, input, textarea, select')) return;
+      cancelMsgPress();
+      msgStart = { x: event.clientX, y: event.clientY };
+      msgPressTimer = setTimeout(() => {
+        msgLongPressed = true;
+        buzz(10);
+        openMsgSheet(row);
+      }, 520);
+    },
+    { passive: true }
+  );
+  document.addEventListener(
+    'pointermove',
+    (event) => {
+      if (!msgStart) return;
+      if (Math.abs(event.clientX - msgStart.x) > 12 || Math.abs(event.clientY - msgStart.y) > 12) {
+        cancelMsgPress();
+        msgStart = null;
+      }
+    },
+    { passive: true }
+  );
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+    document.addEventListener(type, () => {
+      cancelMsgPress();
+      msgStart = null;
+    }, { passive: true });
+  }
 
   // Кнопка «назад» в шапке чата на телефоне возвращает к списку каналов.
   const addChatBack = () => {

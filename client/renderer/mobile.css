@@ -963,3 +963,66 @@ body.mobile-room-sheet #mobile-room-backdrop {
     display: none !important;
   }
 }
+
+/* Действия с сообщением на сенсорном экране: долгое нажатие — нижний лист */
+#mobile-msg-sheet { display: none; }
+body.mobile-msg-sheet #mobile-msg-sheet {
+  display: block;
+  position: fixed;
+  z-index: 25;
+  left: 8px;
+  right: 8px;
+  bottom: calc(10px + var(--mobile-safe-bottom));
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-2);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .48);
+  animation: mobile-sheet-in 180ms cubic-bezier(.2, .8, .2, 1);
+}
+body.mobile-msg-sheet #mobile-msg-backdrop {
+  display: block;
+  position: fixed;
+  z-index: 24;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, .42);
+}
+#mobile-msg-sheet .sheet-title {
+  padding: 6px 10px 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+#mobile-msg-sheet button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+}
+#mobile-msg-sheet button:active {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+@media (max-width: 599px) {
+  body.mobile-msg-sheet #mobile-msg-sheet {
+    bottom: calc(var(--mobile-nav-h) + var(--mobile-safe-bottom) + 8px);
+  }
+}
+
+/* Тред на телефоне — полноширинный слой в пределах экрана */
+@media (max-width: 900px) {
+  #thread-panel.thread-open {
+    left: 8px !important;
+    right: auto !important;
+    width: calc(100% - 16px) !important;
+    max-width: none !important;
+    transform: none !important;
+  }
+}
