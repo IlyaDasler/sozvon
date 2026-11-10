@@ -5,36 +5,6 @@
 
   if (!window.desktop) document.documentElement.classList.add('pwa');
 
-  // Samsung Flip cover: маленький почти квадратный viewport. Это не полноценный
-  // экран приложения, а glance-режим; кнопка открывает полный интерфейс.
-  const coverQuery = matchMedia('(max-width: 380px) and (max-height: 470px)');
-  const cover = document.createElement('div');
-  cover.id = 'cover-screen';
-  cover.innerHTML = `
-    <div class="cover-clock" id="cover-clock">--:--</div>
-    <div class="cover-date" id="cover-date"></div>
-    <div class="cover-events"><span>События</span><b id="cover-count">0</b></div>
-    <button type="button" id="cover-open">Открыть приложение</button>`;
-  document.body.append(cover);
-  const updateCover = () => {
-    const now = new Date();
-    document.getElementById('cover-clock').textContent = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    document.getElementById('cover-date').textContent = now.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
-    const badge = document.getElementById('notif-badge');
-    document.getElementById('cover-count').textContent = badge && !badge.classList.contains('hidden') ? badge.textContent : '0';
-  };
-  const applyCover = () => {
-    document.body.classList.toggle('cover-mode', coverQuery.matches);
-    if (coverQuery.matches) updateCover();
-  };
-  cover.querySelector('#cover-open').onclick = () => {
-    document.body.classList.remove('cover-mode');
-    if (typeof selectContact === 'function') selectContact(null);
-  };
-  coverQuery.addEventListener?.('change', applyCover);
-  applyCover();
-  setInterval(updateCover, 15_000);
-
   const transition = (fn) => {
     if (typeof document.startViewTransition === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       document.startViewTransition(fn);
