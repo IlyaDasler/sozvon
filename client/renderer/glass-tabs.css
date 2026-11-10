@@ -289,3 +289,24 @@ html[data-theme='glass'][data-theme-id='glass'] .notif-panel::before {
   content: none !important;
   display: none !important;
 }
+
+/* «Совон»: язычок из того же материала, что и панель, с контуром */
+html[data-theme='glass'][data-theme-id='glass'] .notif-panel::before {
+  display: none !important;
+  content: none !important;
+}
+html[data-theme='glass'][data-theme-id='glass'] .notif-panel::after {
+  top: -7px;
+  left: calc(var(--notif-tail, 22px) + 1px);
+  width: 14px;
+  height: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0)),
+    rgba(18, 23, 38, 0.56);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
+  backdrop-filter: blur(6px) saturate(140%);
+  filter:
+    drop-shadow(-1px 0 0 rgba(255, 255, 255, 0.18))
+    drop-shadow(1px 0 0 rgba(255, 255, 255, 0.18))
+    drop-shadow(0 -1px 0 rgba(255, 255, 255, 0.18));
+}
