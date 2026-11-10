@@ -1139,3 +1139,114 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     backdrop-filter: none !important;
   }
 }
+
+/* ---------- Мобильные настройки: список разделов -> отдельный экран ----------
+   Не тащим на телефон desktop-модалку с боковым меню и панелью рядом.
+   Корень — список, тап по разделу — полноэкранная страница с «Назад». */
+@media (max-width: 900px) {
+  body.mobile-settings #settings {
+    display: block !important;
+    z-index: 30;
+    padding: 0 !important;
+    background: var(--bg-deep);
+  }
+  body.mobile-settings #settings .set-card {
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: var(--bg-deep) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  body.mobile-settings #settings .rs-main {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    order: 1;
+  }
+  body.mobile-settings:not(.mobile-settings-section) #settings .rs-main {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  body.mobile-settings #settings .rs-head {
+    flex: none;
+    min-height: 58px;
+    padding: max(10px, env(safe-area-inset-top)) 14px 10px !important;
+    border-bottom: 1px solid var(--line);
+  }
+  body.mobile-settings #settings .rs-head h3 { font-size: 20px; }
+  body.mobile-settings #settings .set-body {
+    display: none !important;
+  }
+  body.mobile-settings #settings .set-foot {
+    display: none !important;
+  }
+  body.mobile-settings #settings .set-nav {
+    order: 2;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    min-height: 0;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 12px max(18px, env(safe-area-inset-bottom)) !important;
+    border: 0 !important;
+    background: var(--bg-deep) !important;
+    gap: 2px;
+  }
+  body.mobile-settings #settings .set-nav .rs-room { display: none !important; }
+  body.mobile-settings #settings .set-nav button[data-tab],
+  body.mobile-settings #settings .set-nav #logout-btn {
+    display: flex !important;
+    align-items: center;
+    width: 100% !important;
+    min-height: 52px;
+    padding: 0 14px !important;
+    border: 0 !important;
+    border-radius: 12px !important;
+    background: transparent !important;
+    color: var(--text) !important;
+    font-size: 16px !important;
+    font-weight: 500;
+    text-align: left;
+  }
+  body.mobile-settings #settings .set-nav button[data-tab]:active,
+  body.mobile-settings #settings .set-nav #logout-btn:active { background: var(--bg-3) !important; }
+  body.mobile-settings #settings .set-nav #logout-btn { color: #ff6b6b !important; margin-top: 6px; }
+  body.mobile-settings #settings .set-nav .rs-sep { margin: 6px 14px; }
+  body.mobile-settings #settings .set-nav .set-subnav { display: none !important; }
+  body.mobile-settings #settings #mobile-settings-back { display: none !important; }
+  body.mobile-settings #settings .set-nav button[data-tab].active {
+    background: color-mix(in srgb, var(--accent) 13%, transparent) !important;
+    color: var(--accent) !important;
+  }
+
+  /* Внутренний экран раздела */
+  body.mobile-settings-section #settings .set-nav { display: none !important; }
+  body.mobile-settings-section #settings .rs-main { order: 1; }
+  body.mobile-settings-section #settings .set-body {
+    display: block !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px 14px max(20px, env(safe-area-inset-bottom)) !important;
+  }
+  body.mobile-settings-section #settings .set-foot {
+    display: flex !important;
+    padding: 10px 14px max(10px, env(safe-area-inset-bottom)) !important;
+    border-top: 1px solid var(--line);
+    background: var(--bg-deep);
+  }
+  body.mobile-settings-section #settings #mobile-settings-back { display: inline-flex !important; }
+  body.mobile-settings #mobile-nav,
+  body.mobile-settings #mobile-backdrop { display: none !important; }
+}

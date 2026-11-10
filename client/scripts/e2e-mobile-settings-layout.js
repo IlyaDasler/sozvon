@@ -1,0 +1,10 @@
+const fs=require('fs');const {register,js,sleep,openClient,runTest}=require('./e2e-lib');
+runTest(async()=>{const a=await register('set'+Date.now().toString(36).slice(-4),'Аня');const w=await openClient('set',a);w.show();w.focus();w.setSize(390,844);await sleep(700);await js(w,`openSettings(); true`);await sleep(500);
+const root=JSON.parse(await js(w,`(()=>{const q=s=>{const e=document.querySelector(s);const r=e?.getBoundingClientRect();return {display:e?getComputedStyle(e).display:null,x:r?.x,y:r?.y,w:r?.width,h:r?.height}};return JSON.stringify({body:document.body.className,className:document.body.className,nav:q('#set-nav'),bodyPane:q('.set-body'),main:q('.rs-main'),title:document.getElementById('set-title').textContent})})()`));console.log('root',JSON.stringify(root));
+await js(w,`document.querySelector('#set-nav [data-tab="look"]').click(); true`);await sleep(500);
+const sec=JSON.parse(await js(w,`(()=>{const q=s=>{const e=document.querySelector(s);const r=e?.getBoundingClientRect();return {display:e?getComputedStyle(e).display:null,x:r?.x,y:r?.y,w:r?.width,h:r?.height}};return JSON.stringify({body:document.body.className,className:document.body.className,nav:q('#set-nav'),pane:q('.set-pane[data-pane="look"]'),body:q('.set-body'),back:q('#mobile-settings-back'),title:document.getElementById('set-title').textContent,card:q('[data-pick="light"]')})})()`));console.log('section',JSON.stringify(sec));
+fs.writeFileSync('C:/Users/solom/Documents/deepseek-harness/default-workspace/_backup/ui33/mobile-usecase/42-mobile-settings-look.png',(await w.webContents.capturePage()).toPNG());
+await js(w,`document.getElementById('mobile-settings-back').click(); true`);await sleep(300);const home=await js(w,`document.body.className`);console.log('after back',home);
+if(!root.body.includes('mobile-settings')||root.nav.display==='none')throw new Error('root wrong');
+if(!sec.className?.includes('mobile-settings-section')||sec.nav.display!=='none'||sec.card.w<50)throw new Error('section wrong');
+});
