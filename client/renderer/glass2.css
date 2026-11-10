@@ -994,3 +994,54 @@ html[data-theme='glass2'] .sidebar-head .icon-btn:hover:not(:disabled) > svg {
   background-color: transparent !important;
   transform: none !important;
 }
+
+/* Кнопки в карточке профиля — стеклянные, в стиле темы */
+[data-theme='glass2'] .profile-card .pc-actions {
+  gap: 10px;
+  margin-top: 16px;
+}
+[data-theme='glass2'] .profile-card .pc-actions .btn {
+  flex: 1;
+  height: 40px;
+  border: 1px solid rgba(184, 236, 255, 0.20);
+  border-radius: 14px;
+  background: rgba(13, 26, 35, 0.38);
+  color: #e7f7fb;
+  -webkit-backdrop-filter: blur(14px) saturate(145%) brightness(0.88);
+  backdrop-filter: blur(14px) saturate(145%) brightness(0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 8px 22px rgba(0, 0, 0, 0.18);
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 180ms ease,
+    box-shadow 220ms ease;
+}
+[data-theme='glass2'] .profile-card .pc-actions .btn.primary {
+  border-color: rgba(152, 240, 249, 0.52) !important;
+  background: linear-gradient(135deg, rgba(121, 236, 246, 0.26), rgba(157, 145, 255, 0.12)) !important;
+  color: #eefeff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 0 18px rgba(104, 232, 244, 0.14);
+}
+[data-theme='glass2'] .profile-card .pc-actions .btn.success {
+  border-color: rgba(130, 240, 178, 0.42) !important;
+  background: linear-gradient(135deg, rgba(110, 235, 170, 0.20), rgba(90, 200, 225, 0.08)) !important;
+  color: #cdf8dd !important;
+}
+[data-theme='glass2'] .profile-card .pc-actions .btn:hover:not(:disabled) {
+  border-color: rgba(160, 248, 255, 0.68) !important;
+  background-color: rgba(46, 82, 97, 0.48) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 0 18px rgba(104, 232, 244, 0.16);
+}
+[data-theme='glass2'] .profile-card .pc-actions .btn:disabled {
+  opacity: 0.55;
+  border-color: rgba(184, 236, 255, 0.14) !important;
+  background: rgba(13, 26, 35, 0.24) !important;
+  color: #a9c2cb !important;
+  box-shadow: none;
+}
