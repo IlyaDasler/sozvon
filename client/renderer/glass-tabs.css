@@ -378,3 +378,12 @@ html[data-theme='glass'][data-theme-id='fuji'] .rail-item.active::before {
   background: var(--accent);
   box-shadow: 0 0 11px color-mix(in srgb, var(--accent) 55%, transparent);
 }
+
+/* «Фуджи»: полоски каналов — белые, как в «Совоне» */
+html[data-theme='glass'][data-theme-id='fuji'] .rail-item::before,
+html[data-theme='glass'][data-theme-id='fuji'] .rail-item.active::before,
+html[data-theme='glass'][data-theme-id='fuji'] .rail-item.unread::before,
+html[data-theme='glass'][data-theme-id='fuji'] .rail-item:hover::before {
+  background: #ffffff !important;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.45) !important;
+}
