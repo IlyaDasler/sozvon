@@ -24,6 +24,8 @@ runTest(async () => {
   })()`);
   await waitFor(w, `document.body.classList.contains('mobile-msg-sheet')`, 'лист действий сообщения');
   const actions = await js(w, `document.querySelectorAll('#mobile-msg-sheet button').length`);
+  const labels = await js(w, `JSON.stringify([...document.querySelectorAll('#mobile-msg-sheet button')].map(b=>b.textContent))`);
+  if (/Shift|Ctrl|Alt|Esc|Enter|Cmd|⌘|клавиш/i.test(labels)) throw new Error(`в мобильном листе остались подсказки клавиш: ${labels}`);
   if (actions < 4) throw new Error(`в листе сообщения только ${actions} действий`);
   await js(w, `document.getElementById('mobile-msg-backdrop').click(); true`);
   await waitFor(w, `!document.body.classList.contains('mobile-msg-sheet')`, 'лист действий закрылся');
