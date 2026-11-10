@@ -35,6 +35,19 @@ runTest(async () => {
   await js(w, `openSettings(); true`);
   await sleep(800); await screenshot(w, 'audit-04-settings'); await report('settings');
 
+  // Все семь разделов должны открываться именно как кнопки, а не только через showSettingsTab()
+  for (const tab of ['profile','look','sound','notify','account','privacy','about']) {
+    await js(w, `document.querySelector('#set-nav [data-tab="${tab}"]').click(); true`);
+    await sleep(250);
+    const opened = await js(w, `(() => {
+      const pane=document.querySelector('#settings .set-pane[data-pane="${tab}"]');
+      const active=document.querySelector('#set-nav [data-tab="${tab}"]');
+      return Boolean(pane && getComputedStyle(pane).display !== 'none' && active?.classList.contains('active'));
+    })()`);
+    if (!opened) throw new Error('раздел настроек не открылся: '+tab);
+    await js(w, `document.getElementById('mobile-settings-back').click(); true`);
+    await sleep(200);
+  }
   await js(w, `document.querySelector('#set-nav [data-tab="look"]').click(); true`);
   await sleep(600); await screenshot(w, 'audit-05-look'); await report('look');
 
