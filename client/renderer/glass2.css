@@ -1045,3 +1045,12 @@ html[data-theme='glass2'] .sidebar-head .icon-btn:hover:not(:disabled) > svg {
   color: #a9c2cb !important;
   box-shadow: none;
 }
+
+/* Страница не должна прокручиваться вбок/вверх при переходах к сообщению */
+html[data-theme='glass2'],
+html[data-theme='glass2'] body {
+  overflow: hidden;
+}
+[data-theme='glass2'] .messages {
+  overflow-x: hidden;
+}

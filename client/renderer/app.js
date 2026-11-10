@@ -1067,7 +1067,12 @@ function jumpToMessage(box, id) {
   box.stick = false;
   box.userScrolled = true;
   syncJumpBar(box);
-  row.scrollIntoView({ block: 'center' });
+  // Прокручиваем только саму ленту. scrollIntoView мог утащить за собой
+  // горизонтальную прокрутку всего окна, из-за чего интерфейс уезжал вбок.
+  const boxRect = box.getBoundingClientRect();
+  const rowRect = row.getBoundingClientRect();
+  const target = box.scrollTop + (rowRect.top - boxRect.top) - (box.clientHeight - rowRect.height) / 2;
+  box.scrollTop = Math.max(0, Math.min(target, box.scrollHeight - box.clientHeight));
   row.classList.remove('msg-flash');
   void row.offsetWidth;
   row.classList.add('msg-flash');
