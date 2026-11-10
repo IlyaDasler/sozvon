@@ -156,4 +156,11 @@
   // Микрофон, динамики и камера заполняются позже — повторяем после появления
   setTimeout(enhanceAll, 600);
   setTimeout(enhanceAll, 2000);
+  // Селекты создаются и позже (например, выбор роли в управлении комнатой);
+  // подхватываем их, чтобы вместо системного чёрного списка был меню темы.
+  let enhanceTimer = 0;
+  new MutationObserver(() => {
+    clearTimeout(enhanceTimer);
+    enhanceTimer = setTimeout(enhanceAll, 80);
+  }).observe(document.body, { childList: true, subtree: true });
 })();
