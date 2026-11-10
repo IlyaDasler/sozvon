@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "714197958767",
+    "project_id": "sozvon-d4509",
+    "storage_bucket": "sozvon-d4509.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:714197958767:android:b92863e92867c1f53bcd9a",
+        "android_client_info": {
+          "package_name": "ru.ilyadasler.sozvon.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPsa_s7rYH7Z66xUjKOzSZ1DGlEnXQj8Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

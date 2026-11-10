@@ -45,6 +45,7 @@ type server struct {
 	voice   *voiceManager
 	livekit livekit.Options
 	limits  *limiter
+	push    *pushService
 	// Фиктивный хеш для выравнивания времени входа: не даёт отличить
 	// несуществующий логин от неверного пароля по скорости ответа.
 	dummyHash string
@@ -83,6 +84,13 @@ func main() {
 	}
 
 	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), oauth: oauth.Options{ClientID: cfg.YandexClientID, ClientSecret: cfg.YandexClientSecret, TestBase: cfg.OAuthTestBase}, preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}, limits: newLimiter()}
+	if push, err := newPushService(os.Getenv("FIREBASE_SERVICE_ACCOUNT")); err != nil {
+		logger.Warn("FCM выключен", "error", err)
+	} else if push != nil {
+		app.push = push
+		logger.Info("FCM включён", "project", push.projectID)
+	}
+
 	// Хеш для «пустой» проверки пароля (см. login): та же стоимость scrypt.
 	app.dummyHash, _ = auth.HashPassword(auth.RandomID(32))
 
@@ -205,6 +213,8 @@ func (a *server) routes() http.Handler {
 			r.Use(a.requireAuth)
 			r.Get("/link-preview", a.linkPreview)
 			r.Get("/me", a.me)
+			r.Post("/push/register", a.registerPushToken)
+			r.Delete("/push/token", a.deletePushToken)
 			r.Patch("/me/privacy", a.updatePrivacy)
 			r.Patch("/me", a.patchMe)
 			r.Put("/me/status", a.setMyStatus)
