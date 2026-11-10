@@ -103,6 +103,7 @@
       button.type = 'button';
       button.className = 'mobile-hub' + (state?.view === hub.id ? ' active' : '');
       button.textContent = hub.name || 'Канал';
+      button.dataset.hub = hub.id;
       button.onclick = () => {
         if (typeof openHub === 'function') openHub(hub.id);
         renderHubs();
@@ -272,6 +273,36 @@
     true
   );
 
+  // Долгое нажатие на иконку хаба открывает действия канала: пригласить,
+  // создать комнату или событие, уведомления, настройки, выйти/удалить.
+  let hubPressTimer = null;
+  let hubLongPressed = false;
+  const cancelHubPress = () => {
+    if (hubPressTimer) clearTimeout(hubPressTimer);
+    hubPressTimer = null;
+  };
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (event.pointerType === 'mouse') return;
+      const tile = event.target.closest('#rail .rail-item[data-hub], .mobile-hub[data-hub]');
+      if (!tile) return;
+      cancelHubPress();
+      hubPressTimer = setTimeout(() => {
+        const hub = typeof hubById === 'function' ? hubById(Number(tile.dataset.hub)) : null;
+        if (!hub || typeof showMenu !== 'function' || typeof hubMenuItems !== 'function') return;
+        hubLongPressed = true;
+        buzz(12);
+        const r = tile.getBoundingClientRect();
+        showMenu(Math.min(r.right + 4, innerWidth - 220), r.top, hubMenuItems(hub));
+      }, 550);
+    },
+    { passive: true }
+  );
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+    document.addEventListener(type, cancelHubPress, { passive: true });
+  }
+
   // Долгое нажатие на комнату открывает её настройки: на сенсорном экране
   // не нужно держать три мелкие иконки в каждой строке.
   let roomPressTimer = null;
@@ -301,8 +332,9 @@
   document.addEventListener(
     'click',
     (event) => {
-      if (!roomLongPressed) return;
+      if (!roomLongPressed && !hubLongPressed) return;
       roomLongPressed = false;
+      hubLongPressed = false;
       event.preventDefault();
       event.stopPropagation();
     },

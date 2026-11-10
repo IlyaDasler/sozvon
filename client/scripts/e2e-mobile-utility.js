@@ -70,6 +70,24 @@ runTest(async () => {
   await waitFor(w, `!document.getElementById('settings').classList.contains('hidden')`, 'настройки с рейла');
   await js(w, `document.getElementById('settings-close').click(); true`);
 
+  // Заголовок хаба — статичный, действия открываются долгим нажатием иконки.
+  const hubChrome = JSON.parse(await js(w, `(() => {
+    const b=document.getElementById('hub-menu-btn');
+    const chev=b.querySelector(':scope > svg');
+    return JSON.stringify({pointer:getComputedStyle(b).pointerEvents, chevron:chev?getComputedStyle(chev).display:null});
+  })()`));
+  if (hubChrome.pointer !== 'none' || hubChrome.chevron !== 'none') throw new Error(`название хаба всё ещё выглядит селектом: ${JSON.stringify(hubChrome)}`);
+
+  await js(w, `(() => {
+    const tile=document.querySelector('#rail .rail-item[data-hub]');
+    tile.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch', pointerId: 2, clientX: 100, clientY: 240 }));
+    return true;
+  })()`);
+  await waitFor(w, `!document.getElementById('popup-menu').classList.contains('hidden')`, 'меню хаба по долгому нажатию');
+  const hubActions = await js(w, `document.querySelectorAll('#popup-menu button').length`);
+  if (!hubActions) throw new Error('меню хаба пустое');
+  await js(w, `document.getElementById('popup-menu').classList.add('hidden'); true`);
+
   // Долгое нажатие на комнату открывает мобильный лист действий,
   // а не оставляет десктопные иконки в каждой строке.
   await js(w, `openHub(${hub.id}); refreshRooms(); true`);
