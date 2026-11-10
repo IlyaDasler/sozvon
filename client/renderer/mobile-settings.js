@@ -40,16 +40,17 @@
   };
 
   const baseOpen = openSettings;
-  openSettings = async function (tab) {
-    await baseOpen(tab);
-    if (!mq.matches) return;
+  openSettings = function (tab) {
+    const pending = baseOpen(tab);
+    if (!mq.matches) return pending;
+    // Не ждём baseOpen: он может зависнуть на enumerateDevices, но окно уже открыто.
     if (typeof tab === 'string') section(tab);
     else {
       home();
-      // baseOpen мог вызвать showSettingsTab('profile') уже после нашего home
-      setTimeout(() => { if (!document.body.classList.contains('mobile-settings-section')) return; home(); }, 0);
+      setTimeout(() => { if (document.body.classList.contains('mobile-settings-section')) home(); }, 0);
     }
     if (!history.state?.mobileSettings) history.pushState({ mobileSettings: true }, '');
+    return pending;
   };
 
   const baseClose = closeSettings;
