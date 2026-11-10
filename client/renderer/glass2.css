@@ -1054,3 +1054,103 @@ html[data-theme='glass2'] body {
 [data-theme='glass2'] .messages {
   overflow-x: hidden;
 }
+
+/* ---------- Кнопки в шапке чата и панель действий сообщения ---------- */
+[data-theme='glass2'] .chat-head .icon-btn,
+[data-theme='glass2'] .members-head .icon-btn {
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 180ms ease,
+    box-shadow 220ms ease,
+    transform 180ms cubic-bezier(.2, 1.2, .3, 1);
+}
+[data-theme='glass2'] .chat-head .icon-btn > svg,
+[data-theme='glass2'] .members-head .icon-btn > svg {
+  transition:
+    transform 180ms cubic-bezier(.2, 1.2, .3, 1),
+    filter 180ms ease;
+}
+[data-theme='glass2'] .chat-head .icon-btn:hover:not(:disabled),
+[data-theme='glass2'] .members-head .icon-btn:hover:not(:disabled) {
+  color: #effdff;
+  background: rgba(42, 76, 90, 0.52);
+  border-color: rgba(152, 240, 249, 0.52);
+  box-shadow:
+    inset 0 0 0 1px rgba(210, 248, 255, 0.13),
+    0 0 18px rgba(103, 231, 243, 0.18);
+  transform: scale(1.07);
+}
+[data-theme='glass2'] .chat-head .icon-btn:hover:not(:disabled) > svg,
+[data-theme='glass2'] .members-head .icon-btn:hover:not(:disabled) > svg {
+  transform: scale(1.18);
+  filter: drop-shadow(0 0 6px rgba(132, 240, 249, 0.55));
+}
+
+/* «Позвонить»: подсветка кнопки и увеличение иконки трубки */
+[data-theme='glass2'] #call-btn {
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 180ms ease,
+    box-shadow 220ms ease,
+    transform 180ms cubic-bezier(.2, 1.2, .3, 1);
+}
+[data-theme='glass2'] #call-btn svg {
+  transition:
+    transform 180ms cubic-bezier(.2, 1.2, .3, 1),
+    filter 180ms ease;
+}
+[data-theme='glass2'] #call-btn:hover:not(:disabled) {
+  border-color: rgba(150, 246, 195, 0.65) !important;
+  background: linear-gradient(135deg, rgba(116, 238, 175, 0.28), rgba(91, 201, 229, 0.12)) !important;
+  color: #eafff2 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 0 18px rgba(112, 236, 168, 0.20);
+  transform: scale(1.04);
+}
+[data-theme='glass2'] #call-btn:hover:not(:disabled) svg {
+  transform: scale(1.16);
+  filter: drop-shadow(0 0 6px rgba(130, 245, 178, 0.55));
+}
+
+/* Панель действий у сообщения — стекло */
+[data-theme='glass2'] .msg-tools {
+  padding: 3px;
+  border: 1px solid rgba(184, 236, 255, 0.18);
+  border-radius: 11px;
+  background: rgba(8, 17, 24, 0.56);
+  -webkit-backdrop-filter: blur(16px) saturate(145%) brightness(0.88);
+  backdrop-filter: blur(16px) saturate(145%) brightness(0.88);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+[data-theme='glass2'] .msg-tool {
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+[data-theme='glass2'] .msg-tool svg {
+  transition:
+    transform 180ms cubic-bezier(.2, 1.2, .3, 1),
+    filter 180ms ease;
+}
+[data-theme='glass2'] .msg-tool:hover {
+  color: #effdff;
+  background: rgba(42, 76, 90, 0.52);
+  box-shadow: inset 0 0 0 1px rgba(210, 248, 255, 0.12);
+}
+[data-theme='glass2'] .msg-tool:hover svg {
+  transform: scale(1.18);
+  filter: drop-shadow(0 0 5px rgba(132, 240, 249, 0.55));
+}
+[data-theme='glass2'] .msg-tool.danger:hover {
+  color: #ff9ea2;
+  background: rgba(82, 40, 47, 0.46);
+}
+[data-theme='glass2'] .msg-tool.danger:hover svg {
+  filter: drop-shadow(0 0 5px rgba(242, 110, 118, 0.55));
+}
