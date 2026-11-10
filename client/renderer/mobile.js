@@ -23,6 +23,17 @@
     if (navigator.userActivation?.isActive) navigator.vibrate?.(ms);
   };
 
+  // На телефоне в title не должно быть десктопных Ctrl/Shift/Esc.
+  const cleanTitle = (value) =>
+    String(value || '').replace(/\s*\((?:[^)]*(?:Shift|Ctrl|Alt|Esc|Enter|Cmd|⌘|мыш|клавиш)[^)]*)\)\s*$/i, '').trim();
+  const cleanTitles = () => {
+    for (const el of document.querySelectorAll('[title]')) {
+      const next = cleanTitle(el.title);
+      if (next && next !== el.title) el.title = next;
+    }
+  };
+  cleanTitles();
+
   const nav = document.createElement('nav');
   nav.id = 'mobile-nav';
   nav.setAttribute('aria-label', 'Мобильная навигация');

@@ -391,7 +391,7 @@ html.auth-screen #mobile-backdrop {
   }
   .mobile-hub.active {
     background: color-mix(in srgb, var(--accent) 20%, var(--bg-2));
-    border-color: transparent;
+    border-color: transparent !important;
     color: var(--text);
   }
   .mobile-hub:active { transform: scale(.97); }
@@ -1555,4 +1555,69 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body.mobile-room-open #main.main {
     padding-bottom: var(--mobile-safe-bottom) !important;
   }
+}
+
+/* ---------- Индикаторы вкладок ----------
+   Glass-tabs рисует плавающую капсулу, которая на мобильной строке
+   растягивается на две вкладки. На телефоне индикатор — только underline. */
+@media (max-width: 900px) {
+  #friend-tabs .glass-tab-indicator,
+  #privacy-subnav .glass-tab-indicator {
+    display: none !important;
+  }
+}
+
+/* ---------- Данные и приватность: мобильные вкладки ----------
+   Вертикальный desktop-список превращал разделы в мелкие ссылки.
+   На телефоне — горизонтальная строка с touch-target 44 px. */
+@media (max-width: 900px) {
+  #settings .set-pane[data-pane="privacy"] #privacy-subnav {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    width: 100%;
+    margin: 0 0 14px;
+    padding: 0;
+    border: 0;
+    overflow: visible;
+  }
+  #privacy-subnav > button {
+    position: relative;
+    height: auto;
+    min-height: 48px;
+    padding: 8px 10px;
+    border: 1px solid var(--line) !important;
+    border-radius: 10px !important;
+    background: color-mix(in srgb, var(--bg-3) 72%, transparent) !important;
+    color: var(--text-2) !important;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: left;
+    white-space: normal;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #privacy-subnav > button:hover,
+  #privacy-subnav > button:focus,
+  #privacy-subnav > button:focus-visible {
+    background: color-mix(in srgb, var(--bg-3) 84%, transparent) !important;
+    box-shadow: none !important;
+    outline: none;
+  }
+  #privacy-subnav > button.active {
+    background: color-mix(in srgb, var(--accent) 20%, var(--bg-3)) !important;
+    border-color: transparent !important;
+    color: var(--text) !important;
+  }
+  #privacy-subnav > button.active::after { display: none; }
+  #privacy-subnav > button:active { transform: scale(.98); }
+
+}
+
+@media (max-width: 900px) {
+  /* Серая «пустая аватарка» рядом с брендом — это индикатор соединения,
+     на телефоне он читается как незаполненный аватар. */
+  #conn-dot { display: none !important; }
+  .mobile-hub { border-color: transparent !important; }
 }
