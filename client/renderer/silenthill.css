@@ -770,3 +770,15 @@
   background-blend-mode: normal !important;
 }
 
+
+/* Портретный кроп для телефона: в альбомном кадре улица уходила в узкую полосу */
+@media (max-width: 599px) {
+  [data-theme='silenthill'] .main {
+    background-image:
+      radial-gradient(110% 80% at 50% 32%, rgba(210, 210, 208, 0.1), transparent 64%),
+      linear-gradient(180deg, rgba(8, 8, 9, 0.2) 0%, rgba(8, 8, 9, 0.58) 100%),
+      url("silenthill-bg-mobile.jpg") !important;
+    background-size: auto, auto, cover !important;
+    background-position: center, center, center 42% !important;
+  }
+}

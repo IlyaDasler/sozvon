@@ -19,9 +19,24 @@
     sunset: 'fuji-sunset.jpg',
     night: 'fuji-night.jpg',
   };
+  const GLASS_MOBILE_SCENES = {
+    dawn: 'glass-dawn-mobile.jpg',
+    morning: 'glass-morning-mobile.jpg',
+    day: 'glass-day-mobile.jpg',
+    sunset: 'glass-evening-mobile.jpg',
+    night: 'glass-night-mobile.jpg',
+  };
+  const FUJI_MOBILE_SCENES = {
+    dawn: 'fuji-dawn-mobile.jpg',
+    morning: 'fuji-dawn-mobile.jpg',
+    day: 'fuji-day-mobile.jpg',
+    sunset: 'fuji-sunset-mobile.jpg',
+    night: 'fuji-night-mobile.jpg',
+  };
 
-  function sceneSet(themeId) {
-    return themeId === 'fuji' ? FUJI_SCENES : GLASS_SCENES;
+  function sceneSet(themeId, mobile = false) {
+    if (themeId === 'fuji') return mobile ? FUJI_MOBILE_SCENES : FUJI_SCENES;
+    return mobile ? GLASS_MOBILE_SCENES : GLASS_SCENES;
   }
 
   function phaseAt(ms, timeZone) {
@@ -44,5 +59,5 @@
     return 'night';
   }
 
-  return { GLASS_SCENES, FUJI_SCENES, sceneSet, phaseAt };
+  return { GLASS_SCENES, FUJI_SCENES, GLASS_MOBILE_SCENES, FUJI_MOBILE_SCENES, sceneSet, phaseAt };
 });
