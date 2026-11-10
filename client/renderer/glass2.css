@@ -1630,3 +1630,19 @@ html[data-theme='glass2'] body {
   color: #b7f8ff;
   font-weight: 700;
 }
+
+/* Нижняя панель профиля: выше и сильнее скруглена, нижний отступ как у поля ввода */
+[data-theme='glass2'] .me-panel {
+  height: 54px;
+  margin: 0 12px 12px;
+  border-radius: 18px;
+  padding: 0 8px 0 9px;
+}
+[data-theme='glass2'] .me-panel .avatar {
+  width: 38px;
+  height: 38px;
+}
+[data-theme='glass2'] .me-panel .icon-btn {
+  width: 30px;
+  height: 30px;
+}
