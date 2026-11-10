@@ -35,3 +35,10 @@ test('Совон и Фуджи получают разные наборы сце
   assert.equal(sceneSet('glass'), GLASS_SCENES);
   assert.equal(GLASS_SCENES.morning, 'glass-morning.jpg');
 });
+
+
+test('на телефоне подставляются портретные кропы', () => {
+  assert.equal(sceneSet('fuji', true).day, 'fuji-day-mobile.jpg');
+  assert.equal(sceneSet('glass', true).morning, 'glass-morning-mobile.jpg');
+  assert.equal(sceneSet('fuji', false).day, 'fuji-day.jpg');
+});

@@ -5,8 +5,9 @@
   const root = document.documentElement;
   const core = window.SozvonDaypartCore;
   if (!core) return;
-  const { GLASS_SCENES, FUJI_SCENES, sceneSet, phaseAt } = core;
-  let scenes = sceneSet(document.documentElement.dataset.themeId);
+  const { GLASS_SCENES, FUJI_SCENES, GLASS_MOBILE_SCENES, FUJI_MOBILE_SCENES, sceneSet, phaseAt } = core;
+  const mobileScenes = () => matchMedia('(max-width: 599px)').matches;
+  let scenes = sceneSet(document.documentElement.dataset.themeId, mobileScenes());
   const first = document.querySelector('.lg-aurora');
   if (!first) return;
   const second = document.createElement('div');
@@ -19,7 +20,7 @@
   let serial = 0;
 
   // Заранее прогреваем все кадры обеих тем, чтобы смена не показывала пустоту.
-  for (const src of [...Object.values(GLASS_SCENES), ...Object.values(FUJI_SCENES)]) {
+  for (const src of [...Object.values(GLASS_SCENES), ...Object.values(FUJI_SCENES), ...Object.values(GLASS_MOBILE_SCENES), ...Object.values(FUJI_MOBILE_SCENES)]) {
     const img = new Image();
     img.src = src;
   }
@@ -74,6 +75,17 @@
     root.dataset.daypartZone = zone();
   }
 
+  // Переход между телефоном и фолдом: у телефона отдельные портретные кропы.
+  let lastMobile = mobileScenes();
+  addEventListener('resize', () => {
+    const next = mobileScenes();
+    if (next === lastMobile) return;
+    lastMobile = next;
+    scenes = sceneSet(document.documentElement.dataset.themeId, next);
+    current = '';
+    paint();
+  });
+
   // Часы сервера. Если сети нет — остаётся локальное время, сцена продолжает работать.
   async function sync() {
     try {
@@ -95,7 +107,7 @@
 
   // Смена темы меняет весь набор кадров; переключаем без ожидания таймера.
   function refresh() {
-    scenes = sceneSet(document.documentElement.dataset.themeId);
+    scenes = sceneSet(document.documentElement.dataset.themeId, mobileScenes());
     current = '';
     const phase = phaseAt(Date.now(), zone());
     const layer = layers[active];
