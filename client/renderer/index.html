@@ -618,7 +618,7 @@
               </div>
               <video id="cam-preview" class="cam-preview mirror hidden" autoplay playsinline muted></video>
             </div>
-            <div class="set-block hidden" id="ptt-block">
+            <div class="set-block hidden desktop-only" id="ptt-block">
               <h4>Режим микрофона</h4>
               <label class="check"><input type="radio" name="mic-mode" value="voice" checked> Голосом — микрофон включён всё время</label>
               <label class="check"><input type="radio" name="mic-mode" value="ptt"> Рация — слышно, только пока держите клавишу</label>
@@ -645,7 +645,7 @@
               <span class="hint-text">Звонок, уведомления, вход и выход из голоса можно заменить своими файлами (MP3, WAV, OGG, до 30 секунд). Они хранятся только на этом устройстве.</span>
               <div class="custom-sounds" id="custom-sounds"></div>
             </div>
-            <div class="set-block">
+            <div class="set-block desktop-only">
               <h4>Горячие клавиши</h4>
               <p class="muted small">Работают и в игре: <b>Ctrl+Shift+M</b> — микрофон, <b>Ctrl+Shift+D</b> — звук.</p>
             </div>
@@ -654,7 +654,7 @@
           <div class="set-pane" data-pane="notify">
             <div class="set-block">
               <h4>Уведомления</h4>
-              <label class="check"><input type="checkbox" id="set-notify-desktop"> Уведомления на рабочем столе, когда окно свёрнуто</label>
+              <label class="check desktop-only"><input type="checkbox" id="set-notify-desktop"> Уведомления на устройстве, когда приложение свёрнуто</label>
               <label class="check"><input type="checkbox" id="set-notify-preview"> Показывать текст сообщения в уведомлении</label>
               <label class="check"><input type="checkbox" id="set-notify-sound"> Звук уведомлений</label>
               <span class="hint-text">В статусе «Не беспокоить» на устройство ничего не приходит и звонки не звенят — всё остаётся в колокольчике.</span>
@@ -1282,7 +1282,7 @@
     <div class="modal-card dialog-card crop-card" role="dialog" aria-labelledby="crop-title">
       <h3 id="crop-title"></h3>
       <div class="crop-box" id="crop-box"><canvas id="crop-stage"></canvas></div>
-      <span class="hint-text">Перетащите фото мышью, колесо или ползунок приближают</span>
+      <span class="hint-text">Перетащите фото; масштаб — ползунком</span>
       <input type="range" id="crop-zoom" min="1" max="4" step="0.01" aria-label="Увеличение">
       <div class="row">
         <div class="spacer"></div>
