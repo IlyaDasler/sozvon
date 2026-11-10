@@ -189,3 +189,25 @@ html[data-theme='glass'][data-theme-id='glass'] #rail-list .rail-item.active .ra
   background-color: transparent !important;
   box-shadow: none !important;
 }
+
+/* «Совон»: белые полоски активного/непрочитанного канала слева от иконок */
+html[data-theme='glass'][data-theme-id='glass'] .rail-item::before {
+  display: block !important;
+  left: 2px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #ffffff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.45);
+}
+html[data-theme='glass'][data-theme-id='glass'] .rail-item.unread::before {
+  height: 8px;
+  opacity: 0.75;
+}
+html[data-theme='glass'][data-theme-id='glass'] .rail-item:hover::before {
+  height: 18px;
+  opacity: 0.8;
+}
+html[data-theme='glass'][data-theme-id='glass'] .rail-item.active::before {
+  height: 36px;
+  opacity: 1;
+}
