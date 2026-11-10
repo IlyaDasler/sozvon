@@ -16,8 +16,18 @@ runTest(async () => {
     { name: 'Fold 5 outer', w: 344, h: 882, mode: 'compact' },
     { name: 'Fold 5 inner', w: 673, h: 841, mode: 'workspace' },
     { name: 'Fold 6 inner', w: 690, h: 829, mode: 'workspace' },
+    { name: 'Fold 7 outer', w: 411, h: 960, mode: 'compact' },
+    { name: 'Fold 7 inner', w: 750, h: 832, mode: 'workspace' },
+    { name: 'Fold 8 outer', w: 475, h: 751, mode: 'compact' },
+    { name: 'Fold 8 inner', w: 696, h: 933, mode: 'workspace' },
+    { name: 'Fold 8 Ultra outer', w: 411, h: 960, mode: 'compact' },
+    { name: 'Fold 8 Ultra inner', w: 954, h: 859, mode: 'workspace' },
     { name: 'Flip 5 open', w: 396, h: 915, mode: 'compact' },
-    { name: 'Flip 5 cover', w: 328, h: 360, mode: 'cover' },
+    { name: 'Flip 5 cover', w: 274, h: 285, mode: 'cover' },
+    { name: 'Flip 7 open', w: 411, h: 1006, mode: 'compact' },
+    { name: 'Flip 7 cover', w: 361, h: 399, mode: 'cover' },
+    { name: 'Flip 8 open', w: 411, h: 960, mode: 'compact' },
+    { name: 'Flip 8 cover', w: 361, h: 399, mode: 'cover' },
   ];
   const failures = [];
   for (const c of cases) {
@@ -45,5 +55,5 @@ runTest(async () => {
   }
   w.setSize(390, 844);
   if (failures.length) throw new Error(failures.slice(0, 6).join('; '));
-  console.log('✔ Samsung: S23/S24 Ultra/A, Fold 5/6/7/8 outer+inner, Flip 5/7/8 open+cover');
+  console.log('✔ Samsung: S23/S24 Ultra/A, Fold 5/6/7/8/8 Ultra, Flip 5/7/8 open+cover');
 });
