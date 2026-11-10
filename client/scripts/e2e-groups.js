@@ -19,7 +19,7 @@ runTest(async () => {
   const winB = await openClient('gb' + Date.now().toString(36).slice(-5), b);
   await waitFor(winB, 'e2eeReady()', 'вход Б');
   await js(winB, `refreshRooms().then(() => true)`);
-  await sleep(800);
+  await waitFor(winB, `(roomById(${one.id})?.voice || []).some((p) => p.userId === ${a.user.id})`, 'участник появился в голосовой комнате', 8000);
   const voice = await js(winB, `JSON.stringify((roomById(${one.id})?.voice || []).map((p) => p.userId))`);
   if (!JSON.parse(voice).includes(a.user.id)) throw new Error(`В комнате группы не видно участника: ${voice}`);
 
