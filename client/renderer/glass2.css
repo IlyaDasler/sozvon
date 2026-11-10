@@ -985,3 +985,12 @@ html[data-theme='glass2'] .sidebar-head .icon-btn:hover:not(:disabled) > svg {
 [data-theme='glass2'] .rail-tile.has-image:hover img {
   transform: none;
 }
+
+/* При наведении — только рамка, без ореола и тени */
+[data-theme='glass2'] .rail-tile:hover {
+  filter: none !important;
+  box-shadow: none !important;
+  border: 1px solid rgba(150, 241, 249, 0.62) !important;
+  background-color: transparent !important;
+  transform: none !important;
+}
