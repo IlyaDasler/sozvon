@@ -332,3 +332,21 @@ html[data-theme='glass'][data-theme-id='glass'] .room-tool:focus-visible {
   outline: none !important;
   color: var(--text) !important;
 }
+
+/* «Совон»: участники обсуждения — компактной группой, как в остальных темах */
+html[data-theme='glass'] .thread-people {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+html[data-theme='glass'] .thread-people .avatar {
+  width: 18px;
+  height: 18px;
+  font-size: 8px;
+  flex: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+html[data-theme='glass'] .thread-people .avatar + .avatar {
+  margin-left: -6px;
+}
