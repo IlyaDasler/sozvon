@@ -909,3 +909,52 @@ html[data-theme='glass2'] .sidebar-head .icon-btn:hover:not(:disabled) > svg {
 [data-theme='glass2'] .composer-btn.send:hover:not(:disabled) {
   color: #bcfbff;
 }
+
+/* ---------- Рейл: без подложки, иконки по размеру, живые при наведении ---------- */
+[data-theme='glass2'] .rail-tile {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 14px;
+}
+[data-theme='glass2'] .rail-tile.has-image {
+  background-size: 84%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+[data-theme='glass2'] .rail-tile img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 10px;
+}
+[data-theme='glass2'] .rail-item.active .rail-tile {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  filter: drop-shadow(0 0 7px rgba(132, 240, 249, 0.42));
+}
+/* Убираем большую стеклянную плашку вокруг активного канала */
+[data-theme='glass2'] #rail > .glass-tab-indicator,
+[data-theme='glass2'] #rail .glass-tab-indicator {
+  display: none !important;
+}
+[data-theme='glass2'] .rail-tile:hover {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 9px rgba(132, 240, 249, 0.60));
+}
+[data-theme='glass2'] .rail-tile:hover img {
+  transform: scale(1.05);
+}
+
+/* У домашней иконки тоже не должно быть плитки */
+[data-theme='glass2'] .rail-home,
+[data-theme='glass2'] .rail-item.active .rail-home,
+[data-theme='glass2'] .rail-home:hover {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
