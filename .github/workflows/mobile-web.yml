@@ -1,0 +1,33 @@
+name: Mobile web
+
+on:
+  push:
+    branches: [mobile-app]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-web
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Выложить мобильный renderer
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -d -m700 ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/sozvon_deploy
+          chmod 600 ~/.ssh/sozvon_deploy
+          ssh-keyscan -H 135.106.226.12 >> ~/.ssh/known_hosts
+          rsync -az --delete --exclude 'updates/' \
+            -e "ssh -i ~/.ssh/sozvon_deploy -o StrictHostKeyChecking=yes" \
+            client/renderer/ root@135.106.226.12:/opt/sozvon-web/
+          ssh -i ~/.ssh/sozvon_deploy -o StrictHostKeyChecking=yes root@135.106.226.12 \
+            "printf '%s\n' 'mobile-${GITHUB_SHA::8}' > /opt/sozvon-web/.release"
