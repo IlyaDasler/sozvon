@@ -92,7 +92,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.127';
+    version.textContent = 'Версия 1.0.128';
     authCard.append(version);
   }
 
@@ -128,11 +128,47 @@
 
   const buttons = [...nav.querySelectorAll('button')];
   const tabOrder = ['home', 'channels', 'notifications', 'settings'];
+  const navPill = nav.querySelector('.mobile-nav-pill');
+  let navPillIndex = 0;
+  let navPillValue = 0;
+  let navPillRaf = 0;
+  const paintPill = (value) => {
+    navPillValue = value;
+    if (navPill) navPill.style.transform = `translateX(${value * 100}%)`;
+  };
+  // Капсулу двигаем сами, кадр за кадром: та же плавность, что у роллера друзей,
+  // без рывка при смене направления и без зависимости от CSS-transition.
+  const movePill = (index) => {
+    if (!navPill) return;
+    cancelAnimationFrame(navPillRaf);
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduced || index === navPillIndex) {
+      navPillIndex = index;
+      paintPill(index);
+      return;
+    }
+    const from = navPillValue;
+    const delta = index - from;
+    const start = performance.now();
+    const duration = 240;
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      paintPill(from + delta * eased);
+      if (t < 1) navPillRaf = requestAnimationFrame(step);
+      else navPillIndex = index;
+    };
+    navPillRaf = requestAnimationFrame(step);
+  };
+  paintPill(0);
   const setActive = (name) => {
     buttons.forEach((button, index) => {
       const on = button.dataset.mobile === name;
       button.classList.toggle('active', on);
-      if (on) nav.style.setProperty('--nav-index', index);
+      if (on) {
+        nav.style.setProperty('--nav-index', index);
+        movePill(index);
+      }
     });
   };
   const pushLayer = () => {
