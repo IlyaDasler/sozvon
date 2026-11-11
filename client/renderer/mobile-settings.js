@@ -8,6 +8,30 @@
 
   if (!back || !subnav || !privacyPane) return;
 
+  const overview = document.getElementById('mobile-settings-overview');
+  const profileButton = document.querySelector('#set-nav [data-tab="profile"]');
+  const profileOpen = document.getElementById('mobile-profile-open');
+
+  const syncProfileCard = () => {
+    const me = typeof state !== 'undefined' ? state.me : null;
+    const avatar = document.getElementById('mobile-profile-avatar');
+    const name = document.getElementById('mobile-profile-name');
+    const username = document.getElementById('mobile-profile-username');
+    if (!me) return;
+    name.textContent = me.displayName || 'Профиль';
+    username.textContent = me.username ? `@${me.username}` : '';
+    avatar.textContent = (me.displayName || '?').trim().charAt(0).toUpperCase();
+    avatar.style.backgroundColor = me.avatarColor || 'var(--bg-4)';
+    avatar.style.backgroundImage = me.avatarUrl && typeof Api !== 'undefined'
+      ? `url("${Api.base}${me.avatarUrl}")`
+      : '';
+  };
+
+  if (profileOpen) profileOpen.onclick = () => {
+    if (typeof showSettingsTab === 'function') showSettingsTab('profile');
+    section('profile');
+  };
+
   const resetScroll = () => {
     for (const el of document.querySelectorAll('#settings .set-body, #settings .rs-main, #settings .modal-card')) {
       el.scrollTop = 0;
@@ -28,7 +52,10 @@
     document.body.classList.remove('mobile-settings-section');
     resetScroll();
     clearRootHighlight();
-    setTimeout(clearRootHighlight, 0);
+    if (overview) overview.hidden = false;
+    if (profileButton) { profileButton.hidden = true; profileButton.style.display = 'none'; }
+    syncProfileCard();
+    setTimeout(() => { clearRootHighlight(); syncProfileCard(); }, 0);
     document.getElementById('set-title').textContent = 'Настройки';
     back.classList.add('hidden');
     if (subnav.parentElement !== document.getElementById('set-nav')) {
@@ -39,6 +66,7 @@
 
   const section = (tab) => {
     document.body.classList.add('mobile-settings', 'mobile-settings-section');
+    if (overview) overview.hidden = true;
     resetScroll();
     document.getElementById('set-title').textContent =
       document.getElementById('set-nav').querySelector(`[data-tab="${tab}"]`)?.textContent?.trim() || 'Настройки';

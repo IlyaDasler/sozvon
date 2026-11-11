@@ -487,19 +487,29 @@
     <form class="modal-card settings-card set-card" id="settings-form">
       <nav class="rs-nav set-nav" id="set-nav">
         <div class="rs-room">Настройки</div>
-        <button type="button" data-tab="profile">Профиль</button>
-        <button type="button" data-tab="look">Оформление</button>
-        <button type="button" data-tab="sound">Звук и видео</button>
-        <button type="button" data-tab="notify">Уведомления</button>
-        <button type="button" data-tab="account">Аккаунт</button>
-        <button type="button" data-tab="privacy">Данные и приватность</button>
+        <div class="mobile-settings-overview" id="mobile-settings-overview">
+          <button type="button" class="mobile-profile-card" id="mobile-profile-open">
+            <span class="avatar mobile-profile-avatar" id="mobile-profile-avatar"></span>
+            <span class="mobile-profile-meta">
+              <b class="mobile-profile-name" id="mobile-profile-name">Профиль</b>
+              <span class="mobile-profile-username" id="mobile-profile-username"></span>
+            </span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          </button>
+        </div>
+        <button type="button" data-tab="profile" data-sub="Аватар, имя и описание">Профиль</button>
+        <button type="button" data-tab="look" data-sub="Темы, обои и акцент">Оформление</button>
+        <button type="button" data-tab="sound" data-sub="Микрофон, камера и динамики">Звук и видео</button>
+        <button type="button" data-tab="notify" data-sub="Звук, превью и режим">Уведомления</button>
+        <button type="button" data-tab="account" data-sub="Почта, устройства и вход">Аккаунт</button>
+        <button type="button" data-tab="privacy" data-sub="Профиль, заявки и шифрование">Данные и приватность</button>
         <div class="set-subnav hidden" id="privacy-subnav">
           <button type="button" data-privacy="data">Как Созвон использует мои данные</button>
           <button type="button" data-privacy="profile">Приватность профиля</button>
           <button type="button" data-privacy="contact">Кто может со мной связываться</button>
           <button type="button" data-privacy="crypto">Шифрование</button>
         </div>
-        <button type="button" data-tab="about">О приложении</button>
+        <button type="button" data-tab="about" data-sub="Версия и поддержка">О приложении</button>
         <div class="rs-sep"></div>
         <button type="button" class="rs-danger" id="logout-btn">Выйти из аккаунта</button>
       </nav>
