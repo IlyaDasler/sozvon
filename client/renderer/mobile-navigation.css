@@ -26,6 +26,8 @@
 
   /* OTA в APK не нужен: обновление будет из магазина. */
   #update-check-btn,
+  #update-status,
+  #update-btn,
   #sidebar-update-check,
   #auth-update-check,
   #update-bar,
