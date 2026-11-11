@@ -66,7 +66,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.97';
+    version.textContent = 'Версия 1.0.98';
     authCard.append(version);
   }
 
@@ -74,22 +74,23 @@
   nav.id = 'mobile-nav';
   nav.setAttribute('aria-label', 'Мобильная навигация');
   nav.innerHTML = `
+    <span class="mobile-nav-pill" aria-hidden="true"></span>
     <button type="button" data-mobile="home" title="Друзья">
-      <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.4-3.2 2.5-5 5.5-5s5.1 1.8 5.5 5"/><path d="M16 5.4a3 3 0 0 1 0 5.4M17 15c2 .5 3.2 1.9 3.5 4"/></svg>
-      <span>Друзья</span>
+      <span class="mobile-nav-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.4-3.2 2.5-5 5.5-5s5.1 1.8 5.5 5"/><path d="M16 5.4a3 3 0 0 1 0 5.4M17 15c2 .5 3.2 1.9 3.5 4"/></svg></span>
+      <span class="mobile-nav-label">Друзья</span>
     </button>
     <button type="button" data-mobile="channels" title="Каналы">
-      <svg viewBox="0 0 24 24"><path d="M4 5.5h16M4 12h16M4 18.5h10"/><circle cx="19" cy="18.5" r="1.6"/></svg>
-      <span>Каналы</span>
+      <span class="mobile-nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5.5h16M4 12h16M4 18.5h10"/><circle cx="19" cy="18.5" r="1.6"/></svg></span>
+      <span class="mobile-nav-label">Каналы</span>
     </button>
     <button type="button" data-mobile="notifications" title="Уведомления">
-      <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-      <span>Уведомления</span>
+      <span class="mobile-nav-icon"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+      <span class="mobile-nav-label">Уведомления</span>
       <span class="mobile-badge hidden"></span>
     </button>
     <button type="button" data-mobile="settings" title="Настройки">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></svg>
-      <span>Настройки</span>
+      <span class="mobile-nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></svg></span>
+      <span class="mobile-nav-label">Настройки</span>
     </button>`;
   document.body.append(nav);
 
@@ -102,7 +103,11 @@
   const buttons = [...nav.querySelectorAll('button')];
   const tabOrder = ['home', 'channels', 'notifications', 'settings'];
   const setActive = (name) => {
-    for (const button of buttons) button.classList.toggle('active', button.dataset.mobile === name);
+    buttons.forEach((button, index) => {
+      const on = button.dataset.mobile === name;
+      button.classList.toggle('active', on);
+      if (on) nav.style.setProperty('--nav-index', index);
+    });
   };
   const pushLayer = () => {
     if (history.state?.mobileLayer) return;
