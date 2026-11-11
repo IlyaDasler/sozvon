@@ -546,3 +546,44 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238a93a8' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='10' width='14' height='10' rx='2'/%3E%3Cpath d='M8 10V7a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E");
   }
 }
+
+
+/* ---------- Chat: compact call stage, больше места сообщениям ---------- */
+@media (max-width: 900px) {
+  #call-panel {
+    min-height: 0;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  #stage {
+    min-height: 0;
+    max-height: 168px;
+    gap: 6px;
+    padding: 4px;
+  }
+
+  #stage .tile {
+    width: 104px;
+    height: 104px;
+    border-radius: var(--m-radius-md);
+  }
+
+  #stage .tile .avatar.big {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+
+  #stage.has-video .tile {
+    width: min(220px, 100%);
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  #stage .tile-label { font-size: 11px; }
+  #call-panel .call-controls { gap: 6px; }
+  #call-panel .round-btn { width: 40px; height: 40px; }
+  #call-panel .call-status-row { font-size: 11px; }
+  #chat > .messages { min-height: 120px; }
+}
