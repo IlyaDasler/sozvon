@@ -5,6 +5,32 @@
 
   if (!window.desktop) document.documentElement.classList.add('pwa');
 
+  // На телефоне клавиатура открывается только тапом по полю. Любой
+  // программный focus() (открытие раздела, модалки, шага 2FA) блокируем.
+  {
+    let pointerOnField = false;
+    const markPointer = (event) => {
+      const target = event.target;
+      pointerOnField = Boolean(target?.closest?.('input, textarea, [contenteditable="true"]'));
+    };
+    document.addEventListener('pointerdown', markPointer, true);
+    document.addEventListener('touchstart', markPointer, { capture: true, passive: true });
+    document.addEventListener('pointerup', () => setTimeout(() => { pointerOnField = false; }, 0), true);
+    const nativeFocus = HTMLElement.prototype.focus;
+    const guardedFocus = function (...args) {
+      const editable = this.matches?.('input, textarea, [contenteditable="true"]');
+      const mobile = window.matchMedia('(max-width: 1000px)').matches;
+      if (mobile && editable && !pointerOnField && document.activeElement !== this) return;
+      return nativeFocus.apply(this, args);
+    };
+    guardedFocus.__sozvonGuard = true;
+    Object.defineProperty(HTMLElement.prototype, 'focus', {
+      value: guardedFocus,
+      configurable: true,
+      writable: true,
+    });
+  }
+
   const transition = (fn) => {
     if (innerWidth > 1000 && typeof document.startViewTransition === 'function' && document.documentElement.dataset.performance === 'high' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       document.startViewTransition(fn);
@@ -66,7 +92,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.113';
+    version.textContent = 'Версия 1.0.114';
     authCard.append(version);
   }
 
@@ -391,6 +417,9 @@ else if (sidebar) sidebar.prepend(hubsBar);
   // Нижнее меню — верхний уровень навигации: всё, что открыто поверх комнаты,
   // должно закрыться, иначе окно останется висеть над новым разделом.
   const closeMobileOverlays = () => {
+    // Уходим из раздела — поле ввода не должно оставаться активным и держать клавиатуру.
+    const active = document.activeElement;
+    if (active?.matches?.('input, textarea, select, [contenteditable="true"]')) active.blur();
     window.closeMobileDrawers?.();
     const visible = (id) => {
       const el = document.getElementById(id);
