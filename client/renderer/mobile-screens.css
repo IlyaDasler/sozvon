@@ -1513,7 +1513,7 @@
 
 /* Нижнее меню как в Telegram: остаётся на экране во всех разделах, включая настройки. */
 @media (max-width: 900px) {
-  #mobile-nav { z-index: 60 !important; }
+  #mobile-nav { z-index: 100 !important; }
 }
 /* На телефоне меню остаётся и в настройках; на раскрытом фолде — прежняя двухколоночная схема. */
 @media (max-width: 599px) {
@@ -1602,5 +1602,19 @@
   }
   body.mobile-room-open #main.main {
     padding-bottom: calc(var(--mobile-nav-h, 64px) + var(--mobile-safe-bottom)) !important;
+  }
+}
+
+
+/* Телефон (портрет): окна канала/комнаты/события заканчиваются над нижним меню. */
+@media (max-width: 599px) {
+  #hub-settings .rs-card,
+  #room-manage .rs-card {
+    height: calc(100dvh - var(--mobile-nav-h, 64px) - var(--mobile-safe-bottom)) !important;
+    max-height: calc(100dvh - var(--mobile-nav-h, 64px) - var(--mobile-safe-bottom)) !important;
+  }
+  #event-create .event-form {
+    height: calc(100dvh - var(--mobile-nav-h, 64px) - var(--mobile-safe-bottom)) !important;
+    max-height: calc(100dvh - var(--mobile-nav-h, 64px) - var(--mobile-safe-bottom)) !important;
   }
 }
