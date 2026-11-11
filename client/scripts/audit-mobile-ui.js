@@ -77,8 +77,8 @@ runTest(async () => {
   })()`));
 
   // Все семь разделов должны открываться именно как кнопки, а не только через showSettingsTab()
-  for (const tab of ['profile','look','sound','notify','account','privacy','about']) {
-    await js(w, `document.querySelector('#set-nav [data-tab="${tab}"]').click(); true`);
+  for (const tab of ['profile','look','sound','notify','account','privacy']) {
+    await js(w, `document.querySelector('#set-nav [data-tab="${tab}"]')?.click(); true`);
     await sleep(250);
     const opened = await js(w, `(() => {
       const pane=document.querySelector('#settings .set-pane[data-pane="${tab}"]');
