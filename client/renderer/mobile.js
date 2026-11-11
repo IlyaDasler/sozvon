@@ -92,7 +92,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.116';
+    version.textContent = 'Версия 1.0.117';
     authCard.append(version);
   }
 
@@ -700,6 +700,36 @@ else if (sidebar) sidebar.prepend(hubsBar);
       setActive('settings');
     }
   };
+
+  // Свайп по нижнему меню листает вкладки. Жест живёт ТОЛЬКО внутри nav:
+  // touchstart/touchend не всплывают, поэтому контент и роллер друзей не задействованы.
+  const navOrder = ['home', 'channels', 'notifications', 'settings'];
+  const navSwipe = (dir) => {
+    const current = nav.querySelector('button.active')?.dataset.mobile || 'home';
+    const index = Math.max(0, navOrder.indexOf(current));
+    const target = navOrder[index + (dir > 0 ? 1 : -1)];
+    if (target && target !== current) switchTab(target);
+  };
+  let navTouch = null;
+  nav.addEventListener('touchstart', (event) => {
+    if (event.touches.length !== 1) return;
+    const t = event.touches[0];
+    navTouch = { x: t.clientX, y: t.clientY };
+    event.stopPropagation();
+  }, { passive: true });
+  nav.addEventListener('touchend', (event) => {
+    if (!navTouch) return;
+    const t = event.changedTouches[0];
+    const dx = t.clientX - navTouch.x;
+    const dy = t.clientY - navTouch.y;
+    navTouch = null;
+    event.stopPropagation();
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+    const suppress = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+    document.addEventListener('click', suppress, true);
+    setTimeout(() => document.removeEventListener('click', suppress, true), 350);
+    navSwipe(dx < 0 ? 1 : -1);
+  }, { passive: true });
 
   nav.querySelector('[data-mobile="home"]').onclick = () => switchTab('home');
   nav.querySelector('[data-mobile="channels"]').onclick = () => switchTab('channels');
