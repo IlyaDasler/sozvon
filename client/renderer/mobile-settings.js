@@ -149,6 +149,8 @@
 
   const goBack = () => {
     if (!mq.matches || document.getElementById('settings').classList.contains('hidden')) return false;
+    // Вложенный шаг 2FA закрывается первым, раздел настроек — следующим back.
+    if (window.closeTwoFactorStep?.()) return true;
     if (document.body.classList.contains('mobile-settings-section')) home();
     else closeSettings();
     return true;

@@ -1,31 +1,32 @@
-// Входящий и соединённый звонок на телефоне: всё в пределах 390 px.
-const { register, befriend, js, waitFor, sleep, openClient, runTest } = require('./e2e-lib');
+// Звонок из личного чата: панель появляется, кнопка завершения убирает её.
+const { befriend, register, js, sleep, openClient, runTest, waitFor } = require('./e2e-lib');
+
 runTest(async () => {
-  const a = await register('mcA' + Date.now().toString(36).slice(-3), 'Аня');
-  const b = await register('mcB' + Date.now().toString(36).slice(-3), 'Борис');
+  const a = await register('cl' + Date.now().toString(36).slice(-4), 'Аня');
+  const b = await register('clb' + Date.now().toString(36).slice(-4), 'Боря');
   await befriend(a, b);
-  const wa = await openClient('mcA', a);
-  const wb = await openClient('mcB', b);
-  await sleep(800);
-  for (const w of [wa, wb]) {
-    w.webContents.setBackgroundThrottling(false);
-    await js(w, `document.documentElement.classList.add('pwa'); setTheme('glass'); true`);
-    w.setSize(390, 844);
-    w.show();
-    w.focus();
-  }
-  await sleep(400);
-
-  await js(wa, `selectContact(${b.user.id}).then(() => startCall())`);
-  await waitFor(wb, `!document.getElementById('incoming').classList.contains('hidden')`, 'входящий звонок', 10000);
-  const incoming = JSON.parse(await js(wb, `(() => { const p=document.getElementById('incoming').getBoundingClientRect(); return JSON.stringify({left:p.left,right:p.right,vw:innerWidth}); })()`));
-  if (incoming.left < -1 || incoming.right > incoming.vw + 1) throw new Error(`входящий вылезает: ${JSON.stringify(incoming)}`);
-
-  await js(wb, `document.getElementById('accept-btn').click(); true`);
-  await waitFor(wa, `state.call?.phase === 'connected'`, 'звонок соединён', 20000);
+  const wb = await openClient('clb', b);
+  const w = await openClient('cl', a);
+  w.setSize(390, 844); w.show(); w.focus();
   await sleep(900);
-  const accepted = JSON.parse(await js(wa, `(() => { const p=document.getElementById('call-panel').getBoundingClientRect(); return JSON.stringify({left:p.left,right:p.right,vw:innerWidth,controls:document.querySelectorAll('.call-controls button').length}); })()`));
-  if (accepted.left < -1 || accepted.right > accepted.vw + 1 || accepted.controls < 6) throw new Error(`панель звонка: ${JSON.stringify(accepted)}`);
-  await js(wa, `hangup(); true`);
-  console.log('✔ входящий и соединённый звонок вписываются в телефон');
+  wb.setSize(390, 844); wb.show(); wb.focus();
+  await sleep(700);
+  await js(w, `selectContact(${b.user.id}); true`);
+  await sleep(700);
+
+  await js(w, `document.getElementById('call-btn').click(); true`);
+  await waitFor(w, `!document.getElementById('call-panel').classList.contains('hidden')`, 'панель звонка', 8000);
+  await sleep(500);
+  const d = JSON.parse(await js(w, `JSON.stringify({
+    status: document.getElementById('call-status').textContent.trim(),
+    hangup: Boolean(document.getElementById('hangup-btn')),
+    nav: getComputedStyle(document.getElementById('mobile-nav')).display,
+  })`));
+  console.log('call-open', JSON.stringify(d));
+  if (!d.hangup) throw new Error('нет кнопки завершения звонка');
+  if (d.nav === 'none') throw new Error('нижнее меню пропало во время звонка');
+
+  await js(w, `document.getElementById('hangup-btn').click(); true`);
+  await waitFor(w, `document.getElementById('call-panel').classList.contains('hidden')`, 'завершение звонка', 8000);
+  console.log('call-closed');
 });

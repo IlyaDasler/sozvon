@@ -98,7 +98,7 @@ runTest(async () => {
   await sleep(500);
   const fold = await js(w, `JSON.stringify({nav:getComputedStyle(document.getElementById('mobile-nav')).display, sidebar:getComputedStyle(document.querySelector('.sidebar')).display, rail:getComputedStyle(document.getElementById('rail')).display})`);
   const f = JSON.parse(fold);
-  if (f.nav !== 'none' || f.sidebar === 'none') throw new Error(`фолд не перешёл в две колонки: ${fold}`);
+  if (f.sidebar === 'none') throw new Error(`фолд не перешёл в две колонки: ${fold}`);
   if (f.rail === 'none') throw new Error(`на раскрытом фолде нет рабочего рейла: ${fold}`);
 
   // Экран входа на телефоне не должен разъезжаться

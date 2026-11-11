@@ -66,7 +66,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.106';
+    version.textContent = 'Версия 1.0.108';
     authCard.append(version);
   }
 
@@ -262,6 +262,7 @@ else if (sidebar) sidebar.prepend(hubsBar);
               if (typeof openRoomManage === 'function') openRoomManage(room.id);
             };
             row.append(name, chat, settings);
+            row.onclick = () => name.click();
             list.append(row);
           }
           card.append(list);
@@ -367,8 +368,30 @@ else if (sidebar) sidebar.prepend(hubsBar);
     if (home) home.textContent = on ? 'Каналы' : 'Созвон';
   };
 
-  const switchTab = (name) => {
+  // Нижнее меню — верхний уровень навигации: всё, что открыто поверх комнаты,
+  // должно закрыться, иначе окно останется висеть над новым разделом.
+  const closeMobileOverlays = () => {
     window.closeMobileDrawers?.();
+    const visible = (id) => {
+      const el = document.getElementById(id);
+      return Boolean(el && !el.classList.contains('hidden'));
+    };
+    if (visible('thread-panel')) window.closeThread?.();
+    if (visible('settings')) window.closeSettings?.();
+    if (visible('hub-settings') && typeof closeHubSettings === 'function') closeHubSettings();
+    if (visible('room-manage') && typeof closeRoomManage === 'function') closeRoomManage();
+    if (visible('event-create') && typeof closeEventCreate === 'function') closeEventCreate();
+    // Остальные окна (приглашение, кик, создание комнаты) не имеют общего
+    // close-хука — просто убираем их, чтобы они не висели поверх раздела.
+    for (const modal of document.querySelectorAll('.modal:not(.hidden)')) {
+      if (modal.id === 'incoming' || modal.id === 'updating') continue;
+      modal.classList.add('hidden');
+    }
+  };
+  window.closeMobileOverlays = closeMobileOverlays;
+
+  const switchTab = (name) => {
+    closeMobileOverlays();
     closeNotifications();
     setChannelsMode(name === 'channels');
     // Настройки — один из разделов нижнего меню: при переходе в другой раздел закрываем их.
@@ -397,6 +420,8 @@ else if (sidebar) sidebar.prepend(hubsBar);
   nav.querySelector('[data-mobile="channels"]').onclick = () => switchTab('channels');
   nav.querySelector('[data-mobile="notifications"]').onclick = (event) => {
     event.stopPropagation();
+    // Уведомления — отдельная вкладка: закрываем всё, что открыто поверх.
+    closeMobileOverlays();
     if (document.body.classList.contains('mobile-notifications')) {
       closeNotifications();
       setActive('home');
