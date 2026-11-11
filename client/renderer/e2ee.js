@@ -1,7 +1,7 @@
 // Сквозное шифрование переписки в приложении: свой ключ, ключи переписок, отправка и расшифровка.
 // Шифры и ключи — в e2ee-crypto.js; здесь — когда и что с ними делать.
-// - Свой ключ создаётся при первом входе и хранится только на этом устройстве. Если у аккаунта уже есть
-//   ключ с другого устройства — предлагаем перенести его кодом или создать новый (окно e2ee-setup).
+// - Свой ключ создаётся при первом входе. Резервная копия хранится в аккаунте на сервере (зашифрована),
+//   поэтому на новом устройстве ключ подключается сам после входа — ручного переноса нет.
 // - Ключ переписки грузится один раз, открывается своим ключом; тем, у кого его ещё нет (новичок, сменил
 //   ключ), делимся сами. Выгнали участника — при следующей отправке ключ меняем.
 // - Сообщение и файлы шифруются перед отправкой; входящие расшифровываются, файлы — когда их показывают.
@@ -88,15 +88,31 @@ async function useIdentity(identity) {
   e2ee.identity = identity;
   e2ee.privateKey = await E2EE.importPrivate(identity.privateJwk);
   e2ee.convs.clear();
-  $('e2ee-setup').classList.add('hidden');
+  if ($('e2ee-setup')) $('e2ee-setup').classList.add('hidden');
   redecryptAll();
+}
+
+async function uploadKeyBackup(identity) {
+  try {
+    await Api.put('/me/key/backup', { identity });
+  } catch {
+    // Старый сервер без резервных копий — вход не ломаем.
+  }
 }
 
 async function publishIdentity(identity) {
   state.me = await Api.put('/me/key', { publicKey: identity.publicKey });
+  await uploadKeyBackup(identity);
 }
 
-/** При входе: свой ключ есть и совпадает — работаем; нет нигде — создаём; на сервере другой — спрашиваем */
+async function createIdentity() {
+  const identity = await E2EE.generateIdentity();
+  store.set(identityStoreKey(), identity);
+  await useIdentity(identity);
+  await publishIdentity(identity);
+}
+
+/** При входе ключ подключается сам: локальный, иначе резервная копия аккаунта, иначе новый. */
 async function setupE2EE() {
   const local = readScoped('identity', null);
   const server = state.me.publicKey;
@@ -104,54 +120,22 @@ async function setupE2EE() {
     if (local && (!server || server === local.publicKey)) {
       await useIdentity(local);
       if (!server) await publishIdentity(local);
-    } else if (!local && !server) {
-      const identity = await E2EE.generateIdentity();
-      store.set(identityStoreKey(), identity);
-      await useIdentity(identity);
-      await publishIdentity(identity);
-    } else {
-      openKeySetup(local ? 'changed' : 'elsewhere');
+      else uploadKeyBackup(local);
+      return;
     }
+    if (server) {
+      const backup = await Api.get('/me/key/backup').catch(() => null);
+      const restored = backup?.identity;
+      if (restored?.privateJwk && restored.publicKey === server) {
+        store.set(identityStoreKey(), restored);
+        await useIdentity(restored);
+        return;
+      }
+    }
+    await createIdentity();
   } catch (err) {
     toast(`Шифрование: ${err.message}`);
   }
-}
-
-function openKeySetup(reason) {
-  $('e2ee-setup-text').textContent =
-    reason === 'changed'
-      ? 'Ключ шифрования вашего аккаунта сменили на другом устройстве. Перенесите его сюда кодом — тогда здесь можно будет читать новую переписку.'
-      : 'У вашего аккаунта уже есть ключ шифрования на другом устройстве. Перенесите его сюда кодом — тогда здесь будет видна вся зашифрованная переписка.';
-  $('e2ee-code').value = '';
-  $('e2ee-setup-error').textContent = '';
-  $('e2ee-setup').classList.remove('hidden');
-  $('e2ee-code').focus();
-}
-
-/** Перенос ключа: код с другого устройства → забираем зашифрованный ключ и открываем его кодом */
-async function receiveTransfer(code) {
-  const { blob } = await Api.get(`/key-transfer/${await E2EE.transferId(code)}`);
-  const identity = await E2EE.unwrapIdentity(blob, code).catch(() => {
-    throw new Error('Код не подошёл — проверьте его');
-  });
-  store.set(identityStoreKey(), identity);
-  await useIdentity(identity);
-  if (state.me.publicKey !== identity.publicKey) await publishIdentity(identity);
-}
-
-/** Новый ключ: старая зашифрованная переписка на этом устройстве станет недоступна, новую ключи раздадут заново */
-async function resetIdentity() {
-  const identity = await E2EE.generateIdentity();
-  store.set(identityStoreKey(), identity);
-  await publishIdentity(identity);
-  await useIdentity(identity);
-}
-
-/** Код для переноса ключа на другое устройство: ключ, зашифрованный кодом, сервер хранит 10 минут */
-async function startTransfer() {
-  const code = E2EE.makeTransferCode();
-  await Api.post('/key-transfer', { id: await E2EE.transferId(code), blob: await E2EE.wrapIdentity(e2ee.identity, code) });
-  return code;
 }
 
 // ---------- Ключи переписок ----------
@@ -365,7 +349,9 @@ function onUserKey(user) {
     if (e2ee.identity.publicKey === user.publicKey) return;
     e2ee.identity = e2ee.privateKey = null;
     e2ee.convs.clear();
-    return openKeySetup('changed');
+    // Ключ сменили на другом устройстве — подхватываем сохранённую копию аккаунта.
+    setupE2EE();
+    return;
   }
   if (userById(user.id)?.publicKey === user.publicKey) return;
   for (const u of noteKeys([user])) toast(`У ${u.displayName} сменился ключ шифрования — сверьте код в его профиле`, 6000);
@@ -391,101 +377,8 @@ function resetE2EE() {
   e2ee.convs.clear();
   for (const p of e2ee.files.values()) p.then(URL.revokeObjectURL, () => {});
   e2ee.files.clear();
-  $('e2ee-setup').classList.add('hidden');
+  if ($('e2ee-setup')) $('e2ee-setup').classList.add('hidden');
 }
-
-// ---------- Окно настройки ключа ----------
-
-$('e2ee-transfer-btn').onclick = async () => {
-  const code = $('e2ee-code').value.trim();
-  if (!code) return ($('e2ee-setup-error').textContent = 'Введите код с другого устройства');
-  $('e2ee-transfer-btn').disabled = true;
-  try {
-    await receiveTransfer(code);
-    toast('Ключ шифрования перенесён');
-  } catch (err) {
-    $('e2ee-setup-error').textContent = err.message;
-  } finally {
-    $('e2ee-transfer-btn').disabled = false;
-  }
-};
-
-$('e2ee-later-btn').onclick = () => $('e2ee-setup').classList.add('hidden');
-
-// Поле кода: буквы-цифры, регистр не важен, автоматом ставим дефисы по 4 символа.
-// Так видно, что ввод доходит, и вставленный код сразу выглядит как на другом устройстве
-const CODE_CHARS = 16;
-function formatTransferCode(raw) {
-  const clean = String(raw).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_CHARS);
-  return clean.match(/.{1,4}/g)?.join('-') ?? '';
-}
-const codeInput = $('e2ee-code');
-codeInput.oninput = () => {
-  const caretAtEnd = codeInput.selectionStart === codeInput.value.length;
-  const next = formatTransferCode(codeInput.value);
-  if (next !== codeInput.value) {
-    codeInput.value = next;
-    if (caretAtEnd) codeInput.setSelectionRange(next.length, next.length);
-  }
-};
-// На macOS клик по полю иногда не отдаёт фокус (окно без рамки) — фокусируем явно
-codeInput.onmousedown = (e) => {
-  e.preventDefault();
-  codeInput.focus();
-  codeInput.select();
-};
-
-$('e2ee-paste-btn').onclick = async () => {
-  let text = '';
-  try {
-    text = (await window.desktop?.paste?.()) ?? '';
-  } catch {}
-  // Запасной путь для веб-версии: обычное чтение буфера браузером
-  if (!text) {
-    try {
-      text = await navigator.clipboard.readText();
-    } catch {}
-  }
-  if (!text.trim()) {
-    $('e2ee-setup-error').textContent = 'В буфере нет кода — скопируйте его на другом устройстве';
-    return;
-  }
-  codeInput.value = text.trim();
-  codeInput.oninput();
-  $('e2ee-setup-error').textContent = '';
-  codeInput.focus();
-};
-
-codeInput.onkeydown = (e) => e.key === 'Enter' && $('e2ee-transfer-btn').click();
-
-// Настройки → Аккаунт: показать код для нового устройства (или ввести код, если ключа здесь ещё нет)
-$('e2ee-share-btn').onclick = async () => {
-  if (!e2eeReady()) return openKeySetup('elsewhere');
-  $('e2ee-share-btn').disabled = true;
-  try {
-    $('e2ee-share-code').textContent = await startTransfer();
-    $('e2ee-share-code').classList.remove('hidden');
-    $('e2ee-share-hint').textContent = 'Введите этот код на новом устройстве в течение 10 минут. Код одноразовый — никому его не показывайте.';
-  } catch (err) {
-    $('e2ee-share-hint').textContent = err.message;
-  } finally {
-    $('e2ee-share-btn').disabled = false;
-  }
-};
-
-$('e2ee-reset-btn').onclick = async () => {
-  const ok = await ask(
-    'Зашифрованная переписка до этого момента на этом устройстве станет недоступна, а на другом устройстве понадобится перенести новый ключ. Новую переписку ключи раздадут заново.',
-    { title: 'Создать новый ключ?', ok: 'Создать новый ключ', danger: true }
-  );
-  if (!ok) return;
-  try {
-    await resetIdentity();
-    toast('Создан новый ключ шифрования');
-  } catch (err) {
-    $('e2ee-setup-error').textContent = err.message;
-  }
-};
 
 // ---------- Код проверки ключей в карточке профиля ----------
 

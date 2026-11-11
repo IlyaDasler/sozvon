@@ -219,6 +219,8 @@ func (a *server) routes() http.Handler {
 			r.Patch("/me", a.patchMe)
 			r.Put("/me/status", a.setMyStatus)
 			r.Put("/me/key", a.setMyKey)
+			r.Get("/me/key/backup", a.getMyKeyBackup)
+			r.Put("/me/key/backup", a.setMyKeyBackup)
 			r.Post("/key-transfer", a.keyTransferPut)
 			r.Get("/key-transfer/{id}", a.keyTransferGet)
 			r.Post("/me/email/code", a.emailCode)

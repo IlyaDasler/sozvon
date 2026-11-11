@@ -93,16 +93,12 @@ runTest(async () => {
   );
   console.log('✔ после кика ключ комнаты сменился, выгнанной он не достаётся');
 
-  // Второе устройство Ани: ключа нет — окно переноса; код с первого устройства переносит ключ
+  // Второе устройство Ани: ключ подключается сам из аккаунта, окна переноса нет.
   const winA2 = await openClient('ea2', a);
-  await waitFor(winA2, `!document.getElementById('e2ee-setup').classList.contains('hidden')`, 'окно переноса ключа');
+  await waitFor(winA2, `e2eeReady() && state.me.publicKey === e2ee.identity.publicKey`, 'ключ подхватился сам', 20000);
+  if (await js(winA2, `Boolean(document.getElementById('e2ee-setup'))`)) throw new Error('окно переноса ключа осталось');
   await js(winA2, `selectContact(${b.user.id})`);
-  await waitFor(winA2, `document.querySelectorAll('#messages .msg-locked').length > 0`, 'без ключа сообщения закрыты');
-  await screenshot(winA2, 'e2ee-setup');
-  const code = await js(winA, `startTransfer()`);
-  await js(winA2, `document.getElementById('e2ee-code').value = ${JSON.stringify(code.toLowerCase())}; document.getElementById('e2ee-transfer-btn').click(); true`);
-  await waitFor(winA2, `e2eeReady() && document.getElementById('e2ee-setup').classList.contains('hidden')`, 'ключ перенесён', 20000);
-  await waitFor(winA2, `[...document.querySelectorAll('#messages .msg-text')].some((t) => t.textContent === 'секрет-111 жирно')`, 'второе устройство читает');
-  console.log('✔ ключ переносится на второе устройство кодом, переписка читается');
+  await waitFor(winA2, `[...document.querySelectorAll('#messages .msg-text')].some((t) => t.textContent === 'секрет-111 жирно')`, 'второе устройство читает', 8000);
+  console.log('✔ на втором устройстве ключ подключается сам, переписка читается');
   await sleep(200);
 });

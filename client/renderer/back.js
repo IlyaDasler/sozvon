@@ -16,8 +16,6 @@
       window.closeThread?.();
       return true;
     }
-    // E2EE-ключ нельзя просто закрыть: пользователь должен выбрать действие.
-    if (visible('#e2ee-setup')) { document.getElementById('e2ee-later-btn')?.click(); return true; }
     // Открытое окно (событие, настройки канала/комнаты, приглашение) закрываем
     // до навигации под ним — иначе back уводит на список каналов, оставляя окно.
     if (document.querySelector('.modal:not(.hidden)')) {
