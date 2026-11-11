@@ -540,13 +540,10 @@ else if (sidebar) sidebar.prepend(hubsBar);
       if (event.touches.length !== 1) return;
       if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
       const t = event.touches[0];
-      touch = {
-        x: t.clientX,
-        y: t.clientY,
-        leftEdge: t.clientX < 26,
-        rightEdge: t.clientX > innerWidth - 26,
-        topEdge: t.clientY < 28,
-      };
+      // Первые/последние 24 dp и верхняя кромка принадлежат системе:
+      // back-жест и статус-бар не перехватываем вообще.
+      if (t.clientX < 24 || t.clientX > innerWidth - 24 || t.clientY < 24) return;
+      touch = { x: t.clientX, y: t.clientY };
     },
     { passive: true }
   );
@@ -560,10 +557,6 @@ else if (sidebar) sidebar.prepend(hubsBar);
       const was = touch;
       touch = null;
       if (Math.abs(dx) < 32 && Math.abs(dy) < 32) return;
-      if (was.topEdge && dy > 55 && Math.abs(dy) > Math.abs(dx)) {
-        openNotifications();
-        return;
-      }
       if (document.body.classList.contains('mobile-notifications') && dy > 55 && Math.abs(dy) > Math.abs(dx)) {
         closeNotifications();
         setActive('home');
@@ -575,10 +568,6 @@ else if (sidebar) sidebar.prepend(hubsBar);
       if (document.body.classList.contains('mobile-list') && dx < -42) {
         hideList();
         buzz();
-      } else if (was.leftEdge && dx > 42) {
-        showList();
-      } else if (was.rightEdge && dx < -42) {
-        openNotifications();
       } else if (!document.body.classList.contains('mobile-list') && dx > 42 && !event.target.closest('button, a, .rail, #mobile-nav')) {
         showList();
       }
