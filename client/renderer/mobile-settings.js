@@ -87,6 +87,7 @@
   const home = () => {
     document.body.classList.add('mobile-settings');
     document.body.classList.remove('mobile-settings-section');
+    delete document.getElementById('settings').dataset.mobileTab;
     resetScroll();
     clearRootHighlight();
     if (overview) overview.hidden = false;
@@ -104,6 +105,7 @@
 
   const section = (tab) => {
     document.body.classList.add('mobile-settings', 'mobile-settings-section');
+    document.getElementById('settings').dataset.mobileTab = tab;
     if (overview) overview.hidden = true;
     resetScroll();
     document.getElementById('set-title').textContent =
