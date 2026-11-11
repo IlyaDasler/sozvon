@@ -66,7 +66,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.99';
+    version.textContent = 'Версия 1.0.100';
     authCard.append(version);
   }
 
@@ -165,7 +165,7 @@ else if (sidebar) sidebar.prepend(hubsBar);
     const hubs = typeof state !== 'undefined' && state.hubs ? [...state.hubs.values()] : [];
     // Не пересоздаём кнопки каждую секунду: иначе касание попадает в уже
     // удалённый узел, а полоса мигает. Обновляем только при реальном изменении.
-    const signature = (state?.view ?? '') + '|' + hubs.map((h) => `${h.id}:${h.name}`).join('|');
+    const signature = (state?.view ?? '') + '|' + hubs.map((h) => `${h.id}:${h.name}:${(typeof roomsOfHub === 'function' ? roomsOfHub(h.id).length : 0)}`).join('|');
     if (hubsBar.dataset.signature === signature) return;
     hubsBar.dataset.signature = signature;
     const items = [];
@@ -188,6 +188,13 @@ else if (sidebar) sidebar.prepend(hubsBar);
       items.push(back);
     } else {
       for (const hub of hubs) {
+        // Карточка канала сразу с его комнатами — экран каналов не пустует,
+        // как сайдбар Discord, но в нашей логике.
+        const card = document.createElement('div');
+        card.className = 'mobile-hub-card';
+        card.dataset.hub = hub.id;
+        const head = document.createElement('div');
+        head.className = 'mobile-hub-card__head';
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'mobile-hub';
@@ -200,7 +207,60 @@ else if (sidebar) sidebar.prepend(hubsBar);
           if (typeof openHub === 'function') openHub(hub.id);
           renderHubs();
         };
-        items.push(button);
+        const gear = document.createElement('button');
+        gear.type = 'button';
+        gear.className = 'mobile-hub-card__settings';
+        gear.title = 'Настройки канала';
+        gear.setAttribute('aria-label', 'Настройки канала');
+        gear.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></svg>';
+        gear.onclick = (event) => {
+          event.stopPropagation();
+          if (typeof openHubSettings === 'function') openHubSettings(hub.id);
+        };
+        head.append(button, gear);
+        card.append(head);
+
+        const rooms = typeof roomsOfHub === 'function' ? roomsOfHub(hub.id) : [];
+        if (rooms.length) {
+          const list = document.createElement('div');
+          list.className = 'mobile-hub-card__rooms';
+          for (const room of rooms) {
+            const row = document.createElement('div');
+            row.className = 'mobile-hub-room';
+            row.dataset.room = room.id;
+            const name = document.createElement('button');
+            name.type = 'button';
+            name.className = 'mobile-hub-room__name';
+            name.textContent = `${room.kind === 'voice' ? '🔊' : '#'} ${room.name}`;
+            name.onclick = () => {
+              if (typeof selectRoom === 'function') selectRoom(room.id);
+              if (typeof hideList === 'function') hideList();
+              if (typeof setActive === 'function') setActive('channels');
+            };
+            const chat = document.createElement('button');
+            chat.type = 'button';
+            chat.className = 'mobile-hub-room__action';
+            chat.title = 'Открыть чат без голоса';
+            chat.innerHTML = '<svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/></svg>';
+            chat.onclick = (event) => {
+              event.stopPropagation();
+              if (typeof openRoomChat === 'function') openRoomChat(room.id);
+            };
+            const settings = document.createElement('button');
+            settings.type = 'button';
+            settings.className = 'mobile-hub-room__action';
+            settings.title = 'Настройки комнаты';
+            settings.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></svg>';
+            settings.onclick = (event) => {
+              event.stopPropagation();
+              if (typeof openRoomManage === 'function') openRoomManage(room.id);
+            };
+            row.append(name, chat, settings);
+            list.append(row);
+          }
+          card.append(list);
+        }
+        items.push(card);
       }
     }
     hubsBar.replaceChildren(...items);
