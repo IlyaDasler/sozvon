@@ -2124,3 +2124,44 @@
 @media (max-width: 1000px) {
   #mobile-nav { touch-action: pan-y; }
 }
+
+
+/* Приватность: горизонтальные вкладки вместо крупных плиток 2×2. */
+@media (max-width: 1000px) {
+  #settings .set-pane[data-pane="privacy"] > #privacy-subnav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    background: var(--bg-deep);
+    border-bottom: 1px solid var(--line);
+    scroll-padding-inline: 12px;
+  }
+  #settings .set-pane[data-pane="privacy"] > #privacy-subnav::-webkit-scrollbar { display: none; }
+  #settings .set-pane[data-pane="privacy"] > #privacy-subnav > button {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-3) 70%, transparent);
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  #settings .set-pane[data-pane="privacy"] > #privacy-subnav > button.active {
+    color: var(--accent) !important;
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--line)) !important;
+    background: color-mix(in srgb, var(--accent) 14%, var(--bg-3)) !important;
+  }
+}
