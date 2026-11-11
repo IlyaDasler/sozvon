@@ -28,6 +28,7 @@
       privacyPane.prepend(subnav);
       subnav.classList.remove('hidden');
     }
+    if (tab === 'privacy') window.showPrivacyPage?.(window.privacyPage || 'data');
   };
 
   // Перехватываем только результат: исходные обработчики остаются в app.js.
@@ -49,7 +50,6 @@
       home();
       setTimeout(() => { if (document.body.classList.contains('mobile-settings-section')) home(); }, 0);
     }
-    if (!history.state?.mobileSettings) history.pushState({ mobileSettings: true }, '');
     return pending;
   };
 
@@ -60,15 +60,19 @@
     back.classList.add('hidden');
   };
 
-  back.onclick = () => {
-    // Возврат на список разделов через историю: Android back делает то же.
-    if (document.body.classList.contains('mobile-settings-section')) history.back();
+  const goBack = () => {
+    if (!mq.matches || document.getElementById('settings').classList.contains('hidden')) return false;
+    if (document.body.classList.contains('mobile-settings-section')) home();
     else closeSettings();
+    return true;
   };
+  window.mobileSettingsBack = goBack;
+  back.onclick = () => { goBack(); };
 
   // Android back: из раздела — в список, из списка — закрыть настройки.
   addEventListener('popstate', () => {
     if (!mq.matches || document.getElementById('settings').classList.contains('hidden')) return;
+    if (window.__mobileSettingsInternal) return;
     if (document.body.classList.contains('mobile-settings-section')) home();
     else closeSettings();
   });

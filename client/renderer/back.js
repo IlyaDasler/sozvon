@@ -8,11 +8,8 @@
 
   function handleBack() {
     if (visible('#settings')) {
-      if (document.body.classList.contains('mobile-settings-section')) {
-        history.back();
-      } else if (typeof closeSettings === 'function') {
-        closeSettings();
-      }
+      if (typeof window.mobileSettingsBack === 'function' && window.mobileSettingsBack()) return true;
+      if (typeof closeSettings === 'function') closeSettings();
       return true;
     }
     if (window.mobileBack?.()) return true;
