@@ -1724,3 +1724,23 @@
   #mobile-nav button:active .mobile-nav-icon { transform: scale(.86); transition-duration: .12s; }
   #mobile-nav button .mobile-badge { z-index: 2; }
 }
+
+
+/* Альбом: список каналов гарантированно поверх пустого .main. */
+@media (max-width: 1000px) and (max-height: 619px) {
+  body.mobile-channels.mobile-list:not(.mobile-hub-open) .sidebar {
+    display: flex !important;
+    z-index: 55 !important;
+    background: var(--bg-deep) !important;
+  }
+  body.mobile-channels.mobile-list:not(.mobile-hub-open) #mobile-hubs {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+  body.mobile-channels.mobile-list:not(.mobile-hub-open) .main {
+    z-index: 1 !important;
+  }
+}
