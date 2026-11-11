@@ -28,6 +28,7 @@ const MODAL_CLOSE = {
   'screen-picker': () => closeScreenPicker(),
   'room-manage': () => closeRoomManage(),
   'hub-settings': () => closeHubSettings(),
+  'event-create': () => closeEventCreate(),
   dialog: () => closeDialog(false),
 };
 const MODAL_KEEP = new Set(['incoming', 'updating']);
