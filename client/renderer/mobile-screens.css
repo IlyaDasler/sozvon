@@ -587,3 +587,33 @@
   #call-panel .call-status-row { font-size: 11px; }
   #chat > .messages { min-height: 120px; }
 }
+
+@media (max-width: 900px) {
+  #settings .avatar-edit { align-items: stretch; flex-wrap: wrap; gap: 12px; }
+  #settings .profile-hero {
+    position: relative;
+    width: 100%;
+    height: 104px;
+    margin-bottom: 8px;
+    border-radius: var(--m-radius-lg);
+    overflow: hidden;
+    background: var(--bg-3);
+  }
+  #settings .profile-hero-banner {
+    position: absolute;
+    inset: 0;
+    background-position: center;
+    background-size: cover;
+  }
+  #settings .profile-hero-avatar {
+    position: absolute;
+    left: 14px;
+    bottom: -22px;
+    width: 76px;
+    height: 76px;
+    font-size: 28px;
+    border: 3px solid var(--bg-2);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
+  }
+  #settings .avatar-actions { margin-top: 24px; }
+}

@@ -2441,6 +2441,11 @@ function renderAvatarEditor() {
   el.replaceChildren();
   fillAvatar(el, state.me);
   $('avatar-remove-btn').classList.toggle('hidden', !state.me.avatarUrl);
+  const banner = document.getElementById('profile-banner-preview');
+  if (banner) {
+    banner.style.backgroundColor = state.me.bannerColor || state.me.avatarColor || 'var(--bg-4)';
+    banner.style.backgroundImage = state.me.bannerUrl ? `url("${Api.base}${state.me.bannerUrl}")` : '';
+  }
 }
 
 async function uploadAvatar(file) {
