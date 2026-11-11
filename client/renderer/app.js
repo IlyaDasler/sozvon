@@ -55,12 +55,12 @@ const store = {
   set(key, value) {
     try {
       // Нет хранилища системы (веб-версия) — остаётся как есть
-      const sealed = value !== null && isSecret(key) ? window.desktop?.vault?.seal(JSON.stringify(value)) : null;
-      localStorage.setItem(key, JSON.stringify(sealed ? { vault: sealed } : value));
       if (key === 'session' && window.NativeSession) {
         if (value === null) window.NativeSession.clear();
         else window.NativeSession.save(JSON.stringify(value));
       }
+      const sealed = value !== null && isSecret(key) ? window.desktop?.vault?.seal(JSON.stringify(value)) : null;
+      localStorage.setItem(key, JSON.stringify(sealed ? { vault: sealed } : value));
     } catch {}
   },
 };
@@ -3270,8 +3270,8 @@ async function bootAfterConnection() {
   // Вернулись из Яндекса — входим сразу, экран авторизации не показываем
   if (await completeWebOAuth()) return;
 
-  let session = store.get('session', null);
-  if (!session && window.NativeSession?.load) {
+  let session = null;
+  if (window.NativeSession?.load) {
     try {
       const raw = window.NativeSession.load();
       const restored = raw ? JSON.parse(raw) : null;
@@ -3281,6 +3281,7 @@ async function bootAfterConnection() {
       }
     } catch {}
   }
+  if (!session) session = store.get('session', null);
   // «Запомнить меня» снят на странице входа: сессия живёт только в этой вкладке.
   // На телефоне не применяем — WebView теряет sessionStorage при перезапуске.
   const mobileSession = isNativeShell || matchMedia('(max-width: 900px)').matches;
