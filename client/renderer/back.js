@@ -18,7 +18,7 @@
       return true;
     }
     // E2EE-ключ нельзя просто закрыть: пользователь должен выбрать действие.
-    if (visible('#e2ee-setup')) return true;
+    if (visible('#e2ee-setup')) { document.getElementById('e2ee-later-btn')?.click(); return true; }
     // Остальные модалки закрываются своим Escape-обработчиком.
     if (document.querySelector('.modal:not(.hidden)')) {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
