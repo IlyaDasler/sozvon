@@ -66,7 +66,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.87';
+    version.textContent = 'Версия 1.0.88';
     authCard.append(version);
   }
 
@@ -166,6 +166,7 @@ else if (sidebar) sidebar.prepend(hubsBar);
     const items = [];
     const inHub = state?.view && state.hubs?.has(state.view);
     document.body.classList.toggle('mobile-hub-open', Boolean(inHub));
+    document.getElementById('mobile-channel-settings')?.classList.toggle('hidden', !inHub);
     if (!inHub) {
       document.getElementById('hub-menu-btn')?.classList.add('hidden');
       document.getElementById('head-home')?.classList.remove('hidden');
@@ -180,15 +181,6 @@ else if (sidebar) sidebar.prepend(hubsBar);
         renderHubs();
       };
       items.push(back);
-      const gear = document.createElement('button');
-      gear.type = 'button';
-      gear.className = 'mobile-hub mobile-hub-settings';
-      gear.textContent = 'Настройки канала';
-      gear.onclick = () => {
-        const hub = state.hubs.get(state.view);
-        if (hub && typeof openHubSettings === 'function') openHubSettings(hub.id);
-      };
-      items.push(gear);
     } else {
       for (const hub of hubs) {
         const button = document.createElement('button');
@@ -207,6 +199,12 @@ else if (sidebar) sidebar.prepend(hubsBar);
       }
     }
     hubsBar.replaceChildren(...items);
+  };
+  const channelSettings = document.getElementById('mobile-channel-settings');
+  if (channelSettings) channelSettings.onclick = (event) => {
+    event.stopPropagation();
+    const hub = state.hubs?.get(state.view);
+    if (hub && typeof openHubSettings === 'function') openHubSettings(hub.id);
   };
   renderHubs();
   setInterval(renderHubs, 1000);

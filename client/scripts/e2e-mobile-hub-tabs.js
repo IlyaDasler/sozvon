@@ -33,9 +33,29 @@ runTest(async () => {
   await js(w, `document.documentElement.style.setProperty('--safe-area-inset-top','36px'); true`);
   await sleep(200);
 
+  await js(w, `document.querySelector('#mobile-nav [data-mobile="channels"]').click(); true`);
+  await sleep(500);
   await js(w, `openHub(${hub.id}); true`);
-  await sleep(600);
-  await js(w, `openHubSettings(${hub.id}); true`);
+  await waitFor(w, `document.body.classList.contains('mobile-hub-open')`, 'канал открыт', 4000);
+  await sleep(500);
+
+  // Настройки канала — иконкой в шапке, а не отдельным пунктом списка.
+  if (await js(w, `[...document.querySelectorAll('#mobile-hubs .mobile-hub-settings')].length`)) {
+    throw new Error('в списке остался отдельный пункт «Настройки канала»');
+  }
+  const gear = JSON.parse(await js(w, `(() => {
+    const g = document.getElementById('mobile-channel-settings');
+    const title = document.getElementById('hub-menu-name');
+    if (!g || !title) return JSON.stringify({ found: false });
+    const gr = g.getBoundingClientRect();
+    const tr = title.getBoundingClientRect();
+    return JSON.stringify({ found: true, display: getComputedStyle(g).display, x: Math.round(gr.x), right: Math.round(gr.right), w: Math.round(gr.width), titleRight: Math.round(tr.right), vw: innerWidth });
+  })()`));
+  if (!gear.found || gear.display === 'none') throw new Error('иконки настроек канала нет в шапке');
+  if (gear.right > gear.vw + 1) throw new Error('иконка настроек вылезает за экран: ' + JSON.stringify(gear));
+  if (gear.x < gear.titleRight - 1) throw new Error('иконка настроек не справа от названия: ' + JSON.stringify(gear));
+  console.log('ok header-gear', JSON.stringify(gear));
+  await js(w, `document.getElementById('mobile-channel-settings').click(); true`);
   await waitFor(w, `!document.getElementById('hub-settings').classList.contains('hidden')`, 'настройки канала открылись');
 
   for (const tab of ['events', 'roles', 'emojis', 'members', 'bans', 'overview']) {
