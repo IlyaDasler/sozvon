@@ -2782,6 +2782,68 @@ $('set-cam').onchange = () => {
   if (!$('camera-picker').classList.contains('hidden')) startCameraPreview($('set-cam').value);
 };
 
+// Настройки звука на телефоне сохраняются сразу: футера «Сохранить» больше нет.
+function saveAudioFromForm() {
+  const prev = state.settings;
+  const next = {
+    micId: $('set-mic').value,
+    speakerId: $('set-speaker').value,
+    camId: $('set-cam').value,
+    noiseLevel: Number($('set-ns-level').value),
+    ptt: document.querySelector('input[name="mic-mode"]:checked')?.value === 'ptt' && Boolean(pickedPtt),
+    pttBinding: pickedPtt,
+  };
+  state.settings = next;
+  store.set('audio', next);
+  applyPtt();
+  applySpeaker();
+  const micChanged = prev.micId !== next.micId || prev.noiseLevel !== next.noiseLevel;
+  const session = activeSession();
+  if (session) session.settings = next;
+  if (micChanged && session) session.switchMic(next).catch((err) => toast(mediaErrorText(err)));
+}
+
+// Пароль нельзя сохранять «на лету» — это действие с явной кнопкой.
+$('password-change-btn').onclick = async () => {
+  $('password-error').textContent = '';
+  const currentPassword = $('set-cur-pass').value;
+  const newPassword = $('set-new-pass').value;
+  if (!newPassword) {
+    $('password-error').textContent = 'Введите новый пароль';
+    return;
+  }
+  try {
+    const { token, ...me } = await Api.patch('/me', { currentPassword, newPassword });
+    rememberToken(token);
+    state.me = me;
+    $('set-cur-pass').value = '';
+    $('set-new-pass').value = '';
+    renderMe();
+    toast('Пароль сохранён');
+  } catch (err) {
+    $('password-error').textContent = err.message;
+  }
+};
+
+for (const id of ['set-cur-pass', 'set-new-pass']) {
+  $(id).addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    $('password-change-btn').click();
+  });
+}
+
+const soundPane = document.querySelector('#settings .set-pane[data-pane="sound"]');
+if (soundPane) {
+  soundPane.addEventListener('change', () => saveAudioFromForm());
+  let audioTimer = 0;
+  soundPane.addEventListener('input', (event) => {
+    if (event.target.id !== 'set-ns-level') return;
+    clearTimeout(audioTimer);
+    audioTimer = setTimeout(saveAudioFromForm, 180);
+  });
+}
+
 $('settings-form').onsubmit = async (e) => {
   e.preventDefault();
   $('settings-error').textContent = '';
@@ -3138,7 +3200,8 @@ async function saveProfileChanges() {
     renderVoice();
     $('settings-error').textContent = '';
   } catch (err) {
-    $('settings-error').textContent = err.message;
+    // Футер с ошибкой на телефоне скрыт — говорим тостом.
+    toast(err.message || 'Не удалось сохранить профиль');
   }
 }
 const scheduleProfileSave = (delay = 300) => {
