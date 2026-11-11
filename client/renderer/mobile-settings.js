@@ -46,11 +46,18 @@
     section('profile');
   };
 
-  const themeOpen = document.getElementById('mobile-theme-summary');
-  if (themeOpen) themeOpen.onclick = () => {
-    if (typeof showSettingsTab === 'function') showSettingsTab('look');
-    section('look');
+  const search = document.getElementById('mobile-settings-search');
+  const filterSettings = () => {
+    const q = search ? search.value.trim().toLowerCase() : '';
+    for (const button of document.querySelectorAll('#set-nav [data-tab]')) {
+      if (button.dataset.tab === 'profile') continue;
+      button.hidden = Boolean(q) && !button.textContent.toLowerCase().includes(q);
+    }
+    for (const group of document.querySelectorAll('#set-nav .mobile-settings-group')) {
+      group.hidden = Boolean(q);
+    }
   };
+  if (search) search.oninput = filterSettings;
 
   const resetScroll = () => {
     for (const el of document.querySelectorAll('#settings .set-body, #settings .rs-main, #settings .modal-card')) {
@@ -74,6 +81,7 @@
     clearRootHighlight();
     if (overview) overview.hidden = false;
     if (profileButton) { profileButton.hidden = true; profileButton.style.display = 'none'; }
+    if (search) { search.value = ''; filterSettings(); }
     syncProfileCard();
     setTimeout(() => { clearRootHighlight(); syncProfileCard(); }, 0);
     document.getElementById('set-title').textContent = 'Настройки';
