@@ -25,11 +25,31 @@
     avatar.style.backgroundImage = me.avatarUrl && typeof Api !== 'undefined'
       ? `url("${Api.base}${me.avatarUrl}")`
       : '';
+
+    const themeId = document.documentElement.dataset.themeId || document.documentElement.dataset.theme || 'glass';
+    const theme = typeof THEMES !== 'undefined' ? THEMES.find((t) => t.id === themeId) : null;
+    const themeName = document.getElementById('mobile-theme-name');
+    if (themeName) themeName.textContent = theme?.name || 'Тема';
+
+    const version = document.getElementById('mobile-settings-version');
+    if (version) version.textContent = `Созвон ${document.getElementById('app-version')?.textContent || ''}`.trim();
+
+    const status = document.getElementById('mobile-settings-connection');
+    if (status) {
+      const online = document.getElementById('conn-dot')?.classList.contains('ok');
+      status.textContent = online === false ? 'Нет связи' : 'Сервер на связи';
+    }
   };
 
   if (profileOpen) profileOpen.onclick = () => {
     if (typeof showSettingsTab === 'function') showSettingsTab('profile');
     section('profile');
+  };
+
+  const themeOpen = document.getElementById('mobile-theme-summary');
+  if (themeOpen) themeOpen.onclick = () => {
+    if (typeof showSettingsTab === 'function') showSettingsTab('look');
+    section('look');
   };
 
   const resetScroll = () => {
