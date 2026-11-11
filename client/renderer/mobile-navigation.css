@@ -2,7 +2,7 @@
    На мобильном нет кнопок ×, «Закрыть» и дублирования back.
    Стрелка в TopAppBar — навигация, а не закрытие. */
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   /* Все крестики и close-кнопки верхних панелей. */
   #win-close,
   #settings-close,

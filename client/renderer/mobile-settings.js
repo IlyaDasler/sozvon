@@ -1,7 +1,7 @@
 // Мобильные настройки: корень — список, раздел — отдельный экран.
 // На ≤900 px desktop-модалка с боковым меню и панелью рядом не используется.
 (() => {
-  const mq = matchMedia('(max-width: 900px)');
+  const mq = matchMedia('(max-width: 1000px)');
   const back = document.getElementById('mobile-settings-back');
   const subnav = document.getElementById('privacy-subnav');
   const privacyPane = document.querySelector('#settings .set-pane[data-pane="privacy"]');

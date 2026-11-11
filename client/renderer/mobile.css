@@ -11,7 +11,7 @@
   display: none;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   /* Рейл на телефоне/фолде занимает слишком много места: каналы и комнаты уже в сайдбаре */
   .rail {
     display: none !important;
@@ -229,7 +229,7 @@
 }
 
 /* Фолд/флип в разложенном виде: две колонки без рейла */
-@media (min-width: 600px) and (max-width: 900px) {
+@media (min-width: 600px) and (max-width: 1000px) {
   .main {
     gap: 10px;
   }
@@ -315,7 +315,7 @@ html.auth-screen #mobile-backdrop {
     flex: none;
   }
 }
-@media (min-width: 600px) and (max-width: 900px) {
+@media (min-width: 600px) and (max-width: 1000px) {
   .chat-head .peer-meta {
     display: flex !important;
     flex-direction: column;
@@ -351,7 +351,7 @@ html.auth-screen #mobile-backdrop {
 #mobile-hubs {
   display: none;
 }
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #mobile-hubs {
     display: flex;
     flex: none;
@@ -400,7 +400,7 @@ html.auth-screen #mobile-backdrop {
 
 /* В мобильном приложении верхние «назад/вперёд» не нужны: навигация — жестами
    и нижними вкладками. В PWA убираем и полосу окна. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #nav-back,
   #nav-forward {
     display: none !important;
@@ -483,7 +483,7 @@ html.pwa body.mobile-list .sidebar {
 
 /* Внутренний экран фолда — не «телефон с двумя колонками», а рабочий стол:
    рейл хабов + список комнат + сам чат. Снаружи остаётся обычный телефон. */
-@media (min-width: 600px) and (max-width: 900px) {
+@media (min-width: 600px) and (max-width: 1000px) {
   .rail {
     display: flex !important;
     width: 62px !important;
@@ -512,7 +512,7 @@ html.pwa body.mobile-list .sidebar {
    На телефоне и фолде внешняя рамка — только у .main. Рейл, список комнат
    и чат становятся секциями одного стеклянного окна: без своих радиусов,
    фонов и теней. Внутри остаются только разделители 1 px. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #main.main,
   .main {
     padding: 0 !important;
@@ -577,7 +577,7 @@ html.pwa body.mobile-list .sidebar {
    Раньше пять вкладок делили одну строку с заголовком, из-за чего первая
    вкладка обрезалась, а «Заблокированные» уезжали за край. Теперь заголовок
    стоит отдельно, вкладки — горизонтальная лента с собственным скроллом. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .friends-head {
     display: flex !important;
     flex-direction: column;
@@ -666,7 +666,7 @@ html.pwa body.mobile-list .sidebar {
   display: none;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   /* На телефоне и фолде верхние колокольчик и шестерёнка не нужны:
      уведомления — вкладка снизу, настройки — в нижней навигации или рейле. */
   #notif-btn,
@@ -699,7 +699,7 @@ html.pwa body.mobile-list .sidebar {
   }
 }
 
-@media (min-width: 600px) and (max-width: 900px) {
+@media (min-width: 600px) and (max-width: 1000px) {
   #mobile-rail-utility {
     display: flex;
     flex-direction: column;
@@ -752,7 +752,7 @@ html.pwa body.mobile-list .sidebar {
 }
 
 /* Уведомления — полноэкранный раздел не только на телефоне, но и на фолде. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   body.mobile-notifications #notif-panel {
     position: fixed !important;
     z-index: 20;
@@ -811,7 +811,7 @@ html.pwa body.mobile-list .sidebar {
 }
 
 /* Сенсорные размеры там, где раньше были наведенческие 26–30 px. */
-@media (pointer: coarse) and (max-width: 900px) {
+@media (pointer: coarse) and (max-width: 1000px) {
   .chat-head .icon-btn,
   .chat-head .btn.success {
     min-width: 40px;
@@ -895,7 +895,7 @@ body.mobile-room-sheet #mobile-room-backdrop {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #room-list .room-row {
     min-height: 44px;
   }
@@ -909,7 +909,7 @@ body.mobile-room-sheet #mobile-room-backdrop {
 
 /* Ferrari: на телефоне центр кадра попадал в колесо. Смещаем фокус
    на корпус машины и оставляем тёмный градиент для читаемости. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   [data-theme='ferrari'] body {
     background-position: 72% 58% !important;
   }
@@ -917,7 +917,7 @@ body.mobile-room-sheet #mobile-room-backdrop {
 
 /* Название хаба на телефоне — статичный заголовок, а не выпадающий селект.
    Действия хаба открываются долгим нажатием на его иконку. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #hub-menu-btn {
     pointer-events: none !important;
     background: transparent !important;
@@ -933,7 +933,7 @@ body.mobile-room-sheet #mobile-room-backdrop {
 /* ---------- Короткий экран / телефон в альбомной ориентации ----------
    Нельзя включать Workspace только по ширине: 844×390 — это телефон
    боком, а не раскрытый фолд. Оставляем одну колонку и нижние вкладки. */
-@media (max-width: 900px) and (max-height: 619px) {
+@media (max-width: 1000px) and (max-height: 619px) {
   .rail,
   #rail {
     display: none !important;
@@ -1073,7 +1073,7 @@ body.mobile-msg-sheet #mobile-msg-backdrop {
 }
 
 /* Тред на телефоне — полноширинный слой в пределах экрана */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #thread-panel.thread-open {
     left: 8px !important;
     right: auto !important;
@@ -1086,14 +1086,14 @@ body.mobile-msg-sheet #mobile-msg-backdrop {
 /* Android WebView: не даём системному text-size-adjust ломать сетку,
    а поля держим 16px, чтобы фокус не вызывал принудительный zoom. */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   input:not([type='checkbox']):not([type='range']):not([type='radio']),
   textarea, select { font-size: 16px; }
 }
 
 /* Mali/Adreno в WebView: полноэкранный backdrop-filter даёт 30–40 ms
    на кадр. На мобильных оставляем тон и прозрачность, без blur. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #mobile-backdrop,
   #mobile-room-backdrop,
   #mobile-msg-backdrop,
@@ -1144,7 +1144,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* На слабых GPU (Mali-G52 и ниже) любой backdrop-filter стоит 10–20 ms
    на кадр. На мощных телефонах стекло сохраняем: тир выставляет performance.js.
    low — без blur, balanced — blur только на нижней панели, high — полный. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   html[data-performance='low'] *,
   html[data-performance='low'] *::before,
   html[data-performance='low'] *::after {
@@ -1172,7 +1172,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* ---------- Мобильные настройки: список разделов -> отдельный экран ----------
    Не тащим на телефон desktop-модалку с боковым меню и панелью рядом.
    Корень — список, тап по разделу — полноэкранная страница с «Назад». */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   body.mobile-settings #settings {
     display: block !important;
     z-index: 30;
@@ -1288,7 +1288,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   --mobile-safe-right: max(0px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
   --mobile-safe-bottom: max(24px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
 }
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   html, body { background: var(--bg-deep); }
   /* #main.main из «одного окна» выше по специфичности — перебиваем его. */
   #main.main, .main {
@@ -1318,7 +1318,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   }
   body.mobile-settings #settings .set-card { padding-top: 0 !important; }
 }
-@media (max-width: 900px) and (max-height: 619px) {
+@media (max-width: 1000px) and (max-height: 619px) {
   .main {
     left: 0 !important;
     right: 0 !important;
@@ -1334,7 +1334,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* Аватар канала в шапке. На телефоне рейл скрыт, поэтому без него канал
    терял идентичность при открытии. */
 .hub-menu-avatar { display: none; }
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #hub-menu-btn {
     display: flex !important;
     align-items: center;
@@ -1368,7 +1368,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #mobile-hubs { display: none !important; }
 }
 /* Нижняя навигация не должна просвечивать профилем и контентом. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #mobile-nav {
     background: var(--bg-deep) !important;
     border-top: 1px solid var(--line) !important;
@@ -1443,7 +1443,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 /* На телефоне темы не «дышат» кен-бёрнсом: это читается как дёрганый фон
    и жрёт GPU. Статичный кадр выглядит дороже и не мешает читать текст. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   html[data-theme-id='fuji'] .lg-aurora,
   [data-theme='glass2'] .main::before,
   [data-theme='glass2'] .main::after {
@@ -1455,7 +1455,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    На ПК это компактные pill-кнопки. На телефоне они превращались в
    огромный «В сети» с рамкой. Для touch — строка вкладок с подчёркиванием,
    как в Telegram, без плавающей капсулы. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .friend-tabs {
     gap: 2px;
     padding: 0 8px;
@@ -1516,7 +1516,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* Аватар канала в шапке открытой комнаты. На телефоне сайдбар скрыт,
    поэтому это единственное место, где канал сохраняет идентичность. */
 .room-hub-avatar { display: none; }
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .room-hub-avatar {
     display: block;
     width: 26px;
@@ -1537,7 +1537,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 /* ---------- Мобильный скролл: без полосы и без «прыжка» ----------
    Тонкая полоса справа читается как окно браузера, а не приложение. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   * {
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
@@ -1560,7 +1560,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* ---------- Индикаторы вкладок ----------
    Glass-tabs рисует плавающую капсулу, которая на мобильной строке
    растягивается на две вкладки. На телефоне индикатор — только underline. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #friend-tabs .glass-tab-indicator,
   #privacy-subnav .glass-tab-indicator {
     display: none !important;
@@ -1570,7 +1570,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* ---------- Данные и приватность: мобильные вкладки ----------
    Вертикальный desktop-список превращал разделы в мелкие ссылки.
    На телефоне — горизонтальная строка с touch-target 44 px. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings .set-pane[data-pane="privacy"] #privacy-subnav {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
@@ -1615,21 +1615,21 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   /* Серая «пустая аватарка» рядом с брендом — это индикатор соединения,
      на телефоне он читается как незаполненный аватар. */
   #conn-dot { display: none !important; }
   .mobile-hub { border-color: transparent !important; }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .desktop-only { display: none !important; }
 }
 
 /* ---------- Корень настроек: список, а не выделенная строка ----------
    На ПК «Профиль» подсвечен как активный раздел. На телефоне корень —
    это меню: ни одна строка не должна выглядеть уже выбранной. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   body.mobile-settings:not(.mobile-settings-section) #settings .set-nav button[data-tab] {
     position: relative;
     min-height: 52px;
@@ -1668,13 +1668,13 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* Android WebView подсвечивает нажатый элемент серым/синим прямоугольником.
    На мобильном это читается как «клик мышью». Убираем системный highlight,
    оставляя собственные :active-состояния. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   * {
     -webkit-tap-highlight-color: transparent !important;
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   /* Нижняя навигация как в Telegram: активна иконка и подпись, без капсулы. */
   #mobile-nav button.active {
     background: transparent !important;
@@ -1685,7 +1685,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 /* Финальная мобильная нормализация вкладок: темы задают кнопке рамку
    через свой селектор, поэтому перебиваем на уровне ID. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #friend-tabs > button,
   #friend-tabs > button:hover,
   #friend-tabs > button:focus,
@@ -1701,7 +1701,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings #set-nav button[data-tab].active {
     background: transparent !important;
     color: var(--text) !important;
@@ -1712,7 +1712,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 
 /* ---------- Channels as a mobile list, not a PC rail ---------- */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #mobile-hubs {
     display: flex;
     flex-direction: column;
@@ -1790,7 +1790,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   body.mobile-channels #friends,
   body.mobile-channels #home-nav,
   body.mobile-channels:not(.mobile-hub-open) #room-list { display: none; }
@@ -1798,7 +1798,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 
 /* Настройки: без стрелок, поиска и лишнего «О приложении». */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings #set-nav button[data-tab]::after { content: none !important; background: none !important; }
   #settings #set-nav button[data-tab="about"] { display: none !important; }
   #mobile-settings-connection { display: none !important; }
@@ -1806,7 +1806,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   /* Без стрелок и лишнего меню «О приложении». */
   #settings #set-nav button[data-tab]::after { display: none !important; }
   #settings #set-nav button[data-tab="about"] { display: none !important; }
@@ -1819,7 +1819,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   /* Воздух под системным треем для всех шапок настроек. */
   #settings .rs-head {
     padding-top: max(44px, calc(var(--m-safe-top) + 20px));
@@ -1833,7 +1833,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   /* В разделе каналов нижнее меню уже говорит, где мы: шапка не нужна. */
   body.mobile-channels:not(.mobile-hub-open) .sidebar-head { display: none; }
   body.mobile-channels:not(.mobile-hub-open) #mobile-hubs {
@@ -1858,7 +1858,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   body.mobile-hub-open #mobile-hubs { padding-top: 8px; }
   #room-list .room-row .room-chat-btn {
     width: 40px;
@@ -1877,7 +1877,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #auth-build-version {
     margin-top: 22px;
     color: var(--muted);
@@ -1897,7 +1897,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #room-list .room-row .room-settings-btn {
     width: 40px; height: 40px; min-width: 40px; min-height: 40px;
     display: grid; place-items: center;

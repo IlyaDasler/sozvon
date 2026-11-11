@@ -29,7 +29,7 @@ runTest(async () => {
   const msg = await api('POST', `/rooms/${room.id}/messages`, { text: 'корень' }, a.token);
 
   const w = await openClient('ls', a);
-  w.setSize(844, 390); w.show(); w.focus();
+  w.setSize(932, 454); w.show(); w.focus();
   await sleep(900);
   await waitFor(w, `e2eeReady()`, 'ключ');
 
@@ -47,6 +47,9 @@ runTest(async () => {
     if (d.content && d.content.bottom > d.nav.y + 1) throw new Error(`контент под меню на «${label}»: ${JSON.stringify(d.content)} nav=${d.nav.y}`);
     if (label === 'channels') {
       if (d.sidebar.w < d.vw - 4) throw new Error(`каналы не на всю ширину: ${d.sidebar.w} из ${d.vw}`);
+    }
+    if (label === 'room') {
+      if (d.content.w < d.vw - 20) throw new Error(`чат не на всю ширину в комнате: ${d.content.w} из ${d.vw}`);
     }
   }
 

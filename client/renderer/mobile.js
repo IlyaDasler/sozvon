@@ -6,7 +6,7 @@
   if (!window.desktop) document.documentElement.classList.add('pwa');
 
   const transition = (fn) => {
-    if (innerWidth > 900 && typeof document.startViewTransition === 'function' && document.documentElement.dataset.performance === 'high' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (innerWidth > 1000 && typeof document.startViewTransition === 'function' && document.documentElement.dataset.performance === 'high' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       document.startViewTransition(fn);
     } else {
       fn();
@@ -66,7 +66,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.95';
+    version.textContent = 'Версия 1.0.96';
     authCard.append(version);
   }
 
