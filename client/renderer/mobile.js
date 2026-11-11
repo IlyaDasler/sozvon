@@ -92,7 +92,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.115';
+    version.textContent = 'Версия 1.0.116';
     authCard.append(version);
   }
 
@@ -186,12 +186,212 @@
 if (sidebarHead) sidebarHead.after(hubsBar);
 else if (sidebar) sidebar.prepend(hubsBar);
 
+  // ---------- Каналы: гармошка, папки и drag&drop ----------
+  const collapsedChannels = new Set();
+  const channelLayoutKey = () => `mobileHubLayout:${state?.me?.id || 'anon'}`;
+  const readChannelLayout = () => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(channelLayoutKey()) || '[]');
+      return Array.isArray(raw) ? raw : [];
+    } catch {
+      return [];
+    }
+  };
+  const saveChannelLayout = (layout) => {
+    try { localStorage.setItem(channelLayoutKey(), JSON.stringify(layout)); } catch {}
+  };
+  let dragChannelState = null;
+
+  const normalizeChannelLayout = (hubs) => {
+    const ids = hubs.map((h) => h.id);
+    const byId = new Map(hubs.map((h) => [h.id, h]));
+    const out = [];
+    const seen = new Set();
+    const addTop = (id) => {
+      if (!byId.has(id) || seen.has(id)) return;
+      seen.add(id);
+      out.push({ type: 'hub', id });
+    };
+    for (const item of readChannelLayout()) {
+      if (item?.type === 'folder') {
+        const members = (Array.isArray(item.hubs) ? item.hubs : []).filter((id) => byId.has(id) && !seen.has(id));
+        if (members.length >= 2) {
+          members.forEach((id) => seen.add(id));
+          out.push({ type: 'folder', id: item.id || `f${Date.now()}${Math.random().toString(36).slice(2, 5)}`, hubs: members });
+        } else {
+          members.forEach(addTop);
+        }
+      } else {
+        addTop(item?.id);
+      }
+    }
+    for (const id of ids) addTop(id);
+    return out;
+  };
+
+  const hubLocation = (layout, id) => {
+    for (let i = 0; i < layout.length; i += 1) {
+      const item = layout[i];
+      if (item.type === 'hub' && item.id === id) return { index: i, folder: null };
+      if (item.type === 'folder') {
+        const memberIndex = item.hubs.indexOf(id);
+        if (memberIndex >= 0) return { index: i, folder: item, memberIndex };
+      }
+    }
+    return null;
+  };
+
+  const removeHubFromLayout = (layout, id) => {
+    const loc = hubLocation(layout, id);
+    if (!loc) return;
+    if (loc.folder) {
+      loc.folder.hubs.splice(loc.memberIndex, 1);
+      if (loc.folder.hubs.length < 2) layout.splice(loc.index, 1, ...loc.folder.hubs.map((hubId) => ({ type: 'hub', id: hubId })));
+    } else {
+      layout.splice(loc.index, 1);
+    }
+  };
+
+  const makeFolder = (hubs) => ({ type: 'folder', id: `f${Date.now()}${Math.random().toString(36).slice(2, 5)}`, hubs });
+
+  const channelDropTarget = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    const dropout = el?.closest?.('.mobile-hub-dropout');
+    if (dropout) return { type: 'out', el: dropout };
+    const folder = el?.closest?.('.mobile-hub-folder');
+    if (folder) return { type: 'folder', id: folder.dataset.folder, el: folder };
+    const card = el?.closest?.('.mobile-hub-card');
+    if (card?.dataset.hub) return { type: 'hub', id: Number(card.dataset.hub), el: card };
+    return null;
+  };
+
+  const applyChannelDrop = (sourceId, target) => {
+    if (!target || target.id === sourceId) return;
+    const hubs = state?.hubs ? [...state.hubs.values()] : [];
+    const layout = normalizeChannelLayout(hubs);
+    const source = hubLocation(layout, sourceId);
+    if (!source) return;
+    if (target.type === 'out') {
+      removeHubFromLayout(layout, sourceId);
+      layout.push({ type: 'hub', id: sourceId });
+    } else if (target.type === 'folder') {
+      removeHubFromLayout(layout, sourceId);
+      const folder = layout.find((i) => i.type === 'folder' && i.id === target.id);
+      if (!folder || folder.hubs.includes(sourceId)) return;
+      folder.hubs.push(sourceId);
+    } else {
+      const targetLoc = hubLocation(layout, target.id);
+      if (!targetLoc) return;
+      removeHubFromLayout(layout, sourceId);
+      const freshTarget = hubLocation(layout, target.id);
+      if (!freshTarget) return;
+      if (freshTarget.folder && source.folder === freshTarget.folder) {
+        freshTarget.folder.hubs.splice(freshTarget.memberIndex, 0, sourceId);
+      } else if (freshTarget.folder) {
+        freshTarget.folder.hubs.splice(freshTarget.memberIndex + 1, 0, sourceId);
+      } else {
+        layout.splice(freshTarget.index, 1, makeFolder([target.id, sourceId]));
+      }
+    }
+    saveChannelLayout(layout);
+    hubsBar.dataset.signature = '';
+    renderHubs();
+  };
+
+  function startChannelDrag(card, sourceId, startX, startY) {
+    const rect = card.getBoundingClientRect();
+    const ghost = card.cloneNode(true);
+    ghost.classList.add('mobile-channel-ghost');
+    ghost.style.left = `${rect.left}px`;
+    ghost.style.top = `${rect.top}px`;
+    ghost.style.width = `${rect.width}px`;
+    document.body.append(ghost);
+    card.classList.add('channel-dragging');
+    document.documentElement.classList.add('channel-drag-active');
+    const hubs = state?.hubs ? [...state.hubs.values()] : [];
+    const sourceLoc = hubLocation(normalizeChannelLayout(hubs), sourceId);
+    let dropout = null;
+    if (sourceLoc?.folder) {
+      dropout = document.createElement('div');
+      dropout.className = 'mobile-hub-dropout';
+      dropout.textContent = 'Вынуть из папки';
+      hubsBar.append(dropout);
+    }
+    dragChannelState = { sourceId, ghost, card };
+    let target = null;
+    const clearHighlight = () => {
+      for (const el of document.querySelectorAll('.channel-drop')) el.classList.remove('channel-drop');
+    };
+    const move = (event) => {
+      if (!dragChannelState) return;
+      if (event.cancelable) event.preventDefault();
+      ghost.style.left = `${event.clientX - rect.width / 2}px`;
+      ghost.style.top = `${event.clientY - 28}px`;
+      target = channelDropTarget(event.clientX, event.clientY);
+      clearHighlight();
+      target?.el?.classList.add('channel-drop');
+    };
+    const finish = () => {
+      window.removeEventListener('pointermove', move, true);
+      window.removeEventListener('pointerup', finish, true);
+      window.removeEventListener('pointercancel', finish, true);
+      clearHighlight();
+      ghost.remove();
+      dropout?.remove();
+      card.classList.remove('channel-dragging');
+      document.documentElement.classList.remove('channel-drag-active');
+      dragChannelState = null;
+      if (target) {
+        const suppress = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+        document.addEventListener('click', suppress, true);
+        setTimeout(() => document.removeEventListener('click', suppress, true), 350);
+        applyChannelDrop(sourceId, target);
+      }
+    };
+    move({ clientX: startX, clientY: startY, cancelable: false });
+    window.addEventListener('pointermove', move, true);
+    window.addEventListener('pointerup', finish, true);
+    window.addEventListener('pointercancel', finish, true);
+  }
+
+  const initChannelDrag = () => {
+    if (hubsBar.dataset.dragBound === '1') return;
+    hubsBar.dataset.dragBound = '1';
+    let press = null;
+    hubsBar.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      const head = event.target.closest?.('.mobile-hub-card__head');
+      if (!head || event.target.closest('button')) return;
+      const card = head.closest('.mobile-hub-card');
+      if (!card?.dataset.hub) return;
+      press = { card, id: Number(card.dataset.hub), x: event.clientX, y: event.clientY, timer: 0 };
+      press.timer = setTimeout(() => {
+        if (!press) return;
+        const p = press;
+        press = null;
+        startChannelDrag(p.card, p.id, p.x, p.y);
+      }, 340);
+    });
+    const cancel = (event) => {
+      if (!press) return;
+      if (!event || Math.abs(event.clientX - press.x) > 8 || Math.abs(event.clientY - press.y) > 8) {
+        clearTimeout(press.timer);
+        press = null;
+      }
+    };
+    hubsBar.addEventListener('pointermove', (event) => {
+      if (press && (Math.abs(event.clientX - press.x) > 8 || Math.abs(event.clientY - press.y) > 8)) cancel(event);
+    }, { passive: true });
+    hubsBar.addEventListener('pointerup', () => { if (press) { clearTimeout(press.timer); press = null; } }, { passive: true });
+    hubsBar.addEventListener('pointercancel', () => { if (press) { clearTimeout(press.timer); press = null; } }, { passive: true });
+  };
+
   const renderHubs = () => {
     if (!hubsBar) return;
     const hubs = typeof state !== 'undefined' && state.hubs ? [...state.hubs.values()] : [];
     // Не пересоздаём кнопки каждую секунду: иначе касание попадает в уже
     // удалённый узел, а полоса мигает. Обновляем только при реальном изменении.
-    const signature = (state?.view ?? '') + '|' + hubs.map((h) => `${h.id}:${h.name}:${(typeof roomsOfHub === 'function' ? roomsOfHub(h.id).length : 0)}`).join('|');
+    const signature = (state?.view ?? '') + '|' + hubs.map((h) => `${h.id}:${h.name}:${(typeof roomsOfHub === 'function' ? roomsOfHub(h.id).length : 0)}`).join('|') + '|c' + [...collapsedChannels].join(',') + '|l' + JSON.stringify(readChannelLayout());
     if (hubsBar.dataset.signature === signature) return;
     hubsBar.dataset.signature = signature;
     const items = [];
@@ -231,12 +431,13 @@ else if (sidebar) sidebar.prepend(hubsBar);
         items.push(chip);
       }
     } else {
-      for (const hub of hubs) {
+      const createCard = (hub) => {
         // Карточка канала сразу с его комнатами — экран каналов не пустует,
         // как сайдбар Discord, но в нашей логике.
         const card = document.createElement('div');
         card.className = 'mobile-hub-card';
         card.dataset.hub = hub.id;
+        card.classList.toggle('collapsed', collapsedChannels.has(String(hub.id)));
         const head = document.createElement('div');
         head.className = 'mobile-hub-card__head';
         const button = document.createElement('button');
@@ -261,11 +462,24 @@ else if (sidebar) sidebar.prepend(hubsBar);
           event.stopPropagation();
           if (typeof openHubSettings === 'function') openHubSettings(hub.id);
         };
-        head.append(button, gear);
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'mobile-hub-card__toggle';
+        toggle.title = collapsedChannels.has(String(hub.id)) ? 'Развернуть комнаты' : 'Свернуть комнаты';
+        toggle.setAttribute('aria-expanded', String(!collapsedChannels.has(String(hub.id))));
+        toggle.innerHTML = '<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>';
+        toggle.onclick = (event) => {
+          event.stopPropagation();
+          const key = String(hub.id);
+          if (collapsedChannels.has(key)) collapsedChannels.delete(key); else collapsedChannels.add(key);
+          hubsBar.dataset.signature = '';
+          renderHubs();
+        };
+        head.append(button, toggle, gear);
         card.append(head);
 
         const rooms = typeof roomsOfHub === 'function' ? roomsOfHub(hub.id) : [];
-        if (rooms.length) {
+        if (rooms.length && !collapsedChannels.has(String(hub.id))) {
           const list = document.createElement('div');
           list.className = 'mobile-hub-card__rooms';
           for (const room of rooms) {
@@ -313,7 +527,28 @@ else if (sidebar) sidebar.prepend(hubsBar);
           }
           card.append(list);
         }
-        items.push(card);
+        return card;
+      };
+
+      const layout = normalizeChannelLayout(hubs);
+      for (const item of layout) {
+        if (item.type === 'folder') {
+          const frame = document.createElement('div');
+          frame.className = 'mobile-hub-folder';
+          frame.dataset.folder = item.id;
+          const title = document.createElement('div');
+          title.className = 'mobile-hub-folder__title';
+          title.textContent = 'Папка · ' + item.hubs.length;
+          frame.append(title);
+          for (const id of item.hubs) {
+            const hub = hubs.find((h) => h.id === id);
+            if (hub) frame.append(createCard(hub));
+          }
+          items.push(frame);
+        } else {
+          const hub = hubs.find((h) => h.id === item.id);
+          if (hub) items.push(createCard(hub));
+        }
       }
     }
     hubsBar.replaceChildren(...items);
@@ -324,6 +559,7 @@ else if (sidebar) sidebar.prepend(hubsBar);
     const hub = state.hubs?.get(state.view);
     if (hub && typeof openHubSettings === 'function') openHubSettings(hub.id);
   };
+  initChannelDrag();
   renderHubs();
   setInterval(renderHubs, 1000);
 
