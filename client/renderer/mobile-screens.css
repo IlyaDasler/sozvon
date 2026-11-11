@@ -2238,3 +2238,23 @@
     #mobile-tab-fade { display: none !important; }
   }
 }
+
+
+/* Свайп между подвкладками приватности — мягкий сдвиг новой страницы. */
+@media (max-width: 1000px) {
+  #settings .set-pane[data-pane="privacy"] { touch-action: pan-y; }
+  #settings .set-pane[data-pane="privacy"].privacy-swipe-left .privacy-page:not(.hidden) {
+    animation: privacy-slide-left .22s cubic-bezier(.22, 1, .36, 1);
+  }
+  #settings .set-pane[data-pane="privacy"].privacy-swipe-right .privacy-page:not(.hidden) {
+    animation: privacy-slide-right .22s cubic-bezier(.22, 1, .36, 1);
+  }
+  @keyframes privacy-slide-left {
+    from { opacity: .35; transform: translateX(20px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes privacy-slide-right {
+    from { opacity: .35; transform: translateX(-20px); }
+    to { opacity: 1; transform: none; }
+  }
+}
