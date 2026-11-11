@@ -66,7 +66,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.90';
+    version.textContent = 'Версия 1.0.91';
     authCard.append(version);
   }
 
@@ -299,6 +299,10 @@ else if (sidebar) sidebar.prepend(hubsBar);
   const switchTab = (name) => {
     closeNotifications();
     setChannelsMode(name === 'channels');
+    // Настройки — один из разделов нижнего меню: при переходе в другой раздел закрываем их.
+    if (name !== 'settings' && typeof closeSettings === 'function' && !document.getElementById('settings').classList.contains('hidden')) {
+      closeSettings();
+    }
     if (name === 'home') {
       hideList();
       if (typeof selectContact === 'function') selectContact(null);
@@ -549,6 +553,8 @@ else if (sidebar) sidebar.prepend(hubsBar);
     const inRoom = Boolean(app?.room || app?.selectedRoomId) && !onFriends;
     const inChat = Boolean(inRoom || app?.selectedId) && !onFriends;
     button.hidden = !inChat;
+    // Настройки — отдельный раздел нижнего меню: не сбрасываем активную вкладку на «Друзья».
+    if (document.body.classList.contains('mobile-settings')) return;
     if (!document.body.classList.contains('mobile-list') && !document.body.classList.contains('mobile-notifications'))
       setActive(inRoom ? 'channels' : 'home');
   };

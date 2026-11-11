@@ -129,12 +129,21 @@ const saveNotifs = (list) => store.set(notifKey(), list.slice(0, NOTIF_LIMIT));
 
 // Личные сообщения не дублируем в колокольчике: их показывает бейдж
 // у иконки приложения в рейле.
-const bellNotifs = () => loadNotifs().filter((n) => n.kind !== 'message');
+const bellNotifsMobile = () => matchMedia('(max-width: 900px)').matches;
+// На ПК личные сообщения показывает бейдж рейла, на телефоне отдельного бейджа нет —
+// поэтому в мобильном центре уведомлений сообщения тоже должны быть.
+const bellNotifs = () => loadNotifs().filter((n) => bellNotifsMobile() || n.kind !== 'message');
 
 function renderNotifBadge() {
   const unread = bellNotifs().filter((n) => !n.read).length;
-  $('notif-badge').textContent = unread > 99 ? '99+' : unread;
+  const text = unread > 99 ? '99+' : String(unread || '');
+  $('notif-badge').textContent = text;
   $('notif-badge').classList.toggle('hidden', !unread);
+  const mobileBadge = document.querySelector('#mobile-nav .mobile-badge');
+  if (mobileBadge) {
+    mobileBadge.textContent = text;
+    mobileBadge.classList.toggle('hidden', !unread);
+  }
 }
 
 function renderNotifPanel() {
