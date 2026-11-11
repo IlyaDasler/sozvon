@@ -66,7 +66,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.102';
+    version.textContent = 'Версия 1.0.103';
     authCard.append(version);
   }
 
@@ -651,6 +651,47 @@ else if (sidebar) sidebar.prepend(hubsBar);
       setActive('home');
     }
   });
+
+  // Свайп по экрану «Друзья» листает роллер вкладок, как в мобильном Telegram.
+  const friendsScreen = document.getElementById('empty-state');
+  if (friendsScreen) {
+    const order = () => [...document.querySelectorAll('#friend-tabs [data-tab]')].map((b) => b.dataset.tab);
+    const animateFriends = (dir) => {
+      friendsScreen.classList.remove('friends-swipe-left', 'friends-swipe-right');
+      void friendsScreen.offsetWidth;
+      friendsScreen.classList.add(dir > 0 ? 'friends-swipe-left' : 'friends-swipe-right');
+      clearTimeout(animateFriends.timer);
+      animateFriends.timer = setTimeout(() => friendsScreen.classList.remove('friends-swipe-left', 'friends-swipe-right'), 260);
+    };
+    window.friendsSwipe = (dir) => {
+      const tabs = order();
+      const current = document.querySelector('#friend-tabs [data-tab].active')?.dataset.tab;
+      const index = Math.max(0, tabs.indexOf(current));
+      const target = tabs[index + (dir > 0 ? 1 : -1)];
+      if (!target || typeof showFriendsTab !== 'function') return false;
+      showFriendsTab(target);
+      animateFriends(dir);
+      return true;
+    };
+    let start = null;
+    friendsScreen.addEventListener('touchstart', (event) => {
+      if (event.touches.length !== 1) return;
+      if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      const t = event.touches[0];
+      start = { x: t.clientX, y: t.clientY };
+    }, { passive: true });
+    friendsScreen.addEventListener('touchend', (event) => {
+      if (!start) return;
+      const t = event.changedTouches[0];
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      start = null;
+      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      // Поглощаем горизонтальный жест, чтобы он не открыл список каналов.
+      event.stopPropagation();
+      window.friendsSwipe(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  }
 
   // Жесты: правый свайп от левого края — каналы, левый от правого — события,
   // свайп влево по открытому списку — назад, свайп вниз по событиям — закрыть.
