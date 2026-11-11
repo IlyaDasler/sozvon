@@ -1,6 +1,8 @@
 // Интерфейс: вход, список друзей, чат и звонки. Каналы — в hubs.js, комнаты — в rooms.js, панель разговора — в voice-ui.js
 
 const $ = (id) => document.getElementById(id);
+// На телефоне клавиатура не должна открываться сама — только по тапу по полю.
+const autoFocusAllowed = () => !matchMedia('(max-width: 900px)').matches;
 const isNativeShell = Boolean(window.Capacitor?.isNativePlatform?.());
 const isWeb = !isNativeShell && location.protocol.startsWith('http');
 // В Capacitor WebView origin — https://localhost, а API живёт на отдельном сервере.
@@ -460,7 +462,7 @@ async function oauthLogin(provider) {
   if (!base) return ($('auth-error').textContent = 'Укажите адрес сервера');
   // В браузере и в нативной оболочке код принимает сервер и возвращает нас сюда с токеном
   if (isWeb || isNativeShell) {
-    const returnTo = isNativeShell ? '?returnTo=' + encodeURIComponent('sozvon://oauth') : '';
+    const returnTo = isNativeShell ? '?returnTo=' + encodeURIComponent('https://localhost/index.html') : '';
     location.href = `${base}/api/oauth/${provider}/web${returnTo}`;
     return;
   }
@@ -775,7 +777,7 @@ async function selectContact(id) {
   renderChatHeader();
   applyChatTheme();
   renderMessages();
-  dmComposer.focus();
+  if (autoFocusAllowed()) dmComposer.focus();
 
   if (!state.history.has(id)) await loadHistory(dmHistory(id));
 }
@@ -966,7 +968,7 @@ function pickForwardTarget() {
     wrap.querySelector('.forward-search').oninput = (e) => draw(e.target.value);
     draw();
     document.body.append(wrap);
-    wrap.querySelector('.forward-search').focus();
+    if (autoFocusAllowed()) wrap.querySelector('.forward-search').focus();
   });
 }
 
@@ -1908,7 +1910,7 @@ function openCallAdd() {
   $('call-add-search').value = '';
   renderCallAdd();
   $('call-add-modal').classList.remove('hidden');
-  $('call-add-search').focus();
+  if (autoFocusAllowed()) $('call-add-search').focus();
 }
 
 function renderCallAdd() {
@@ -2131,7 +2133,7 @@ function askColor(current) {
   };
   preview(start);
   $('color-modal').classList.remove('hidden');
-  setTimeout(() => { input.focus(); input.select(); }, 30);
+  if (autoFocusAllowed()) setTimeout(() => { input.focus(); input.select(); }, 30);
   return new Promise((resolve) => {
     if (colorResolve) closeColor(null);
     colorResolve = resolve;

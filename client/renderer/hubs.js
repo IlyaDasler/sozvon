@@ -441,7 +441,7 @@ function openFolderEdit(folder) {
   $('folder-name').value = folder.name;
   renderFolderColors();
   $('folder-edit').classList.remove('hidden');
-  $('folder-name').focus();
+  if (autoFocusAllowed()) $('folder-name').focus();
 }
 
 function renderFolderColors() {
@@ -683,7 +683,7 @@ function openHubCreate() {
   $('hub-create-error').textContent = '';
   renderHubCreate();
   $('hub-create').classList.remove('hidden');
-  $('hub-name').focus();
+  if (autoFocusAllowed()) $('hub-name').focus();
 }
 
 function renderHubCreate() {
@@ -1240,7 +1240,7 @@ function openEventCreate(hub, editEvent = null) {
   updateToggle();
 
   $('event-create').classList.remove('hidden');
-  setTimeout(() => $('event-title').focus(), 0);
+  if (autoFocusAllowed()) setTimeout(() => $('event-title').focus(), 0);
 }
 
 const closeEventCreate = () => {
@@ -1565,7 +1565,7 @@ function openNicknameDialog(hub, user) {
   $('nick-input').value = member?.nickname || user.displayName || user.username || '';
   $('nick-error').textContent = '';
   $('nick-modal').classList.remove('hidden');
-  setTimeout(() => {
+  if (autoFocusAllowed()) setTimeout(() => {
     $('nick-input').focus();
     $('nick-input').select();
   }, 0);
@@ -1622,7 +1622,7 @@ function openHubInvite(id) {
   $('hi-error').textContent = '';
   renderHubInvite();
   $('hub-invite').classList.remove('hidden');
-  $('hi-search').focus();
+  if (autoFocusAllowed()) $('hi-search').focus();
 }
 
 function renderHubInvite() {
