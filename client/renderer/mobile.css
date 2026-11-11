@@ -119,7 +119,7 @@
   }
   #mobile-nav button.active {
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    background: transparent !important;
   }
   .main {
     padding-top: 0 !important;
@@ -1672,4 +1672,13 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   * {
     -webkit-tap-highlight-color: transparent !important;
   }
+}
+
+@media (max-width: 900px) {
+  /* Нижняя навигация как в Telegram: активна иконка и подпись, без капсулы. */
+  #mobile-nav button.active {
+    background: transparent !important;
+    color: var(--accent) !important;
+  }
+  #mobile-nav button.active svg { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent)); }
 }

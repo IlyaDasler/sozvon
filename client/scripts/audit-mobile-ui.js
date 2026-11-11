@@ -1,4 +1,4 @@
-const { api, register, js, sleep, openClient, runTest, screenshot } = require('./e2e-lib');
+﻿const { api, register, js, sleep, openClient, runTest, screenshot } = require('./e2e-lib');
 runTest(async () => {
   const a = await register('audit' + Date.now().toString(36).slice(-4), 'Аня');
   const hub = await api('POST', '/hubs', { name: 'Дизайн' }, a.token);
