@@ -592,6 +592,12 @@ else if (sidebar) sidebar.prepend(hubsBar);
     if (document.body.classList.contains('mobile-msg-sheet')) { closeMsgSheet(); return true; }
     if (document.body.classList.contains('mobile-room-sheet')) { closeRoomSheet(); return true; }
     if (document.body.classList.contains('mobile-notifications')) { closeNotifications(); setActive('home'); return true; }
+    // Открытая комната/DM: системный back сначала возвращает к списку.
+    if (!document.body.classList.contains('mobile-list') &&
+        (document.querySelector('#room-view:not(.hidden)') || document.querySelector('#chat:not(.hidden)'))) {
+      showList();
+      return true;
+    }
     if (document.body.classList.contains('mobile-list')) { hideList(); return true; }
     return false;
   };
