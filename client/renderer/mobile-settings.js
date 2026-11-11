@@ -149,6 +149,11 @@
     back.classList.add('hidden');
   };
 
+  // app.js назначил крестик на исходную closeSettings до переопределения.
+  // Перепривязываем, чтобы закрытие снимало mobile-settings и старый экран не оставался.
+  const closeBtn = document.getElementById('settings-close');
+  if (closeBtn) closeBtn.onclick = closeSettings;
+
   const goBack = () => {
     if (!mq.matches || document.getElementById('settings').classList.contains('hidden')) return false;
     // Вложенный шаг 2FA закрывается первым, раздел настроек — следующим back.

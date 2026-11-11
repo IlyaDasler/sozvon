@@ -1667,7 +1667,7 @@
     background: color-mix(in srgb, var(--accent) 14%, transparent);
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 18%, transparent);
     transform: translateX(calc(var(--nav-index, 0) * 100%));
-    transition: transform .38s cubic-bezier(.22, 1.2, .36, 1), background-color .2s ease;
+    transition: transform .24s cubic-bezier(.22, 1, .36, 1), background-color .2s ease;
     pointer-events: none;
     will-change: transform;
   }
@@ -1697,7 +1697,7 @@
     place-items: center;
     width: 30px;
     height: 26px;
-    transition: transform .35s cubic-bezier(.22, 1.3, .36, 1);
+    transition: transform .24s cubic-bezier(.22, 1, .36, 1);
   }
   #mobile-nav .mobile-nav-icon svg {
     width: 22px;
@@ -1713,11 +1713,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    transition: color .2s ease, font-weight .2s ease, transform .35s cubic-bezier(.22, 1.3, .36, 1);
+    transition: color .2s ease, transform .24s cubic-bezier(.22, 1, .36, 1);
   }
   #mobile-nav button.active { color: var(--accent) !important; }
   #mobile-nav button.active .mobile-nav-icon { transform: translateY(-2px) scale(1.12); }
-  #mobile-nav button.active .mobile-nav-label { font-weight: 600; transform: translateY(-1px); }
+  #mobile-nav button.active .mobile-nav-label { transform: translateY(-1px); }
   #mobile-nav button:active .mobile-nav-icon { transform: scale(.86); transition-duration: .12s; }
   #mobile-nav button .mobile-badge { z-index: 2; }
 }
@@ -2213,42 +2213,6 @@
 }
 
 
-/* Шторка перехода между разделами нижнего меню: новый экран без остатков старого. */
-@media (max-width: 1000px) {
-  #mobile-tab-fade {
-    position: fixed;
-    inset: 0;
-    z-index: 90;
-    background: var(--bg-deep);
-    opacity: 0;
-    pointer-events: none;
-    transition: none;
-  }
-  /* Появление — мгновенное: старый раздел не просвечивает ни кадра. */
-  #mobile-tab-fade.on {
-    opacity: 1;
-    pointer-events: auto;
-  }
-  /* Исчезновение — плавное, уже поверх нового раздела. */
-  #mobile-tab-fade.out {
-    opacity: 0;
-    transition: opacity .16s ease;
-  }
-  /* Новый раздел не «щёлкает», а мягко проявляется под уходящей шторкой. */
-  body.mobile-tab-entering #empty-state,
-  body.mobile-tab-entering #mobile-hubs,
-  body.mobile-tab-entering #notif-panel,
-  body.mobile-tab-entering #settings .set-card {
-    animation: mobile-tab-content-in .2s cubic-bezier(.2, 0, 0, 1) both;
-  }
-  @keyframes mobile-tab-content-in {
-    from { opacity: .55; transform: translateY(6px); }
-    to { opacity: 1; transform: none; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    #mobile-tab-fade { display: none !important; }
-  }
-}
 
 
 /* Свайп между подвкладками приватности — мягкий сдвиг новой страницы. */
@@ -2355,5 +2319,62 @@
     width: 22px; height: 22px;
     fill: none; stroke: currentColor;
     stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  }
+}
+
+
+/* Старый раздел не должен просвечивать через стекло нового. */
+@media (max-width: 1000px) {
+  body.mobile-channels #empty-state,
+  body.mobile-notifications #empty-state,
+  body.mobile-settings #empty-state,
+  body.mobile-settings .sidebar,
+  body.mobile-settings .chat { display: none !important; }
+}
+
+
+/* Уведомления: не перезапускаем их старую анимацию при снятии класса перехода. */
+@media (max-width: 1000px) {
+  body.mobile-notifications #notif-panel { animation: none !important; }
+}
+
+
+/* Вход нового раздела нижнего меню: та же мягкая пружина, что у роллера друзей. */
+@media (max-width: 1000px) {
+  body.mobile-tab-entering #empty-state,
+  body.mobile-tab-entering #mobile-hubs,
+  body.mobile-tab-entering #notif-panel,
+  body.mobile-tab-entering #settings .set-card {
+    animation-duration: .24s;
+    animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+    animation-fill-mode: both;
+  }
+  body.mobile-tab-entering.mobile-tab-from-right #empty-state,
+  body.mobile-tab-entering.mobile-tab-from-right #mobile-hubs,
+  body.mobile-tab-entering.mobile-tab-from-right #notif-panel,
+  body.mobile-tab-entering.mobile-tab-from-right #settings .set-card {
+    animation-name: mobile-tab-in-right;
+  }
+  body.mobile-tab-entering.mobile-tab-from-left #empty-state,
+  body.mobile-tab-entering.mobile-tab-from-left #mobile-hubs,
+  body.mobile-tab-entering.mobile-tab-from-left #notif-panel,
+  body.mobile-tab-entering.mobile-tab-from-left #settings .set-card {
+    animation-name: mobile-tab-in-left;
+  }
+  body.mobile-tab-entering.mobile-tab-from-right #settings .set-card,
+  body.mobile-tab-entering.mobile-tab-from-left #settings .set-card {
+    animation-name: mobile-tab-in-up;
+  }
+  @keyframes mobile-tab-in-right {
+    from { opacity: .35; transform: translateX(22px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes mobile-tab-in-left {
+    from { opacity: .35; transform: translateX(-22px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes mobile-tab-in-up {
+    from { opacity: .45; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
   }
 }
