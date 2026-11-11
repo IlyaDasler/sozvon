@@ -589,6 +589,14 @@ else if (sidebar) sidebar.prepend(hubsBar);
   // Единый порядок закрытия для Android back и системной кнопки.
   // Возвращает true, если событие поглощено приложением.
   window.mobileBack = () => {
+    if (document.getElementById('stream-float') && !document.getElementById('stream-float').classList.contains('hidden')) {
+      document.getElementById('stream-float-close')?.click();
+      return true;
+    }
+    if (document.getElementById('fullview') && !document.getElementById('fullview').classList.contains('hidden')) {
+      document.getElementById('fullview-exit')?.click();
+      return true;
+    }
     if (document.body.classList.contains('mobile-msg-sheet')) { closeMsgSheet(); return true; }
     if (document.body.classList.contains('mobile-room-sheet')) { closeRoomSheet(); return true; }
     if (document.body.classList.contains('mobile-notifications')) { closeNotifications(); setActive('home'); return true; }
