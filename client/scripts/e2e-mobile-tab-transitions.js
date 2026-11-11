@@ -30,6 +30,9 @@ runTest(async () => {
   console.log('fade-in', JSON.stringify(d));
   if (d.active !== 'channels') throw new Error('активная вкладка не переключилась сразу');
   if (d.fade < 0.95) throw new Error('шторка не закрыла старый экран: ' + d.fade);
+  const top = await js(w, `(() => { const e = document.elementFromPoint(Math.round(innerWidth / 2), Math.round(innerHeight / 2)); return e ? (e.id || e.className || e.tagName) : ''; })()`);
+  console.log('transition-top', top);
+  if (!/mobile-tab-fade/.test(top)) throw new Error('старый экран виден над шторкой: ' + top);
   await sleep(500);
   d = JSON.parse(await state());
   console.log('channels-final', JSON.stringify(d));

@@ -92,7 +92,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.124';
+    version.textContent = 'Версия 1.0.125';
     authCard.append(version);
   }
 
@@ -718,6 +718,27 @@ else if (sidebar) sidebar.prepend(hubsBar);
     }
   };
 
+  const tabReady = (name) => {
+    const panel = document.getElementById('notif-panel');
+    if (name === 'home') {
+      const settings = document.getElementById('settings');
+      const settingsOpen = Boolean(settings && !settings.classList.contains('hidden'));
+      return !settingsOpen && !document.body.classList.contains('mobile-notifications') && !document.body.classList.contains('mobile-list');
+    }
+    if (name === 'channels') return document.body.classList.contains('mobile-list');
+    if (name === 'notifications') return document.body.classList.contains('mobile-notifications') && Boolean(panel && !panel.classList.contains('hidden'));
+    if (name === 'settings') return Boolean(document.getElementById('settings') && !document.getElementById('settings').classList.contains('hidden'));
+    return true;
+  };
+  const whenTabReady = (name, done) => {
+    const deadline = performance.now() + 320;
+    const tick = () => {
+      if (tabReady(name) || performance.now() > deadline) done();
+      else requestAnimationFrame(tick);
+    };
+    tick();
+  };
+
   const switchTab = (name) => {
     const active = nav.querySelector('button.active')?.dataset.mobile;
     if (active === name) {
@@ -750,27 +771,32 @@ else if (sidebar) sidebar.prepend(hubsBar);
       return;
     }
     tabSwitching = true;
+    document.body.classList.add('mobile-tab-switching');
     tabFade.classList.remove('out');
     tabFade.classList.add('on');
     clearTimeout(tabFadeTimer);
     tabFadeTimer = setTimeout(() => {
       runTab(name);
-      // Даём браузеру отрисовать новый раздел, затем плавно убираем шторку.
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        tabFade.classList.add('out');
-        setTimeout(() => {
-          tabFade.classList.remove('on', 'out');
-          tabSwitching = false;
-          if (pendingTab && pendingTab !== name) {
-            const next = pendingTab;
-            pendingTab = null;
-            switchTab(next);
-          } else {
-            pendingTab = null;
-          }
-        }, 150);
-      }));
-    }, 40);
+      // Ждём, пока новый раздел реально готов, и только затем открываем его.
+      whenTabReady(name, () => {
+        document.body.classList.add('mobile-tab-entering');
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          tabFade.classList.add('out');
+          setTimeout(() => {
+            tabFade.classList.remove('on', 'out');
+            document.body.classList.remove('mobile-tab-switching', 'mobile-tab-entering');
+            tabSwitching = false;
+            if (pendingTab && pendingTab !== name) {
+              const next = pendingTab;
+              pendingTab = null;
+              switchTab(next);
+            } else {
+              pendingTab = null;
+            }
+          }, 160);
+        }));
+      });
+    }, 30);
   };
 
   // Свайп по нижнему меню листает вкладки. Жест живёт ТОЛЬКО внутри nav:
@@ -1037,6 +1063,8 @@ else if (sidebar) sidebar.prepend(hubsBar);
     button.hidden = !inChat;
     // Настройки — отдельный раздел нижнего меню: не сбрасываем активную вкладку на «Друзья».
     if (document.body.classList.contains('mobile-settings')) return;
+    // Пока идёт переход между вкладками, не перебиваем выбранную вкладку.
+    if (document.body.classList.contains('mobile-tab-switching')) return;
     if (!document.body.classList.contains('mobile-list') && !document.body.classList.contains('mobile-notifications'))
       setActive(inRoom ? 'channels' : 'home');
   };
