@@ -88,7 +88,6 @@ async function useIdentity(identity) {
   e2ee.identity = identity;
   e2ee.privateKey = await E2EE.importPrivate(identity.privateJwk);
   e2ee.convs.clear();
-  if ($('e2ee-setup')) $('e2ee-setup').classList.add('hidden');
   redecryptAll();
 }
 
@@ -377,7 +376,6 @@ function resetE2EE() {
   e2ee.convs.clear();
   for (const p of e2ee.files.values()) p.then(URL.revokeObjectURL, () => {});
   e2ee.files.clear();
-  if ($('e2ee-setup')) $('e2ee-setup').classList.add('hidden');
 }
 
 // ---------- Код проверки ключей в карточке профиля ----------
