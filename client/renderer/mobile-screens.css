@@ -596,12 +596,14 @@
     height: 104px;
     margin-bottom: 8px;
     border-radius: var(--m-radius-lg);
-    overflow: hidden;
-    background: var(--bg-3);
+    overflow: visible;
+    background: transparent;
   }
   #settings .profile-hero-banner {
     position: absolute;
     inset: 0;
+    border-radius: var(--m-radius-lg);
+    overflow: hidden;
     background-position: center;
     background-size: cover;
   }
