@@ -57,6 +57,10 @@ const store = {
       // Нет хранилища системы (веб-версия) — остаётся как есть
       const sealed = value !== null && isSecret(key) ? window.desktop?.vault?.seal(JSON.stringify(value)) : null;
       localStorage.setItem(key, JSON.stringify(sealed ? { vault: sealed } : value));
+      if (key === 'session' && window.NativeSession) {
+        if (value === null) window.NativeSession.clear();
+        else window.NativeSession.save(JSON.stringify(value));
+      }
     } catch {}
   },
 };
@@ -351,7 +355,7 @@ function showPendingSignup(ticket, provider) {
 
 function finishLogin(base, { token, user, created }) {
   // На телефоне сессия не должна умирать от перезапуска WebView.
-  const mobileSession = matchMedia('(max-width: 900px)').matches;
+  const mobileSession = isNativeShell || matchMedia('(max-width: 900px)').matches;
   const remember = mobileSession || $('auth-remember')?.checked !== false;
   Api.token = token;
   store.set('session', { base, token, remember });
@@ -3267,9 +3271,19 @@ async function bootAfterConnection() {
   if (await completeWebOAuth()) return;
 
   let session = store.get('session', null);
+  if (!session && window.NativeSession?.load) {
+    try {
+      const raw = window.NativeSession.load();
+      const restored = raw ? JSON.parse(raw) : null;
+      if (restored?.token) {
+        session = restored;
+        store.set('session', restored);
+      }
+    } catch {}
+  }
   // «Запомнить меня» снят на странице входа: сессия живёт только в этой вкладке.
   // На телефоне не применяем — WebView теряет sessionStorage при перезапуске.
-  const mobileSession = matchMedia('(max-width: 900px)').matches;
+  const mobileSession = isNativeShell || matchMedia('(max-width: 900px)').matches;
   if (!mobileSession && session && session.remember === false && !sessionStorage.getItem('sozvon.tab')) {
     store.set('session', null);
     session = null;
