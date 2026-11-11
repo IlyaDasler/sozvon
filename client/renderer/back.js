@@ -7,6 +7,11 @@
   };
 
   function handleBack() {
+    // Полноэкранный профиль на телефоне закрывается первым.
+    if (document.querySelector('#profile-card.mobile-profile:not(.hidden)')) {
+      if (typeof closeProfileCard === 'function') closeProfileCard();
+      return true;
+    }
     if (visible('#settings')) {
       if (typeof window.mobileSettingsBack === 'function' && window.mobileSettingsBack()) return true;
       if (typeof closeSettings === 'function') closeSettings();

@@ -219,8 +219,30 @@ function openProfileCard(userId, anchor) {
   scrollBox.append(body);
   card.append(scrollBox);
 
-  card.classList.remove('hidden');
-  placeCard(card, anchor);
+  // На телефоне профиль — полноэкранный лист, а не десктопный поповер.
+  const mobile = window.matchMedia('(max-width: 1000px)').matches;
+  card.classList.toggle('mobile-profile', mobile);
+  document.body.classList.toggle('mobile-profile-open', mobile);
+  if (mobile) {
+    if (!card.querySelector('#pc-mobile-back')) {
+      const back = document.createElement('button');
+      back.type = 'button';
+      back.id = 'pc-mobile-back';
+      back.className = 'pc-mobile-back';
+      back.setAttribute('aria-label', 'Назад');
+      back.innerHTML = '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
+      back.onclick = closeProfileCard;
+      card.prepend(back);
+    }
+    card.style.left = '';
+    card.style.top = '';
+    card.style.width = '';
+    card.classList.remove('hidden');
+    card.scrollTop = 0;
+  } else {
+    card.classList.remove('hidden');
+    placeCard(card, anchor);
+  }
 }
 
 // Рядом с тем, по чему щёлкнули, но целиком в окне: справа, если хватает места,
@@ -234,6 +256,7 @@ function placeCard(card, anchor = cardAnchor) {
   const h = card.offsetHeight;
   const margin = 12;
   const gap = 10;
+  if (window.matchMedia('(max-width: 1000px)').matches) return;
   if (!r) {
     card.style.left = `${Math.max(margin, (innerWidth - w) / 2)}px`;
     card.style.top = `${Math.max(margin, (innerHeight - h) / 2)}px`;
@@ -264,7 +287,10 @@ window.addEventListener('resize', () => {
 }, { passive: true });
 
 function closeProfileCard() {
-  $('profile-card').classList.add('hidden');
+  const card = $('profile-card');
+  card.classList.add('hidden');
+  card.classList.remove('mobile-profile');
+  document.body.classList.remove('mobile-profile-open');
 }
 
 // Щелчок по аватарке или имени с data-profile открывает карточку; мимо карточки — закрывает
