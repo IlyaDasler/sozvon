@@ -2,7 +2,7 @@
    Только каркас экранов на токенах mobile-tokens.css.
    Бизнес-логика и разметка не меняются. */
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   /* ---------- Auth ---------- */
   #auth {
     display: block;
@@ -163,7 +163,7 @@
 }
 
 /* Landscape: низкая высота, ничего не фиксируем на 100vh. */
-@media (max-width: 900px) and (max-height: 619px) {
+@media (max-width: 1000px) and (max-height: 619px) {
   #auth {
     padding-top: max(var(--m-space-3), var(--m-safe-top));
     padding-bottom: var(--m-space-3);
@@ -184,7 +184,7 @@
 }
 
 /* ---------- Channels / room list ---------- */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .sidebar {
     padding-bottom: var(--m-safe-bottom);
     overscroll-behavior: contain;
@@ -235,7 +235,7 @@
 }
 
 /* Шапка настроек остаётся на месте при скролле раздела и корня. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings .rs-head {
     position: sticky;
     top: 0;
@@ -248,7 +248,7 @@
 /* ---------- Settings overview ---------- */
 .mobile-settings-overview { display: none; }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .mobile-settings-overview {
     display: block;
     padding: var(--m-space-2) var(--m-space-4) var(--m-space-3);
@@ -370,7 +370,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings #set-nav button.mobile-theme-summary {
     display: flex !important;
     align-items: center;
@@ -414,7 +414,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings #set-nav .mobile-settings-group {
     margin: var(--m-space-3) 0 var(--m-space-1);
     padding: 0 var(--m-space-4);
@@ -428,7 +428,7 @@
 
 
 /* ---------- Settings: Discord-like density ---------- */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings #set-nav .mobile-settings-overview {
     padding: var(--m-space-2) var(--m-space-4) var(--m-space-2);
   }
@@ -538,7 +538,7 @@
 
 #settings #set-nav button[data-tab="profile"] { display: none !important; }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings #set-nav button[data-tab="account"]:nth-of-type(2)::before {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238a93a8' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='13' height='10' rx='2'/%3E%3Cpath d='M8 19h8M17 15h3v4h-3z'/%3E%3C/svg%3E");
   }
@@ -549,7 +549,7 @@
 
 
 /* ---------- Chat: compact call stage, больше места сообщениям ---------- */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #call-panel {
     min-height: 0;
     padding: 6px 8px;
@@ -588,7 +588,7 @@
   #chat > .messages { min-height: 120px; }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings .avatar-edit { align-items: stretch; flex-wrap: wrap; gap: 12px; }
   #settings .profile-hero {
     position: relative;
@@ -620,7 +620,7 @@
   #settings .avatar-actions { margin-top: 24px; }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   /* Стрелка занимает свою колонку, заголовок не заезжает под неё. */
   #settings .rs-head .mobile-settings-back {
     position: static !important;
@@ -633,7 +633,7 @@
 
 
 /* ---------- KIT.md: TopAppBar / ListSection / ListRow / Field ---------- */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   /* TopAppBar: 56dp, title 20sp, safe-area сверху. */
   #settings .rs-head {
     min-height: 56px;
@@ -693,7 +693,7 @@
   #settings #set-nav .rs-danger { margin: 0 16px; }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #mobile-add-friend {
     position: absolute;
     right: 12px;
@@ -722,7 +722,7 @@
 
 /* Шапка раздела: не фиксированная высота, иначе длинный заголовок
    вылезает на подвкладки приватности. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings .rs-head {
     box-sizing: border-box;
     height: auto;
@@ -739,7 +739,7 @@
 
 
 /* Темы — компактный список, а не стена превью. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings .theme-group { margin: 0 0 8px; }
   #settings .theme-group h4 { display: none; }
   #settings .theme-group-grid {
@@ -784,7 +784,7 @@
 }
 
 /* Голосовая комната: чат открывается кнопкой, не заходя в голос. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #room-list .room-row .room-tools {
     display: inline-flex;
     opacity: 1;
@@ -809,7 +809,7 @@
 
 
 /* Темы: две понятные группы, каждая — компактный список. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings .theme-group {
     margin: 0 0 24px;
   }
@@ -832,7 +832,7 @@
 
 
 /* Финальные приоритеты: воздух под треем и версия сразу за выходом. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings .rs-head {
     padding-top: max(44px, calc(var(--m-safe-top) + 20px));
     min-height: 92px;
@@ -843,11 +843,11 @@
   }
 }
 
-@media (max-width: 900px) { #settings .rs-head { margin-top: 18px; } }
+@media (max-width: 1000px) { #settings .rs-head { margin-top: 18px; } }
 
 
 /* Звук на телефоне: только шумоподавление и проверка звука. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .set-pane[data-pane="sound"] .set-block:has(#set-mic),
   .set-pane[data-pane="sound"] .set-block:has(#set-speaker),
   .set-pane[data-pane="sound"] .cam-block,
@@ -927,7 +927,7 @@
 
 
 /* Экран входа — по центру, а не прижат к верхнему краю. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #auth {
     display: flex;
     flex-direction: column;
@@ -944,14 +944,14 @@
     margin-right: auto;
   }
 }
-@media (max-width: 900px) and (max-height: 619px) {
+@media (max-width: 1000px) and (max-height: 619px) {
   #auth { justify-content: flex-start; }
   #auth .auth-panel { margin: 0; }
 }
 
 
 /* Настройки: без растяжения, выход и версия сразу после списка. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings #set-nav { min-height: 0; }
   #settings #set-nav button[data-tab] { min-height: 64px; }
   #settings #set-nav .mobile-settings-footer {
@@ -962,7 +962,7 @@
 }
 
 /* Настройки комнаты на телефоне: полноэкранный лист, а не ПК-окно. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #room-manage {
     padding: 0 !important;
   }
@@ -1042,7 +1042,7 @@
 
 
 /* Настройки канала: полноэкранный мобильный лист, одна колонка. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #hub-settings { padding: 0 !important; align-items: stretch; }
   #hub-settings .rs-card {
     display: flex;
@@ -1118,7 +1118,7 @@
 }
 
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings #set-nav button[data-tab] { min-height: 80px; }
   #settings #set-nav .mobile-profile-card { min-height: 112px; }
   #settings #set-nav .mobile-settings-footer {
@@ -1128,7 +1128,7 @@
 }
 
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #settings #set-nav button[data-tab] { min-height: 64px; }
   #settings #set-nav .mobile-profile-card { min-height: 96px; }
   #settings #set-nav .mobile-settings-footer { margin-top: 16px; }
@@ -1136,7 +1136,7 @@
 
 
 /* Все вкладки настроек канала: одна колонка, без горизонтального переполнения. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #hub-settings .rs-body { overflow-x: hidden; }
   #hub-settings .rs-body * { box-sizing: border-box; max-width: 100%; }
   #hub-settings .rs-body .rs-row { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -1220,7 +1220,7 @@
 
 
 /* Финальная плотность корня настроек: помещается без прокрутки и без пустой плиты. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   body.mobile-settings:not(.mobile-settings-section) #settings #set-nav {
     overflow-y: auto !important;
     min-height: 0 !important;
@@ -1242,7 +1242,7 @@
 
 
 /* Селекторы ролей — плоские прямоугольные, без системного «круглого» вида. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #hub-settings .role-select,
   #hub-settings #rm-role-assign,
   #room-manage .role-select,
@@ -1270,7 +1270,7 @@
 
 
 /* Видимый селектор роли (gs-select) — плоский прямоугольник, на всю ширину. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #hub-settings .rs-body .gs-select,
   #room-manage .rs-body .gs-select {
     width: 100%;
@@ -1296,7 +1296,7 @@
 
 
 /* Тред на телефоне — непрозрачный полноэкранный лист, без blur и без наложения на нижнее меню. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #thread-back { display: none; }
 
   #thread-panel.thread-open {
@@ -1374,7 +1374,7 @@
 
 
 /* Настройки канала — иконкой в шапке справа, рядом с названием канала. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #mobile-channel-settings { display: none !important; }
   #mobile-channel-settings:not(.hidden) {
     display: inline-flex !important;
@@ -1410,7 +1410,7 @@
 
 
 /* Списки по центру: не прижаты к верхнему левому краю и не растянуты на пустом экране. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   body.mobile-channels:not(.mobile-hub-open) .sidebar {
     display: flex !important;
     flex-direction: column !important;
@@ -1487,7 +1487,7 @@
 
 
 /* Тред: страховка на любой класс панели — никакого стекла и blur на телефоне. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #thread-panel:not(.hidden),
   #thread-panel:not(.hidden) .thread-head,
   #thread-panel:not(.hidden) .thread-list,
@@ -1512,7 +1512,7 @@
 
 
 /* Нижнее меню как в Telegram: остаётся на экране во всех разделах, включая настройки. */
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   #mobile-nav { z-index: 100 !important; }
 }
 /* На телефоне меню остаётся и в настройках; на раскрытом фолде — прежняя двухколоночная схема. */
@@ -1533,7 +1533,7 @@
 
 
 /* Альбомная ориентация телефона: та же мобильная одна колонка, без «планшета». */
-@media (max-width: 900px) and (max-height: 619px) {
+@media (max-width: 1000px) and (max-height: 619px) {
   /* Контент не должен уходить под нижнее меню. */
   #main.main,
   .main {
@@ -1544,6 +1544,11 @@
   #hub-settings,
   #room-manage,
   #event-create { bottom: calc(var(--mobile-nav-h, 64px) + var(--mobile-safe-bottom)) !important; }
+
+  /* В открытой комнате левая колонка и панель участников не нужны. */
+  body.mobile-room-open .sidebar { display: none !important; }
+  #members-panel:not(.drawer-open) { display: none !important; }
+  body.mobile-room-open .content { width: 100% !important; max-width: 100% !important; }
 
   /* Каналы на всю ширину, а не узкой колонкой слева. */
   body.mobile-list .sidebar {
@@ -1617,4 +1622,10 @@
     height: calc(100dvh - var(--mobile-nav-h, 64px) - var(--mobile-safe-bottom)) !important;
     max-height: calc(100dvh - var(--mobile-nav-h, 64px) - var(--mobile-safe-bottom)) !important;
   }
+}
+
+
+/* Приоритет: в открытой комнате список каналов скрыт полностью. */
+@media (max-width: 1000px) and (max-height: 619px) {
+  body.mobile-list.mobile-room-open .sidebar { display: none !important; }
 }

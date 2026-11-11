@@ -2,7 +2,7 @@
    тач-размеров, клавиатуры и слоёв. Компонентные стили остаются в mobile.css;
    здесь только каркас, который не должен зависеть от темы. */
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   :root {
     --mobile-safe-top: var(--m-safe-top);
     --mobile-safe-bottom: var(--m-safe-bottom);

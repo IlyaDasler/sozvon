@@ -2,7 +2,7 @@
 
 const $ = (id) => document.getElementById(id);
 // На телефоне клавиатура не должна открываться сама — только по тапу по полю.
-const autoFocusAllowed = () => !matchMedia('(max-width: 900px)').matches;
+const autoFocusAllowed = () => !matchMedia('(max-width: 1000px)').matches;
 const isNativeShell = Boolean(window.Capacitor?.isNativePlatform?.());
 const isWeb = !isNativeShell && location.protocol.startsWith('http');
 // В Capacitor WebView origin — https://localhost, а API живёт на отдельном сервере.
@@ -357,7 +357,7 @@ function showPendingSignup(ticket, provider) {
 
 function finishLogin(base, { token, user, created }) {
   // На телефоне сессия не должна умирать от перезапуска WebView.
-  const mobileSession = isNativeShell || matchMedia('(max-width: 900px)').matches;
+  const mobileSession = isNativeShell || matchMedia('(max-width: 1000px)').matches;
   const remember = mobileSession || $('auth-remember')?.checked !== false;
   Api.token = token;
   store.set('session', { base, token, remember });
@@ -3312,7 +3312,7 @@ async function bootAfterConnection() {
   if (!session) session = store.get('session', null);
   // «Запомнить меня» снят на странице входа: сессия живёт только в этой вкладке.
   // На телефоне не применяем — WebView теряет sessionStorage при перезапуске.
-  const mobileSession = isNativeShell || matchMedia('(max-width: 900px)').matches;
+  const mobileSession = isNativeShell || matchMedia('(max-width: 1000px)').matches;
   if (!mobileSession && session && session.remember === false && !sessionStorage.getItem('sozvon.tab')) {
     store.set('session', null);
     session = null;

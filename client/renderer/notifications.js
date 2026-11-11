@@ -129,7 +129,7 @@ const saveNotifs = (list) => store.set(notifKey(), list.slice(0, NOTIF_LIMIT));
 
 // Личные сообщения не дублируем в колокольчике: их показывает бейдж
 // у иконки приложения в рейле.
-const bellNotifsMobile = () => matchMedia('(max-width: 900px)').matches;
+const bellNotifsMobile = () => matchMedia('(max-width: 1000px)').matches;
 // На ПК личные сообщения показывает бейдж рейла, на телефоне отдельного бейджа нет —
 // поэтому в мобильном центре уведомлений сообщения тоже должны быть.
 const bellNotifs = () => loadNotifs().filter((n) => bellNotifsMobile() || n.kind !== 'message');
