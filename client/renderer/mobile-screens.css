@@ -719,3 +719,20 @@
   }
   .friends-head { position: relative; }
 }
+
+/* Шапка раздела: не фиксированная высота, иначе длинный заголовок
+   вылезает на подвкладки приватности. */
+@media (max-width: 900px) {
+  #settings .rs-head {
+    box-sizing: border-box;
+    height: auto;
+    min-height: 68px;
+    padding: max(8px, var(--m-safe-top)) 16px 8px;
+  }
+  #settings .rs-head #set-title {
+    line-height: 1.25;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+}
