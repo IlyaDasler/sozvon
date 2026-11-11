@@ -460,7 +460,7 @@ async function oauthLogin(provider) {
   if (!base) return ($('auth-error').textContent = 'Укажите адрес сервера');
   // В браузере и в нативной оболочке код принимает сервер и возвращает нас сюда с токеном
   if (isWeb || isNativeShell) {
-    const returnTo = isNativeShell ? '?returnTo=' + encodeURIComponent('https://localhost') : '';
+    const returnTo = isNativeShell ? '?returnTo=' + encodeURIComponent('sozvon://oauth') : '';
     location.href = `${base}/api/oauth/${provider}/web${returnTo}`;
     return;
   }
@@ -3231,6 +3231,32 @@ $('net-retry').onclick = () => checkServerNow();
 // ---------- Запуск ----------
 
 // Возврат из сервиса входа в браузере: в адресе одноразовый код, токен в адрес не попадает
+async function handleOAuthReturn(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'sozvon:' || parsed.host !== 'oauth') return false;
+    const code = parsed.searchParams.get('oauth_code');
+    const error = parsed.searchParams.get('oauth_error');
+    if (error) {
+      $('auth-error').textContent = error;
+      return false;
+    }
+    if (!code) return false;
+    Api.base = nativeApiBase() || DEFAULT_SERVER;
+    const result = await Api.post('/oauth/web/exchange', { code });
+    if (result.ticket) {
+      showPendingSignup(result.ticket, 'yandex');
+      return false;
+    }
+    finishLogin(Api.base, result);
+    return true;
+  } catch (err) {
+    $('auth-error').textContent = err.message || 'Не удалось войти через сервис';
+    return false;
+  }
+}
+window.handleOAuthReturn = handleOAuthReturn;
+
 async function completeWebOAuth() {
   if (!isWeb) return false;
   const params = new URLSearchParams(location.search);
