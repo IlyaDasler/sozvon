@@ -19,6 +19,7 @@
   #stream-float-close,
   #ev-close,
   #pip-close,
+  #notif-close,
   .invite-close {
     display: none !important;
   }

@@ -40,12 +40,18 @@ runTest(async () => {
     document.body.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [t2], bubbles: true }));
     return true;
   })()`);
-  await swipe(8, 170, 500);
+  await swipe(40, 170, 500);
   await waitFor(w, `document.body.classList.contains('mobile-list')`, 'свайп от левого края открыл каналы');
-  await swipe(360, 180, 500);
+  await swipe(330, 170, 500);
   await waitFor(w, `!document.body.classList.contains('mobile-list')`, 'свайп влево закрыл каналы');
-  await swipe(382, 250, 500);
-  await waitFor(w, `document.body.classList.contains('mobile-notifications')`, 'свайп от правого края открыл события');
+  // Край экрана принадлежит системе: приложение не должно его перехватывать.
+  await swipe(8, 170, 500);
+  await sleep(300);
+  if (await js(w, `document.body.classList.contains('mobile-list')`)) {
+    throw new Error('свайп от системного края перехвачен приложением');
+  }
+  await js(w, `document.querySelector('#mobile-nav [data-mobile="notifications"]').click(); true`);
+  await waitFor(w, `document.body.classList.contains('mobile-notifications')`, 'уведомления открылись из нижней вкладки');
   await js(w, `document.querySelector('#mobile-nav [data-mobile="home"]').click(); true`);
 
   await js(w, `document.querySelector('#mobile-nav [data-mobile="channels"]').click(); true`);
