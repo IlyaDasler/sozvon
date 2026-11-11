@@ -1347,6 +1347,9 @@ function messageRow(m, prev, list, actions, shown, fresh) {
       link.type = 'button';
       link.className = 'msg-thread-link';
       link.textContent = '\u041e\u0431\u0441\u0443\u0436\u0434\u0435\u043d\u0438\u0435 \u00b7 ' + m.replies;
+      link.dataset.threadId = String(m.threadRoot || m.id);
+      link.dataset.roomId = String(actions.chat.roomId || m.roomId || '');
+      link.addEventListener('pointerdown', () => window.preloadThread?.(Number(link.dataset.threadId), Number(link.dataset.roomId)), { passive: true, once: true });
       link.onclick = (e) => {
         e.stopPropagation();
         openThread(m, actions.chat);
