@@ -26,6 +26,16 @@
   // На телефоне в title не должно быть десктопных Ctrl/Shift/Esc.
   const cleanTitle = (value) =>
     String(value || '').replace(/\s*\((?:[^)]*(?:Shift|Ctrl|Alt|Esc|Enter|Cmd|⌘|мыш|клавиш)[^)]*)\)\s*$/i, '').trim();
+  // glass-tabs.js продолжает пересоздавать плавающую капсулу даже после
+  // display:none в теме. На телефоне удаляем её физически: вкладка = underline.
+  const removeMobileIndicators = () => {
+    for (const el of document.querySelectorAll('#friend-tabs .glass-tab-indicator, #privacy-subnav .glass-tab-indicator')) {
+      el.remove();
+    }
+  };
+  removeMobileIndicators();
+  new MutationObserver(removeMobileIndicators).observe(document.body, { childList: true, subtree: true });
+
   const cleanTitles = () => {
     for (const el of document.querySelectorAll('[title]')) {
       const next = cleanTitle(el.title);
