@@ -1883,3 +1883,10 @@
   /* В голосовой карточке название — это вход в голос, а не чат. */
   #mobile-hubs .mobile-hub-room[data-kind="voice"] .mobile-hub-room__name { color: var(--text) !important; }
 }
+
+
+/* Активная вкладка друзей — только капсула, без подчёркивания. */
+@media (max-width: 1000px) {
+  #friend-tabs button.active::after,
+  .friend-tabs button.active::after { display: none !important; content: none !important; }
+}

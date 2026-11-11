@@ -54,4 +54,18 @@ runTest(async () => {
   console.log('friend-tabs-add', s);
   if (s.active !== 'add') throw new Error('вкладка добавления не активна');
   if (!s.indCovers) throw new Error('капсула не встала под добавление');
+  const under = await js(w, `(() => { const b = document.querySelector('#friend-tabs button.active'); return getComputedStyle(b, '::after').display + '|' + getComputedStyle(b, '::after').content; })()`);
+  console.log('underline', under);
+  if (!under.startsWith('none')) throw new Error('подчёркивание активной вкладки осталось: ' + under);
+  await sleep(500);
+  const visible = JSON.parse(await js(w, `(() => {
+    const root = document.getElementById('friend-tabs');
+    const a = root.querySelector('button.active');
+    const rr = root.getBoundingClientRect();
+    const ar = a.getBoundingClientRect();
+    return JSON.stringify({ scrollLeft: Math.round(root.scrollLeft), left: Math.round(ar.left), right: Math.round(ar.right), viewLeft: Math.round(rr.left), viewRight: Math.round(rr.right), visible: ar.left >= rr.left - 1 && ar.right <= rr.right + 1 });
+  })()`));
+  console.log('tabs-scroll', JSON.stringify(visible));
+  if (!visible.visible) throw new Error('активная вкладка не докручена в роллере: ' + JSON.stringify(visible));
+  if (visible.scrollLeft <= 0) throw new Error('роллер не сдвинулся к добавлению: ' + JSON.stringify(visible));
 });

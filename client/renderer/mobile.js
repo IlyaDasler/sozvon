@@ -66,7 +66,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.105';
+    version.textContent = 'Версия 1.0.106';
     authCard.append(version);
   }
 
@@ -658,6 +658,32 @@ else if (sidebar) sidebar.prepend(hubsBar);
       setActive('home');
     }
   });
+
+  // Активная вкладка всегда должна быть видна в роллере: докручиваем его.
+  const friendTabs = document.getElementById('friend-tabs');
+  if (friendTabs) {
+    let scrollTimer = 0;
+    const revealActiveFriendTab = () => {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        const active = friendTabs.querySelector('button.active');
+        if (!active) return;
+        const r = friendTabs.getBoundingClientRect();
+        const a = active.getBoundingClientRect();
+        if (a.left >= r.left && a.right <= r.right) return;
+        active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }, 30);
+    };
+    friendTabs.addEventListener('click', (event) => {
+      if (event.target.closest('button')) revealActiveFriendTab();
+    }, true);
+    new MutationObserver(revealActiveFriendTab).observe(friendTabs, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    revealActiveFriendTab();
+  }
 
   // Свайп по экрану «Друзья» листает роллер вкладок, как в мобильном Telegram.
   const friendsScreen = document.getElementById('empty-state');
