@@ -1371,3 +1371,39 @@
   body:has(#thread-panel.thread-open) #mobile-msg-backdrop,
   body:has(#thread-panel.thread-open) #mobile-backdrop { display: none !important; }
 }
+
+
+/* Настройки канала — иконкой в шапке справа, рядом с названием канала. */
+@media (max-width: 900px) {
+  #mobile-channel-settings { display: none !important; }
+  #mobile-channel-settings:not(.hidden) {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0 2px 0 4px;
+    padding: 0;
+    flex: none;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-2);
+    -webkit-tap-highlight-color: transparent;
+  }
+  #mobile-channel-settings:not(.hidden):active {
+    background: color-mix(in srgb, var(--text) 10%, transparent);
+    color: var(--text);
+  }
+  #mobile-channel-settings svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
