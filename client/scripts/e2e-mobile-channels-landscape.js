@@ -26,6 +26,7 @@ runTest(async () => {
       if (!d.card || d.card.h < 20) throw new Error(label + ': карточек каналов нет');
       if (d.rooms < 1) throw new Error(label + ': комнат в карточке нет');
       if (!d.hit) throw new Error(label + ': карточка не видна');
+      if (d.card.w < d.vw - 40) throw new Error(label + ': карточка не растянута по ширине: ' + JSON.stringify(d.card) + ' vw=' + d.vw);
     }
   };
 
