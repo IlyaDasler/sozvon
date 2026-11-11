@@ -1817,3 +1817,17 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #settings #set-nav .mobile-profile-card svg { display: none; }
   #settings .rs-head { padding-top: max(16px, var(--m-safe-top)); min-height: 72px; }
 }
+
+
+@media (max-width: 900px) {
+  /* Воздух под системным треем для всех шапок настроек. */
+  #settings .rs-head {
+    padding-top: max(44px, calc(var(--m-safe-top) + 20px));
+    min-height: 92px;
+  }
+  /* Версия идёт сразу за выходом, без пустого блока между ними. */
+  #settings #set-nav .mobile-settings-footer {
+    margin-top: 20px;
+    padding-bottom: max(20px, var(--m-safe-bottom));
+  }
+}

@@ -44,6 +44,13 @@
     }
   };
 
+  for (const button of document.querySelectorAll('#set-nav [data-tab]')) {
+    if (!button.onclick) button.onclick = () => {
+      if (typeof showSettingsTab === 'function') showSettingsTab(button.dataset.tab);
+      section(button.dataset.tab);
+    };
+  }
+
   if (profileOpen) profileOpen.onclick = () => {
     if (typeof showSettingsTab === 'function') showSettingsTab('profile');
     section('profile');

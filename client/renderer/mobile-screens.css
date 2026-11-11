@@ -806,3 +806,41 @@
   }
   #room-list .room-row .room-tool.chat { display: grid; }
 }
+
+
+/* Темы: две понятные группы, каждая — компактный список. */
+@media (max-width: 900px) {
+  #settings .theme-group {
+    margin: 0 0 24px;
+  }
+  #settings .theme-group h4 {
+    display: block;
+    margin: 0 0 8px;
+    padding: 0 4px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  #settings .theme-group-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+
+/* Финальные приоритеты: воздух под треем и версия сразу за выходом. */
+@media (max-width: 900px) {
+  #settings .rs-head {
+    padding-top: max(44px, calc(var(--m-safe-top) + 20px));
+    min-height: 92px;
+  }
+  #settings #set-nav .mobile-settings-footer {
+    margin-top: 20px;
+    padding-bottom: max(20px, var(--m-safe-bottom));
+  }
+}
+
+@media (max-width: 900px) { #settings .rs-head { margin-top: 18px; } }
