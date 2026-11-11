@@ -692,3 +692,30 @@
 
   #settings #set-nav .rs-danger { margin: 0 16px; }
 }
+
+@media (max-width: 900px) {
+  #mobile-add-friend {
+    position: absolute;
+    right: 12px;
+    top: 8px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--text) 8%, transparent);
+    color: var(--text);
+  }
+  #mobile-add-friend svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+  }
+  .friends-head { position: relative; }
+}

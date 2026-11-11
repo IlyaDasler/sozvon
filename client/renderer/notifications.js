@@ -142,6 +142,7 @@ function renderNotifPanel() {
   list.replaceChildren();
   const items = bellNotifs();
   $('notif-empty').classList.toggle('hidden', items.length > 0);
+  $('notif-clear').classList.toggle('hidden', items.length === 0);
   for (const n of items) {
     const row = document.createElement('button');
     row.type = 'button';
