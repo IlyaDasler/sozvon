@@ -318,7 +318,7 @@ func (a *server) oauthWebStart(w http.ResponseWriter, r *http.Request) {
 	challenge := base64.RawURLEncoding.EncodeToString(sum[:])
 	redirect := a.publicBase(r) + "/api/oauth/" + provider + "/callback"
 	returnTo := strings.TrimSpace(r.URL.Query().Get("returnTo"))
-	if returnTo != "https://localhost" && returnTo != "capacitor://localhost" && returnTo != "sozvon://oauth" {
+	if returnTo != "https://localhost" && returnTo != "https://localhost/index.html" && returnTo != "capacitor://localhost" && returnTo != "sozvon://oauth" {
 		returnTo = ""
 	}
 	url, err := a.oauth.BuildURL(state, challenge, redirect)
