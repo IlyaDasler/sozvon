@@ -2022,3 +2022,17 @@
     width: 100% !important;
   }
 }
+
+
+/* Разложенный фолд/планшет: это Workspace, нижней телефонной панели здесь нет. */
+@media (min-width: 600px) and (min-height: 620px) and (max-width: 1000px) {
+  #mobile-nav,
+  body.mobile-room-open #mobile-nav,
+  body.mobile-settings #mobile-nav,
+  body.mobile-notifications #mobile-nav { display: none !important; }
+  body #main.main,
+  body .main {
+    padding-bottom: 0 !important;
+    bottom: 0 !important;
+  }
+}
