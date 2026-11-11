@@ -350,8 +350,9 @@ function showPendingSignup(ticket, provider) {
 }
 
 function finishLogin(base, { token, user, created }) {
-  // «Запомнить меня»: без галочки вход действует до закрытия приложения
-  const remember = $('auth-remember')?.checked !== false;
+  // На телефоне сессия не должна умирать от перезапуска WebView.
+  const mobileSession = matchMedia('(max-width: 900px)').matches;
+  const remember = mobileSession || $('auth-remember')?.checked !== false;
   Api.token = token;
   store.set('session', { base, token, remember });
   if (remember) sessionStorage.removeItem('sozvon.tab');
@@ -3266,8 +3267,10 @@ async function bootAfterConnection() {
   if (await completeWebOAuth()) return;
 
   let session = store.get('session', null);
-  // «Запомнить меня» снят на странице входа: сессия живёт только в этой вкладке
-  if (session && session.remember === false && !sessionStorage.getItem('sozvon.tab')) {
+  // «Запомнить меня» снят на странице входа: сессия живёт только в этой вкладке.
+  // На телефоне не применяем — WebView теряет sessionStorage при перезапуске.
+  const mobileSession = matchMedia('(max-width: 900px)').matches;
+  if (!mobileSession && session && session.remember === false && !sessionStorage.getItem('sozvon.tab')) {
     store.set('session', null);
     session = null;
   }
