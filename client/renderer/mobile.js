@@ -178,7 +178,7 @@ else if (sidebar) sidebar.prepend(hubsBar);
         button.type = 'button';
         button.className = 'mobile-hub';
         button.dataset.hub = hub.id;
-        button.innerHTML = `<span class="mobile-hub__avatar">${(hub.name || 'К').trim().charAt(0).toUpperCase()}</span><span class="mobile-hub__name"></span><span class="mobile-hub__chevron">›</span>`;
+        button.innerHTML = `<span class="mobile-hub__avatar">${(hub.name || 'К').trim().charAt(0).toUpperCase()}</span><span class="mobile-hub__name"></span>`;
         button.querySelector('.mobile-hub__name').textContent = hub.name || 'Канал';
         button.onclick = () => {
           if (typeof openHub === 'function') openHub(hub.id);
@@ -275,6 +275,8 @@ else if (sidebar) sidebar.prepend(hubsBar);
     document.body.classList.toggle('mobile-channels', on);
     const friends = document.getElementById('friends');
     if (friends) friends.style.display = on ? 'none' : '';
+    const home = document.querySelector('#head-home span');
+    if (home) home.textContent = on ? 'Каналы' : 'Созвон';
   };
 
   const switchTab = (name) => {

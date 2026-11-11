@@ -488,17 +488,12 @@
       <nav class="rs-nav set-nav" id="set-nav">
         <div class="rs-room">Настройки</div>
         <div class="mobile-settings-overview" id="mobile-settings-overview">
-          <label class="mobile-settings-search">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input type="search" id="mobile-settings-search" placeholder="Поиск" autocomplete="off" enterkeyhint="search">
-          </label>
           <button type="button" class="mobile-profile-card" id="mobile-profile-open">
             <span class="avatar mobile-profile-avatar" id="mobile-profile-avatar"></span>
             <span class="mobile-profile-meta">
               <b class="mobile-profile-name" id="mobile-profile-name">Профиль</b>
               <span class="mobile-profile-username" id="mobile-profile-username"></span>
             </span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
           </button>
         </div>
         <button type="button" data-tab="profile" data-sub="Аватар, имя и описание">Профиль</button>
@@ -509,18 +504,18 @@
         <div class="mobile-settings-group">Аккаунт и данные</div>
         <button type="button" data-tab="account" data-sub="Почта, устройства и вход">Аккаунт</button>
         <button type="button" data-tab="privacy" data-sub="Профиль, заявки и шифрование">Данные и приватность</button>
+        <button type="button" data-tab="account" data-sub="Сеансы и активные входы">Устройства</button>
+        <button type="button" data-tab="privacy" data-sub="Ключи и сквозное шифрование">Шифрование</button>
         <div class="set-subnav hidden" id="privacy-subnav">
           <button type="button" data-privacy="data">Как Созвон использует мои данные</button>
           <button type="button" data-privacy="profile">Приватность профиля</button>
           <button type="button" data-privacy="contact">Кто может со мной связываться</button>
           <button type="button" data-privacy="crypto">Шифрование</button>
         </div>
-        <div class="mobile-settings-group">Поддержка</div>
-        <button type="button" data-tab="about" data-sub="Версия и поддержка">О приложении</button>
         <div class="rs-sep"></div>
         <button type="button" class="rs-danger" id="logout-btn">Выйти из аккаунта</button>
         <div class="mobile-settings-footer">
-          <span id="mobile-settings-version">Созвон</span>
+          <span id="mobile-settings-version">Версия 1.0.64</span>
           <span id="mobile-settings-connection">Сервер</span>
         </div>
       </nav>

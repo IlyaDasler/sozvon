@@ -736,3 +736,73 @@
     text-overflow: clip;
   }
 }
+
+
+/* Темы — компактный список, а не стена превью. */
+@media (max-width: 900px) {
+  #settings .theme-group { margin: 0 0 8px; }
+  #settings .theme-group h4 { display: none; }
+  #settings .theme-group-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  #settings .theme-card {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) 36px;
+    align-items: center;
+    gap: 12px;
+    min-height: 60px;
+    width: 100%;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    text-align: left;
+  }
+  #settings .theme-card.selected {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    outline: 0;
+  }
+  #settings .theme-preview {
+    width: 64px;
+    height: 40px;
+    transform: none;
+  }
+  #settings .theme-name {
+    padding: 0;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  #settings .theme-bg-btn {
+    position: static;
+    width: 36px;
+    height: 36px;
+    margin: 0;
+  }
+}
+
+/* Голосовая комната: чат открывается кнопкой, не заходя в голос. */
+@media (max-width: 900px) {
+  #room-list .room-row .room-tools {
+    display: inline-flex;
+    opacity: 1;
+    transform: none;
+    gap: 2px;
+    margin-left: auto;
+    order: 9;
+  }
+  #room-list .room-row .room-tool {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--text) 7%, transparent);
+    color: var(--text-2);
+  }
+  #room-list .room-row .room-tool.chat { display: grid; }
+}
