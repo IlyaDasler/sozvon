@@ -496,11 +496,21 @@
             </span>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
           </button>
+          <button type="button" class="mobile-theme-summary" id="mobile-theme-summary">
+            <span class="mobile-theme-dots"><i></i><i></i><i></i></span>
+            <span class="mobile-theme-meta">
+              <b>Тема</b>
+              <span id="mobile-theme-name">Совон</span>
+            </span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          </button>
         </div>
         <button type="button" data-tab="profile" data-sub="Аватар, имя и описание">Профиль</button>
+        <div class="mobile-settings-group">Приложение</div>
         <button type="button" data-tab="look" data-sub="Темы, обои и акцент">Оформление</button>
         <button type="button" data-tab="sound" data-sub="Микрофон, камера и динамики">Звук и видео</button>
         <button type="button" data-tab="notify" data-sub="Звук, превью и режим">Уведомления</button>
+        <div class="mobile-settings-group">Аккаунт и данные</div>
         <button type="button" data-tab="account" data-sub="Почта, устройства и вход">Аккаунт</button>
         <button type="button" data-tab="privacy" data-sub="Профиль, заявки и шифрование">Данные и приватность</button>
         <div class="set-subnav hidden" id="privacy-subnav">
@@ -509,9 +519,14 @@
           <button type="button" data-privacy="contact">Кто может со мной связываться</button>
           <button type="button" data-privacy="crypto">Шифрование</button>
         </div>
+        <div class="mobile-settings-group">Поддержка</div>
         <button type="button" data-tab="about" data-sub="Версия и поддержка">О приложении</button>
         <div class="rs-sep"></div>
         <button type="button" class="rs-danger" id="logout-btn">Выйти из аккаунта</button>
+        <div class="mobile-settings-footer">
+          <span id="mobile-settings-version">Созвон</span>
+          <span id="mobile-settings-connection">Сервер</span>
+        </div>
       </nav>
       <section class="rs-main">
         <header class="rs-head">
