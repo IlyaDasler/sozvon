@@ -619,3 +619,14 @@
   }
   #settings .avatar-actions { margin-top: 24px; }
 }
+
+@media (max-width: 900px) {
+  /* Стрелка занимает свою колонку, заголовок не заезжает под неё. */
+  #settings .rs-head .mobile-settings-back {
+    position: static !important;
+    justify-self: start;
+  }
+  body.mobile-settings-section #settings .rs-head #set-title {
+    margin-left: 48px;
+  }
+}
