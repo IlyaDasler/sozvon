@@ -2258,3 +2258,14 @@
     to { opacity: 1; transform: none; }
   }
 }
+
+
+/* Панель участников на телефоне — непрозрачный лист поверх скрима, без blur. */
+@media (max-width: 1000px) {
+  #members-panel.drawer-open {
+    background: var(--bg-deep) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .45) !important;
+  }
+}

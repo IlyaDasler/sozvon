@@ -3,6 +3,24 @@
 (() => {
   const NARROW = 1000;
   let scrim = null;
+  // Панель участников лежит внутри #main, у которого isolation:isolate.
+  // Из-за этого её z-index не мог подняться над скримом. На время drawer
+  // переносим панель в body и возвращаем на место после закрытия.
+  const membersPanel = document.getElementById('members-panel');
+  const membersHome = membersPanel ? { parent: membersPanel.parentElement, next: membersPanel.nextSibling } : null;
+  let membersDetached = false;
+  const detachMembers = () => {
+    if (!membersPanel || membersDetached) return;
+    membersHome.parent = membersPanel.parentElement;
+    membersHome.next = membersPanel.nextSibling;
+    document.body.append(membersPanel);
+    membersDetached = true;
+  };
+  const restoreMembers = () => {
+    if (!membersPanel || !membersDetached) return;
+    membersHome.parent?.insertBefore(membersPanel, membersHome.next);
+    membersDetached = false;
+  };
 
   function getScrim() {
     if (scrim) return scrim;
@@ -54,6 +72,7 @@
       panel.classList.add('hidden');
       setClass(panel, 'drawer-open', false);
     }
+    restoreMembers();
     syncScrim();
   }
 
@@ -68,8 +87,10 @@
     // Состояние выдвижной панели — её собственный класс: скрытая панель
     // может быть видимой по разметке, но спрятанной медиа-правилом
     const shown = panel.classList.contains('drawer-open');
+    if (!shown) detachMembers();
     setClass(panel, 'drawer-open', !shown);
     setClass(panel, 'hidden', shown);
+    if (shown) restoreMembers();
     syncScrim();
   }, true);
 
@@ -81,6 +102,7 @@
     if (window.innerWidth > NARROW) {
       getScrim().classList.remove('is-on');
       for (const id of ['members-panel', 'thread-panel']) document.getElementById(id)?.classList.remove('drawer-open');
+      restoreMembers();
     } else {
       syncScrim();
     }

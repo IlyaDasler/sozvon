@@ -26,6 +26,28 @@ runTest(async () => {
   await sleep(400);
   let d = JSON.parse(await state());
   console.log('drawer-open', JSON.stringify(d));
+  const layers = JSON.parse(await js(w, `(() => {
+    const p = document.getElementById('members-panel');
+    const s = document.querySelector('.scrim');
+    const r = p.getBoundingClientRect();
+    const top = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + 120));
+    const chain = [];
+    for (let e = p.parentElement; e && e !== document.documentElement; e = e.parentElement) {
+      const c = getComputedStyle(e);
+      if (c.transform !== 'none' || c.filter !== 'none' || c.perspective !== 'none' || c.zIndex !== 'auto' || c.isolation === 'isolate' || c.contain !== 'none') {
+        chain.push({ id: e.id || e.className, z: c.zIndex, transform: c.transform, filter: c.filter, isolation: c.isolation, contain: c.contain, pos: c.position });
+      }
+    }
+    return JSON.stringify({
+      scrimZ: getComputedStyle(s).zIndex, panelZ: getComputedStyle(p).zIndex,
+      panelBlur: getComputedStyle(p).backdropFilter || getComputedStyle(p).webkitBackdropFilter,
+      panelBg: getComputedStyle(p).backgroundColor, panelFilter: getComputedStyle(p).filter,
+      top: top ? (top.id || top.className || top.tagName) : null,
+      chain,
+    });
+  })()`));
+  console.log('drawer-layers', JSON.stringify(layers));
+  if (layers.top && /scrim/.test(layers.top)) throw new Error('панель участников под скримом: ' + JSON.stringify(layers));
   if (!d.panel.drawer || d.panel.hidden || d.panel.display === 'none') throw new Error('панель участников не открылась');
   if (!d.scrim) throw new Error('скрим не включился');
 
