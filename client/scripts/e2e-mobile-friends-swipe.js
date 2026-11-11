@@ -56,6 +56,21 @@ runTest(async () => {
   console.log('api', ok, tab);
   if (tab !== 'all') throw new Error('friendsSwipe не переключил вкладку');
 
+  // Короткий и диагональный свайпы не должны открывать каналы.
+  for (const [x1, y1, x2, y2] of [[300, 400, 252, 400], [300, 400, 240, 450], [80, 400, 130, 430]]) {
+    await js(w, `(() => {
+      const el = document.getElementById('empty-state');
+      const make = (x, y) => new Touch({ identifier: 1, target: el, clientX: x, clientY: y, pageX: x, pageY: y });
+      const s = make(${x1}, ${y1});
+      el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [s], targetTouches: [s], changedTouches: [s] }));
+      const e = make(${x2}, ${y2});
+      el.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, touches: [], targetTouches: [], changedTouches: [e] }));
+      return true;
+    })()`);
+    await sleep(200);
+    if (await js(w, `document.body.classList.contains('mobile-list')`)) throw new Error('свайп из друзей открыл каналы: ' + JSON.stringify([x1, y1, x2, y2]));
+  }
+
   // Доходим свайпами до крайнего «Добавить»: роллер должен докрутиться.
   for (let i = 0; i < 5; i += 1) {
     await js(w, `window.friendsSwipe(1); true`);
