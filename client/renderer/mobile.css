@@ -1283,7 +1283,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* Edge-to-edge: фон приложения уходит под системный трей, а контент
    получает только безопасный inset. Никаких чёрных полос сверху. */
 :root {
-  --mobile-safe-top: max(28px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  --mobile-safe-top: max(32px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   --mobile-safe-left: max(0px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
   --mobile-safe-right: max(0px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
   --mobile-safe-bottom: max(24px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));

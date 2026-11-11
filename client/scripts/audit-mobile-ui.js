@@ -8,6 +8,22 @@ runTest(async () => {
   await sleep(900);
   await screenshot(w, 'audit-01-home');
 
+  // Имитируем системный трей: safe-area 36 px. Верхние элементы не должны
+  // начинаться выше неё.
+  await js(w, `document.documentElement.style.setProperty('--safe-area-inset-top','36px'); true`);
+  await sleep(250);
+  const top = JSON.parse(await js(w, `(() => {
+    const sel = ['.main','.sidebar-head','#friend-tabs','#mobile-hubs','#friends-head','.chat-head'];
+    const out = {};
+    for (const s of sel) { const e=document.querySelector(s); if (e) { const r=e.getBoundingClientRect(); out[s]=Math.round(r.top*10)/10; } }
+    return JSON.stringify(out);
+  })()`));
+  console.log('safe-top', JSON.stringify(top));
+  for (const [sel,y] of Object.entries(top)) {
+    if (y < 35 && sel !== '#mobile-hubs' && sel !== '.sidebar-head') throw new Error('верхний элемент под треем: '+sel+' top='+y);
+  }
+  await screenshot(w, 'audit-01-safe-top');
+
   const report = async (label) => {
     const r = await js(w, `(() => {
       const bad = [];
@@ -40,6 +56,11 @@ runTest(async () => {
 
   await js(w, `document.querySelector('#mobile-nav [data-mobile="channels"]').click(); true`);
   await sleep(500); await screenshot(w, 'audit-02-channels'); await report('channels');
+  const channelTop = JSON.parse(await js(w, `(() => {
+    const out={}; for (const s of ['.sidebar','.sidebar-head','#mobile-hubs','#friend-tabs']) { const e=document.querySelector(s); if(e){const r=e.getBoundingClientRect(); out[s]=Math.round(r.top*10)/10;} } return JSON.stringify(out);
+  })()`));
+  console.log('channels-safe-top', JSON.stringify(channelTop));
+  for (const [sel,y] of Object.entries(channelTop)) if (y < 35) throw new Error('канал под треем: '+sel+' top='+y);
 
   await js(w, `openHub(${hub.id}); refreshRooms().then(() => new Promise(r => setTimeout(r, 300))); true`);
   await sleep(600);
