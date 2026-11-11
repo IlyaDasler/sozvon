@@ -81,7 +81,7 @@
     </button>
     <button type="button" data-mobile="settings" title="Настройки">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></svg>
-      <span>Ещё</span>
+      <span>Настройки</span>
     </button>`;
   document.body.append(nav);
 
@@ -124,6 +124,20 @@
     buzz();
   };
 
+  // Понятное действие друзей: плюс в шапке, а не спрятанная вкладка.
+  const friendsHead = document.querySelector('.friends-head');
+  if (friendsHead && !document.getElementById('mobile-add-friend')) {
+    const addFriend = document.createElement('button');
+    addFriend.type = 'button';
+    addFriend.id = 'mobile-add-friend';
+    addFriend.className = 'icon-btn';
+    addFriend.title = 'Добавить друга';
+    addFriend.setAttribute('aria-label', 'Добавить друга');
+    addFriend.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+    addFriend.onclick = () => document.querySelector('#friend-tabs [data-tab="add"]')?.click();
+    friendsHead.append(addFriend);
+  }
+
   // Переключатель каналов: на телефоне рейл скрыт, поэтому хабы выбираются
   // горизонтальной полосой в начале списка.
   const sidebar = document.querySelector('.sidebar');
@@ -142,26 +156,36 @@ else if (sidebar) sidebar.prepend(hubsBar);
     if (hubsBar.dataset.signature === signature) return;
     hubsBar.dataset.signature = signature;
     const items = [];
-    const home = document.createElement('button');
-    home.type = 'button';
-    home.className = 'mobile-hub' + (state?.view === 'home' ? ' active' : '');
-    home.textContent = 'Друзья';
-    home.onclick = () => {
-      if (typeof selectContact === 'function') selectContact(null);
-      renderHubs();
-    };
-    items.push(home);
-    for (const hub of hubs) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'mobile-hub' + (state?.view === hub.id ? ' active' : '');
-      button.textContent = hub.name || 'Канал';
-      button.dataset.hub = hub.id;
-      button.onclick = () => {
-        if (typeof openHub === 'function') openHub(hub.id);
+    const inHub = state?.view && state.hubs?.has(state.view);
+    document.body.classList.toggle('mobile-hub-open', Boolean(inHub));
+    if (!inHub) {
+      document.getElementById('hub-menu-btn')?.classList.add('hidden');
+      document.getElementById('head-home')?.classList.remove('hidden');
+    }
+    if (inHub) {
+      const back = document.createElement('button');
+      back.type = 'button';
+      back.className = 'mobile-hub mobile-hub-back';
+      back.textContent = 'Все каналы';
+      back.onclick = () => {
+        if (typeof selectContact === 'function') selectContact(null);
         renderHubs();
       };
-      items.push(button);
+      items.push(back);
+    } else {
+      for (const hub of hubs) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'mobile-hub';
+        button.dataset.hub = hub.id;
+        button.innerHTML = `<span class="mobile-hub__avatar">${(hub.name || 'К').trim().charAt(0).toUpperCase()}</span><span class="mobile-hub__name"></span><span class="mobile-hub__chevron">›</span>`;
+        button.querySelector('.mobile-hub__name').textContent = hub.name || 'Канал';
+        button.onclick = () => {
+          if (typeof openHub === 'function') openHub(hub.id);
+          renderHubs();
+        };
+        items.push(button);
+      }
     }
     hubsBar.replaceChildren(...items);
   };
@@ -247,14 +271,24 @@ else if (sidebar) sidebar.prepend(hubsBar);
     railUtilityBadge = railUtility.querySelector('.mobile-badge');
   }
 
+  const setChannelsMode = (on) => {
+    document.body.classList.toggle('mobile-channels', on);
+    const friends = document.getElementById('friends');
+    if (friends) friends.style.display = on ? 'none' : '';
+  };
+
   const switchTab = (name) => {
     closeNotifications();
+    setChannelsMode(name === 'channels');
     if (name === 'home') {
       hideList();
       if (typeof selectContact === 'function') selectContact(null);
       setActive('home');
     } else if (name === 'channels') {
+      if (typeof selectContact === 'function') selectContact(null);
       showList();
+      renderHubs();
+      setActive('channels');
     } else if (name === 'notifications') {
       openNotifications();
     } else if (name === 'settings') {
@@ -265,10 +299,7 @@ else if (sidebar) sidebar.prepend(hubsBar);
   };
 
   nav.querySelector('[data-mobile="home"]').onclick = () => switchTab('home');
-  nav.querySelector('[data-mobile="channels"]').onclick = () => {
-    if (document.body.classList.contains('mobile-list')) hideList();
-    else showList();
-  };
+  nav.querySelector('[data-mobile="channels"]').onclick = () => switchTab('channels');
   nav.querySelector('[data-mobile="notifications"]').onclick = (event) => {
     event.stopPropagation();
     if (document.body.classList.contains('mobile-notifications')) {
@@ -595,7 +626,19 @@ else if (sidebar) sidebar.prepend(hubsBar);
       showList();
       return true;
     }
-    if (document.body.classList.contains('mobile-list')) { hideList(); return true; }
+    if (state?.view && state.hubs?.has(state.view)) {
+      if (typeof selectContact === 'function') selectContact(null);
+      renderHubs();
+      showList();
+      setChannelsMode(true);
+      return true;
+    }
+    if (document.body.classList.contains('mobile-list')) {
+      hideList();
+      setChannelsMode(false);
+      setActive('home');
+      return true;
+    }
     return false;
   };
 
