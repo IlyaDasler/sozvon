@@ -9,7 +9,7 @@ const m = (w, label) => js(w, `(() => {
     vw: innerWidth, vh: innerHeight,
     docW: document.documentElement.scrollWidth,
     nav: q('#mobile-nav'), main: q('.main'), content: q('.content'),
-    sidebar: q('.sidebar'), settings: q('#settings'), card: q('#settings .set-card'),
+    sidebar: q('.sidebar'), hubs: q('#mobile-hubs'), hubFirst: q('#mobile-hubs .mobile-hub'), settings: q('#settings'), card: q('#settings .set-card'),
     hubCard: q('#hub-settings .rs-card'), thread: q('#thread-panel'),
   });
 })()`);
@@ -47,6 +47,14 @@ runTest(async () => {
     if (d.content && d.content.bottom > d.nav.y + 1) throw new Error(`контент под меню на «${label}»: ${JSON.stringify(d.content)} nav=${d.nav.y}`);
     if (label === 'channels') {
       if (d.sidebar.w < d.vw - 4) throw new Error(`каналы не на всю ширину: ${d.sidebar.w} из ${d.vw}`);
+      const hit = JSON.parse(await js(w, `(() => {
+        const el = document.querySelector('#mobile-hubs .mobile-hub');
+        if (!el) return JSON.stringify({ ok: false, why: 'нет строки канала' });
+        const r = el.getBoundingClientRect();
+        const top = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
+        return JSON.stringify({ ok: Boolean(top && top.closest('.mobile-hub')), top: top ? (top.id || top.className || top.tagName) : null });
+      })()`));
+      if (!hit.ok) throw new Error('строка канала не видна/перекрыта: ' + JSON.stringify(hit));
     }
     if (label === 'room') {
       if (d.content.w < d.vw - 20) throw new Error(`чат не на всю ширину в комнате: ${d.content.w} из ${d.vw}`);
