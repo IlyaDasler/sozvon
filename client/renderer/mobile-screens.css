@@ -1,0 +1,184 @@
+/* Mobile screens: Auth, DM/Channel chat, room header.
+   Только каркас экранов на токенах mobile-tokens.css.
+   Бизнес-логика и разметка не меняются. */
+
+@media (max-width: 900px) {
+  /* ---------- Auth ---------- */
+  #auth {
+    display: block;
+    min-height: var(--m-viewport);
+    padding: max(20px, var(--m-safe-top)) var(--m-gutter)
+      max(24px, var(--m-safe-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  #auth .auth-hero {
+    display: none !important;
+  }
+
+  #auth .auth-panel {
+    display: block;
+    width: 100%;
+    padding: 0;
+  }
+
+  #auth .auth-card {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: var(--m-space-6) var(--m-space-5);
+    border-radius: var(--m-radius-lg);
+  }
+
+  #auth .auth-title {
+    font-size: clamp(24px, 6vw, 30px);
+    line-height: var(--m-line-title);
+    overflow-wrap: anywhere;
+  }
+
+  #auth .auth-sub,
+  #auth .auth-lead {
+    font-size: var(--m-font-small);
+    line-height: var(--m-line-body);
+  }
+
+  #auth .field input,
+  #auth .field select,
+  #auth .field textarea {
+    min-height: var(--m-touch);
+    font-size: max(16px, 1rem);
+    border-radius: var(--m-radius-sm);
+  }
+
+  #auth .btn {
+    min-height: var(--m-touch);
+    border-radius: var(--m-radius-sm);
+  }
+
+  /* ---------- Chat/room header ---------- */
+  .chat-head {
+    display: flex;
+    align-items: center;
+    gap: var(--m-space-2);
+    min-height: 56px;
+    padding: 0 var(--m-gutter);
+  }
+
+  .chat-head .peer-meta {
+    min-width: 0;
+  }
+
+  .chat-head .peer-name,
+  .chat-head #room-title,
+  .chat-head #room-sub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #room-view .room-hub-avatar {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+  }
+
+  /* ---------- Messages/composer ---------- */
+  #room-view,
+  #chat {
+    min-height: 0;
+  }
+
+  #room-messages,
+  #messages,
+  .messages {
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  #room-messages::-webkit-scrollbar,
+  #messages::-webkit-scrollbar,
+  .messages::-webkit-scrollbar {
+    display: none;
+  }
+
+  .composer-bar {
+    padding-bottom: max(var(--m-space-2), var(--m-safe-bottom));
+    gap: var(--m-space-2);
+  }
+
+  .composer textarea,
+  .composer input {
+    font-size: max(16px, 1rem);
+    min-height: var(--m-touch);
+  }
+
+  .composer .composer-btn {
+    min-width: var(--m-touch-min);
+    min-height: var(--m-touch-min);
+  }
+
+  /* ---------- Settings header: back и close не пересекаются ---------- */
+  .rs-head {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--m-space-2);
+    padding: max(var(--m-space-2), var(--m-safe-top)) var(--m-gutter)
+      var(--m-space-2);
+  }
+
+  .rs-head #set-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--m-font-title);
+    line-height: var(--m-line-title);
+  }
+
+  .rs-head .icon-btn,
+  .rs-head .mobile-settings-back {
+    width: var(--m-touch-min);
+    height: var(--m-touch-min);
+    min-width: var(--m-touch-min);
+    min-height: var(--m-touch-min);
+  }
+
+  /* ---------- Full-screen sheets/modals ---------- */
+  .modal {
+    padding-top: var(--m-safe-top);
+    padding-bottom: var(--m-safe-bottom);
+  }
+
+  .modal-card {
+    width: min(100%, 560px);
+    border-radius: var(--m-radius-lg);
+  }
+
+  .bottom-sheet,
+  .sheet {
+    padding-bottom: var(--m-safe-bottom);
+  }
+}
+
+/* Landscape: низкая высота, ничего не фиксируем на 100vh. */
+@media (max-width: 900px) and (max-height: 619px) {
+  #auth {
+    padding-top: max(var(--m-space-3), var(--m-safe-top));
+    padding-bottom: var(--m-space-3);
+  }
+
+  #auth .auth-card {
+    padding: var(--m-space-4) var(--m-space-5);
+  }
+
+  .modal {
+    padding-top: var(--m-safe-top);
+    padding-bottom: var(--m-space-1);
+  }
+
+  .modal-card {
+    max-height: calc(var(--m-viewport) - var(--m-safe-top) - var(--m-space-2));
+  }
+}

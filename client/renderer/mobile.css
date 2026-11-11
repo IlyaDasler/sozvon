@@ -1682,3 +1682,21 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   }
   #mobile-nav button.active svg { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent)); }
 }
+
+/* Финальная мобильная нормализация вкладок: темы задают кнопке рамку
+   через свой селектор, поэтому перебиваем на уровне ID. */
+@media (max-width: 900px) {
+  #friend-tabs > button,
+  #friend-tabs > button:hover,
+  #friend-tabs > button:focus,
+  #friend-tabs > button:focus-visible,
+  #friend-tabs > button.active {
+    border: 0 !important;
+    border-width: 0 !important;
+    box-shadow: none !important;
+    outline: none !important;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent !important;
+  }
+}
