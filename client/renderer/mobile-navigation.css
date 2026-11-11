@@ -1,0 +1,39 @@
+/* Android navigation: закрывает система, не крестик.
+   На мобильном нет кнопок ×, «Закрыть» и дублирования back.
+   Стрелка в TopAppBar — навигация, а не закрытие. */
+
+@media (max-width: 900px) {
+  /* Все крестики и close-кнопки верхних панелей. */
+  #win-close,
+  #settings-close,
+  #thread-close,
+  #hs-close,
+  #rm-close,
+  #room-create-x,
+  #event-x,
+  #hi-x,
+  #ri-x,
+  #call-add-x,
+  #camera-close,
+  #fullview-exit,
+  #stream-float-close,
+  #ev-close,
+  #pip-close,
+  .invite-close {
+    display: none !important;
+  }
+
+  /* OTA в APK не нужен: обновление будет из магазина. */
+  #update-check-btn,
+  #sidebar-update-check,
+  #auth-update-check,
+  #update-bar,
+  #update-modal,
+  #update-close,
+  #updating {
+    display: none !important;
+  }
+}
+
+/* На мобильном закрытие только системным back; desktop-крестики
+   остаются для Electron/PWA и не попадают в APK. */
