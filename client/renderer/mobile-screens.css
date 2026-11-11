@@ -2117,3 +2117,9 @@
   html.channel-drag-active,
   html.channel-drag-active body { touch-action: none !important; user-select: none; }
 }
+
+
+/* Свайп по нижнему меню: горизонталь обрабатывает только сама панель. */
+@media (max-width: 1000px) {
+  #mobile-nav { touch-action: pan-y; }
+}
