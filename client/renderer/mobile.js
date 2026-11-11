@@ -66,7 +66,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.110';
+    version.textContent = 'Версия 1.0.111';
     authCard.append(version);
   }
 
@@ -186,6 +186,24 @@ else if (sidebar) sidebar.prepend(hubsBar);
         renderHubs();
       };
       items.push(back);
+      // Рейл каналов остаётся видимым и в открытом канале: можно переключаться
+      // между каналами, не возвращаясь на общий экран.
+      for (const hub of hubs) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'mobile-hub-chip' + (hub.id === state.view ? ' active' : '');
+        chip.dataset.hub = hub.id;
+        chip.title = hub.name || 'Канал';
+        chip.setAttribute('aria-label', hub.name || 'Канал');
+        chip.innerHTML = `<span class="mobile-hub-chip__avatar">${(hub.name || 'К').trim().charAt(0).toUpperCase()}</span>`;
+        const av = chip.querySelector('.mobile-hub-chip__avatar');
+        if (av && typeof fillHubIcon === 'function') fillHubIcon(av, hub);
+        chip.onclick = () => {
+          if (typeof openHub === 'function') openHub(hub.id);
+          renderHubs();
+        };
+        items.push(chip);
+      }
     } else {
       for (const hub of hubs) {
         // Карточка канала сразу с его комнатами — экран каналов не пустует,
@@ -251,6 +269,8 @@ else if (sidebar) sidebar.prepend(hubsBar);
             chat.onclick = (event) => {
               event.stopPropagation();
               if (typeof openRoomChat === 'function') openRoomChat(room.id);
+              if (typeof hideList === 'function') hideList();
+              if (typeof setActive === 'function') setActive('channels');
             };
             const settings = document.createElement('button');
             settings.type = 'button';
