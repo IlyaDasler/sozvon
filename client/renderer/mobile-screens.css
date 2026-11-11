@@ -1788,3 +1788,18 @@
     #mobile-hubs .mobile-hub-card { max-width: 720px; }
   }
 }
+
+
+/* Профиль в настройках — по левому краю, в одной сетке со списком разделов. */
+@media (max-width: 1000px) {
+  body.mobile-settings:not(.mobile-settings-section) #settings #set-nav .mobile-settings-overview {
+    padding: 6px 0 4px !important;
+  }
+  body.mobile-settings:not(.mobile-settings-section) #settings #set-nav .mobile-profile-card {
+    margin: 0 0 4px !important;
+    width: 100% !important;
+    min-height: 88px !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+  }
+}
