@@ -406,6 +406,19 @@ function roomItem(room) {
   tools.append(tool('settings', 'Настройки комнаты', () => openRoomManage(room.id)));
   if (can(room, PERMS.invite)) tools.append(tool('invite', 'Пригласить друзей', () => openRoomInvite(room.id)));
   row.append(tools);
+  if (room.kind === 'voice') {
+    const chatOnly = document.createElement('button');
+    chatOnly.type = 'button';
+    chatOnly.className = 'room-chat-btn';
+    chatOnly.title = 'Открыть чат без голоса';
+    chatOnly.setAttribute('aria-label', 'Открыть чат без голоса');
+    chatOnly.innerHTML = ROOM_TOOLS.chat;
+    chatOnly.onclick = (event) => {
+      event.stopPropagation();
+      openRoomChat(room.id);
+    };
+    row.append(chatOnly);
+  }
   row.insertAdjacentHTML('beforeend', `<span class="room-icon">${roomIcon(room)}</span>`);
   // Приватная комната: видна только приглашённым — помечаем замком
   if (room.private) row.insertAdjacentHTML('beforeend', '<span class="room-lock" title="Приватная комната">🔒</span>');
