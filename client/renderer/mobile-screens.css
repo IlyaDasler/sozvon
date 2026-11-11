@@ -948,3 +948,188 @@
   #auth { justify-content: flex-start; }
   #auth .auth-panel { margin: 0; }
 }
+
+
+/* Настройки: без растяжения, выход и версия сразу после списка. */
+@media (max-width: 900px) {
+  #settings #set-nav { min-height: 0; }
+  #settings #set-nav button[data-tab] { min-height: 64px; }
+  #settings #set-nav .mobile-settings-footer {
+    margin-top: 24px;
+    padding-top: 0;
+    padding-bottom: max(20px, var(--m-safe-bottom));
+  }
+}
+
+/* Настройки комнаты на телефоне: полноэкранный лист, а не ПК-окно. */
+@media (max-width: 900px) {
+  #room-manage {
+    padding: 0 !important;
+  }
+  #room-manage .rs-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+    border: 0;
+  }
+  #room-manage .rs-nav {
+    display: flex;
+    width: 100%;
+    flex-direction: row;
+    gap: 4px;
+    min-height: 52px;
+    padding: max(8px, var(--m-safe-top)) 12px 8px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--line);
+    scrollbar-width: none;
+  }
+  #room-manage .rs-nav::-webkit-scrollbar { display: none; }
+  #room-manage .rs-nav .rs-room { display: none; }
+  #room-manage .rs-nav button {
+    flex: none;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 20px;
+    background: transparent;
+    color: var(--text-2);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  #room-manage .rs-nav button.active {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--text);
+  }
+  #room-manage .rs-nav .rs-danger { margin-left: 4px; color: var(--danger); }
+  #room-manage .rs-nav .rs-sep { display: none; }
+  #room-manage .rs-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  #room-manage .rs-head {
+    min-height: 56px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  #room-manage .rs-head h3 { font-size: 20px; }
+  #room-manage .rs-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 16px 24px;
+  }
+  #room-manage .rs-body .set-block,
+  #room-manage .rs-body .member-list {
+    margin-bottom: 12px;
+  }
+  #room-manage .rs-body .member-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 56px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  #room-manage .rs-body .member-actions { margin-left: auto; flex-wrap: wrap; gap: 4px; }
+  #room-manage .rs-body .member-actions .btn { min-height: 36px; font-size: 12px; }
+}
+
+
+/* Настройки канала: полноэкранный мобильный лист, одна колонка. */
+@media (max-width: 900px) {
+  #hub-settings { padding: 0 !important; align-items: stretch; }
+  #hub-settings .rs-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    overflow: hidden;
+  }
+  #hub-settings .rs-nav {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+    max-height: none;
+    padding: max(8px, var(--m-safe-top)) 12px 8px;
+    overflow: visible;
+    border-bottom: 1px solid var(--line);
+  }
+  #hub-settings .rs-nav .rs-room {
+    flex: 1 0 100%;
+    display: block;
+    padding: 0 4px 8px;
+    font-size: 17px;
+    font-weight: 600;
+  }
+  #hub-settings .rs-nav button {
+    flex: none;
+    min-height: 40px;
+    padding: 0 13px;
+    border: 0;
+    border-radius: 20px;
+    background: transparent;
+    color: var(--text-2);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  #hub-settings .rs-nav button.active {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--text);
+  }
+  #hub-settings .rs-nav .rs-danger { color: var(--danger); }
+  #hub-settings .rs-nav .rs-sep { display: none; }
+  #hub-settings .rs-main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #hub-settings .rs-head {
+    min-height: 52px;
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  #hub-settings .rs-head h3 { font-size: 20px; }
+  #hub-settings .rs-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 16px 24px;
+  }
+  #hub-settings .hs-overview { display: flex; flex-direction: column; gap: 12px; }
+  #hub-settings .hs-icon-row {
+    align-items: flex-start;
+    gap: 14px;
+    margin: 0 0 4px;
+  }
+  #hub-settings .hs-icon-actions { flex: 1; min-width: 0; }
+  #hub-settings .hs-icon-actions .btn { min-height: 40px; }
+  #hub-settings .rs-body .btn { min-height: 44px; }
+  #hub-settings .rs-body input,
+  #hub-settings .rs-body select { min-height: 44px; font-size: 16px; }
+  #hub-settings #hs-close { display: none; }
+}
+
+
+@media (max-width: 900px) {
+  #settings #set-nav button[data-tab] { min-height: 80px; }
+  #settings #set-nav .mobile-profile-card { min-height: 112px; }
+  #settings #set-nav .mobile-settings-footer {
+    margin-top: 12px;
+    padding-bottom: max(16px, var(--m-safe-bottom));
+  }
+}
+
+
+@media (max-width: 900px) {
+  #settings #set-nav button[data-tab] { min-height: 64px; }
+  #settings #set-nav .mobile-profile-card { min-height: 96px; }
+  #settings #set-nav .mobile-settings-footer { margin-top: 16px; }
+}
