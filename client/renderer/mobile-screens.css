@@ -2211,3 +2211,30 @@
   #mobile-hubs .mobile-hub-card__head { padding-right: 4px; }
   #mobile-hubs .mobile-hub-room { padding-right: 10px; padding-left: 16px; }
 }
+
+
+/* Шторка перехода между разделами нижнего меню: новый экран без остатков старого. */
+@media (max-width: 1000px) {
+  #mobile-tab-fade {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: var(--bg-deep);
+    opacity: 0;
+    pointer-events: none;
+    transition: none;
+  }
+  /* Появление — мгновенное: старый раздел не просвечивает ни кадра. */
+  #mobile-tab-fade.on {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  /* Исчезновение — плавное, уже поверх нового раздела. */
+  #mobile-tab-fade.out {
+    opacity: 0;
+    transition: opacity .15s ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #mobile-tab-fade { display: none !important; }
+  }
+}

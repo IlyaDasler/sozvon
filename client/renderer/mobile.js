@@ -92,7 +92,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.121';
+    version.textContent = 'Версия 1.0.122';
     authCard.append(version);
   }
 
@@ -675,17 +675,33 @@ else if (sidebar) sidebar.prepend(hubsBar);
   };
   window.closeMobileOverlays = closeMobileOverlays;
 
-  const switchTab = (name) => {
+  // Переход между разделами: короткая непрозрачная шторка, затем новый экран.
+  // Старый раздел не просвечивает и не остаётся поверх нового.
+  const tabFade = document.createElement('div');
+  tabFade.id = 'mobile-tab-fade';
+  tabFade.setAttribute('aria-hidden', 'true');
+  document.body.append(tabFade);
+  let tabSwitching = false;
+  let pendingTab = null;
+  let tabFadeTimer = 0;
+
+  const runTab = (name) => {
     closeMobileOverlays();
     closeNotifications();
     setChannelsMode(name === 'channels');
-    // Настройки — один из разделов нижнего меню: при переходе в другой раздел закрываем их.
     if (name !== 'settings' && typeof closeSettings === 'function' && !document.getElementById('settings').classList.contains('hidden')) {
       closeSettings();
     }
     if (name === 'home') {
+      // Сбрасываем канал/комнату, иначе на «Друзьях» остаются их классы и слои.
+      if (typeof state !== 'undefined') {
+        state.view = 'home';
+        state.selectedRoomId = null;
+        state.selectedId = null;
+      }
       hideList();
       if (typeof selectContact === 'function') selectContact(null);
+      renderHubs();
       setActive('home');
     } else if (name === 'channels') {
       if (typeof selectContact === 'function') selectContact(null);
@@ -694,11 +710,67 @@ else if (sidebar) sidebar.prepend(hubsBar);
       setActive('channels');
     } else if (name === 'notifications') {
       openNotifications();
+      setActive('notifications');
     } else if (name === 'settings') {
       hideList();
       if (typeof openSettings === 'function') openSettings();
       setActive('settings');
     }
+  };
+
+  const switchTab = (name) => {
+    const active = nav.querySelector('button.active')?.dataset.mobile;
+    if (active === name) {
+      // Повторный тап по активной вкладке закрывает окна/панели поверх неё
+      // и возвращает к корню раздела (из комнаты — к списку каналов).
+      closeMobileOverlays();
+      closeNotifications();
+      if (name === 'channels') {
+        if (typeof selectContact === 'function') selectContact(null);
+        showList();
+        renderHubs();
+        setActive('channels');
+      } else if (name === 'home') {
+        hideList();
+        if (typeof selectContact === 'function') selectContact(null);
+        renderHubs();
+        setActive('home');
+      }
+      return;
+    }
+    // Сразу подсвечиваем выбранный пункт — отклик не ждёт смены экрана.
+    setActive(name);
+    if (tabSwitching) {
+      pendingTab = name;
+      return;
+    }
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      runTab(name);
+      return;
+    }
+    tabSwitching = true;
+    tabFade.classList.remove('out');
+    tabFade.classList.add('on');
+    clearTimeout(tabFadeTimer);
+    tabFadeTimer = setTimeout(() => {
+      runTab(name);
+      // Даём браузеру отрисовать новый раздел, затем плавно убираем шторку.
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        tabFade.classList.add('out');
+        setTimeout(() => {
+          tabFade.classList.remove('on', 'out');
+          tabSwitching = false;
+          if (pendingTab && pendingTab !== name) {
+            const next = pendingTab;
+            pendingTab = null;
+            switchTab(next);
+          } else {
+            pendingTab = null;
+          }
+        }, 150);
+      }));
+    }, 40);
   };
 
   // Свайп по нижнему меню листает вкладки. Жест живёт ТОЛЬКО внутри nav:
@@ -735,12 +807,10 @@ else if (sidebar) sidebar.prepend(hubsBar);
   nav.querySelector('[data-mobile="channels"]').onclick = () => switchTab('channels');
   nav.querySelector('[data-mobile="notifications"]').onclick = (event) => {
     event.stopPropagation();
-    // Уведомления — отдельная вкладка: закрываем всё, что открыто поверх.
-    closeMobileOverlays();
     if (document.body.classList.contains('mobile-notifications')) {
       closeNotifications();
-      setActive('home');
-    } else openNotifications();
+      switchTab('home');
+    } else switchTab('notifications');
   };
   nav.querySelector('[data-mobile="settings"]').onclick = () => switchTab('settings');
   backdrop.onclick = hideList;
