@@ -3116,6 +3116,50 @@ $('call-mute').onclick = toggleMute;
 $('deafen-btn').onclick = toggleDeafen;
 $('call-deafen').onclick = toggleDeafen;
 $('settings-btn').onclick = openSettings;
+// Профиль на телефоне сохраняется сразу: без кнопок «Отмена» и «Сохранить».
+let profileSaveTimer = 0;
+async function saveProfileChanges() {
+  if (!state.me) return;
+  const body = {};
+  const displayName = $('set-display').value.trim();
+  if (displayName && displayName !== state.me.displayName) body.displayName = displayName;
+  if (pickedColor !== state.me.avatarColor) body.avatarColor = pickedColor;
+  if (pickedBanner !== (state.me.bannerColor || null)) body.bannerColor = pickedBanner;
+  if (pickedName !== (state.me.nameColor || null)) body.nameColor = pickedName;
+  const bio = $('set-bio').value.trim();
+  if (bio !== (state.me.bio || '')) body.bio = bio;
+  if (!Object.keys(body).length) return;
+  try {
+    const { token, ...me } = await Api.patch('/me', body);
+    rememberToken(token);
+    state.me = me;
+    renderMe();
+    renderMessages();
+    renderVoice();
+    $('settings-error').textContent = '';
+  } catch (err) {
+    $('settings-error').textContent = err.message;
+  }
+}
+const scheduleProfileSave = (delay = 300) => {
+  clearTimeout(profileSaveTimer);
+  profileSaveTimer = setTimeout(saveProfileChanges, delay);
+};
+const profilePane = document.querySelector('#settings .set-pane[data-pane="profile"]');
+if (profilePane) {
+  for (const field of profilePane.querySelectorAll('input, textarea')) {
+    field.addEventListener('input', () => scheduleProfileSave());
+    field.addEventListener('change', () => scheduleProfileSave(0));
+    field.addEventListener('blur', () => scheduleProfileSave(0));
+  }
+  for (const picker of profilePane.querySelectorAll('#color-picker, #banner-picker, #name-picker')) {
+    picker.addEventListener('click', () => scheduleProfileSave(0));
+    picker.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') scheduleProfileSave(0);
+    });
+  }
+  document.getElementById('banner-remove-btn')?.addEventListener('click', () => scheduleProfileSave(50));
+}
 $('settings-cancel').onclick = closeSettings;
 $('settings-close').onclick = closeSettings;
 $('logout-btn').onclick = () => logout();
