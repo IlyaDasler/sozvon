@@ -1407,3 +1407,105 @@
     stroke-linejoin: round;
   }
 }
+
+
+/* Списки по центру: не прижаты к верхнему левому краю и не растянуты на пустом экране. */
+@media (max-width: 900px) {
+  body.mobile-channels:not(.mobile-hub-open) .sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  body.mobile-channels:not(.mobile-hub-open) #mobile-hubs {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: safe center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    padding: max(12px, env(safe-area-inset-top)) 12px calc(var(--mobile-nav-h, 64px) + 16px) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+  body.mobile-channels:not(.mobile-hub-open) #mobile-hubs .mobile-hub {
+    width: 100% !important;
+    max-width: 520px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  /* Вкладки канала: контент одной колонкой по центру, без разросшихся строк. */
+  #hub-settings .rs-body > .rs-row,
+  #hub-settings .rs-body > .list-title,
+  #hub-settings .rs-body > .member-list,
+  #hub-settings .rs-body > .rs-roles,
+  #hub-settings .rs-body > .hs-emojis,
+  #hub-settings .rs-body > .hub-events,
+  #hub-settings .rs-body > form,
+  #hub-settings .rs-body > .hint-text {
+    width: 100% !important;
+    max-width: 560px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  #hub-settings .rs-body > .member-list > .member-row { padding: 10px 0 !important; }
+
+  /* Компактный свитчер: 38×22, а не большая круглая «таблетка». */
+  #hub-settings .switch,
+  #room-manage .switch {
+    width: 38px !important;
+    height: 22px !important;
+    min-width: 38px !important;
+    min-height: 22px !important;
+    border-radius: 11px !important;
+    background: color-mix(in srgb, var(--text) 16%, transparent) !important;
+    box-shadow: inset 0 0 0 1px var(--line) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  #hub-settings .switch::after,
+  #room-manage .switch::after {
+    top: 2px !important;
+    left: 2px !important;
+    width: 18px !important;
+    height: 18px !important;
+    border-radius: 50% !important;
+    background: #fff !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .35) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  #hub-settings .switch:checked,
+  #room-manage .switch:checked {
+    background: var(--accent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent) !important;
+  }
+  #hub-settings .switch:checked::after,
+  #room-manage .switch:checked::after { transform: translateX(16px) !important; }
+  #hub-settings .manager-switch > span { display: none !important; }
+}
+
+
+/* Тред: страховка на любой класс панели — никакого стекла и blur на телефоне. */
+@media (max-width: 900px) {
+  #thread-panel:not(.hidden),
+  #thread-panel:not(.hidden) .thread-head,
+  #thread-panel:not(.hidden) .thread-list,
+  #thread-panel:not(.hidden) .thread-form,
+  #thread-panel:not(.hidden) .msg,
+  #thread-panel:not(.hidden) .msg-text {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  #thread-panel:not(.hidden) {
+    background: var(--bg-deep) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  #thread-panel:not(.hidden) .thread-head,
+  #thread-panel:not(.hidden) .thread-list { background: var(--bg-deep) !important; }
+  #thread-panel:not(.hidden) .thread-form { background: var(--bg-2) !important; }
+  body:has(#thread-panel:not(.hidden)) #mobile-nav,
+  body:has(#thread-panel:not(.hidden)) #mobile-add-friend { display: none !important; }
+}
