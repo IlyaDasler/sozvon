@@ -1,0 +1,78 @@
+/* Mobile design tokens.
+   Единственный источник мобильных размеров, safe-area, движения и слоёв.
+   Не содержит компонентных стилей — только переменные. */
+
+:root {
+  /* Spacing: 4/8 pt */
+  --m-space-0: 0;
+  --m-space-1: 4px;
+  --m-space-2: 8px;
+  --m-space-3: 12px;
+  --m-space-4: 16px;
+  --m-space-5: 20px;
+  --m-space-6: 24px;
+  --m-space-8: 32px;
+  --m-gutter: clamp(12px, 4vw, 20px);
+
+  /* Type */
+  --m-font-body: 16px;
+  --m-font-small: 13px;
+  --m-font-caption: 11px;
+  --m-font-title: clamp(18px, 2.5vw + 12px, 24px);
+  --m-line-body: 1.45;
+  --m-line-title: 1.2;
+
+  /* Touch */
+  --m-touch: 48px;
+  --m-touch-min: 44px;
+
+  /* Radii */
+  --m-radius-sm: 10px;
+  --m-radius-md: 14px;
+  --m-radius-lg: 20px;
+  --m-radius-pill: 999px;
+
+  /* Safe area: Android WebView может не отдать env — держим нижний порог */
+  --m-safe-top: max(32px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  --m-safe-bottom: max(24px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  --m-safe-left: env(safe-area-inset-left, 0px);
+  --m-safe-right: env(safe-area-inset-right, 0px);
+
+  /* Viewport */
+  --m-viewport: 100vh;
+  --m-tabbar-h: 56px;
+
+  /* Motion: только transform/opacity; без десктопных длинных transition */
+  --m-dur-instant: 80ms;
+  --m-dur-fast: 140ms;
+  --m-dur-base: 220ms;
+  --m-dur-slow: 280ms;
+  --m-ease: cubic-bezier(0.2, 0, 0, 1);
+  --m-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Z-index scale */
+  --m-z-content: 1;
+  --m-z-sticky: 10;
+  --m-z-nav: 40;
+  --m-z-backdrop: 60;
+  --m-z-sheet: 70;
+  --m-z-modal: 80;
+  --m-z-toast: 90;
+}
+
+@supports (height: 100dvh) {
+  :root { --m-viewport: 100dvh; }
+}
+
+@supports (height: 100svh) {
+  :root { --m-viewport: 100svh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --m-dur-instant: 0ms;
+    --m-dur-fast: 0ms;
+    --m-dur-base: 0ms;
+    --m-dur-slow: 0ms;
+  }
+}

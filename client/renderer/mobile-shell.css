@@ -1,0 +1,122 @@
+/* Mobile shell: одна точка входа для safe-area, нижней навигации,
+   тач-размеров, клавиатуры и слоёв. Компонентные стили остаются в mobile.css;
+   здесь только каркас, который не должен зависеть от темы. */
+
+@media (max-width: 900px) {
+  :root {
+    --mobile-safe-top: var(--m-safe-top);
+    --mobile-safe-bottom: var(--m-safe-bottom);
+    --mobile-safe-left: var(--m-safe-left);
+    --mobile-safe-right: var(--m-safe-right);
+    --mobile-nav-h: var(--m-tabbar-h);
+  }
+
+  html {
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: var(--m-viewport);
+    font-size: var(--m-font-body);
+    overscroll-behavior-y: none;
+  }
+
+  /* Нижний бар: единая высота и safe-area, без просвечивания контентом. */
+  #mobile-nav {
+    min-height: calc(var(--m-tabbar-h) + var(--m-safe-bottom)) !important;
+    padding: var(--m-space-1) var(--m-space-2) var(--m-safe-bottom) !important;
+    background: var(--bg-deep) !important;
+    border-top: 1px solid var(--line) !important;
+    box-shadow: none !important;
+  }
+
+  #mobile-nav button {
+    min-height: var(--m-touch);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #mobile-nav button.active {
+    background: transparent !important;
+  }
+
+  /* Вкладки друзей: последняя не должна упираться в край экрана. */
+  #friend-tabs {
+    padding-right: var(--m-space-4);
+    scroll-padding-inline: var(--m-space-2);
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  #friend-tabs::after {
+    content: '';
+    flex: 0 0 var(--m-space-4);
+    height: 1px;
+  }
+
+  /* Все интерактивные элементы — палец, не курсор. */
+  button,
+  a,
+  [role='button'],
+  input[type='button'],
+  input[type='submit'] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Поля не должны вызывать зум Android/iOS. */
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1rem);
+  }
+
+  /* Шторки и модалки ограничены viewport с учётом safe-area. */
+  .modal-card,
+  .set-card,
+  .sheet-card {
+    max-height: calc(var(--m-viewport) - var(--m-safe-top) - var(--m-space-3)) !important;
+  }
+
+  /* Клавиатура не должна оставлять фиксированный футер поверх полей. */
+  @supports (height: 100dvh) {
+    body.keyboard-open #mobile-nav {
+      transform: translateY(100%);
+      opacity: 0;
+      pointer-events: none;
+      transition:
+        transform var(--m-dur-fast) var(--m-ease),
+        opacity var(--m-dur-fast) var(--m-ease);
+    }
+  }
+
+  /* Только видимый keyboard-focus; после тапа outline не остаётся. */
+  :focus:not(:focus-visible) {
+    outline: none !important;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* На телефоне никаких hover-переходов, которые залипают после тапа. */
+  @media (hover: none), (pointer: coarse) {
+    a:hover,
+    button:hover,
+    [role='button']:hover {
+      transition: none !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
