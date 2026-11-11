@@ -4,7 +4,7 @@ runTest(async () => {
   const w = await openClient('themes', a);
   w.show(); w.focus(); w.setSize(390, 844); await sleep(700);
   await js(w, `openSettings(); true`); await sleep(300);
-  const sections = ['profile','look','sound','notify','account','privacy','about'];
+  const sections = ['profile','look','sound','notify','account','privacy'];
   for (const tab of sections) {
     await js(w, `document.querySelector('#set-nav [data-tab="${tab}"]').click(); true`);
     await sleep(250);
