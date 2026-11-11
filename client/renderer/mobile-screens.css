@@ -1862,7 +1862,8 @@
 
 /* Профиль сохраняется на лету — десктопные «Отмена/Сохранить» здесь лишние. */
 @media (max-width: 1000px) {
-  body.mobile-settings.mobile-settings-section #settings .set-foot { display: none !important; }
+  body.mobile-settings-section #settings .set-foot,
+  #settings .set-foot { display: none !important; }
   #settings[data-mobile-tab="profile"] .set-body { padding-bottom: max(20px, var(--m-safe-bottom)) !important; }
 }
 
