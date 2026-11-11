@@ -1509,3 +1509,24 @@
   body:has(#thread-panel:not(.hidden)) #mobile-nav,
   body:has(#thread-panel:not(.hidden)) #mobile-add-friend { display: none !important; }
 }
+
+
+/* Нижнее меню как в Telegram: остаётся на экране во всех разделах, включая настройки. */
+@media (max-width: 900px) {
+  #mobile-nav { z-index: 60 !important; }
+}
+/* На телефоне меню остаётся и в настройках; на раскрытом фолде — прежняя двухколоночная схема. */
+@media (max-width: 599px) {
+  body.mobile-settings #mobile-nav {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+  body.mobile-settings #mobile-backdrop { display: none !important; }
+  body.mobile-settings #settings {
+    padding-bottom: calc(var(--mobile-nav-h, 64px) + var(--mobile-safe-bottom)) !important;
+  }
+  body.mobile-settings #settings .set-card {
+    height: calc(100dvh - var(--mobile-nav-h, 64px) - var(--mobile-safe-bottom)) !important;
+    max-height: calc(100dvh - var(--mobile-nav-h, 64px) - var(--mobile-safe-bottom)) !important;
+  }
+}
