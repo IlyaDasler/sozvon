@@ -285,6 +285,25 @@ func (s *Store) SetPublicKey(userID int64, key string) error {
 	return err
 }
 
+// SetKeyBackup хранит зашифрованную на сервере резервную копию ключа шифрования.
+func (s *Store) SetKeyBackup(userID int64, blob string) error {
+	_, err := s.db.Exec(`UPDATE users SET key_backup = ? WHERE id = ?`, nullIfEmpty(blob), userID)
+	return err
+}
+
+// KeyBackup возвращает резервную копию ключа (пустая строка — копии нет).
+func (s *Store) KeyBackup(userID int64) (string, error) {
+	var blob sql.NullString
+	err := s.db.QueryRow(`SELECT key_backup FROM users WHERE id = ?`, userID).Scan(&blob)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	return blob.String, nil
+}
+
 // SetGame — запущенная игра из детекта процессов клиента; nil очищает.
 func (s *Store) SetGame(userID int64, game *string) error {
 	if game == nil {
