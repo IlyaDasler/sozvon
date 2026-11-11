@@ -55,4 +55,22 @@ runTest(async () => {
   tab = await active(w);
   console.log('api', ok, tab);
   if (tab !== 'all') throw new Error('friendsSwipe не переключил вкладку');
+
+  // Доходим свайпами до крайнего «Добавить»: роллер должен докрутиться.
+  for (let i = 0; i < 5; i += 1) {
+    await js(w, `window.friendsSwipe(1); true`);
+    await sleep(120);
+  }
+  await sleep(600);
+  tab = await active(w);
+  const edge = JSON.parse(await js(w, `(() => {
+    const root = document.getElementById('friend-tabs');
+    const a = root.querySelector('button.active');
+    const rr = root.getBoundingClientRect();
+    const ar = a.getBoundingClientRect();
+    return JSON.stringify({ tab: a.dataset.tab, scrollLeft: Math.round(root.scrollLeft), visible: ar.left >= rr.left - 1 && ar.right <= rr.right + 1 });
+  })()`));
+  console.log('edge', JSON.stringify(edge));
+  if (edge.tab !== 'add') throw new Error('не дошли до добавления: ' + edge.tab);
+  if (!edge.visible || edge.scrollLeft <= 0) throw new Error('роллер не докрутил крайнюю вкладку: ' + JSON.stringify(edge));
 });
