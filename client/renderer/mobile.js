@@ -92,7 +92,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.126';
+    version.textContent = 'Версия 1.0.127';
     authCard.append(version);
   }
 
@@ -675,15 +675,10 @@ else if (sidebar) sidebar.prepend(hubsBar);
   };
   window.closeMobileOverlays = closeMobileOverlays;
 
-  // Переход между разделами: короткая непрозрачная шторка, затем новый экран.
-  // Старый раздел не просвечивает и не остаётся поверх нового.
-  const tabFade = document.createElement('div');
-  tabFade.id = 'mobile-tab-fade';
-  tabFade.setAttribute('aria-hidden', 'true');
-  document.body.append(tabFade);
+  // Переключение разделов: старый экран снимается в том же кадре,
+  // новый въезжает короткой анимацией. Очередь не даёт быстрым тапам потеряться.
   let tabSwitching = false;
   let pendingTab = null;
-  let tabFadeTimer = 0;
 
   const runTab = (name) => {
     closeMobileOverlays();
@@ -718,30 +713,10 @@ else if (sidebar) sidebar.prepend(hubsBar);
     }
   };
 
-  const tabReady = (name) => {
-    const panel = document.getElementById('notif-panel');
-    if (name === 'home') {
-      const settings = document.getElementById('settings');
-      const settingsOpen = Boolean(settings && !settings.classList.contains('hidden'));
-      return !settingsOpen && !document.body.classList.contains('mobile-notifications') && !document.body.classList.contains('mobile-list');
-    }
-    if (name === 'channels') return document.body.classList.contains('mobile-list');
-    if (name === 'notifications') return document.body.classList.contains('mobile-notifications') && Boolean(panel && !panel.classList.contains('hidden'));
-    if (name === 'settings') return Boolean(document.getElementById('settings') && !document.getElementById('settings').classList.contains('hidden'));
-    return true;
-  };
-  const whenTabReady = (name, done) => {
-    const deadline = performance.now() + 320;
-    const tick = () => {
-      if (tabReady(name) || performance.now() > deadline) done();
-      else requestAnimationFrame(tick);
-    };
-    tick();
-  };
-
-  const switchTab = (name) => {
+  const switchTab = (name, force = false) => {
     const active = nav.querySelector('button.active')?.dataset.mobile;
-    if (active === name) {
+    const previous = active;
+    if (active === name && !force) {
       // Повторный тап по активной вкладке закрывает окна/панели поверх неё
       // и возвращает к корню раздела (из комнаты — к списку каналов).
       closeMobileOverlays();
@@ -759,44 +734,36 @@ else if (sidebar) sidebar.prepend(hubsBar);
       }
       return;
     }
-    // Сразу подсвечиваем выбранный пункт — отклик не ждёт смены экрана.
+    // Сразу подсвечиваем выбранный пункт — капсула начинает движение в тот же кадр.
     setActive(name);
     if (tabSwitching) {
       pendingTab = name;
       return;
     }
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) {
-      runTab(name);
-      return;
-    }
     tabSwitching = true;
     document.body.classList.add('mobile-tab-switching');
-    tabFade.classList.remove('out');
-    tabFade.classList.add('on');
-    clearTimeout(tabFadeTimer);
-    tabFadeTimer = setTimeout(() => {
-      runTab(name);
-      // Ждём, пока новый раздел реально готов, и только затем открываем его.
-      whenTabReady(name, () => {
-        document.body.classList.add('mobile-tab-entering');
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          tabFade.classList.add('out');
-          setTimeout(() => {
-            tabFade.classList.remove('on', 'out');
-            document.body.classList.remove('mobile-tab-switching', 'mobile-tab-entering');
-            tabSwitching = false;
-            if (pendingTab && pendingTab !== name) {
-              const next = pendingTab;
-              pendingTab = null;
-              switchTab(next);
-            } else {
-              pendingTab = null;
-            }
-          }, 160);
-        }));
-      });
-    }, 30);
+    // Меняем раздел в том же кадре: старый экран не успевает остаться на экране.
+    runTab(name);
+    if (!reduced) {
+      const order = ['home', 'channels', 'notifications', 'settings'];
+      const fromRight = order.indexOf(name) >= order.indexOf(previous || 'home');
+      document.body.classList.remove('mobile-tab-from-left', 'mobile-tab-from-right');
+      void document.body.offsetWidth;
+      document.body.classList.add('mobile-tab-entering', fromRight ? 'mobile-tab-from-right' : 'mobile-tab-from-left');
+      setTimeout(() => document.body.classList.remove('mobile-tab-entering', 'mobile-tab-from-left', 'mobile-tab-from-right'), 260);
+    }
+    setTimeout(() => {
+      document.body.classList.remove('mobile-tab-switching');
+      tabSwitching = false;
+      if (pendingTab && pendingTab !== name) {
+        const next = pendingTab;
+        pendingTab = null;
+        switchTab(next, true);
+      } else {
+        pendingTab = null;
+      }
+    }, reduced ? 0 : 190);
   };
 
   // Свайп по нижнему меню листает вкладки. Жест живёт ТОЛЬКО внутри nav:

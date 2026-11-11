@@ -27,16 +27,16 @@ runTest(async () => {
   await js(w, `document.querySelector('#mobile-nav [data-mobile="channels"]').click(); true`);
   await sleep(30);
   let d = JSON.parse(await state());
-  console.log('fade-in', JSON.stringify(d));
+  const anim = await js(w, `(() => { const e = document.getElementById('mobile-hubs'); const c = getComputedStyle(e); return JSON.stringify({ name: c.animationName, dur: c.animationDuration, transform: c.transform, cls: document.body.className }); })()`);
+  console.log('switch-early', JSON.stringify(d), anim);
   if (d.active !== 'channels') throw new Error('активная вкладка не переключилась сразу');
-  if (d.fade < 0.95) throw new Error('шторка не закрыла старый экран: ' + d.fade);
-  const top = await js(w, `(() => { const e = document.elementFromPoint(Math.round(innerWidth / 2), Math.round(innerHeight / 2)); return e ? (e.id || e.className || e.tagName) : ''; })()`);
-  console.log('transition-top', top);
-  if (!/mobile-tab-fade/.test(top)) throw new Error('старый экран виден над шторкой: ' + top);
-  await sleep(500);
+  if (await js(w, `getComputedStyle(document.getElementById('empty-state')).display !== 'none'`)) {
+    throw new Error('экран друзей остался видимым при переходе в каналы');
+  }
+  if (!d.list) throw new Error('каналы не открылись сразу');
+  await sleep(350);
   d = JSON.parse(await state());
   console.log('channels-final', JSON.stringify(d));
-  if (d.fading || d.fade > 0.05) throw new Error('шторка не ушла');
   if (!d.list || !d.hubs) throw new Error('каналы не открылись');
 
   // Каналы → Уведомления.
@@ -45,7 +45,7 @@ runTest(async () => {
   d = JSON.parse(await state());
   console.log('notifications', JSON.stringify(d));
   if (d.active !== 'notifications' || !d.notifications) throw new Error('уведомления не открылись');
-  if (d.fading) throw new Error('шторка осталась после уведомлений');
+  if (d.body.includes('mobile-channels')) throw new Error('каналы остались под уведомлениями: ' + d.body);
 
   // Уведомления → Настройки.
   await js(w, `document.querySelector('#mobile-nav [data-mobile="settings"]').click(); true`);
@@ -69,5 +69,5 @@ runTest(async () => {
   d = JSON.parse(await state());
   console.log('rapid', JSON.stringify(d));
   if (d.active !== 'settings' || !d.settings) throw new Error('быстрый переход не дошёл до настроек');
-  if (d.list || d.fading) throw new Error('после быстрого перехода остался старый слой/шторка');
+  if (d.list) throw new Error('после быстрого перехода остался старый слой');
 });
