@@ -2036,3 +2036,20 @@
     bottom: 0 !important;
   }
 }
+
+
+/* В мобильной шапке чата звонок — только иконка, чтобы имя помещалось. */
+@media (max-width: 1000px) {
+  #chat .chat-head #call-btn {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+    border-radius: 12px !important;
+    display: grid !important;
+    place-items: center;
+  }
+  #call-btn .call-label { display: none !important; }
+  #call-btn svg { width: 19px !important; height: 19px !important; }
+}
