@@ -66,6 +66,48 @@ document.getElementById('privacy-subnav')?.addEventListener('click', (event) => 
   showPrivacyPage(button.dataset.privacy);
 });
 
+// Свайп по разделу приватности листает вкладки влево/вправо.
+const privacyOrder = ['data', 'profile', 'contact', 'crypto'];
+const privacyPaneEl = document.querySelector('#settings .set-pane[data-pane="privacy"]');
+if (privacyPaneEl) {
+  let start = null;
+  const animate = (dir) => {
+    privacyPaneEl.classList.remove('privacy-swipe-left', 'privacy-swipe-right');
+    void privacyPaneEl.offsetWidth;
+    privacyPaneEl.classList.add(dir > 0 ? 'privacy-swipe-left' : 'privacy-swipe-right');
+    clearTimeout(animate.timer);
+    animate.timer = setTimeout(() => privacyPaneEl.classList.remove('privacy-swipe-left', 'privacy-swipe-right'), 240);
+  };
+  const swipe = (dir) => {
+    const index = Math.max(0, privacyOrder.indexOf(window.privacyPage));
+    const target = privacyOrder[index + (dir > 0 ? 1 : -1)];
+    if (!target) return false;
+    showPrivacyPage(target);
+    animate(dir);
+    return true;
+  };
+  privacyPaneEl.addEventListener('touchstart', (event) => {
+    if (event.touches.length !== 1) return;
+    if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+    const t = event.touches[0];
+    start = { x: t.clientX, y: t.clientY };
+    event.stopPropagation();
+  }, { passive: true });
+  privacyPaneEl.addEventListener('touchend', (event) => {
+    if (!start) return;
+    const t = event.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    start = null;
+    event.stopPropagation();
+    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+    const suppress = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+    document.addEventListener('click', suppress, true);
+    setTimeout(() => document.removeEventListener('click', suppress, true), 350);
+    swipe(dx < 0 ? 1 : -1);
+  }, { passive: true });
+}
+
 window.renderPrivacySettings = renderPrivacySettings;
 window.showPrivacyPage = showPrivacyPage;
 window.privacyPage = 'data';
