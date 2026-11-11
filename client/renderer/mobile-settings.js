@@ -131,6 +131,15 @@
 
   const baseOpen = openSettings;
   openSettings = function (tab) {
+    if (mq.matches) {
+      // Сначала показываем непрозрачный экран, только потом грузим данные.
+      // Иначе между тапом и открытием модалки виден старый раздел.
+      const box = document.getElementById('settings');
+      if (box) box.classList.remove('hidden');
+      document.body.classList.add('mobile-settings');
+      if (typeof tab === 'string') section(tab);
+      else home();
+    }
     const pending = baseOpen(tab);
     if (!mq.matches) return pending;
     // Не ждём baseOpen: он может зависнуть на enumerateDevices, но окно уже открыто.

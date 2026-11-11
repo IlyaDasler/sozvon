@@ -2327,9 +2327,9 @@
 @media (max-width: 1000px) {
   body.mobile-channels #empty-state,
   body.mobile-notifications #empty-state,
-  body.mobile-settings #empty-state,
-  body.mobile-settings .sidebar,
-  body.mobile-settings .chat { display: none !important; }
+  body.mobile-channels #empty-state { display: none !important; }
+  body.mobile-settings #main,
+  body.mobile-notifications #main { visibility: hidden !important; pointer-events: none !important; }
 }
 
 
@@ -2342,28 +2342,34 @@
 /* Вход нового раздела нижнего меню: та же мягкая пружина, что у роллера друзей. */
 @media (max-width: 1000px) {
   body.mobile-tab-entering #empty-state,
-  body.mobile-tab-entering #mobile-hubs,
-  body.mobile-tab-entering #notif-panel,
-  body.mobile-tab-entering #settings .set-card {
+  body.mobile-tab-entering #mobile-hubs {
     animation-duration: .24s;
     animation-timing-function: cubic-bezier(.22, 1, .36, 1);
     animation-fill-mode: both;
   }
   body.mobile-tab-entering.mobile-tab-from-right #empty-state,
-  body.mobile-tab-entering.mobile-tab-from-right #mobile-hubs,
-  body.mobile-tab-entering.mobile-tab-from-right #notif-panel,
-  body.mobile-tab-entering.mobile-tab-from-right #settings .set-card {
+  body.mobile-tab-entering.mobile-tab-from-right #mobile-hubs {
     animation-name: mobile-tab-in-right;
   }
   body.mobile-tab-entering.mobile-tab-from-left #empty-state,
-  body.mobile-tab-entering.mobile-tab-from-left #mobile-hubs,
-  body.mobile-tab-entering.mobile-tab-from-left #notif-panel,
-  body.mobile-tab-entering.mobile-tab-from-left #settings .set-card {
+  body.mobile-tab-entering.mobile-tab-from-left #mobile-hubs {
     animation-name: mobile-tab-in-left;
   }
-  body.mobile-tab-entering.mobile-tab-from-right #settings .set-card,
-  body.mobile-tab-entering.mobile-tab-from-left #settings .set-card {
-    animation-name: mobile-tab-in-up;
+  /* У настроек и уведомлений — только сдвиг, без opacity: старый экран
+     не должен просвечивать сквозь новый ни в одном кадре. */
+  body.mobile-tab-entering #notif-panel {
+    animation: mobile-tab-slide-in .24s cubic-bezier(.22, 1, .36, 1) both;
+  }
+  body.mobile-tab-entering #settings.modal:not(.hidden) {
+    animation: mobile-tab-rise-in .24s cubic-bezier(.22, 1, .36, 1) both;
+  }
+  @keyframes mobile-tab-slide-in {
+    from { transform: translateX(22px); }
+    to { transform: none; }
+  }
+  @keyframes mobile-tab-rise-in {
+    from { transform: translateY(14px); }
+    to { transform: none; }
   }
   @keyframes mobile-tab-in-right {
     from { opacity: .35; transform: translateX(22px); }
@@ -2376,5 +2382,47 @@
   @keyframes mobile-tab-in-up {
     from { opacity: .45; transform: translateY(14px); }
     to { opacity: 1; transform: none; }
+  }
+}
+
+
+/* Телефон: настройки и уведомления — такие же экраны, как «Друзья»/«Каналы»,
+   а не прозрачные desktop-модалки. Непрозрачны с первого кадра, без scrim-in. */
+@media (max-width: 599px), (max-width: 1000px) and (max-height: 619px) {
+  #settings.modal:not(.hidden) {
+    position: fixed !important;
+    inset: 0 !important;
+    display: block !important;
+    padding: 0 !important;
+    background: var(--bg-deep) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    animation: none !important;
+    z-index: 30 !important;
+  }
+  #settings.modal:not(.hidden) .set-card {
+    width: 100% !important;
+    height: calc(100dvh - var(--mobile-nav-h, 64px) - var(--mobile-safe-bottom)) !important;
+    max-height: calc(100dvh - var(--mobile-nav-h, 64px) - var(--mobile-safe-bottom)) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: var(--bg-deep) !important;
+    animation: none !important;
+  }
+  #notif-panel:not(.hidden) {
+    position: fixed !important;
+    inset: 0 !important;
+    width: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: var(--bg-deep) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    animation: none !important;
+    z-index: 20 !important;
   }
 }
