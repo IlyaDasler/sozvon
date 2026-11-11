@@ -1907,3 +1907,15 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     padding-bottom: max(20px, var(--m-safe-bottom));
   }
 }
+
+
+@media (max-width: 900px) {
+  #room-list .room-row .room-settings-btn {
+    width: 40px; height: 40px; min-width: 40px; min-height: 40px;
+    display: grid; place-items: center;
+    border: 0; border-radius: 10px;
+    background: color-mix(in srgb, var(--text) 8%, transparent);
+    color: var(--text-2);
+  }
+  #room-list .room-row .room-settings-btn svg { width: 20px; height: 20px; }
+}

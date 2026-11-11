@@ -418,6 +418,17 @@ function roomItem(room) {
       openRoomChat(room.id);
     };
     row.append(chatOnly);
+    const settingsOnly = document.createElement('button');
+    settingsOnly.type = 'button';
+    settingsOnly.className = 'room-settings-btn';
+    settingsOnly.title = 'Настройки комнаты';
+    settingsOnly.setAttribute('aria-label', 'Настройки комнаты');
+    settingsOnly.innerHTML = ROOM_TOOLS.settings;
+    settingsOnly.onclick = (event) => {
+      event.stopPropagation();
+      openRoomManage(room.id);
+    };
+    row.append(settingsOnly);
   }
   row.insertAdjacentHTML('beforeend', `<span class="room-icon">${roomIcon(room)}</span>`);
   // Приватная комната: видна только приглашённым — помечаем замком
