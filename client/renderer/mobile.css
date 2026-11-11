@@ -1795,3 +1795,25 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body.mobile-channels #home-nav,
   body.mobile-channels:not(.mobile-hub-open) #room-list { display: none; }
 }
+
+
+/* Настройки: без стрелок, поиска и лишнего «О приложении». */
+@media (max-width: 900px) {
+  #settings #set-nav button[data-tab]::after { content: none !important; background: none !important; }
+  #settings #set-nav button[data-tab="about"] { display: none !important; }
+  #mobile-settings-connection { display: none !important; }
+  #settings #set-nav .mobile-settings-footer { justify-content: center !important; text-align: center; }
+}
+
+
+@media (max-width: 900px) {
+  /* Без стрелок и лишнего меню «О приложении». */
+  #settings #set-nav button[data-tab]::after { display: none !important; }
+  #settings #set-nav button[data-tab="about"] { display: none !important; }
+  #settings #set-nav button[data-tab] { min-height: 64px; }
+  #settings #set-nav .mobile-settings-group { margin-top: 28px; }
+  #settings #set-nav .mobile-settings-footer { justify-content: center; }
+  #mobile-settings-connection { display: none !important; }
+  #settings #set-nav .mobile-profile-card svg { display: none; }
+  #settings .rs-head { padding-top: max(16px, var(--m-safe-top)); min-height: 72px; }
+}

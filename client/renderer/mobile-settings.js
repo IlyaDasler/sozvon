@@ -32,7 +32,10 @@
     if (themeName) themeName.textContent = theme?.name || 'Тема';
 
     const version = document.getElementById('mobile-settings-version');
-    if (version) version.textContent = `Созвон ${document.getElementById('app-version')?.textContent || ''}`.trim();
+    if (version) {
+      const number = window.desktop?.version || document.getElementById('app-version')?.textContent || '';
+      if (number) version.textContent = `Версия ${number}`;
+    }
 
     const status = document.getElementById('mobile-settings-connection');
     if (status) {
