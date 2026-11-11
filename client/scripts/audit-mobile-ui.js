@@ -50,9 +50,9 @@ runTest(async () => {
   await js(w, `document.querySelectorAll('#friend-tabs button')[2]?.click(); true`);
   await sleep(300);
   const indicator = await js(w, `(() => { const i=document.querySelector('#friend-tabs .glass-tab-indicator'); return i ? getComputedStyle(i).display : 'none'; })()`);
-  if (indicator !== 'none') throw new Error('glass-tab-indicator виден на телефоне: '+indicator);
+  if (indicator !== 'block') throw new Error('капсула вкладок друзей не показана: '+indicator);
   const indicatorCount = await js(w, `document.querySelectorAll('#friend-tabs .glass-tab-indicator').length`);
-  if (indicatorCount !== 0) throw new Error('glass-tab-indicator не удалён: '+indicatorCount);
+  if (indicatorCount !== 1) throw new Error('капсула вкладок должна быть одна: '+indicatorCount);
   await screenshot(w, 'audit-01b-friend-tabs');
   await js(w, `document.querySelectorAll('#friend-tabs button')[0]?.click(); true`);
 
