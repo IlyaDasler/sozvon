@@ -12,3 +12,19 @@
 | Fold | разложен | устройство | одна оболочка | не проверено (inner display OFF) | blocked | — |
 | Fold | Flex Mode | — | сохраняется | adb не воспроизводит | blocked | — |
 | Поворот | смена display | устройство | без второго #m-app | не проверено | not checked | — |
+
+## Новый слой: геометрия (Electron, не устройство)
+
+| Ширина | #m-app | Старый слой | Горизонтальный overflow | Меню | Статус | Скриншот |
+|---|---|---|---|---|---|---|
+| 320×640 | 1 | скрыт | нет | внутри экрана | pass Electron | screenshots/phase2/320x640.png |
+| 360×740 | 1 | скрыт | нет | внутри экрана | pass Electron | — |
+| 411×960 | 1 | скрыт | нет | внутри экрана | pass Electron | screenshots/phase2/411x960.png |
+| 480×900 | 1 | скрыт | нет | внутри экрана | pass Electron | — |
+| 600×900 | 1 | скрыт | нет | внутри экрана | pass Electron | — |
+| 840×900 | 1 | скрыт | нет | внутри экрана | pass Electron | — |
+| 900×400 альбом | 1 | скрыт | нет | внутри экрана | pass Electron | screenshots/phase2/landscape-900x400.png |
+| зум 200% | 1 | скрыт | нет | внутри экрана | pass Electron | screenshots/phase2/zoom-200.png |
+| экран входа | 1 | скрыт | нет | — | pass Electron | screenshots/phase2/auth-411.png |
+
+Проверка: `e2e-m-layer-matrix`, `e2e-m-layer-stress`.

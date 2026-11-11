@@ -470,3 +470,8 @@ body {
     display: none;
   }
 }
+
+/* Скрытый шаг 2FA не должен оставлять подпись без поля. */
+.m-field[hidden] {
+  display: none;
+}
