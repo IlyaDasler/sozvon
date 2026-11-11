@@ -1931,3 +1931,14 @@
     padding-bottom: calc(var(--mobile-nav-h, 64px) + var(--mobile-safe-bottom)) !important;
   }
 }
+
+
+/* Слабый тир: нижняя капсула без blur, только плотный фон. */
+@media (max-width: 1000px) {
+  html[data-performance='low'] #mobile-nav,
+  html[data-performance='balanced'] #mobile-nav {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background: var(--bg-deep) !important;
+  }
+}
