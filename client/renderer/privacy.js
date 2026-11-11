@@ -25,6 +25,10 @@ function showPrivacyPage(page = 'data') {
   window.privacyPage = current;
   for (const button of document.querySelectorAll('#privacy-subnav [data-privacy]')) {
     button.classList.toggle('active', button.dataset.privacy === current);
+    if (button.dataset.privacy === current && button.parentElement?.closest('.set-pane')) {
+      // На телефоне вкладки горизонтальные и могут не поместиться — докручиваем активную.
+      button.scrollIntoView?.({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
   }
   for (const section of document.querySelectorAll('#settings [data-privacy-page]')) {
     section.classList.toggle('hidden', section.dataset.privacyPage !== current);
