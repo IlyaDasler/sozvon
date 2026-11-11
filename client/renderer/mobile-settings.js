@@ -8,9 +8,16 @@
 
   if (!back || !subnav || !privacyPane) return;
 
+  const resetScroll = () => {
+    for (const el of document.querySelectorAll('#settings .set-body, #settings .rs-main, #settings .modal-card')) {
+      el.scrollTop = 0;
+    }
+  };
+
   const home = () => {
     document.body.classList.add('mobile-settings');
     document.body.classList.remove('mobile-settings-section');
+    resetScroll();
     document.getElementById('set-title').textContent = 'Настройки';
     back.classList.add('hidden');
     if (subnav.parentElement !== document.getElementById('set-nav')) {
@@ -21,6 +28,7 @@
 
   const section = (tab) => {
     document.body.classList.add('mobile-settings', 'mobile-settings-section');
+    resetScroll();
     document.getElementById('set-title').textContent =
       document.getElementById('set-nav').querySelector(`[data-tab="${tab}"]`)?.textContent?.trim() || 'Настройки';
     back.classList.remove('hidden');

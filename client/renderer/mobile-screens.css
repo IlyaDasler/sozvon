@@ -182,3 +182,65 @@
     max-height: calc(var(--m-viewport) - var(--m-safe-top) - var(--m-space-2));
   }
 }
+
+/* ---------- Channels / room list ---------- */
+@media (max-width: 900px) {
+  .sidebar {
+    padding-bottom: var(--m-safe-bottom);
+    overscroll-behavior: contain;
+  }
+
+  .room-list,
+  #room-list {
+    overscroll-behavior: contain;
+  }
+
+  .room-row {
+    min-height: 52px;
+    padding-top: var(--m-space-2);
+    padding-bottom: var(--m-space-2);
+    touch-action: manipulation;
+  }
+
+  /* Действия комнаты — только long press/лист, не hover-иконки. */
+  .room-row .room-tools,
+  .room-row:hover .room-tools {
+    display: none !important;
+  }
+
+  /* ---------- Modal content must scroll, not be clipped ---------- */
+  .modal-card {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #settings .set-card,
+  #hub-settings .rs-card,
+  #room-manage .rs-card {
+    overflow: hidden;
+  }
+
+  .modal .icon-btn,
+  .modal .close,
+  [data-close] {
+    min-width: var(--m-touch-min);
+    min-height: var(--m-touch-min);
+  }
+
+  .sheet-card,
+  .bottom-sheet > * {
+    padding-bottom: max(var(--m-space-3), var(--m-safe-bottom));
+  }
+}
+
+/* Шапка настроек остаётся на месте при скролле раздела и корня. */
+@media (max-width: 900px) {
+  #settings .rs-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bg-deep);
+    border-bottom: 1px solid var(--line);
+  }
+}
