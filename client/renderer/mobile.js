@@ -42,7 +42,7 @@
   // glass-tabs.js продолжает пересоздавать плавающую капсулу даже после
   // display:none в теме. На телефоне удаляем её физически: вкладка = underline.
   const removeMobileIndicators = () => {
-    for (const el of document.querySelectorAll('#friend-tabs .glass-tab-indicator, #privacy-subnav .glass-tab-indicator')) {
+    for (const el of document.querySelectorAll('#friend-tabs .glass-tab-indicator, #privacy-subnav .glass-tab-indicator, #set-nav .glass-tab-indicator')) {
       el.remove();
     }
   };

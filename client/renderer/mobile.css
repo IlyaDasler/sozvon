@@ -1700,3 +1700,12 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     background: transparent !important;
   }
 }
+
+@media (max-width: 900px) {
+  #settings #set-nav button[data-tab].active {
+    background: transparent !important;
+    color: var(--text) !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+}

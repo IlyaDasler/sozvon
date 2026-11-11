@@ -14,10 +14,21 @@
     }
   };
 
+  const clearRootHighlight = () => {
+    for (const button of document.querySelectorAll('#settings #set-nav [data-tab]')) {
+      button.classList.remove('active');
+      button.style.setProperty('background', 'transparent', 'important');
+      button.style.setProperty('box-shadow', 'none', 'important');
+      button.style.setProperty('border-color', 'transparent', 'important');
+    }
+  };
+
   const home = () => {
     document.body.classList.add('mobile-settings');
     document.body.classList.remove('mobile-settings-section');
     resetScroll();
+    clearRootHighlight();
+    setTimeout(clearRootHighlight, 0);
     document.getElementById('set-title').textContent = 'Настройки';
     back.classList.add('hidden');
     if (subnav.parentElement !== document.getElementById('set-nav')) {
