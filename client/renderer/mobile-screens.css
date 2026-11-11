@@ -1890,3 +1890,44 @@
   #friend-tabs button.active::after,
   .friend-tabs button.active::after { display: none !important; content: none !important; }
 }
+
+
+/* Комната в карточке канала: кликабельна вся строка, тач-зоны не меньше 44. */
+@media (max-width: 1000px) {
+  #mobile-hubs .mobile-hub-room { min-height: 48px; cursor: pointer; }
+  #mobile-hubs .mobile-hub-room__name {
+    display: flex; align-items: center;
+    min-height: 44px; padding: 0;
+  }
+  #mobile-hubs .mobile-hub-room__action { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+  #friend-add-submit { min-height: 44px !important; }
+}
+
+
+/* В корне настроек не дублируем «Устройства» и «Шифрование»: это те же
+   разделы «Аккаунт» и «Приватность», доступные одной строкой. */
+@media (max-width: 1000px) {
+  body.mobile-settings:not(.mobile-settings-section) #settings #set-nav > button[data-tab="account"][data-sub^="Сеансы"],
+  body.mobile-settings:not(.mobile-settings-section) #settings #set-nav > button[data-tab="privacy"][data-sub^="Ключи"] {
+    display: none !important;
+  }
+}
+
+
+/* В списке каналов не показываем плавающую карточку профиля — она
+   перекрывала последнюю комнату канала. */
+@media (max-width: 1000px) {
+  body.mobile-list .me-panel { display: none !important; }
+}
+
+
+/* Меню остаётся в комнате на всех мобильных ширинах, не только на телефоне. */
+@media (max-width: 1000px) {
+  body.mobile-room-open #mobile-nav {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+  body.mobile-room-open #main.main {
+    padding-bottom: calc(var(--mobile-nav-h, 64px) + var(--mobile-safe-bottom)) !important;
+  }
+}

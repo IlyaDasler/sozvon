@@ -7,6 +7,14 @@ function showTwoFactorStep(step) {
   $('tf-error').textContent = '';
 }
 
+/** Back внутри настроек: сначала закрываем шаг 2FA, потом уже раздел. */
+window.closeTwoFactorStep = () => {
+  const open = TWO_FACTOR_STEPS.some((id) => !$(id).classList.contains('hidden'));
+  if (!open) return false;
+  showTwoFactorStep(null);
+  return true;
+};
+
 function renderTwoFactor() {
   const on = state.me.twoFactor;
   $('tf-state').textContent = on
