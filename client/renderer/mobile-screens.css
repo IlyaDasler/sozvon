@@ -1744,3 +1744,47 @@
     z-index: 1 !important;
   }
 }
+
+
+/* Каналы сразу с комнатами: карточка канала + его чаты/голосовые, как сайдбар Discord. */
+@media (max-width: 1000px) {
+  #mobile-hubs .mobile-hub-card {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto 10px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-2) 88%, transparent);
+    overflow: hidden;
+  }
+  #mobile-hubs .mobile-hub-card__head { display: flex; align-items: center; gap: 4px; padding-right: 6px; }
+  #mobile-hubs .mobile-hub-card__head .mobile-hub { flex: 1; min-width: 0; }
+  #mobile-hubs .mobile-hub-card__settings {
+    width: 40px; height: 40px; min-width: 40px; min-height: 40px;
+    display: grid; place-items: center;
+    border: 0; border-radius: 10px; background: transparent; color: var(--text-2);
+  }
+  #mobile-hubs .mobile-hub-card__settings svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  #mobile-hubs .mobile-hub-card__rooms { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+  #mobile-hubs .mobile-hub-room {
+    display: flex; align-items: center; gap: 4px;
+    min-height: 42px; padding: 0 8px 0 12px;
+    border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  }
+  #mobile-hubs .mobile-hub-room:first-child { border-top: 0; }
+  #mobile-hubs .mobile-hub-room__name {
+    flex: 1; min-width: 0;
+    text-align: left; border: 0; background: none;
+    color: var(--text-2); font: inherit; font-size: 13px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #mobile-hubs .mobile-hub-room__action {
+    width: 34px; height: 34px; min-width: 34px; min-height: 34px;
+    display: grid; place-items: center;
+    border: 0; border-radius: 9px; background: transparent; color: var(--muted);
+  }
+  #mobile-hubs .mobile-hub-room__action svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  @media (max-height: 619px) {
+    #mobile-hubs .mobile-hub-card { max-width: 720px; }
+  }
+}
