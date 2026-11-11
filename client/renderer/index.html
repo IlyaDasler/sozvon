@@ -519,7 +519,7 @@
         <div class="rs-sep"></div>
         <button type="button" class="rs-danger" id="logout-btn">Выйти из аккаунта</button>
         <div class="mobile-settings-footer">
-          <span id="mobile-settings-version">Версия 1.0.119</span>
+          <span id="mobile-settings-version">Версия 1.0.120</span>
           <span id="mobile-settings-connection">Сервер</span>
         </div>
       </nav>
@@ -619,7 +619,7 @@
 
           <div class="set-pane" data-pane="sound">
             <div class="set-block">
-              <h4>Звук</h4>
+              <h4>Микрофон и динамики</h4>
               <label class="field">
                 <span>Микрофон</span>
                 <select id="set-mic"></select>
@@ -628,9 +628,13 @@
                 <span>Динамики / наушники</span>
                 <select id="set-speaker"></select>
               </label>
+            </div>
+            <div class="set-block" id="sound-noise-block">
+              <h4>Шумоподавление</h4>
               <label class="field">
-                <span>Шумоподавление нейросетью <em class="muted small">— клавиатура, вентилятор, улица убираются на вашем устройстве, без интернета</em></span>
+                <span>Сила очистки <em class="muted small">— клавиатура, вентилятор, улица убираются на устройстве, без интернета</em></span>
                 <input type="range" id="set-ns-level" min="0" max="3" step="1" value="2">
+                <div class="noise-current">Сейчас: <b id="set-ns-value">Средне</b></div>
                 <span class="noise-ticks"><span>Выкл</span><span>Мягко</span><span>Средне</span><span>Сильно</span></span>
               </label>
             </div>

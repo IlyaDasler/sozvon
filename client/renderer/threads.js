@@ -11,6 +11,13 @@
 
   const panel = () => document.getElementById('thread-panel');
 const threadCache = new Map(); // rootId -> последние сообщения треда: повторное открытие мгновенное
+// Предзагрузка по касанию ссылки «Обсуждение» — к моменту клика данные уже могут быть в кэше.
+window.preloadThread = (rootId, roomId) => {
+  if (!rootId || !roomId || threadCache.has(rootId)) return;
+  Api.get(`/rooms/${roomId}/messages/${rootId}/thread`)
+    .then((rows) => threadCache.set(rootId, rows))
+    .catch(() => {});
+};
   const isThreadOpen = () => Boolean(thread) && Boolean(panel()) && !panel().classList.contains('hidden');
   const listEl = () => document.getElementById('thread-list');
   const headEl = () => document.getElementById('thread-title');
