@@ -70,7 +70,6 @@ export function mountAuth(container, { onSuccess }) {
     submit
   );
   container.append(form);
-  login.focus();
 
   let busy = false;
   form.onsubmit = async (event) => {

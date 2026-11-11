@@ -39,7 +39,7 @@
   --m-safe-right: env(safe-area-inset-right, 0px);
 
   /* Viewport */
-  --m-viewport: 100vh;
+  --m-viewport: 100dvh;
   --m-tabbar-h: 56px;
 
   /* Motion: только transform/opacity; без десктопных длинных transition */

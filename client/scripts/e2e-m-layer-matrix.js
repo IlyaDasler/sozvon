@@ -53,5 +53,7 @@ runTest(async () => {
   console.log('m-layer-auth', JSON.stringify(auth));
   if (!/Вход в Созвон/.test(auth.text)) throw new Error('не открылся экран входа');
   if (auth.oldMain !== 'none' || auth.apps !== 1) throw new Error('на экране входа старый слой/дубль');
+  const focus = await js(w, `document.activeElement?.tagName || ''`);
+  if (focus === 'INPUT') throw new Error('экран входа сам открывает клавиатуру (autofocus)');
   fs.writeFileSync(path.join(dir, 'auth-411.png'), (await w.webContents.capturePage()).toPNG());
 });

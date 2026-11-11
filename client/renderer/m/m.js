@@ -12,13 +12,18 @@ root.id = 'm-app';
 // Включаем только новый слой: старый DOM остаётся в памяти для обратной совместимости,
 // но не рисуется и не перехватывает касания.
 document.body.classList.add('m-shell');
-for (const el of [...document.body.children]) {
-  if (el === root) continue;
+const hideForeign = (el) => {
+  if (!el || el.nodeType !== 1 || el === root) return;
   el.style.display = 'none';
   el.style.visibility = 'hidden';
   el.style.pointerEvents = 'none';
-}
+};
+for (const el of [...document.body.children]) hideForeign(el);
 document.body.append(root);
+// Старый слой может добавлять тосты и модалки после старта — не даём им всплыть.
+new MutationObserver((items) => {
+  for (const item of items) for (const node of item.addedNodes) hideForeign(node);
+}).observe(document.body, { childList: true });
 
 // Разделы, между которыми переключает нижняя навигация.
 const TABS = [

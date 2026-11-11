@@ -28,3 +28,15 @@
 | экран входа | 1 | скрыт | нет | — | pass Electron | screenshots/phase2/auth-411.png |
 
 Проверка: `e2e-m-layer-matrix`, `e2e-m-layer-stress`.
+
+## Темы и контраст (Electron)
+
+| Тема | Контраст текста | Статус | Скриншот |
+|---|---|---|---|
+| midnight | 18.91:1 | pass | screenshots/phase2/theme-midnight.png |
+| light | 15.17:1 | pass | screenshots/phase2/theme-light.png |
+| frost | 11.13:1 | pass | screenshots/phase2/theme-frost.png |
+| glass | 17.99:1 | pass | screenshots/phase2/theme-glass.png |
+| sozvon | 17.14:1 | pass | — |
+
+Требование дизайн-системы ≥4.5:1 выполнено во всех проверенных темах (`e2e-m-layer-themes`).
