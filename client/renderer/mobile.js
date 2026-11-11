@@ -66,7 +66,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.93';
+    version.textContent = 'Версия 1.0.94';
     authCard.append(version);
   }
 
