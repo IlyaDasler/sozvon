@@ -66,7 +66,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.104';
+    version.textContent = 'Версия 1.0.105';
     authCard.append(version);
   }
 
@@ -228,13 +228,19 @@ else if (sidebar) sidebar.prepend(hubsBar);
             const row = document.createElement('div');
             row.className = 'mobile-hub-room';
             row.dataset.room = room.id;
+            row.dataset.kind = room.kind || 'text';
             const name = document.createElement('button');
             name.type = 'button';
             name.className = 'mobile-hub-room__name';
             name.textContent = `${room.kind === 'voice' ? '🔊' : '#'} ${room.name}`;
             name.onclick = () => {
-              if (typeof selectRoom === 'function') selectRoom(room.id);
-              if (typeof hideList === 'function') hideList();
+              // Голосовую комнату открываем входом в голос, а чат — отдельной кнопкой.
+              if (room.kind === 'voice' && typeof openRoom === 'function') {
+                openRoom(room.id);
+              } else {
+                if (typeof selectRoom === 'function') selectRoom(room.id);
+                if (typeof hideList === 'function') hideList();
+              }
               if (typeof setActive === 'function') setActive('channels');
             };
             const chat = document.createElement('button');
@@ -362,6 +368,7 @@ else if (sidebar) sidebar.prepend(hubsBar);
   };
 
   const switchTab = (name) => {
+    window.closeMobileDrawers?.();
     closeNotifications();
     setChannelsMode(name === 'channels');
     // Настройки — один из разделов нижнего меню: при переходе в другой раздел закрываем их.
