@@ -205,7 +205,7 @@
       paint(rows, roomId);
       thread.unsupported = false;
       setComposerEnabled(true);
-      input()?.focus();
+      if (typeof autoFocusAllowed !== 'function' || autoFocusAllowed()) input()?.focus();
     } catch (err) {
       if (!thread || thread.rootId !== rootId) return;
       // Старый сервер не знает про треды: не показываем «не найдено», объясняем причину
@@ -436,6 +436,7 @@
 
   function bind() {
     document.getElementById('thread-close')?.addEventListener('click', closeThread);
+  document.getElementById('thread-back')?.addEventListener('click', closeThread);
     document.getElementById('thread-expand')?.addEventListener('click', toggleThreadFull);
 
     // Файлы, смайлики и гифки — как в обычном чате
