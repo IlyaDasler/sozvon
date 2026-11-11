@@ -10,6 +10,7 @@
   let rowCache = []; // сообщения открытого обсуждения — для точечного обновления без перезагрузки
 
   const panel = () => document.getElementById('thread-panel');
+const threadCache = new Map(); // rootId -> последние сообщения треда: повторное открытие мгновенное
   const isThreadOpen = () => Boolean(thread) && Boolean(panel()) && !panel().classList.contains('hidden');
   const listEl = () => document.getElementById('thread-list');
   const headEl = () => document.getElementById('thread-title');
@@ -183,15 +184,29 @@
     thread = { rootId, roomId };
     panel().classList.remove('hidden');
     panel().classList.add('thread-open');
+    // Панель должна быть непрозрачной и полной сразу, независимо от темы и загрузки данных.
+    panel().style.setProperty('background', 'var(--bg-deep)', 'important');
+    panel().style.setProperty('backdrop-filter', 'none', 'important');
+    panel().style.setProperty('-webkit-backdrop-filter', 'none', 'important');
     renderThreadReply();
     // Запоминаем исходную ширину: растянуть можно, сжать меньше исходной — нет
     if (!panel().style.width && !baseWidth) {
       baseWidth = Math.round(panel().getBoundingClientRect().width) || 360;
     }
     if (headEl()) headEl().textContent = 'Обсуждение';
-    listEl().innerHTML = '<div class="thread-empty muted small">Загружаем обсуждение…</div>';
+    // Кэш: если тред уже открывали, показываем сообщения сразу, без «Загружаем…».
+    const cachedRows = threadCache.get(rootId);
+    if (cachedRows) {
+      paint(cachedRows, roomId);
+      thread.unsupported = false;
+      setComposerEnabled(true);
+    } else {
+      listEl().innerHTML = '<div class="thread-empty muted small">Загружаем обсуждение…</div>';
+    }
     try {
       const rows = await Api.get(`/rooms/${roomId}/messages/${rootId}/thread`);
+      // Кэш обновляем даже если тред уже закрыли — следующее открытие будет мгновенным.
+      threadCache.set(rootId, rows);
       // Тред могли закрыть, пока шёл запрос: не трогаем уже снятую панель.
       if (!thread || thread.rootId !== rootId) return;
       const known = new Map((state.roomHistory.get(roomId) || []).map((m) => [m.id, m]));
@@ -199,12 +214,18 @@
         const cached = known.get(m.id);
         if (cached?.plain && !m.plain) m.plain = cached.plain;
       }
-      if (typeof decryptMessages === 'function' && typeof roomConvOf === 'function') {
-        try { await decryptMessages(rows, roomConvOf(roomId)); } catch {}
-      }
+      // Сначала рисуем каркас, расшифровку не ждём: иначе на слабом телефоне
+      // секунды видна заглушка/размытый фон.
       paint(rows, roomId);
       thread.unsupported = false;
       setComposerEnabled(true);
+      if (typeof decryptMessages === 'function' && typeof roomConvOf === 'function') {
+        decryptMessages(rows, roomConvOf(roomId))
+          .then(() => {
+            if (thread && thread.rootId === rootId) paint(rows, roomId);
+          })
+          .catch(() => {});
+      }
       if (typeof autoFocusAllowed !== 'function' || autoFocusAllowed()) input()?.focus();
     } catch (err) {
       if (!thread || thread.rootId !== rootId) return;
