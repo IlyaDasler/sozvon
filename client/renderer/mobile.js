@@ -62,6 +62,14 @@
     attributeFilter: ['title'],
   });
 
+  const authCard = document.querySelector('#auth .auth-card, #auth form, #auth');
+  if (authCard && !document.getElementById('auth-build-version')) {
+    const version = document.createElement('div');
+    version.id = 'auth-build-version';
+    version.textContent = 'Версия 1.0.72';
+    authCard.append(version);
+  }
+
   const nav = document.createElement('nav');
   nav.id = 'mobile-nav';
   nav.setAttribute('aria-label', 'Мобильная навигация');
@@ -172,6 +180,15 @@ else if (sidebar) sidebar.prepend(hubsBar);
         renderHubs();
       };
       items.push(back);
+      const gear = document.createElement('button');
+      gear.type = 'button';
+      gear.className = 'mobile-hub mobile-hub-settings';
+      gear.textContent = 'Настройки канала';
+      gear.onclick = () => {
+        const hub = state.hubs.get(state.view);
+        if (hub && typeof openHubSettings === 'function') openHubSettings(hub.id);
+      };
+      items.push(gear);
     } else {
       for (const hub of hubs) {
         const button = document.createElement('button');

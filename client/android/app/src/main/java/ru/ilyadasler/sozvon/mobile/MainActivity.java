@@ -16,8 +16,21 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         sessionPrefs = getSharedPreferences("sozvon_session", MODE_PRIVATE);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        registerSessionBridge();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        registerSessionBridge();
+    }
+
+    private void registerSessionBridge() {
         WebView web = getBridge().getWebView();
-        if (web != null) web.addJavascriptInterface(new NativeSession(), "NativeSession");
+        if (web != null) {
+            web.removeJavascriptInterface("NativeSession");
+            web.addJavascriptInterface(new NativeSession(), "NativeSession");
+        }
     }
 
     private final class NativeSession {
