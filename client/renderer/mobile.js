@@ -66,7 +66,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.111';
+    version.textContent = 'Версия 1.0.112';
     authCard.append(version);
   }
 
@@ -757,6 +757,9 @@ else if (sidebar) sidebar.prepend(hubsBar);
       if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
       const t = event.touches[0];
       start = { x: t.clientX, y: t.clientY };
+      // Жест начался на экране друзей: общий обработчик свайпов не должен
+      // открывать каналы даже если движение чуть ниже порога роллера.
+      event.stopPropagation();
     }, { passive: true });
     friendsScreen.addEventListener('touchend', (event) => {
       if (!start) return;
@@ -764,9 +767,8 @@ else if (sidebar) sidebar.prepend(hubsBar);
       const dx = t.clientX - start.x;
       const dy = t.clientY - start.y;
       start = null;
-      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
-      // Поглощаем горизонтальный жест, чтобы он не открыл список каналов.
       event.stopPropagation();
+      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
       window.friendsSwipe(dx < 0 ? 1 : -1);
     }, { passive: true });
   }
