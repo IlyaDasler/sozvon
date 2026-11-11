@@ -59,7 +59,7 @@ runTest(async () => {
   await js(w, `document.querySelector('#mobile-nav [data-mobile="channels"]').click(); true`);
   await sleep(500); await screenshot(w, 'audit-02-channels'); await report('channels');
   const channelTop = JSON.parse(await js(w, `(() => {
-    const out={}; for (const s of ['.sidebar','.sidebar-head','#mobile-hubs','#friend-tabs']) { const e=document.querySelector(s); if(e){const r=e.getBoundingClientRect(); out[s]=Math.round(r.top*10)/10;} } return JSON.stringify(out);
+    const out={}; for (const s of ['.sidebar','.sidebar-head','#mobile-hubs','#friend-tabs']) { const e=document.querySelector(s); if(e && e.getClientRects().length){const r=e.getBoundingClientRect(); out[s]=Math.round(r.top*10)/10;} } return JSON.stringify(out);
   })()`));
   console.log('channels-safe-top', JSON.stringify(channelTop));
   for (const [sel,y] of Object.entries(channelTop)) if (y < 35) throw new Error('канал под треем: '+sel+' top='+y);

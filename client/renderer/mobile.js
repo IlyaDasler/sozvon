@@ -180,6 +180,8 @@ else if (sidebar) sidebar.prepend(hubsBar);
         button.dataset.hub = hub.id;
         button.innerHTML = `<span class="mobile-hub__avatar">${(hub.name || 'К').trim().charAt(0).toUpperCase()}</span><span class="mobile-hub__name"></span>`;
         button.querySelector('.mobile-hub__name').textContent = hub.name || 'Канал';
+        const avatar = button.querySelector('.mobile-hub__avatar');
+        if (avatar && typeof fillHubIcon === 'function') fillHubIcon(avatar, hub);
         button.onclick = () => {
           if (typeof openHub === 'function') openHub(hub.id);
           renderHubs();

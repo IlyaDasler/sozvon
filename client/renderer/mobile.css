@@ -1831,3 +1831,28 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     padding-bottom: max(20px, var(--m-safe-bottom));
   }
 }
+
+
+@media (max-width: 900px) {
+  /* В разделе каналов нижнее меню уже говорит, где мы: шапка не нужна. */
+  body.mobile-channels .sidebar-head { display: none; }
+  body.mobile-channels #mobile-hubs {
+    padding-top: max(36px, env(safe-area-inset-top));
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  #mobile-hubs .mobile-hub__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 15px;
+    background-position: center;
+    background-size: cover;
+    overflow: hidden;
+  }
+  #mobile-hubs .mobile-hub__avatar.has-image { color: transparent; }
+  #mobile-hubs .mobile-hub {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 14px;
+  }
+}
