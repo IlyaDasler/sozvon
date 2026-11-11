@@ -41,4 +41,37 @@ runTest(async () => {
   const f = await active(w);
   if (/^(INPUT|TEXTAREA)/.test(f)) throw new Error('автофокус поля ввода при открытии личного чата: ' + f);
   console.log('ok no-autofocus личный чат', f || '(body)');
+
+  // Вкладка «Добавить в друзья» не должна сама поднимать клавиатуру.
+  await js(w, `document.querySelector('#friend-tabs [data-tab="add"]').click(); true`);
+  await sleep(300);
+  const addFocus = await active(w);
+  console.log('add-tab-focus', addFocus || '(body)');
+  if (/^(INPUT|TEXTAREA)/.test(addFocus)) throw new Error('клавиатура открылась на вкладке добавления: ' + addFocus);
+
+  // После тапа по полю фокус должен работать.
+  await js(w, `(() => {
+    const input = document.getElementById('friend-add-input');
+    input.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
+    input.focus();
+    return true;
+  })()`);
+  const tapped = await active(w);
+  console.log('tap-focus', tapped || '(body)');
+  if (!tapped.includes('friend-add-input')) throw new Error('после тапа поле не получило фокус: ' + tapped);
+  await js(w, `document.getElementById('friend-add-input').blur(); true`);
+
+  // Настройки и шаг 2FA тоже без автофокуса.
+  await js(w, `openSettings(); true`);
+  await sleep(600);
+  const settingsFocus = await active(w);
+  console.log('settings-focus', settingsFocus || '(body)');
+  if (/^(INPUT|TEXTAREA)/.test(settingsFocus)) throw new Error('автофокус при открытии настроек: ' + settingsFocus);
+  await js(w, `document.querySelector('#set-nav > button[data-tab="account"]').click(); true`);
+  await sleep(400);
+  await js(w, `document.getElementById('tf-start')?.click(); true`);
+  await sleep(300);
+  const tfFocus = await active(w);
+  console.log('tf-focus', tfFocus || '(body)');
+  if (/^(INPUT|TEXTAREA)/.test(tfFocus)) throw new Error('автофокус на шаге 2FA: ' + tfFocus);
 });
