@@ -29,6 +29,15 @@ runTest(async () => {
   if (st.badgeHidden || !st.badgeText) throw new Error('бейдж уведомлений не показан');
   if (st.mobileHidden || !st.mobileText) throw new Error('бейдж нижнего меню не показан');
 
+  // Открытый тред не должен оставаться поверх чата, открытого из уведомления.
+  await js(w, `openThread({ id: 999, roomId: 1, threadRoot: 999 }, { roomId: 1 }); true`);
+  await sleep(150);
+  if (await js(w, `document.getElementById('thread-panel').classList.contains('hidden')`)) throw new Error('тред не открылся для проверки');
+  await js(w, `openNotifTarget({ contact: ${b.user.id} }); true`);
+  await sleep(200);
+  if (!(await js(w, `document.getElementById('thread-panel').classList.contains('hidden')`))) throw new Error('при переходе по уведомлению остался открытый тред');
+  console.log('ok notification closes thread');
+
   // Вкладка «Уведомления» показывает сообщение и ведёт в чат.
   await js(w, `document.querySelector('#mobile-nav [data-mobile="notifications"]').click(); true`);
   await sleep(500);
