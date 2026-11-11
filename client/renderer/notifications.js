@@ -188,6 +188,8 @@ function formatNotifTime(at) {
 
 function openNotifTarget(open) {
   window.desktop?.focus();
+  // Не оставляем открытый тред от прошлой переписки поверх нового экрана.
+  if (typeof closeThread === 'function') closeThread();
   if (open?.contact && state.contacts.has(open.contact)) selectContact(open.contact);
   else if (open?.room && state.rooms.has(open.room)) {
     selectRoom(open.room);
