@@ -614,10 +614,9 @@ else if (sidebar) sidebar.prepend(hubsBar);
   // долгим нажатием, поэтому строка списка остаётся чистой.
   const roomSheet = document.createElement('div');
   roomSheet.id = 'mobile-room-sheet';
-  const roomBackdrop = document.createElement('button');
-  roomBackdrop.type = 'button';
+  const roomBackdrop = document.createElement('div');
   roomBackdrop.id = 'mobile-room-backdrop';
-  roomBackdrop.setAttribute('aria-label', 'Закрыть действия комнаты');
+  roomBackdrop.setAttribute('aria-hidden', 'true');
   document.body.append(roomBackdrop, roomSheet);
   const closeRoomSheet = () => document.body.classList.remove('mobile-room-sheet');
   roomBackdrop.onclick = closeRoomSheet;
@@ -927,10 +926,9 @@ else if (sidebar) sidebar.prepend(hubsBar);
   // изменение, удаление, закреп.
   const msgSheet = document.createElement('div');
   msgSheet.id = 'mobile-msg-sheet';
-  const msgBackdrop = document.createElement('button');
-  msgBackdrop.type = 'button';
+  const msgBackdrop = document.createElement('div');
   msgBackdrop.id = 'mobile-msg-backdrop';
-  msgBackdrop.setAttribute('aria-label', 'Закрыть действия сообщения');
+  msgBackdrop.setAttribute('aria-hidden', 'true');
   document.body.append(msgBackdrop, msgSheet);
   const closeMsgSheet = () => document.body.classList.remove('mobile-msg-sheet');
   msgBackdrop.onclick = closeMsgSheet;

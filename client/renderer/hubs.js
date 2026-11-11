@@ -480,17 +480,21 @@ function showMenu(x, y, items) {
       label.textContent = item.label;
       const value = document.createElement('b');
       value.textContent = item.valueLabel?.(Number(item.value)) || '';
-      // Крестик закрывает меню: выбор уровня не «прилипает» к экрану
-      const close = document.createElement('button');
-      close.type = 'button';
-      close.className = 'popup-range-close';
-      close.title = 'Закрыть';
-      close.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>';
-      close.onclick = (e) => {
-        e.stopPropagation();
-        hideMenu();
-      };
-      head.append(label, value, close);
+      // Android: закрывает тап снаружи и системный back — крестик лишний.
+      if (matchMedia('(max-width: 900px)').matches) {
+        head.append(label, value);
+      } else {
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'popup-range-close';
+        close.title = 'Закрыть';
+        close.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+        close.onclick = (e) => {
+          e.stopPropagation();
+          hideMenu();
+        };
+        head.append(label, value, close);
+      }
       const input = document.createElement('input');
       input.type = 'range';
       input.min = String(item.min ?? 0);

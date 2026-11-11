@@ -1,0 +1,472 @@
+/* Мобильный слой Созвона: токены и компоненты. Перебивания не используем. */
+
+:root {
+  --m-safe-top: env(safe-area-inset-top, 0px);
+  --m-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --m-space-1: 4px;
+  --m-space-2: 8px;
+  --m-space-3: 12px;
+  --m-space-4: 16px;
+  --m-space-6: 24px;
+  --m-space-8: 32px;
+
+  --m-radius: var(--r-m, 12px);
+  --m-radius-lg: var(--r-xl, 20px);
+  --m-touch: 48px;
+  --m-topbar: 56px;
+  --m-navbar: 60px;
+
+  --m-dur-fast: var(--dur-1, 120ms);
+  --m-dur-base: var(--dur-3, 240ms);
+  --m-ease: var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+
+  --m-bg: var(--bg-deep, #0e1116);
+  --m-surface: var(--bg-2, #171b22);
+  --m-surface-2: var(--bg-3, #1f242d);
+  --m-line: var(--line, #2a3038);
+  --m-text: var(--text, #e8ecf1);
+  --m-text-2: var(--text-2, #9aa4b2);
+  --m-accent: var(--accent, #4aa3ff);
+  --m-danger: var(--danger, #ff6b6b);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--m-bg);
+  color: var(--m-text);
+  font: 16px/1.45 var(--font-ui, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* ---------- Каркас экрана ---------- */
+
+.m-app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.m-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---------- TopAppBar ---------- */
+
+.m-topbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--m-space-2);
+  min-height: var(--m-topbar);
+  padding: max(var(--m-space-2), var(--m-safe-top)) var(--m-space-4) var(--m-space-2);
+  background: var(--m-bg);
+  border-bottom: 1px solid var(--m-line);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.m-topbar__title {
+  min-width: 0;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m-iconbtn {
+  display: grid;
+  place-items: center;
+  width: var(--m-touch);
+  height: var(--m-touch);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--m-text);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.m-iconbtn:active {
+  background: var(--m-surface-2);
+}
+
+.m-iconbtn svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- Нижняя навигация ---------- */
+
+.m-nav {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--m-space-1);
+  min-height: calc(var(--m-navbar) + var(--m-safe-bottom));
+  padding: var(--m-space-1) var(--m-space-2) max(var(--m-space-1), var(--m-safe-bottom));
+  background: var(--m-surface);
+  border-top: 1px solid var(--m-line);
+}
+
+.m-nav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  border: 0;
+  border-radius: var(--m-radius);
+  background: none;
+  color: var(--m-text-2);
+  font: inherit;
+  font-size: 11px;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.m-nav__item[aria-current="page"] {
+  color: var(--m-accent);
+}
+
+.m-nav__item svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- Строка без действия (профиль в настройках) ---------- */
+
+.m-row--static {
+  cursor: default;
+}
+
+.m-row--static:active {
+  background: none;
+}
+
+/* ---------- Списки ---------- */
+
+.m-section__title {
+  margin: 0;
+  padding: var(--m-space-6) var(--m-space-4) var(--m-space-2);
+  color: var(--m-text-2);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.m-row {
+  display: flex;
+  align-items: center;
+  gap: var(--m-space-4);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--m-space-3) var(--m-space-4);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.m-row:active {
+  background: var(--m-surface-2);
+}
+
+.m-row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.m-row__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m-row__sub {
+  margin: 2px 0 0;
+  color: var(--m-text-2);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m-row--danger .m-row__title {
+  color: var(--m-danger);
+}
+
+.m-row__chevron {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  color: var(--m-text-2);
+}
+
+/* ---------- Поля и вход ---------- */
+
+.m-screen--auth {
+  display: grid;
+  align-content: center;
+  padding: var(--m-space-6) var(--m-space-4) max(var(--m-space-6), var(--m-safe-bottom));
+}
+
+.m-auth {
+  display: grid;
+  gap: var(--m-space-4);
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.m-auth__title {
+  margin: 0 0 var(--m-space-2);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.m-auth__error {
+  margin: 0;
+  min-height: 20px;
+  color: var(--m-danger);
+  font-size: 14px;
+}
+
+.m-field {
+  display: grid;
+  gap: var(--m-space-1);
+}
+
+.m-field__label {
+  color: var(--m-text-2);
+  font-size: 14px;
+}
+
+.m-field__input {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 var(--m-space-3);
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-radius);
+  background: var(--m-surface);
+  color: var(--m-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+.m-field__input:focus-visible {
+  outline: 2px solid var(--m-accent);
+  outline-offset: 1px;
+}
+
+.m-check {
+  display: flex;
+  align-items: center;
+  gap: var(--m-space-2);
+  min-height: var(--m-touch);
+  color: var(--m-text-2);
+  font-size: 14px;
+}
+
+.m-btn {
+  min-height: var(--m-touch);
+  padding: 0 var(--m-space-4);
+  border: 0;
+  border-radius: var(--m-radius);
+  background: var(--m-surface-2);
+  color: var(--m-text);
+  font: inherit;
+  font-size: 16px;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.m-btn--primary {
+  background: var(--m-accent);
+  color: #06101c;
+  font-weight: 500;
+}
+
+.m-btn:disabled {
+  opacity: 0.55;
+}
+
+/* ---------- Список контактов ---------- */
+
+.m-list {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: max(var(--m-space-4), var(--m-safe-bottom));
+}
+
+.m-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  color: #06101c;
+  font-size: 18px;
+  font-weight: 600;
+  position: relative;
+}
+
+.m-avatar[data-presence='off'] {
+  opacity: 0.55;
+}
+
+.m-avatar[data-presence='on']::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--m-bg);
+  border-radius: 50%;
+  background: #3ddc84;
+}
+
+.m-row--contact {
+  min-height: 64px;
+}
+
+.m-badge {
+  flex: none;
+  min-width: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--m-accent);
+  color: #06101c;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 22px;
+  text-align: center;
+}
+
+.m-skeleton--row {
+  height: 64px;
+  margin: var(--m-space-1) var(--m-space-4);
+}
+
+/* ---------- Переписка ---------- */
+
+.m-screen--chat {
+  display: flex;
+  flex-direction: column;
+}
+
+.m-msgs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--m-space-2);
+  padding: var(--m-space-3) var(--m-space-3) var(--m-space-4);
+  min-height: 100%;
+  justify-content: flex-end;
+}
+
+.m-msg {
+  align-self: flex-start;
+  max-width: 82%;
+  padding: var(--m-space-2) var(--m-space-3);
+  border-radius: 16px 16px 16px 4px;
+  background: var(--m-surface-2);
+}
+
+.m-msg--mine {
+  align-self: flex-end;
+  border-radius: 16px 16px 4px 16px;
+  background: color-mix(in srgb, var(--m-accent) 22%, var(--m-surface));
+}
+
+.m-msg__text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+}
+
+.m-msg__text--locked {
+  color: var(--m-text-2);
+  font-style: italic;
+}
+
+.m-msg__time {
+  display: block;
+  margin-top: 2px;
+  color: var(--m-text-2);
+  font-size: 11px;
+  text-align: right;
+}
+
+/* ---------- Состояния ---------- */
+
+.m-empty {
+  display: grid;
+  place-items: center;
+  gap: var(--m-space-3);
+  padding: var(--m-space-8) var(--m-space-6);
+  color: var(--m-text-2);
+  text-align: center;
+}
+
+.m-skeleton {
+  background: var(--m-surface-2);
+  border-radius: var(--m-radius);
+  animation: m-pulse 1.2s var(--m-ease) infinite;
+}
+
+@keyframes m-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-skeleton {
+    animation: none;
+  }
+}
+
+/* Слой виден только на узком экране и только когда сам загрузился. */
+@media (min-width: 901px) {
+  .m-app {
+    display: none;
+  }
+}

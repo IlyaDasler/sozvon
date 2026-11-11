@@ -1206,6 +1206,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   }
   body.mobile-settings #settings .rs-head {
     flex: none;
+    /* Фиксированный height из styles.css (52px) не вмещает трей + заголовок:
+       переполнение срезало заголовок и сталкивало кнопки. Высота — от контента. */
+    height: auto;
     min-height: 58px;
     padding: max(10px, var(--mobile-safe-top, 28px)) 14px 10px !important;
     border-bottom: 1px solid var(--line);

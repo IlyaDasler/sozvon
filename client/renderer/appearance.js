@@ -174,9 +174,13 @@ function openGlass2BackgroundPicker() {
     glass2BgModal = document.createElement('div');
     glass2BgModal.id = 'glass2-bg-modal';
     glass2BgModal.className = 'modal hidden';
+    // Android: закрывает тап по затемнению и системный back — крестик только для десктопа.
+    const closeBtn = matchMedia('(max-width: 900px)').matches
+      ? ''
+      : '<button type="button" class="icon-btn glass2-bg-close" title="Закрыть"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>';
     glass2BgModal.innerHTML = `
       <div class="modal-card glass2-bg-card">
-        <button type="button" class="icon-btn glass2-bg-close" title="Закрыть"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        ${closeBtn}
         <h3>Фон темы «Стекло»</h3>
         <p class="muted small">Выберите пейзаж, который будет виден за стеклянными панелями.</p>
         <div class="glass2-bg-grid"></div>
@@ -185,7 +189,7 @@ function openGlass2BackgroundPicker() {
     glass2BgModal.addEventListener('click', (event) => {
       if (event.target === glass2BgModal) closeGlass2BackgroundPicker();
     });
-    glass2BgModal.querySelector('.glass2-bg-close').onclick = closeGlass2BackgroundPicker;
+    glass2BgModal.querySelector('.glass2-bg-close')?.addEventListener('click', closeGlass2BackgroundPicker);
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') closeGlass2BackgroundPicker();
     });
