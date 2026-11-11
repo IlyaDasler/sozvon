@@ -48,8 +48,18 @@ runTest(async () => {
   const afterTyping = await js(w, `state.me.privacy?.typing !== false`);
   console.log('privacy', beforeTyping, afterTyping);
   if (beforeTyping === afterTyping) throw new Error('приватность «печатает» не сохранилась');
-  await js(w, `document.getElementById('mobile-settings-back').click(); true`);
+
+  // Back внутри подвкладки возвращает на «Данные», второй back — в корень.
+  await js(w, `showPrivacyPage('crypto'); true`);
+  await sleep(250);
+  await js(w, `window.sozvonBack(); true`);
   await sleep(300);
+  const layer = JSON.parse(await js(w, `JSON.stringify({ page: window.privacyPage, section: document.body.classList.contains('mobile-settings-section') })`));
+  console.log('privacy-back', JSON.stringify(layer));
+  if (layer.page !== 'data' || !layer.section) throw new Error('back не вернул на первую подвкладку приватности');
+  await js(w, `window.sozvonBack(); true`);
+  await sleep(300);
+  if (await js(w, `document.body.classList.contains('mobile-settings-section')`)) throw new Error('второй back не вышел в корень настроек');
 
   // Аккаунт: кнопка 2FA открывает шаг с паролем, back его закрывает.
   await js(w, `document.querySelector('#set-nav > button[data-tab="account"]').click(); true`);
