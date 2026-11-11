@@ -19,6 +19,19 @@
       .replace(/\s*\([^)]*(?:Shift|Ctrl|Alt|Esc|Enter|Cmd|⌘|клавиш|без вопроса)[^)]*\)\s*$/i, '')
       .trim();
 
+  // Клавиатура: VisualViewport уменьшает видимую высоту. Прячем нижнюю
+  // навигацию, чтобы она не оказалась поверх поля ввода.
+  const syncKeyboard = () => {
+    const vv = window.visualViewport;
+    const active = document.activeElement;
+    const typing = active?.matches?.('input, textarea, [contenteditable="true"]');
+    const keyboard = Boolean(vv && typing && vv.height < innerHeight - 120);
+    document.body.classList.toggle('keyboard-open', keyboard);
+  };
+  window.visualViewport?.addEventListener('resize', syncKeyboard);
+  document.addEventListener('focusin', syncKeyboard);
+  document.addEventListener('focusout', () => setTimeout(syncKeyboard, 80));
+
   const buzz = (ms = 8) => {
     if (navigator.userActivation?.isActive) navigator.vibrate?.(ms);
   };
