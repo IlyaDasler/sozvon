@@ -1,5 +1,5 @@
 // Нижнее меню как в Telegram: видно во всех разделах и не исчезает при переключении.
-const { register, js, sleep, openClient, runTest, waitFor } = require('./e2e-lib');
+const { api, register, js, sleep, openClient, runTest, waitFor } = require('./e2e-lib');
 
 const state = (w) => js(w, `(() => {
   const nav = document.getElementById('mobile-nav');
@@ -19,6 +19,8 @@ const state = (w) => js(w, `(() => {
 
 runTest(async () => {
   const a = await register('nv' + Date.now().toString(36).slice(-4), 'Аня');
+  const hub = await api('POST', '/hubs', { name: 'Меню' }, a.token);
+  const room = await api('POST', '/rooms', { name: 'Чат', kind: 'text', hubId: hub.id }, a.token);
   const w = await openClient('nv', a);
   w.setSize(390, 844); w.show(); w.focus();
   await sleep(900);
@@ -48,6 +50,14 @@ runTest(async () => {
   s = JSON.parse(await state(w));
   console.log('channels', JSON.stringify(s));
   if (s.active !== 'channels' || s.navDisplay === 'none') throw new Error('каналы: меню/вкладка сломались: ' + JSON.stringify(s));
+
+  // Открытая комната: меню тоже остаётся, контент над ним.
+  await js(w, `openHub(${hub.id}); selectRoom(${room.id}); true`);
+  await sleep(600);
+  s = JSON.parse(await state(w));
+  console.log('room', JSON.stringify(s));
+  if (s.navDisplay === 'none') throw new Error('нижнее меню исчезло в открытой комнате');
+  if (s.cardBottom !== null && s.cardBottom > s.navTop + 1) throw new Error('карточка комнаты под меню: ' + JSON.stringify(s));
 
   // Уведомления.
   await js(w, `document.querySelector('#mobile-nav [data-mobile="notifications"]').click(); true`);

@@ -1592,3 +1592,15 @@
     height: 100dvh !important;
   }
 }
+
+
+/* Телефон (портрет): нижнее меню не исчезает и в открытой комнате. */
+@media (max-width: 599px) {
+  body.mobile-room-open #mobile-nav {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+  body.mobile-room-open #main.main {
+    padding-bottom: calc(var(--mobile-nav-h, 64px) + var(--mobile-safe-bottom)) !important;
+  }
+}
