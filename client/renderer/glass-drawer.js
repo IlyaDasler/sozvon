@@ -1,7 +1,7 @@
 // Drawer: на узком окне панели участников и треда выезжают поверх чата,
 // с затемнением. На широком окне поведение прежнее — колонки в сетке.
 (() => {
-  const NARROW = 900;
+  const NARROW = 1000;
   let scrim = null;
 
   function getScrim() {
@@ -43,6 +43,8 @@
     const next = Boolean(open);
     if (layer.classList.contains('is-on') !== next) layer.classList.toggle('is-on', next);
   }
+
+  window.closeMobileDrawers = () => closeDrawers();
 
   function closeDrawers() {
     if (window.innerWidth > NARROW) return;

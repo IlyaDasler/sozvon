@@ -1865,3 +1865,21 @@
   body.mobile-settings.mobile-settings-section #settings[data-mobile-tab="profile"] .set-foot { display: none !important; }
   #settings[data-mobile-tab="profile"] .set-body { padding-bottom: max(20px, var(--m-safe-bottom)) !important; }
 }
+
+
+/* Панель участников — только внутри открытой комнаты, не поверх разделов. */
+@media (max-width: 1000px) {
+  body.mobile-list #members-panel,
+  body.mobile-settings #members-panel,
+  body.mobile-notifications #members-panel {
+    display: none !important;
+  }
+  body.mobile-list .scrim,
+  body.mobile-settings .scrim,
+  body.mobile-notifications .scrim {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  /* В голосовой карточке название — это вход в голос, а не чат. */
+  #mobile-hubs .mobile-hub-room[data-kind="voice"] .mobile-hub-room__name { color: var(--text) !important; }
+}
