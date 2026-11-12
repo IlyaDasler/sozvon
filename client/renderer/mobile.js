@@ -42,6 +42,17 @@ if (window.NativeSession || window.Capacitor || matchMedia('(pointer: coarse)').
     return nativeFocus.apply(this, args);
   };
 }
+
+// T7: на телефоне нет выбора конкретного микрофона/динамика и устройства камеры.
+// Сами настройки (шумоподавление, проверка камеры) остаются.
+if (window.NativeSession || window.Capacitor || matchMedia('(pointer: coarse)').matches || matchMedia('(max-width: 1400px)').matches) {
+  for (const id of ['set-mic', 'set-speaker']) {
+    const select = document.getElementById(id);
+    if (select) select.closest('.set-block').style.display = 'none';
+  }
+  const camSelect = document.getElementById('cam-picker-btn');
+  if (camSelect) camSelect.style.display = 'none';
+}
 document.addEventListener('touchstart', markPointer, { capture: true, passive: true });
     document.addEventListener('pointerup', () => setTimeout(() => { pointerOnField = false; }, 0), true);
     const nativeFocus = HTMLElement.prototype.focus;
@@ -120,7 +131,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.154';
+    version.textContent = 'Версия 1.0.155';
     authCard.append(version);
   }
 
@@ -1247,6 +1258,14 @@ else if (sidebar) sidebar.prepend(hubsBar);
   // Единый порядок закрытия для Android back и системной кнопки.
   // Возвращает true, если событие поглощено приложением.
   window.mobileBack = () => {
+    // Меню камеры — оверлей поверх настроек: одно нажатие закрывает только его,
+    // экран настроек при этом не меняется.
+    const cameraPicker = document.getElementById('camera-picker');
+    if (cameraPicker && !cameraPicker.classList.contains('hidden')) {
+      if (typeof closeCameraPicker === 'function') closeCameraPicker();
+      else cameraPicker.classList.add('hidden');
+      return true;
+    }
     if (document.getElementById('stream-float') && !document.getElementById('stream-float').classList.contains('hidden')) {
       document.getElementById('stream-float-close')?.click();
       return true;
