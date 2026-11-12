@@ -1960,8 +1960,9 @@
 }
 
 
-/* Каналы в открытом канале: горизонтальный рейл + комнаты, как Discord. */
-@media (max-width: 1000px) {
+/* Каналы в открытом канале: горизонтальный рейл + комнаты, как Discord.
+   На разложенном фолде каналы уже в рейле — полосу не показываем. */
+@media (max-width: 1000px) and (max-height: 619px) {
   body.mobile-hub-open #mobile-hubs {
     display: flex !important;
     flex-direction: row !important;
