@@ -120,7 +120,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.147';
+    version.textContent = 'Версия 1.0.148';
     authCard.append(version);
   }
 

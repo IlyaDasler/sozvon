@@ -13,7 +13,7 @@ runTest(async () => {
   const w = await openClient('wf', a);
   w.setSize(1228, 838); w.show(); w.focus();
   await sleep(1200);
-  const home = JSON.parse(await js(w, `JSON.stringify({w:innerWidth,h:innerHeight,body:document.body.className,nav:getComputedStyle(document.getElementById('mobile-nav')).display,rail:getComputedStyle(document.querySelector('#rail')).display,sidebar:Math.round(document.querySelector('.sidebar').getBoundingClientRect().width),hubs:getComputedStyle(document.getElementById('mobile-hubs')).display,mainH:Math.round(document.querySelector('#main').getBoundingClientRect().height),sideH:Math.round(document.querySelector('.sidebar').getBoundingClientRect().height),railH:Math.round(document.querySelector('#rail').getBoundingClientRect().height),padB:getComputedStyle(document.querySelector('#main')).paddingBottom})`));
+  const home = JSON.parse(await js(w, `JSON.stringify({w:innerWidth,headBottom:Math.round(document.querySelector('.sidebar-head').getBoundingClientRect().bottom),chatHeadBottom:Math.round(document.querySelector('.chat-head').getBoundingClientRect().bottom),h:innerHeight,body:document.body.className,nav:getComputedStyle(document.getElementById('mobile-nav')).display,rail:getComputedStyle(document.querySelector('#rail')).display,sidebar:Math.round(document.querySelector('.sidebar').getBoundingClientRect().width),hubs:getComputedStyle(document.getElementById('mobile-hubs')).display,mainH:Math.round(document.querySelector('#main').getBoundingClientRect().height),sideH:Math.round(document.querySelector('.sidebar').getBoundingClientRect().height),railH:Math.round(document.querySelector('#rail').getBoundingClientRect().height),padB:getComputedStyle(document.querySelector('#main')).paddingBottom})`));
   console.log('wide-home', JSON.stringify(home));
   fs.writeFileSync(path.join(dir, 'home.png'), (await w.webContents.capturePage()).toPNG());
   if (home.body.includes('mobile-list')) throw new Error('на старте открыт список каналов');
@@ -29,5 +29,6 @@ runTest(async () => {
   if (/message-input/.test(hub.active)) throw new Error('композер получил фокус без нажатия: ' + hub.active);
   if (hub.pad !== '0px' || hub.h - hub.sideBottom > 2) throw new Error('Workspace не заполняет высоту: ' + JSON.stringify(hub));
   if (Math.abs(hub.me - hub.composer) > 2) throw new Error('профиль и композер не выровнены по низу: ' + JSON.stringify(hub));
+  if (Math.abs(hub.headBottom - hub.chatHeadBottom) > 1) throw new Error('шапки не выровнены: ' + JSON.stringify(hub));
 });
 

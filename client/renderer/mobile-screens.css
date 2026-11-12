@@ -2485,3 +2485,28 @@
   color: var(--muted);
 }
 
+
+/* Workspace: настройки канала по содержимому, без пустого полотна.
+   Фон обязателен: иначе сквозь карточку просвечивает чат. */
+@media (min-width: 600px) and (min-height: 620px) and (max-width: 1400px) {
+  #hub-settings {
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 24px !important;
+  }
+  #hub-settings .rs-card {
+    display: flex !important;
+    flex-direction: column !important;
+    width: min(1080px, 100%) !important;
+    height: auto !important;
+    max-height: calc(100dvh - 48px) !important;
+    margin: 0 auto !important;
+    border-radius: 20px !important;
+    border: 1px solid var(--line) !important;
+    background: var(--bg-2) !important;
+    overflow: hidden !important;
+  }
+  #hub-settings .rs-nav { background: var(--bg-2) !important; }
+  #hub-settings .rs-main { flex: 0 1 auto !important; min-height: 0 !important; overflow: hidden !important; }
+  #hub-settings .rs-body { flex: 0 1 auto !important; max-height: calc(100dvh - 250px) !important; overflow-y: auto !important; }
+}
