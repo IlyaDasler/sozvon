@@ -3,6 +3,7 @@ import { session } from '../core/session.js';
 import { createNav } from '../core/nav.js';
 import { mountAuth } from './views/auth.js';
 import { mountContacts } from './views/contacts.js';
+import { mountChannels, mountRoomChat } from './views/channels.js';
 import { mountChat } from './views/chat.js';
 import { mountSettings } from './views/settings.js';
 import { mountCamera } from './views/camera.js';
@@ -29,6 +30,7 @@ new MutationObserver((items) => {
 // Разделы, между которыми переключает нижняя навигация.
 const TABS = [
   { id: 'chats', label: 'Чаты', icon: '<path d="M20.5 11.6a8.4 8.4 0 0 1-9 8.4 8.7 8.7 0 0 1-3.4-.7L3.5 21l1.6-4.6a8.3 8.3 0 0 1-.6-3.1 8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 8.6 8.3z"/>' },
+  { id: 'channels', label: 'Каналы', icon: '<path d="M4 6h16M4 12h16M4 18h10"/>' },
   { id: 'settings', label: 'Настройки', icon: '<circle cx="12" cy="12" r="3"/><path d="M12 3v2m0 14v2M4.2 4.2l1.4 1.4m12.8 12.8 1.4 1.4M3 12h2m14 0h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>' },
 ];
 
@@ -103,11 +105,28 @@ const openChat = (contact) => {
   draw();
 };
 
+const openRoom = (room, hub) => {
+  if (!nav) return;
+  nav.push({ name: 'room', room, hub });
+  draw();
+};
+
 const draw = () => {
   if (!nav || !currentUser) return;
   const route = nav.current;
   screenCleanup?.();
   screenCleanup = null;
+
+  if (route.name === 'room') {
+    root.replaceChildren();
+    mountRoomChat(root, {
+      room: route.room,
+      meId: currentUser.id,
+      serverPublicKey: currentUser.publicKey,
+      onBack: goBack,
+    });
+    return;
+  }
 
   if (route.name === 'chat') {
     root.replaceChildren();
@@ -117,6 +136,13 @@ const draw = () => {
       serverPublicKey: currentUser.publicKey,
       onBack: goBack,
     });
+    return;
+  }
+
+  if (route.name === 'channels') {
+    renderTab('channels', 'Каналы', (screen) =>
+      mountChannels(screen, { onOpenRoom: (room, hub) => openRoom(room, hub) })
+    );
     return;
   }
 

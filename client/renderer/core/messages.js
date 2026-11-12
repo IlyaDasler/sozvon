@@ -35,4 +35,21 @@ export const messages = {
     await decryptList(encrypted, conv, keyring);
     return list;
   },
+
+  // История комнаты: тот же формат, conv = room:<id>. Только чтение.
+  async roomHistory({ roomId, meId, serverPublicKey }) {
+    const list = (await Api.get(`/rooms/${roomId}/messages`)).sort((a, b) => a.id - b.id);
+    const encrypted = list.filter((m) => m.enc);
+    if (!encrypted.length) return list;
+    const identity = readIdentity({ base: Api.base, meId, serverPublicKey });
+    if (!identity) return list;
+    const conv = `room:${roomId}`;
+    try {
+      const keyring = await loadConvKeys(conv, identity);
+      await decryptList(encrypted, conv, keyring);
+    } catch {
+      // Ключа нет на этом устройстве — оставляем сообщения без plain.
+    }
+    return list;
+  },
 };
