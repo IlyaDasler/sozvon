@@ -10,6 +10,8 @@ runTest(async () => {
   const w = await openClient('thr', a);
   w.setSize(1228, 838); w.show(); w.focus();
   await sleep(1000);
+  await js(w, `setTheme('glass2'); true`);
+  await sleep(300);
 
   for (const [width, height, label] of [[1228, 838, 'wide'], [390, 844, 'phone']]) {
     w.setSize(width, height);

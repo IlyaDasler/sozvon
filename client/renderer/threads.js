@@ -196,7 +196,7 @@ window.preloadThread = (rootId, roomId) => {
     panel().classList.remove('hidden');
     panel().classList.add('thread-open');
     // Панель должна быть непрозрачной и полной сразу, независимо от темы и загрузки данных.
-    panel().style.setProperty('background', 'var(--bg-deep)', 'important');
+    panel().style.setProperty('background-color', 'var(--bg-deep)', 'important');
     panel().style.setProperty('backdrop-filter', 'none', 'important');
     panel().style.setProperty('-webkit-backdrop-filter', 'none', 'important');
     renderThreadReply();

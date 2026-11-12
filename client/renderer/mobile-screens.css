@@ -1310,7 +1310,7 @@
     margin: 0 !important;
     border: 0 !important;
     border-radius: 0 !important;
-    background: var(--bg) !important;
+    background-color: var(--bg-deep) !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
     box-shadow: none !important;
@@ -1328,7 +1328,7 @@
     min-height: 60px !important;
     height: auto !important;
     padding: max(8px, var(--m-safe-top)) 10px 8px !important;
-    background: var(--bg-2) !important;
+    background-color: var(--bg-2) !important;
     border-bottom: 1px solid var(--line) !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
@@ -1352,7 +1352,7 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     padding: 4px 10px 12px !important;
-    background: var(--bg) !important;
+    background-color: var(--bg-deep) !important;
   }
 
   #thread-panel.thread-open .thread-form {
@@ -1499,13 +1499,13 @@
     backdrop-filter: none !important;
   }
   #thread-panel:not(.hidden) {
-    background: var(--bg) !important;
+    background-color: var(--bg-deep) !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
-  #thread-panel:not(.hidden) .thread-head { background: var(--bg-2) !important; }
-  #thread-panel:not(.hidden) .thread-list { background: var(--bg) !important; }
+  #thread-panel:not(.hidden) .thread-head { background-color: var(--bg-2) !important; }
+  #thread-panel:not(.hidden) .thread-list { background-color: var(--bg-deep) !important; }
   #thread-panel:not(.hidden) .thread-form { background: var(--bg-2) !important; }
   body:has(#thread-panel:not(.hidden)) #mobile-nav,
   body:has(#thread-panel:not(.hidden)) #mobile-add-friend { display: none !important; }
@@ -2423,7 +2423,6 @@
     padding: 0 !important;
     border: 0 !important;
     border-radius: 0 !important;
-    background: var(--bg-2) !important;
     animation: none !important;
   }
   #notif-panel:not(.hidden) {
@@ -2611,5 +2610,24 @@
     width: 100%;
     margin: 0;
     pointer-events: auto;
+  }
+}
+
+/* glass2: настройки и тред живут на том же фоновом кадре, что и чат. */
+@media (max-width: 1400px) {
+  html[data-theme='glass2'] #thread-panel.thread-open,
+  html[data-theme='glass2'] #settings.modal:not(.hidden),
+  html[data-theme='glass2'] #hub-settings .rs-card {
+    background-image:
+      linear-gradient(180deg, color-mix(in srgb, var(--bg-deep) 58%, transparent), color-mix(in srgb, var(--bg-deep) 66%, transparent)),
+      var(--glass2-bg, url('glass2-wallpaper.jpg'));
+    background-size: cover;
+    background-position: center;
+  }
+  html[data-theme='glass2'] #thread-panel.thread-open .thread-head,
+  html[data-theme='glass2'] #thread-panel.thread-open .thread-list,
+  html[data-theme='glass2'] #thread-panel.thread-open .thread-form {
+    background-color: transparent;
+    background-image: none;
   }
 }
