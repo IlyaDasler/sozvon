@@ -2468,3 +2468,20 @@
 @media (max-width: 1400px) {
   .app-tip, .rail-tip { display: none; }
 }
+
+/* Workspace: шапка сайдбара и шапка чата должны заканчиваться на одной линии. */
+@media (min-width: 600px) and (min-height: 620px) and (max-width: 1400px) {
+  .chat-head,
+  .room-view .chat-head {
+    height: var(--head-h) !important;
+    min-height: var(--head-h) !important;
+    max-height: var(--head-h) !important;
+  }
+}
+
+/* Настройки канала: подсказка автосохранения вместо кнопки. */
+#hub-settings .hs-autosave {
+  margin: 0;
+  color: var(--muted);
+}
+

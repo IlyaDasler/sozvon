@@ -798,9 +798,12 @@ function hubOverviewPane(hub) {
       color = c;
       icon.style.setProperty('--hub-color', c);
       paint();
+      hubAction(Api.patch(`/hubs/${hub.id}`, { ...current(), iconColor: c }));
     });
   paint();
   const reactionsBox = el('input', { type: 'checkbox', id: 'hs-reactions-visible', checked: hub.reactionsVisible !== false });
+  const save = (partial) => hubAction(Api.patch(`/hubs/${hub.id}`, partial));
+  const current = () => ({ name: name.value.trim() || hub.name, iconColor: color, reactionsVisible: reactionsBox.checked });
   const form = el('form', { className: 'hs-overview' },
     el('div', { className: 'hs-icon-row' }, icon,
       el('div', { className: 'hs-icon-actions' },
@@ -811,11 +814,15 @@ function hubOverviewPane(hub) {
     el('label', { className: 'field' }, el('span', { textContent: 'Название' }), name),
     el('div', { className: 'field' }, el('span', { textContent: 'Цвет' }), colors),
     el('label', { className: 'check' }, reactionsBox, el('span', { textContent: 'Показывать, кто поставил реакцию' })),
-    el('div', { className: 'row' }, el('div', { className: 'spacer' }), el('button', { className: 'btn primary', textContent: 'Сохранить' })));
-  form.onsubmit = (e) => {
-    e.preventDefault();
-    hubAction(Api.patch(`/hubs/${hub.id}`, { name: name.value.trim(), iconColor: color, reactionsVisible: reactionsBox.checked }), 'Сохранено');
-  };
+    el('p', { className: 'muted small hs-autosave', textContent: 'Изменения сохраняются сразу' }));
+  // Без кнопки «Сохранить»: каждое изменение уходит на сервер сразу.
+  form.onsubmit = (e) => e.preventDefault();
+  name.addEventListener('change', () => {
+    const value = name.value.trim();
+    if (!value) { name.value = hub.name; return; }
+    if (value !== hub.name) save({ ...current(), name: value });
+  });
+  reactionsBox.addEventListener('change', () => save(current()));
   const owner = hub.members.find((m) => m.id === hub.ownerId);
   const facts = el('div', { className: 'rs-facts' },
     el('div', {}, el('span', { className: 'muted small', textContent: 'Создатель' }), el('b', { textContent: owner?.displayName || '—' })),
