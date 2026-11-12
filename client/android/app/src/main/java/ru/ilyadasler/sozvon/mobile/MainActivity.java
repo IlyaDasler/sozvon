@@ -31,7 +31,7 @@ public class MainActivity extends BridgeActivity {
         int barFlags = getWindow().getDecorView().getSystemUiVisibility();
         barFlags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         getWindow().getDecorView().setSystemUiVisibility(barFlags);
-        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         if (android.os.Build.VERSION.SDK_INT >= 29) {
             getWindow().setStatusBarContrastEnforced(false);
