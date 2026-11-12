@@ -26,6 +26,10 @@ public class MainActivity extends BridgeActivity {
         sessionPrefs = getSharedPreferences("sozvon_session", MODE_PRIVATE);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         getWindow().getDecorView().setFitsSystemWindows(false);
+        // Пока тема не прислала цвет, иконки трея должны быть светлыми на тёмном фоне.
+        int barFlags = getWindow().getDecorView().getSystemUiVisibility();
+        barFlags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        getWindow().getDecorView().setSystemUiVisibility(barFlags);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         if (android.os.Build.VERSION.SDK_INT >= 29) {
