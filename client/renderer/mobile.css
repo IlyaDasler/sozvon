@@ -233,7 +233,8 @@
   .main {
     gap: 10px;
   }
-  .sidebar {
+  /* На экране друзей левый список дублирует правый — сайдбар скрыт. */
+  body:not(.friends-home-wide) .sidebar {
     position: static !important;
     display: flex !important;
     border-radius: 16px;

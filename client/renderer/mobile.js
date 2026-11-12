@@ -151,7 +151,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.158';
+    version.textContent = 'Версия 1.0.159';
     authCard.append(version);
   }
 
@@ -1323,4 +1323,48 @@ else if (sidebar) sidebar.prepend(hubsBar);
   if (!window.desktop && 'serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
+})();
+
+
+// Друзья на широком экране: слева дублируется тот же список, что справа.
+// Убираем сайдбар, отдаём всю ширину правой колонке, профиль переносим
+// в нижнюю полосу на всю освободившуюся ширину.
+(() => {
+  const mq = matchMedia('(min-width: 600px) and (min-height: 620px) and (max-width: 1400px)');
+  const sidebar = document.querySelector('.sidebar');
+  const mePanel = document.getElementById('me-panel') || document.querySelector('.me-panel');
+  const empty = document.getElementById('empty-state');
+  const content = document.querySelector('#main .content');
+  if (!sidebar || !mePanel || !empty || !content) return;
+  const home = document.createElement('div');
+  home.className = 'friends-profile-dock';
+  let docked = false;
+
+  const shouldDock = () => mq.matches &&
+    !empty.classList.contains('hidden') &&
+    !document.body.classList.contains('mobile-room-open') &&
+    !document.body.classList.contains('mobile-list') &&
+    !document.body.classList.contains('mobile-settings') &&
+    !document.body.classList.contains('mobile-notifications');
+
+  const sync = () => {
+    const on = shouldDock();
+    document.body.classList.toggle('friends-home-wide', on);
+    if (on) {
+      if (mePanel.parentElement !== home) {
+        home.append(mePanel);
+        content.append(home);
+        docked = true;
+      }
+    } else if (docked) {
+      home.remove();
+      sidebar.append(mePanel);
+      docked = false;
+    }
+  };
+
+  new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  new MutationObserver(sync).observe(empty, { attributes: true, attributeFilter: ['class'] });
+  mq.addEventListener('change', sync);
+  sync();
 })();

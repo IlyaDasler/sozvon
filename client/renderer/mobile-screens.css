@@ -2593,3 +2593,23 @@
   font: inherit;
   font-weight: 600;
 }
+
+/* Друзья на широком экране: без дублирующего сайдбара, профиль — полосой снизу. */
+@media (min-width: 600px) and (min-height: 620px) and (max-width: 1400px) {
+  body.friends-home-wide .sidebar { display: none; }
+  body.friends-home-wide #main .content { width: 100%; max-width: none; }
+  body.friends-home-wide #empty-state { padding-bottom: 78px; }
+  .friends-profile-dock {
+    position: fixed;
+    left: 78px;
+    right: 8px;
+    bottom: 8px;
+    z-index: 21;
+    pointer-events: none;
+  }
+  .friends-profile-dock .me-panel {
+    width: 100%;
+    margin: 0;
+    pointer-events: auto;
+  }
+}
