@@ -131,7 +131,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.155';
+    version.textContent = 'Версия 1.0.156';
     authCard.append(version);
   }
 
@@ -1258,6 +1258,7 @@ else if (sidebar) sidebar.prepend(hubsBar);
   // Единый порядок закрытия для Android back и системной кнопки.
   // Возвращает true, если событие поглощено приложением.
   window.mobileBack = () => {
+    if (window.mobileCameraTest?.isOpen()) { window.mobileCameraTest.close(); return true; }
     // Меню камеры — оверлей поверх настроек: одно нажатие закрывает только его,
     // экран настроек при этом не меняется.
     const cameraPicker = document.getElementById('camera-picker');
