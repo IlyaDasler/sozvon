@@ -151,7 +151,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.170';
+    version.textContent = 'Версия 1.0.174';
     authCard.append(version);
   }
 
@@ -1451,5 +1451,17 @@ else if (sidebar) sidebar.prepend(hubsBar);
     }
   };
   matchMedia('(max-width: 1400px)').addEventListener('change', sync);
+  sync();
+})();
+
+// Системный трей окрашивается в акцент выбранной темы, как и остальной интерфейс.
+(() => {
+  const sync = () => {
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    if (window.NativeSession?.setBarsColor && /^#[0-9a-f]{6}$/i.test(accent)) {
+      try { window.NativeSession.setBarsColor(accent); } catch {}
+    }
+  };
+  new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-theme-id'] });
   sync();
 })();

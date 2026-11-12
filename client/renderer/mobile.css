@@ -611,13 +611,13 @@ html.pwa body.mobile-list .sidebar {
     gap: 6px !important;
     width: 100%;
     min-width: 0;
-    padding: 0 18px 2px 0 !important;
+    padding: 4px 18px 0 12px !important;
     overflow-x: auto !important;
     mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 20px), transparent 100%);
     -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 20px), transparent 100%);
     overflow-y: hidden;
     scrollbar-width: none;
-    scroll-padding-inline: 2px;
+    scroll-padding-inline: 12px;
     scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
   }

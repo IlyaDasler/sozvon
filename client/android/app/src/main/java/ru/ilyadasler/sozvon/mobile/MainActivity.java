@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
@@ -19,11 +20,21 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         sessionPrefs = getSharedPreferences("sozvon_session", MODE_PRIVATE);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        getWindow().getDecorView().setFitsSystemWindows(false);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            getWindow().setStatusBarContrastEnforced(false);
+            getWindow().setNavigationBarContrastEnforced(false);
+        }
         registerSessionBridge();
         WebView web = getBridge().getWebView();
-        if (web != null) web.setWebViewClient(new OAuthWebViewClient(getBridge(), this));
+        if (web != null) {
+            web.setWebViewClient(new OAuthWebViewClient(getBridge(), this));
+            // WebView рисует под прозрачным статус-баром, чтобы тема была видна и в трее.
+            web.setFitsSystemWindows(false);
+            web.setBackgroundColor(Color.TRANSPARENT);
+        }
         handleOAuthIntent(getIntent());
     }
 
@@ -109,6 +120,22 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void clear() {
             sessionPrefs.edit().remove("session").apply();
+        }
+
+        @JavascriptInterface
+        public void setBarsColor(String hex) {
+            try {
+                int color = Color.parseColor(hex);
+                runOnUiThread(() -> {
+                    getWindow().setStatusBarColor(color);
+                    getWindow().setNavigationBarColor(color);
+                    double lum = (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255.0;
+                    int flags = getWindow().getDecorView().getSystemUiVisibility();
+                    if (lum > 0.65) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                    else flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                    getWindow().getDecorView().setSystemUiVisibility(flags);
+                });
+            } catch (Exception ignored) {}
         }
     }
 
