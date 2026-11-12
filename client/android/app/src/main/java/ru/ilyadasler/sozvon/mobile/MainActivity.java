@@ -23,6 +23,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WebView.setWebContentsDebuggingEnabled(true);
         sessionPrefs = getSharedPreferences("sozvon_session", MODE_PRIVATE);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         getWindow().getDecorView().setFitsSystemWindows(false);

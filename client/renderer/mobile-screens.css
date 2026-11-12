@@ -2666,3 +2666,19 @@
     background-repeat: no-repeat;
   }
 }
+
+/* Нижний профиль: зоны касания не меньше 48dp. */
+@media (min-width: 600px) and (min-height: 620px) and (max-width: 1400px) {
+  .friends-profile-dock .me-panel .icon-btn {
+    width: 48px;
+    height: 48px;
+  }
+  .friends-profile-dock .me-status-btn {
+    width: 48px;
+    height: 48px;
+  }
+  .friends-profile-dock .me-status-btn .avatar {
+    width: 44px;
+    height: 44px;
+  }
+}
