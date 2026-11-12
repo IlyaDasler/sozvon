@@ -163,3 +163,11 @@
 
 Исправление: в Workspace-блоке добавлены селекторы той же/большей специфичности для mobile-room-open, mobile-settings, mobile-notifications. Проверено CDP: paddingBottom 0, sidebar bottom 837 при 838. E2E: sideBottom 772 при h 773.
 Скриншоты: 21-before..., 22-after....
+
+## 1.0.146: профиль и композер выровнены по низу
+
+Причина рассинхрона: у `.sidebar` оставался `padding-bottom: 24px` (safe-area от телефонной панели), поэтому `.me-panel` заканчивался на 738px, а композер — на 762px при высоте 773px.
+
+Исправление: в Workspace `.sidebar { padding-bottom: 0 !important; }`.
+CDP/e2e после: me bottom = 762, composer bottom = 762, sidebar bottom = 772 при высоте 773. Левая и правая нижние панели совпадают.
+Скриншот: screenshots/phase4/23-aligned-footer-composer-1.0.146.png.

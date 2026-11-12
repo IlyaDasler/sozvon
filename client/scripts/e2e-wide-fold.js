@@ -20,7 +20,7 @@ runTest(async () => {
   // Открыть канал через рейл.
   await js(w, `[...document.querySelectorAll('.hub-tile')][0]?.click(); true`);
   await sleep(700);
-  const hub = JSON.parse(await js(w, `JSON.stringify({body:document.body.className,nav:getComputedStyle(document.getElementById('mobile-nav')).display,sidebar:Math.round(document.querySelector('.sidebar').getBoundingClientRect().width),hubs:getComputedStyle(document.getElementById('mobile-hubs')).display,head:document.querySelector('.sidebar-head')?.innerText||'',avatar:!!document.querySelector('.sidebar-head .hub-menu-avatar'),active:document.activeElement?.id||'',pad:getComputedStyle(document.querySelector('#main')).paddingBottom,sideBottom:Math.round(document.querySelector('.sidebar').getBoundingClientRect().bottom),h:innerHeight})`));
+  const hub = JSON.parse(await js(w, `JSON.stringify({body:document.body.className,nav:getComputedStyle(document.getElementById('mobile-nav')).display,sidebar:Math.round(document.querySelector('.sidebar').getBoundingClientRect().width),hubs:getComputedStyle(document.getElementById('mobile-hubs')).display,head:document.querySelector('.sidebar-head')?.innerText||'',avatar:!!document.querySelector('.sidebar-head .hub-menu-avatar'),active:document.activeElement?.id||'',pad:getComputedStyle(document.querySelector('#main')).paddingBottom,sideBottom:Math.round(document.querySelector('.sidebar').getBoundingClientRect().bottom),sidePad:getComputedStyle(document.querySelector('.sidebar')).paddingBottom,me:Math.round(document.querySelector('.me-panel').getBoundingClientRect().bottom),meStyle:(()=>{const e=document.querySelector('.me-panel'),c=getComputedStyle(e);return {mb:c.marginBottom,h:c.height}})(),composer:Math.round(document.querySelector('#room-message-form').getBoundingClientRect().bottom),compStyle:(()=>{const e=document.querySelector('#room-message-form'),c=getComputedStyle(e);return {pb:c.paddingBottom,h:c.height}})(),h:innerHeight})`));
   console.log('wide-hub', JSON.stringify(hub));
   fs.writeFileSync(path.join(dir, 'hub.png'), (await w.webContents.capturePage()).toPNG());
   if (hub.nav !== 'none') throw new Error('в Workspace осталась нижняя панель');
@@ -28,5 +28,6 @@ runTest(async () => {
   if (!hub.avatar) throw new Error('в шапке канала нет аватара');
   if (/message-input/.test(hub.active)) throw new Error('композер получил фокус без нажатия: ' + hub.active);
   if (hub.pad !== '0px' || hub.h - hub.sideBottom > 2) throw new Error('Workspace не заполняет высоту: ' + JSON.stringify(hub));
+  if (Math.abs(hub.me - hub.composer) > 2) throw new Error('профиль и композер не выровнены по низу: ' + JSON.stringify(hub));
 });
 

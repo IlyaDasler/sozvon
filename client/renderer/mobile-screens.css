@@ -2039,6 +2039,11 @@
     padding-bottom: 0 !important;
     bottom: 0 !important;
   }
+  /* Профиль в сайдбаре не должен висеть выше композера: убираем
+     нижний safe-area padding, который остался от телефонной панели. */
+  body .sidebar {
+    padding-bottom: 0 !important;
+  }
 }
 
 
