@@ -189,6 +189,10 @@ window.preloadThread = (rootId, roomId) => {
     const roomId = chat.roomId || message.roomId;
     const rootId = message.threadRoot || message.id;
     thread = { rootId, roomId };
+    // Список участников/уведомления могли оставить затемняющий scrim поверх треда:
+    // именно он давал «блюр» и перехватывал нажатия.
+    if (typeof closeDrawers === 'function') closeDrawers();
+    document.querySelectorAll('.scrim.is-on').forEach((el) => el.classList.remove('is-on'));
     panel().classList.remove('hidden');
     panel().classList.add('thread-open');
     // Панель должна быть непрозрачной и полной сразу, независимо от темы и загрузки данных.

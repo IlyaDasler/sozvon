@@ -15,6 +15,8 @@ runTest(async () => {
     w.setSize(width, height);
     await sleep(250);
     const started = Date.now();
+    await js(w, `openRoom(${room.id}); true`);
+    await sleep(700);
     await js(w, `openThread({ id: ${root.id}, threadRoot: ${root.id}, roomId: ${room.id} }, { roomId: ${room.id} }); true`);
     await sleep(1200);
     const d = JSON.parse(await js(w, `JSON.stringify((() => {
@@ -29,10 +31,14 @@ runTest(async () => {
         active: document.activeElement?.id || '',
         msgs: p.querySelectorAll('.thread-list .msg').length,
         body: document.body.className,
+        rect:p.getBoundingClientRect().toJSON(),z:getComputedStyle(p).zIndex,op:getComputedStyle(p).opacity,disp:getComputedStyle(p).display,text:p.innerText.slice(0,120),top:document.elementFromPoint(innerWidth/2,innerHeight/2)?.id||document.elementFromPoint(innerWidth/2,innerHeight/2)?.className,
+        filters: [...document.querySelectorAll('*')].filter((el)=>{const c=getComputedStyle(el);return (c.filter&&c.filter!=='none')||(c.backdropFilter&&c.backdropFilter!=='none')}).slice(0,20).map((el)=>({id:el.id,cls:(el.className||'').toString().slice(0,60),filter:getComputedStyle(el).filter,back:getComputedStyle(el).backdropFilter})),
       };
     })())`));
     console.log('thread-' + label, JSON.stringify({ ...d, ms: Date.now() - started }));
     if (!d.open) throw new Error(label + ': тред не открылся');
+    if (d.rect.width < 100 || d.rect.height < 100) throw new Error(label + ': панель треда нулевая');
+    if ((d.top || '').toString().includes('scrim')) throw new Error(label + ': scrim перекрывает тред');
     if (d.backdrop !== 'none' || d.headBackdrop !== 'none') throw new Error(label + ': остался blur ' + JSON.stringify(d));
     if (d.animation !== 'none') throw new Error(label + ': осталась анимация ' + d.animation);
     if (d.active === 'thread-input') throw new Error(label + ': тред украл фокус');

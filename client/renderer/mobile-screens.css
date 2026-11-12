@@ -1087,6 +1087,7 @@
   }
   #hub-settings .rs-nav .rs-danger { color: var(--danger); }
   #hub-settings .rs-nav .rs-sep { display: none; }
+  #hub-settings .rs-card { background: var(--bg-deep) !important; }
   #hub-settings .rs-main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   #hub-settings .rs-head {
     min-height: 52px;
@@ -2471,11 +2472,49 @@
 
 /* Workspace: шапка сайдбара и шапка чата должны заканчиваться на одной линии. */
 @media (min-width: 600px) and (min-height: 620px) and (max-width: 1400px) {
-  .chat-head,
+  /* Обычные шапки чатов — одной высоты с шапкой сайдбара. */
+  .chat-head:not(.friends-head),
   .room-view .chat-head {
     height: var(--head-h) !important;
     min-height: var(--head-h) !important;
     max-height: var(--head-h) !important;
+  }
+  /* «Друзья»: строка заголовка остаётся на линии сайдбара, а вкладки
+     уходят под эту линию, выше поиска. */
+  .friends-head {
+    position: relative;
+    height: auto !important;
+    min-height: calc(var(--head-h) + 46px) !important;
+    max-height: none !important;
+    flex-wrap: wrap !important;
+    align-content: flex-start;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border-bottom: 0 !important;
+  }
+  .friends-head::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: var(--head-h);
+    height: 1px;
+    background: var(--line);
+    pointer-events: none;
+  }
+  .friends-head .friends-title {
+    height: var(--head-h);
+    display: flex;
+    align-items: center;
+  }
+  .friends-head .friend-tabs {
+    order: 10;
+    flex: 0 0 100%;
+    height: 46px;
+    margin: 0 !important;
+    padding: 4px 0 0 !important;
+    align-items: center;
+    overflow-x: auto;
   }
 }
 
@@ -2486,48 +2525,3 @@
 }
 
 
-/* Workspace: настройки канала по содержимому, без пустого полотна.
-   Фон обязателен: иначе сквозь карточку просвечивает чат. */
-@media (min-width: 600px) and (min-height: 620px) and (max-width: 1400px) {
-  #hub-settings {
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 24px !important;
-  }
-  #hub-settings .rs-card {
-    display: flex !important;
-    flex-direction: column !important;
-    width: min(1080px, 100%) !important;
-    height: auto !important;
-    max-height: calc(100dvh - 48px) !important;
-    margin: 0 auto !important;
-    border-radius: 20px !important;
-    border: 1px solid var(--line) !important;
-    background: var(--bg-2) !important;
-    overflow: hidden !important;
-  }
-  #hub-settings .rs-nav { background: var(--bg-2) !important; }
-  #hub-settings .rs-main { flex: 0 1 auto !important; min-height: 0 !important; overflow: hidden !important; }
-  #hub-settings .rs-body { flex: 0 1 auto !important; max-height: calc(100dvh - 250px) !important; overflow-y: auto !important; }
-}
-
-/* Тред на мобильном/широком Android: без анимации и стеклянного blur —
-   они дают задержку открытия и «блюр» поверх чата. */
-@media (max-width: 1400px) {
-  #thread-panel,
-  #thread-panel .thread-head,
-  #thread-panel .thread-list,
-  #thread-panel .thread-form,
-  #thread-panel .msg,
-  #thread-panel .msg-text {
-    animation: none !important;
-    transition: none !important;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-    filter: none !important;
-  }
-  #thread-panel { background: var(--bg-deep) !important; }
-  #thread-panel .thread-head,
-  #thread-panel .thread-list { background: var(--bg-deep) !important; }
-  #thread-panel .thread-form { background: var(--bg-2) !important; }
-}
