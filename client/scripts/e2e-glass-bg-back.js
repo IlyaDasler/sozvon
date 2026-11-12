@@ -25,4 +25,13 @@ runTest(async () => {
   if (!handled) throw new Error('назад не обработал модалку');
   if (d.open) throw new Error('модалка осталась открытой');
   if (!d.settings) throw new Error('модалка закрыла настройки');
+  // Даже если настройки закрыть другим путём, модалка не должна остаться поверх.
+  await js(w, `document.querySelector('#theme-grid .theme-bg-btn').click(); true`);
+  await sleep(300);
+  await js(w, `document.body.classList.remove('mobile-settings'); document.getElementById('settings').classList.add('hidden'); true`);
+  await sleep(100);
+  const orphan = JSON.parse(await js(w, `JSON.stringify({rect:document.getElementById('glass2-bg-modal').getBoundingClientRect().width, parent:document.getElementById('glass2-bg-modal').parentElement?.id||''})`));
+  console.log('glass-bg-orphan-check', JSON.stringify(orphan));
+  if (orphan.parent !== 'settings') throw new Error('модалка не внутри настроек');
+  if (orphan.rect > 0) throw new Error('модалка осталась видимой после закрытия настроек');
 });

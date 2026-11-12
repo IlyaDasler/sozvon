@@ -175,9 +175,9 @@ function openGlass2BackgroundPicker() {
     glass2BgModal.id = 'glass2-bg-modal';
     glass2BgModal.className = 'modal hidden';
     // На мобильном модалка должна открываться моментально, без анимации и blur.
-    glass2BgModal.style.animation = 'none';
-    glass2BgModal.style.webkitBackdropFilter = 'none';
-    glass2BgModal.style.backdropFilter = 'none';
+    glass2BgModal.style.setProperty('animation', 'none', 'important');
+    glass2BgModal.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+    glass2BgModal.style.setProperty('backdrop-filter', 'none', 'important');
     // Android: закрывает тап по затемнению и системный back — крестик только для десктопа.
     const closeBtn = matchMedia('(max-width: 900px)').matches
       ? ''
@@ -189,7 +189,8 @@ function openGlass2BackgroundPicker() {
         <p class="muted small">Выберите пейзаж, который будет виден за стеклянными панелями.</p>
         <div class="glass2-bg-grid"></div>
       </div>`;
-    document.body.append(glass2BgModal);
+    // Внутри настроек: если экран настроек закрылся жестом, модалка не остаётся висеть над приложением.
+    (document.getElementById('settings') || document.body).append(glass2BgModal);
     glass2BgModal.addEventListener('click', (event) => {
       if (event.target === glass2BgModal) closeGlass2BackgroundPicker();
     });
@@ -221,6 +222,20 @@ function openGlass2BackgroundPicker() {
 
 function closeGlass2BackgroundPicker() {
   glass2BgModal?.classList.add('hidden');
+}
+
+// Настройки могли закрыться жестом/кнопкой, не вызвав мобильный back.
+// Модалка фона не имеет права остаться поверх приложения.
+{
+  const settings = document.getElementById('settings');
+  const sync = () => {
+    if (!settings || !glass2BgModal) return;
+    if (settings.classList.contains('hidden') || !document.body.classList.contains('mobile-settings')) {
+      glass2BgModal.classList.add('hidden');
+    }
+  };
+  new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  if (settings) new MutationObserver(sync).observe(settings, { attributes: true, attributeFilter: ['class'] });
 }
 
 // ---------- Форма углов и «живая» подсветка стекла ----------
@@ -369,6 +384,13 @@ $('ui-font').onchange = () => {
 };
 
 applyFont();
+
+// Заранее греем пейзажи «Стекла», чтобы модалка фона открывалась без задержки.
+for (const bg of GLASS2_BACKGROUNDS) {
+  const img = new Image();
+  img.src = bg.file;
+}
+
 // ---------- Ползунки: заполнение до бегунка ----------
 
 function paintRange(input) {
