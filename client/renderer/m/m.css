@@ -521,3 +521,65 @@ body {
   flex: none;
   min-height: var(--m-touch);
 }
+
+/* ---------- Композер личного чата ---------- */
+
+.m-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--m-space-2);
+  flex: none;
+  padding: var(--m-space-2) var(--m-space-3) max(var(--m-space-2), var(--m-safe-bottom));
+  border-top: 1px solid var(--m-line);
+  background: var(--m-bg);
+}
+
+.m-composer__input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--m-touch);
+  max-height: 132px;
+  padding: 12px var(--m-space-3);
+  border: 1px solid var(--m-line);
+  border-radius: 18px;
+  background: var(--m-surface);
+  color: var(--m-text);
+  font: inherit;
+  line-height: 1.35;
+  resize: none;
+}
+
+.m-composer__input:focus {
+  outline: 2px solid color-mix(in srgb, var(--m-accent) 55%, transparent);
+  outline-offset: -1px;
+}
+
+.m-composer__send {
+  display: grid;
+  place-items: center;
+  width: var(--m-touch);
+  height: var(--m-touch);
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: var(--m-accent);
+  color: var(--on-accent, #fff);
+}
+
+.m-composer__send:disabled { opacity: .5; }
+
+.m-composer__send svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.m-composer__error {
+  padding: var(--m-space-2) var(--m-space-4);
+  color: var(--m-danger);
+  font-size: 13px;
+}

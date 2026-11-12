@@ -1,5 +1,6 @@
 // Экран переписки. Расшифровка — в core/messages.js; здесь только показ.
 import { messages } from '../../core/messages.js';
+import { sendDm } from '../../core/send.js';
 
 const time = (ts) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
@@ -53,7 +54,21 @@ export function mountChat(container, { meId, peer, serverPublicKey, onBack }) {
   list.className = 'm-msgs';
   screen.append(list);
 
-  container.replaceChildren(bar, screen);
+  const form = document.createElement('form');
+  form.className = 'm-composer';
+  const input = document.createElement('textarea');
+  input.rows = 1;
+  input.maxLength = 2000;
+  input.placeholder = 'Сообщение';
+  input.className = 'm-composer__input';
+  const send = document.createElement('button');
+  send.type = 'submit';
+  send.className = 'm-composer__send';
+  send.setAttribute('aria-label', 'Отправить');
+  send.innerHTML = '<svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>';
+  form.append(input, send);
+
+  container.replaceChildren(bar, screen, form);
 
   const showStatus = (text) => {
     list.replaceChildren();
@@ -61,6 +76,37 @@ export function mountChat(container, { meId, peer, serverPublicKey, onBack }) {
     note.className = 'm-empty';
     note.textContent = text;
     list.append(note);
+  };
+
+  let sendBusy = false;
+  let loaded = false;
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    if (sendBusy) return;
+    const text = input.value.trim();
+    if (!text) return;
+    sendBusy = true;
+    send.disabled = true;
+    input.disabled = true;
+    try {
+      const saved = await sendDm(peer.id, text, meId);
+      if (!loaded) list.replaceChildren();
+      list.append(bubble(saved, meId));
+      input.value = '';
+      screen.scrollTop = screen.scrollHeight;
+      loaded = true;
+    } catch (err) {
+      const note = document.createElement('div');
+      note.className = 'm-composer__error';
+      note.textContent = err.message || 'Не удалось отправить';
+      list.append(note);
+      screen.scrollTop = screen.scrollHeight;
+    } finally {
+      sendBusy = false;
+      send.disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
   };
 
   (async () => {
@@ -74,9 +120,11 @@ export function mountChat(container, { meId, peer, serverPublicKey, onBack }) {
     }
     if (!history.length) {
       showStatus('Пока пусто. Напишите первым.');
+      loaded = true;
       return;
     }
     list.replaceChildren(...history.map((m) => bubble(m, meId)));
+    loaded = true;
     screen.scrollTop = screen.scrollHeight;
   })();
 }
