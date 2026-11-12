@@ -19,7 +19,7 @@
 // композер при открытии комнаты — выезжает клавиатура и весь Workspace
 // подпрыгивает вверх. Разрешаем фокус только если человек сам нажал в композер.
 if (window.NativeSession || window.Capacitor || matchMedia('(pointer: coarse)').matches || matchMedia('(max-width: 1400px)').matches) {
-  const isComposer = (el) => el?.id === 'message-input' || el?.id === 'room-message-input';
+  const isComposer = (el) => el?.id === 'message-input' || el?.id === 'room-message-input' || el?.id === 'thread-input';
   let composerPointerAt = 0;
   document.addEventListener('pointerdown', (event) => {
     if (isComposer(event.target) || event.target.closest?.('.composer')) {
@@ -120,7 +120,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.148';
+    version.textContent = 'Версия 1.0.149';
     authCard.append(version);
   }
 

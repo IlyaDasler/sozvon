@@ -2510,3 +2510,24 @@
   #hub-settings .rs-main { flex: 0 1 auto !important; min-height: 0 !important; overflow: hidden !important; }
   #hub-settings .rs-body { flex: 0 1 auto !important; max-height: calc(100dvh - 250px) !important; overflow-y: auto !important; }
 }
+
+/* Тред на мобильном/широком Android: без анимации и стеклянного blur —
+   они дают задержку открытия и «блюр» поверх чата. */
+@media (max-width: 1400px) {
+  #thread-panel,
+  #thread-panel .thread-head,
+  #thread-panel .thread-list,
+  #thread-panel .thread-form,
+  #thread-panel .msg,
+  #thread-panel .msg-text {
+    animation: none !important;
+    transition: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    filter: none !important;
+  }
+  #thread-panel { background: var(--bg-deep) !important; }
+  #thread-panel .thread-head,
+  #thread-panel .thread-list { background: var(--bg-deep) !important; }
+  #thread-panel .thread-form { background: var(--bg-2) !important; }
+}

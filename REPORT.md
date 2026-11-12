@@ -180,3 +180,10 @@ CDP/e2e после: me bottom = 762, composer bottom = 762, sidebar bottom = 772
 - Шапка чата в Workspace получила ту же высоту, что шапка сайдбара.
 - E2E: старт «Обзор», свайп → «События», свайп → «Роли и права», кнопки «Сохранить» нет, подсказка автосохранения есть.
 Скриншот: screenshots/phase4/24-hub-settings-autosave-swipe-1.0.148.png.
+
+## 1.0.149: треды без blur и анимации
+
+- Последним CSS-слоем для #thread-panel и всех его частей выключены animation, transition, backdrop-filter и filter.
+- Программный фокус в #thread-input заблокирован так же, как в композерах: тред больше не поднимает клавиатуру и не дёргает окно.
+- E2E на 1228×838 и 390×844: open=true, backdrop=none, animation=none, activeElement не thread-input, сообщения рисуются.
+Скриншоты: 25/26.
