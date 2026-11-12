@@ -3,6 +3,7 @@ package ru.ilyadasler.sozvon.mobile;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
@@ -18,6 +19,8 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         sessionPrefs = getSharedPreferences("sozvon_session", MODE_PRIVATE);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(Color.TRANSPARENT);
         registerSessionBridge();
         WebView web = getBridge().getWebView();
         if (web != null) web.setWebViewClient(new OAuthWebViewClient(getBridge(), this));
