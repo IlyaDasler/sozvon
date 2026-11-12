@@ -679,9 +679,17 @@ html.pwa body.mobile-list .sidebar {
   #rail .rail-item::before {
     display: none !important;
   }
+  /* Активный канал: не заливаем плитку фоном — иначе background-image
+     аватарки сбрасывается и у выбранного канала исчезает картинка.
+     Вместо этого — заметное кольцо и скругление. */
   #rail .rail-item.active .rail-tile {
-    background: color-mix(in srgb, var(--accent) 18%, var(--bg-3)) !important;
     border-radius: 14px !important;
+    outline: 2px solid color-mix(in srgb, var(--accent) 78%, transparent);
+    outline-offset: 2px;
+  }
+  /* Буквенный аватар без картинки можно слегка подкрасить. */
+  #rail .rail-item.active .rail-tile:not(.has-image) {
+    background: color-mix(in srgb, var(--accent) 22%, var(--bg-3)) !important;
   }
   /* Инструменты комнаты появляются по долгому нажатию, а не висят
      тремя мелкими иконками на каждой строке. */
