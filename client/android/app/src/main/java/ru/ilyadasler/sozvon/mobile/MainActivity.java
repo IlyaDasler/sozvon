@@ -6,6 +6,10 @@ import android.net.Uri;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
+import android.view.Surface;
+import android.widget.FrameLayout;
+import android.hardware.display.DisplayManager;
+import android.view.Display;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
@@ -14,6 +18,7 @@ import org.json.JSONObject;
 
 public class MainActivity extends BridgeActivity {
     private SharedPreferences sessionPrefs;
+    private View statusTint;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -36,6 +41,39 @@ public class MainActivity extends BridgeActivity {
             web.setBackgroundColor(Color.TRANSPARENT);
         }
         handleOAuthIntent(getIntent());
+        applyMaxFrameRate();
+        DisplayManager dm = (DisplayManager) getSystemService(DISPLAY_SERVICE);
+        if (dm != null) dm.registerDisplayListener(new DisplayManager.DisplayListener() {
+            @Override public void onDisplayAdded(int id) {}
+            @Override public void onDisplayRemoved(int id) {}
+            @Override public void onDisplayChanged(int id) { applyMaxFrameRate(); }
+        }, null);
+    }
+
+    private void installStatusTint() {
+        int h = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        int height = h > 0 ? getResources().getDimensionPixelSize(h) : 0;
+        if (height <= 0) return;
+        statusTint = new View(this);
+        statusTint.setBackgroundColor(Color.TRANSPARENT);
+        statusTint.setClickable(false);
+        statusTint.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, height);
+        lp.gravity = android.view.Gravity.TOP;
+        ((android.view.ViewGroup) getWindow().getDecorView()).addView(statusTint, lp);
+        statusTint.bringToFront();
+    }
+
+    private void applyMaxFrameRate() {
+        if (android.os.Build.VERSION.SDK_INT < 30) return;
+        Display display = getDisplay();
+        if (display == null) return;
+        float rate = display.getRefreshRate();
+        try {
+            android.view.WindowManager.LayoutParams attrs = getWindow().getAttributes();
+            attrs.preferredRefreshRate = rate;
+            getWindow().setAttributes(attrs);
+        } catch (Exception ignored) {}
     }
 
     @Override
@@ -131,9 +169,7 @@ public class MainActivity extends BridgeActivity {
                     getWindow().setNavigationBarColor(color);
                     // Android 15 edge-to-edge игнорирует цвет бара — красим слой окна,
                     // который виден над WebView в области статус-бара.
-                    getWindow().getDecorView().setBackgroundColor(color);
-                    android.view.View content = getWindow().getDecorView().findViewById(android.R.id.content);
-                    if (content != null) content.setBackgroundColor(color);
+                    if (statusTint != null) statusTint.setBackgroundColor(color);
                     double lum = (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255.0;
                     int flags = getWindow().getDecorView().getSystemUiVisibility();
                     if (lum > 0.65) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;

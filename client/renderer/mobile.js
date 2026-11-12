@@ -151,7 +151,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.175';
+    version.textContent = 'Версия 1.0.177';
     authCard.append(version);
   }
 
@@ -1454,14 +1454,28 @@ else if (sidebar) sidebar.prepend(hubsBar);
   sync();
 })();
 
-// Системный трей окрашивается в акцент выбранной темы, как и остальной интерфейс.
+// Системный трей окрашивается в поверхность выбранной темы (как панели приложения).
 (() => {
+  const parse = (value) => {
+    const probe = document.createElement('span');
+    probe.style.color = value;
+    document.body.append(probe);
+    const c = getComputedStyle(probe).color;
+    probe.remove();
+    const m = c.match(/[\d.]+/g);
+    return m ? m.map(Number) : null;
+  };
+  const toHex = (c) => '#' + c.slice(0, 3).map((n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')).join('');
   const sync = () => {
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-    if (window.NativeSession?.setBarsColor && /^#[0-9a-f]{6}$/i.test(accent)) {
-      try { window.NativeSession.setBarsColor(accent); } catch {}
-    }
+    if (!window.NativeSession?.setBarsColor) return;
+    const bg = parse('var(--bg-deep)') || [0, 0, 0, 1];
+    const c = parse('var(--bg-2)') || parse('var(--bg)');
+    if (!c) return;
+    const a = c.length > 3 ? c[3] : 1;
+    const mixed = [0, 1, 2].map((i) => c[i] * a + bg[i] * (1 - a));
+    try { window.NativeSession.setBarsColor(toHex(mixed)); } catch {}
   };
   new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-theme-id'] });
   sync();
+  setTimeout(sync, 500);
 })();
