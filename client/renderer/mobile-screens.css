@@ -2030,7 +2030,12 @@
   body.mobile-settings #mobile-nav,
   body.mobile-notifications #mobile-nav { display: none !important; }
   body #main.main,
-  body .main {
+  body .main,
+  /* Старое правило body.mobile-room-open #main.main имеет такую же
+     специфичность и добавляет 98px под нижнее меню даже там, где меню скрыто. */
+  body.mobile-room-open #main.main,
+  body.mobile-settings #main.main,
+  body.mobile-notifications #main.main {
     padding-bottom: 0 !important;
     bottom: 0 !important;
   }

@@ -19,14 +19,28 @@
 // композер при открытии комнаты — выезжает клавиатура и весь Workspace
 // подпрыгивает вверх. Разрешаем фокус только если человек сам нажал в композер.
 if (window.NativeSession || window.Capacitor || matchMedia('(pointer: coarse)').matches || matchMedia('(max-width: 1400px)').matches) {
+  const isComposer = (el) => el?.id === 'message-input' || el?.id === 'room-message-input';
   let composerPointerAt = 0;
   document.addEventListener('pointerdown', (event) => {
-    if (event.target.closest?.('.composer, #message-input, #room-message-input')) composerPointerAt = Date.now();
+    if (isComposer(event.target) || event.target.closest?.('.composer')) {
+      composerPointerAt = Date.now();
+      return;
+    }
+    // Нажали вне композера — закрываем клавиатуру до смены экрана,
+    // иначе Android успевает уменьшить окно и не возвращает высоту.
+    if (isComposer(document.activeElement)) document.activeElement.blur();
   }, { capture: true, passive: true });
   document.addEventListener('focusin', (event) => {
-    if (!event.target.closest?.('#message-input, #room-message-input')) return;
+    if (!isComposer(event.target)) return;
     if (Date.now() - composerPointerAt > 900) event.target.blur();
   }, { capture: true });
+  // Ключевое: не даём программному focus() вообще поднять клавиатуру.
+  // blur после focus слишком поздно — IME уже уменьшил окно.
+  const nativeFocus = HTMLElement.prototype.focus;
+  HTMLElement.prototype.focus = function focus(...args) {
+    if (isComposer(this) && Date.now() - composerPointerAt > 900) return;
+    return nativeFocus.apply(this, args);
+  };
 }
 document.addEventListener('touchstart', markPointer, { capture: true, passive: true });
     document.addEventListener('pointerup', () => setTimeout(() => { pointerOnField = false; }, 0), true);
@@ -106,7 +120,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.143';
+    version.textContent = 'Версия 1.0.145';
     authCard.append(version);
   }
 
