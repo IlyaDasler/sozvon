@@ -14,7 +14,21 @@
       pointerOnField = Boolean(target?.closest?.('input, textarea, [contenteditable="true"]'));
     };
     document.addEventListener('pointerdown', markPointer, true);
-    document.addEventListener('touchstart', markPointer, { capture: true, passive: true });
+    
+// На Android/широком окне десктопный autoFocusAllowed() всё ещё фокусирует
+// композер при открытии комнаты — выезжает клавиатура и весь Workspace
+// подпрыгивает вверх. Разрешаем фокус только если человек сам нажал в композер.
+if (window.NativeSession || window.Capacitor || matchMedia('(pointer: coarse)').matches || matchMedia('(max-width: 1400px)').matches) {
+  let composerPointerAt = 0;
+  document.addEventListener('pointerdown', (event) => {
+    if (event.target.closest?.('.composer, #message-input, #room-message-input')) composerPointerAt = Date.now();
+  }, { capture: true, passive: true });
+  document.addEventListener('focusin', (event) => {
+    if (!event.target.closest?.('#message-input, #room-message-input')) return;
+    if (Date.now() - composerPointerAt > 900) event.target.blur();
+  }, { capture: true });
+}
+document.addEventListener('touchstart', markPointer, { capture: true, passive: true });
     document.addEventListener('pointerup', () => setTimeout(() => { pointerOnField = false; }, 0), true);
     const nativeFocus = HTMLElement.prototype.focus;
     const guardedFocus = function (...args) {
@@ -92,7 +106,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.142';
+    version.textContent = 'Версия 1.0.143';
     authCard.append(version);
   }
 

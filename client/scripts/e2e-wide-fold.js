@@ -20,11 +20,12 @@ runTest(async () => {
   // Открыть канал через рейл.
   await js(w, `[...document.querySelectorAll('.hub-tile')][0]?.click(); true`);
   await sleep(700);
-  const hub = JSON.parse(await js(w, `JSON.stringify({body:document.body.className,nav:getComputedStyle(document.getElementById('mobile-nav')).display,sidebar:Math.round(document.querySelector('.sidebar').getBoundingClientRect().width),hubs:getComputedStyle(document.getElementById('mobile-hubs')).display,head:document.querySelector('.sidebar-head')?.innerText||'',avatar:!!document.querySelector('.sidebar-head .hub-menu-avatar')})`));
+  const hub = JSON.parse(await js(w, `JSON.stringify({body:document.body.className,nav:getComputedStyle(document.getElementById('mobile-nav')).display,sidebar:Math.round(document.querySelector('.sidebar').getBoundingClientRect().width),hubs:getComputedStyle(document.getElementById('mobile-hubs')).display,head:document.querySelector('.sidebar-head')?.innerText||'',avatar:!!document.querySelector('.sidebar-head .hub-menu-avatar'),active:document.activeElement?.id||''})`));
   console.log('wide-hub', JSON.stringify(hub));
   fs.writeFileSync(path.join(dir, 'hub.png'), (await w.webContents.capturePage()).toPNG());
   if (hub.nav !== 'none') throw new Error('в Workspace осталась нижняя панель');
   if (hub.hubs !== 'none') throw new Error('дублирующий ряд каналов остался');
   if (!hub.avatar) throw new Error('в шапке канала нет аватара');
+  if (/message-input/.test(hub.active)) throw new Error('композер получил фокус без нажатия: ' + hub.active);
 });
 
