@@ -151,7 +151,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.177';
+    version.textContent = 'Версия 1.0.178';
     authCard.append(version);
   }
 
@@ -1473,7 +1473,9 @@ else if (sidebar) sidebar.prepend(hubsBar);
     if (!c) return;
     const a = c.length > 3 ? c[3] : 1;
     const mixed = [0, 1, 2].map((i) => c[i] * a + bg[i] * (1 - a));
-    try { window.NativeSession.setBarsColor(toHex(mixed)); } catch {}
+    const theme = document.documentElement.dataset.themeId || document.documentElement.dataset.theme || '';
+    const lightIcons = ['light', 'frost', 'cold'].includes(theme);
+    try { window.NativeSession.setBarsColor(toHex(mixed), lightIcons); } catch {}
   };
   new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-theme-id'] });
   sync();

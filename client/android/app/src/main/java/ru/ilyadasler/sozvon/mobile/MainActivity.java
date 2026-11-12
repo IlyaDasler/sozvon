@@ -161,7 +161,7 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
-        public void setBarsColor(String hex) {
+        public void setBarsColor(String hex, boolean lightIcons) {
             try {
                 int color = Color.parseColor(hex);
                 runOnUiThread(() -> {
@@ -170,9 +170,8 @@ public class MainActivity extends BridgeActivity {
                     // Android 15 edge-to-edge игнорирует цвет бара — красим слой окна,
                     // который виден над WebView в области статус-бара.
                     if (statusTint != null) statusTint.setBackgroundColor(color);
-                    double lum = (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255.0;
                     int flags = getWindow().getDecorView().getSystemUiVisibility();
-                    if (lum > 0.65) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                    if (lightIcons) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
                     else flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
                     getWindow().getDecorView().setSystemUiVisibility(flags);
                 });
