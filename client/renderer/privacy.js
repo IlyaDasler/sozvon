@@ -69,7 +69,10 @@ document.getElementById('privacy-subnav')?.addEventListener('click', (event) => 
 // Свайп по разделу приватности листает вкладки влево/вправо.
 const privacyOrder = ['data', 'profile', 'contact', 'crypto'];
 const privacyPaneEl = document.querySelector('#settings .set-pane[data-pane="privacy"]');
-if (privacyPaneEl) {
+// Слушаем всю область настроек: страница «Профиль» короткая, и свайп ниже неё
+// раньше попадал мимо панели и не листал дальше второго раздела.
+const privacySwipeEl = document.querySelector('#settings .set-body') || privacyPaneEl;
+if (privacyPaneEl && privacySwipeEl) {
   let start = null;
   const animate = (dir) => {
     privacyPaneEl.classList.remove('privacy-swipe-left', 'privacy-swipe-right');
@@ -86,15 +89,17 @@ if (privacyPaneEl) {
     animate(dir);
     return true;
   };
-  privacyPaneEl.addEventListener('touchstart', (event) => {
+  privacySwipeEl.addEventListener('touchstart', (event) => {
+    if (!privacyPaneEl || privacyPaneEl.classList.contains('hidden')) return;
     if (event.touches.length !== 1) return;
-    if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+    if (event.target.closest('button, a, input, textarea, select, [contenteditable="true"]')) return;
     const t = event.touches[0];
     start = { x: t.clientX, y: t.clientY };
     event.stopPropagation();
   }, { passive: true });
-  privacyPaneEl.addEventListener('touchend', (event) => {
+  privacySwipeEl.addEventListener('touchend', (event) => {
     if (!start) return;
+    if (!privacyPaneEl || privacyPaneEl.classList.contains('hidden')) { start = null; return; }
     const t = event.changedTouches[0];
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;

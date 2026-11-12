@@ -4,7 +4,7 @@ const { register, js, sleep, openClient, runTest } = require('./e2e-lib');
 const swipe = async (w, fromX, toX, y = 600) => {
   await js(w, `(() => {
     const pane = document.querySelector('#settings .set-pane[data-pane="privacy"]');
-    const target = [...pane.querySelectorAll('.privacy-page:not(.hidden) h3')][0] || pane;
+    const target = document.querySelector('#settings .set-body');
     const make = (x) => new Touch({ identifier: 1, target, clientX: x, clientY: ${y}, pageX: x, pageY: ${y} });
     const s = make(${fromX});
     target.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [s], targetTouches: [s], changedTouches: [s] }));
@@ -64,7 +64,7 @@ runTest(async () => {
   // Вертикальный жест не листает.
   await js(w, `(() => {
     const pane = document.querySelector('#settings .set-pane[data-pane="privacy"]');
-    const target = [...pane.querySelectorAll('.privacy-page:not(.hidden) h3')][0] || pane;
+    const target = document.querySelector('#settings .set-body');
     const make = (y) => new Touch({ identifier: 1, target, clientX: 200, clientY: y, pageX: 200, pageY: y });
     const s = make(650);
     target.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [s], targetTouches: [s], changedTouches: [s] }));
@@ -76,4 +76,5 @@ runTest(async () => {
   d = JSON.parse(await state(w));
   if (d.active !== 'contact') throw new Error('вертикальный свайп переключил вкладку');
 });
+
 
