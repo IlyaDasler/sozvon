@@ -1518,7 +1518,7 @@
 }
 /* На телефоне меню остаётся и в настройках; на раскрытом фолде — прежняя двухколоночная схема. */
 @media (max-width: 599px) {
-  body.mobile-settings #mobile-nav {
+  body:not(.keyboard-open).mobile-settings #mobile-nav {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
   }
@@ -1565,13 +1565,13 @@
   }
 
   /* Нижнее меню остаётся и в открытой комнате. */
-  body.mobile-room-open #mobile-nav {
+  body:not(.keyboard-open).mobile-room-open #mobile-nav {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
   }
 
   /* И в настройках. */
-  body.mobile-settings #mobile-nav {
+  body:not(.keyboard-open).mobile-settings #mobile-nav {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
   }
@@ -1602,7 +1602,7 @@
 
 /* Телефон (портрет): нижнее меню не исчезает и в открытой комнате. */
 @media (max-width: 599px) {
-  body.mobile-room-open #mobile-nav {
+  body:not(.keyboard-open).mobile-room-open #mobile-nav {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
   }
@@ -1925,7 +1925,7 @@
 
 /* Меню остаётся в комнате на всех мобильных ширинах, не только на телефоне. */
 @media (max-width: 1400px) {
-  body.mobile-room-open #mobile-nav {
+  body:not(.keyboard-open).mobile-room-open #mobile-nav {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
   }
@@ -2702,5 +2702,21 @@
   }
   body #friend-search {
     height: 48px;
+  }
+}
+
+/* Клавиатура: нижняя мобильная навигация не должна перекрывать ввод. */
+body.keyboard-open #mobile-nav {
+  display: none !important;
+}
+
+/* В разложенном Workspace нижняя мобильная навигация не участвует. */
+@media (min-width: 600px) and (min-height: 620px) and (max-width: 1400px) {
+  body #mobile-nav,
+  body.mobile-room-open #mobile-nav,
+  body:not(.keyboard-open).mobile-room-open #mobile-nav,
+  body.mobile-hub-open #mobile-nav,
+  body:not(.keyboard-open).mobile-settings #mobile-nav {
+    display: none !important;
   }
 }

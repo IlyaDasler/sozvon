@@ -106,14 +106,22 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
 
   // Клавиатура: VisualViewport уменьшает видимую высоту. Прячем нижнюю
   // навигацию, чтобы она не оказалась поверх поля ввода.
+  let keyboardBaseline = Math.max(window.innerHeight, window.visualViewport?.height || 0);
   const syncKeyboard = () => {
     const vv = window.visualViewport;
     const active = document.activeElement;
     const typing = active?.matches?.('input, textarea, [contenteditable="true"]');
-    const keyboard = Boolean(vv && typing && vv.height < innerHeight - 120);
+    if (!typing) {
+      keyboardBaseline = Math.max(window.innerHeight, vv?.height || 0);
+      document.body.classList.remove('keyboard-open');
+      return;
+    }
+    const visible = vv?.height || window.innerHeight;
+    const keyboard = visible < keyboardBaseline - 120;
     document.body.classList.toggle('keyboard-open', keyboard);
   };
   window.visualViewport?.addEventListener('resize', syncKeyboard);
+  window.addEventListener('resize', syncKeyboard);
   document.addEventListener('focusin', syncKeyboard);
   document.addEventListener('focusout', () => setTimeout(syncKeyboard, 80));
 
@@ -151,7 +159,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.190-audit';
+    version.textContent = 'Версия 1.0.196-audit';
     authCard.append(version);
   }
 
