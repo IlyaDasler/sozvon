@@ -40,3 +40,22 @@
 | sozvon | 17.14:1 | pass | — |
 
 Требование дизайн-системы ≥4.5:1 выполнено во всех проверенных темах (`e2e-m-layer-themes`).
+
+## Проверено на устройстве (Samsung Fold 7, сложен, 411dp)
+
+| Экран/жест | Факт | Статус | Скриншот |
+|---|---|---|---|
+| Новый слой: список чатов | один #m-app, старый DOM display:none, 10 контактов | pass | screenshots/phase4/01-new-layer-chats-device.png |
+| Переписка | открылась, текст расшифрован, 40+ сообщений | pass (чтение) | — (приватная переписка не приложена) |
+| Системный back из переписки | вернул в «Чаты», #m-app=1 | pass | — |
+| Настройки | профиль, «Проверка камеры», выход | pass | screenshots/phase4/02-new-settings-camera-device.png |
+| Камера: фронтальная | `Фронтальная · камера включена`, stream 480×640, readyState=4 | pass | — (лицо владельца не сохранялось) |
+| Камера: переключение | `Тыловая · камера включена`, stream 480×640 | pass | — |
+| Камера: назад | video удалён, stream остановлен, вернулись в настройки | pass | — |
+| Альбом 960×411 | один #m-app, без overflow, шапка/меню внутри | pass после снятия `min-width:901` | screenshots/phase4/04-new-layer-landscape-device.png |
+| Разложен (симуляция 1968×2184, 749×832 CSS) | один #m-app, overflow нет; колонка по центру | pass (симуляция) | screenshots/phase4/05-new-layer-unfolded-sim.png |
+| Шрифт 200% | текст масштабируется, overflow нет | pass | screenshots/phase4/03-new-layer-font-200-device.png |
+| Возврат старого слоя | флаг снят, старый экран «Друзья» | pass | screenshots/phase4/06-old-friends-after-tests.png |
+| Отправка сообщения | поля ввода нет | fail (T1 не реализован) | — |
+| Каналы | вкладки нет | fail (T4 не реализован) | — |
+| Flex Mode | adb не воспроизводит | blocked | — |

@@ -10,7 +10,7 @@ const enabled = () => {
   }
 };
 
-if (enabled() && matchMedia('(max-width: 900px)').matches) {
+if (enabled() && matchMedia('(max-width: 1000px)').matches) {
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = 'm/m.css';

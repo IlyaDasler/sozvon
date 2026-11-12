@@ -5,6 +5,7 @@ import { mountAuth } from './views/auth.js';
 import { mountContacts } from './views/contacts.js';
 import { mountChat } from './views/chat.js';
 import { mountSettings } from './views/settings.js';
+import { mountCamera } from './views/camera.js';
 
 const root = document.createElement('div');
 root.className = 'm-app';
@@ -33,6 +34,7 @@ const TABS = [
 
 let nav = null;
 let currentUser = null;
+let screenCleanup = null;
 
 const topbar = (title, onBack) => {
   const bar = document.createElement('header');
@@ -71,6 +73,8 @@ const navbar = (active, onSelect) => {
 
 const renderAuth = () => {
   nav = null;
+  screenCleanup?.();
+  screenCleanup = null;
   root.replaceChildren();
   const screen = document.createElement('main');
   screen.className = 'm-screen m-screen--auth';
@@ -102,6 +106,8 @@ const openChat = (contact) => {
 const draw = () => {
   if (!nav || !currentUser) return;
   const route = nav.current;
+  screenCleanup?.();
+  screenCleanup = null;
 
   if (route.name === 'chat') {
     root.replaceChildren();
@@ -116,8 +122,18 @@ const draw = () => {
 
   if (route.name === 'settings') {
     renderTab('settings', 'Настройки', (screen) =>
-      mountSettings(screen, { user: currentUser, onLogout: renderAuth })
+      mountSettings(screen, {
+        user: currentUser,
+        onLogout: renderAuth,
+        onCamera: () => { nav.push({ name: 'camera' }); draw(); },
+      })
     );
+    return;
+  }
+
+  if (route.name === 'camera') {
+    root.replaceChildren();
+    screenCleanup = mountCamera(root, { onBack: goBack });
     return;
   }
 

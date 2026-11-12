@@ -22,7 +22,7 @@ const row = (title, sub, onClick, danger = false) => {
   return button;
 };
 
-export function mountSettings(container, { user, onLogout }) {
+export function mountSettings(container, { user, onLogout, onCamera }) {
   const list = document.createElement('div');
   list.className = 'm-list';
 
@@ -55,6 +55,7 @@ export function mountSettings(container, { user, onLogout }) {
   list.append(
     head,
     who,
+    row('Проверка камеры', 'Фронтальная и тыловая', onCamera),
     exitHead,
     row('Выйти из аккаунта', null, logout, true)
   );

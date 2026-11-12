@@ -28,6 +28,14 @@ public class MainActivity extends BridgeActivity {
     public void onStart() {
         super.onStart();
         registerSessionBridge();
+        applyFontScale();
+    }
+
+    private void applyFontScale() {
+        WebView web = getBridge().getWebView();
+        if (web != null) {
+            web.getSettings().setTextZoom(Math.round(getResources().getConfiguration().fontScale * 100));
+        }
     }
 
     @Override
