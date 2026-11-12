@@ -28,6 +28,13 @@ runTest(async () => {
   if (hub.nav !== 'none') throw new Error('в Workspace осталась нижняя панель');
   if (hub.hubs !== 'none') throw new Error('дублирующий ряд каналов остался');
   if (!hub.avatar) throw new Error('в шапке канала нет аватара');
+  const back = await js(w, `window.mobileBack()`);
+  await sleep(400);
+  const afterBack = JSON.parse(await js(w, `JSON.stringify({body:document.body.className,room:!document.querySelector('#room-view').classList.contains('hidden'),sidebar:getComputedStyle(document.querySelector('.sidebar')).display})`));
+  console.log('wide-back', JSON.stringify({ ...afterBack, handled: back }));
+  if (!back) throw new Error('mobileBack не обработал комнату');
+  if (afterBack.body.includes('mobile-list')) throw new Error('назад открыл телефонный список на фолде');
+  if (afterBack.room) throw new Error('назад не закрыл комнату');
   if (/message-input/.test(hub.active)) throw new Error('композер получил фокус без нажатия: ' + hub.active);
   if (hub.pad !== '0px' || hub.h - hub.sideBottom > 2) throw new Error('Workspace не заполняет высоту: ' + JSON.stringify(hub));
   if (Math.abs(hub.me - hub.composer) > 2) throw new Error('профиль и композер не выровнены по низу: ' + JSON.stringify(hub));

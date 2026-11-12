@@ -151,7 +151,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.161';
+    version.textContent = 'Версия 1.0.162';
     authCard.append(version);
   }
 
@@ -1269,7 +1269,15 @@ else if (sidebar) sidebar.prepend(hubsBar);
         hideList();
         buzz();
       } else if (!document.body.classList.contains('mobile-list') && dx > 42 && !event.target.closest('button, a, .rail, #mobile-nav')) {
-        showList();
+        // Мобильный список — только для сложенного/узкого экрана. На разложенном
+        // фолде он не должен возникать поверх Workspace.
+        if (matchMedia('(max-width: 599px), (max-height: 619px)').matches) {
+          showList();
+        } else if (document.querySelector('#room-view:not(.hidden)') && typeof selectRoom === 'function') {
+          selectRoom(null);
+        } else if (document.querySelector('#chat:not(.hidden)') && typeof selectContact === 'function') {
+          selectContact(null);
+        }
       }
     },
     { passive: true }
@@ -1298,10 +1306,26 @@ else if (sidebar) sidebar.prepend(hubsBar);
     if (document.body.classList.contains('mobile-msg-sheet')) { closeMsgSheet(); return true; }
     if (document.body.classList.contains('mobile-room-sheet')) { closeRoomSheet(); return true; }
     if (document.body.classList.contains('mobile-notifications')) { closeNotifications(); setActive('home'); return true; }
-    // Открытая комната/DM: системный back сначала возвращает к списку.
+    // Меню канала/комнаты закрываются до навигации.
+    if (document.getElementById('hub-settings') && !document.getElementById('hub-settings').classList.contains('hidden')) {
+      if (typeof closeHubSettings === 'function') closeHubSettings();
+      return true;
+    }
+    if (document.getElementById('room-manage') && !document.getElementById('room-manage').classList.contains('hidden')) {
+      if (typeof closeRoomManage === 'function') closeRoomManage();
+      return true;
+    }
+    // Открытая комната/DM: на сложенном — список, на разложенном — просто
+    // закрываем комнату, не подменяя интерфейс телефонным списком.
     if (!document.body.classList.contains('mobile-list') &&
         (document.querySelector('#room-view:not(.hidden)') || document.querySelector('#chat:not(.hidden)'))) {
-      showList();
+      if (matchMedia('(max-width: 599px), (max-height: 619px)').matches) {
+        showList();
+      } else if (document.querySelector('#room-view:not(.hidden)') && typeof selectRoom === 'function') {
+        selectRoom(null);
+      } else if (document.querySelector('#chat:not(.hidden)') && typeof selectContact === 'function') {
+        selectContact(null);
+      }
       return true;
     }
     if (state?.view && state.hubs?.has(state.view)) {
