@@ -151,7 +151,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.163';
+    version.textContent = 'Версия 1.0.164';
     authCard.append(version);
   }
 
@@ -1277,6 +1277,15 @@ else if (sidebar) sidebar.prepend(hubsBar);
           selectRoom(null);
         } else if (document.querySelector('#chat:not(.hidden)') && typeof selectContact === 'function') {
           selectContact(null);
+        } else if (state?.view && state.hubs?.has(state.view) && typeof selectContact === 'function') {
+          selectContact(null);
+          renderHubs();
+          if (typeof setChannelsMode === 'function') setChannelsMode(false);
+          setActive('home');
+        } else if (!document.querySelector('#room-view:not(.hidden)') &&
+                   !document.querySelector('#chat:not(.hidden)') &&
+                   (!state?.view || state.view === 'home')) {
+          armHomeExit(true);
         }
       }
     },
@@ -1285,6 +1294,20 @@ else if (sidebar) sidebar.prepend(hubsBar);
 
   // Единый порядок закрытия для Android back и системной кнопки.
   // Возвращает true, если событие поглощено приложением.
+  let exitBackAt = 0;
+  const armHomeExit = (viaSwipe) => {
+    if (Date.now() - exitBackAt < 2200) {
+      exitBackAt = 0;
+      if (viaSwipe) {
+        const app = window.Capacitor?.Plugins?.App;
+        if (app?.exitApp) { app.exitApp(); return true; }
+      }
+      return false;
+    }
+    exitBackAt = Date.now();
+    toast('Нажмите «Назад» ещё раз, чтобы выйти');
+    return true;
+  };
   window.mobileBack = () => {
     if (window.mobileCameraTest?.isOpen()) { window.mobileCameraTest.close(); return true; }
     // Меню камеры — оверлей поверх настроек: одно нажатие закрывает только его,
@@ -1331,8 +1354,13 @@ else if (sidebar) sidebar.prepend(hubsBar);
     if (state?.view && state.hubs?.has(state.view)) {
       if (typeof selectContact === 'function') selectContact(null);
       renderHubs();
-      showList();
-      setChannelsMode(true);
+      if (matchMedia('(max-width: 599px), (max-height: 619px)').matches) {
+        showList();
+        setChannelsMode(true);
+      } else {
+        if (typeof setChannelsMode === 'function') setChannelsMode(false);
+        setActive('home');
+      }
       return true;
     }
     if (document.body.classList.contains('mobile-list')) {
@@ -1340,6 +1368,14 @@ else if (sidebar) sidebar.prepend(hubsBar);
       setChannelsMode(false);
       setActive('home');
       return true;
+    }
+    // Домашний экран: защита от случайного выхода.
+    if (!document.body.classList.contains('mobile-settings') &&
+        !document.body.classList.contains('mobile-notifications') &&
+        !document.querySelector('#room-view:not(.hidden)') &&
+        !document.querySelector('#chat:not(.hidden)') &&
+        (!state?.view || state.view === 'home')) {
+      return armHomeExit(false);
     }
     return false;
   };

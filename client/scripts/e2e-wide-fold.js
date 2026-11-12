@@ -38,6 +38,15 @@ runTest(async () => {
   if (!back) throw new Error('mobileBack не обработал комнату');
   if (afterBack.body.includes('mobile-list')) throw new Error('назад открыл телефонный список на фолде');
   if (afterBack.room) throw new Error('назад не закрыл комнату');
+  const toHome = await js(w, `window.mobileBack()`);
+  await sleep(400);
+  const homeBack = JSON.parse(await js(w, `JSON.stringify({body:document.body.className,empty:!document.getElementById('empty-state').classList.contains('hidden'),list:document.body.classList.contains('mobile-list')})`));
+  console.log('wide-back-home', JSON.stringify({ ...homeBack, handled: toHome }));
+  if (!toHome || homeBack.list || !homeBack.empty || homeBack.body.includes('mobile-hub-open')) throw new Error('второй назад не вернул к друзьям: ' + JSON.stringify(homeBack));
+  const guard1 = await js(w, `window.mobileBack()`);
+  const guard2 = await js(w, `window.mobileBack()`);
+  console.log('wide-back-exit-guard', guard1, guard2);
+  if (guard1 !== true || guard2 !== false) throw new Error('нет защиты от случайного выхода: ' + guard1 + '/' + guard2);
   if (/message-input/.test(hub.active)) throw new Error('композер получил фокус без нажатия: ' + hub.active);
   if (hub.pad !== '0px' || hub.h - hub.sideBottom > 2) throw new Error('Workspace не заполняет высоту: ' + JSON.stringify(hub));
   if (Math.abs(hub.me - hub.composer) > 2) throw new Error('профиль и композер не выровнены по низу: ' + JSON.stringify(hub));
