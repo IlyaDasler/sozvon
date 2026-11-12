@@ -44,8 +44,9 @@
 
   function syncDrawerClass() {
     const narrow = window.innerWidth <= NARROW;
+    // Тред — самостоятельный полноэкранный лист, а не drawer: scrim ему не нужен.
     const thread = document.getElementById('thread-panel');
-    setClass(thread, 'drawer-open', narrow && isOpen(thread));
+    if (thread && thread.classList.contains('drawer-open')) setClass(thread, 'drawer-open', false);
     const members = document.getElementById('members-panel');
     if (members && (!narrow || !members.classList.contains('drawer-open'))) setClass(members, 'drawer-open', false);
   }
@@ -53,10 +54,7 @@
   function syncScrim() {
     syncDrawerClass();
     const narrow = window.innerWidth <= NARROW;
-    const open = narrow && (
-      document.getElementById('members-panel')?.classList.contains('drawer-open') ||
-      document.getElementById('thread-panel')?.classList.contains('drawer-open')
-    );
+    const open = narrow && Boolean(document.getElementById('members-panel')?.classList.contains('drawer-open'));
     const layer = getScrim();
     const next = Boolean(open);
     if (layer.classList.contains('is-on') !== next) layer.classList.toggle('is-on', next);
@@ -66,9 +64,10 @@
 
   function closeDrawers() {
     if (window.innerWidth > NARROW) return;
-    for (const id of ['members-panel', 'thread-panel']) {
-      const panel = document.getElementById(id);
-      if (!panel) continue;
+    // Закрываем только панель участников. Тред закрывается своей кнопкой/Back
+    // и не должен исчезать от клика по чужому scrim.
+    const panel = document.getElementById('members-panel');
+    if (panel) {
       panel.classList.add('hidden');
       setClass(panel, 'drawer-open', false);
     }

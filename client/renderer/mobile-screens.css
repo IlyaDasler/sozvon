@@ -2528,3 +2528,11 @@
 }
 
 
+
+/* Тред — поверх всего, без панели участников и рейла. */
+@media (max-width: 1400px) {
+  #thread-panel.thread-open { z-index: 200 !important; }
+  body:has(#thread-panel.thread-open) #members-panel,
+  body:has(#thread-panel.thread-open) .rail,
+  body:has(#thread-panel.thread-open) .sidebar { display: none !important; }
+}
