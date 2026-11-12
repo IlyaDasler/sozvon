@@ -45,6 +45,7 @@ public class MainActivity extends BridgeActivity {
             web.setBackgroundColor(Color.TRANSPARENT);
         }
         handleOAuthIntent(getIntent());
+        installStatusTint();
         applyMaxFrameRate();
         DisplayManager dm = (DisplayManager) getSystemService(DISPLAY_SERVICE);
         if (dm != null) dm.registerDisplayListener(new DisplayManager.DisplayListener() {
@@ -171,6 +172,7 @@ public class MainActivity extends BridgeActivity {
                 runOnUiThread(() -> {
                     getWindow().setStatusBarColor(color);
                     getWindow().setNavigationBarColor(color);
+                    getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(color));
                     // Android 15 edge-to-edge игнорирует цвет бара — красим слой окна,
                     // который виден над WebView в области статус-бара.
                     if (statusTint != null) statusTint.setBackgroundColor(color);

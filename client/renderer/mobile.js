@@ -151,7 +151,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.179';
+    version.textContent = 'Версия 1.0.182';
     authCard.append(version);
   }
 
@@ -1472,9 +1472,20 @@ else if (sidebar) sidebar.prepend(hubsBar);
     const c = parse('var(--bg-2)') || parse('var(--bg)');
     if (!c) return;
     const a = c.length > 3 ? c[3] : 1;
-    const mixed = [0, 1, 2].map((i) => c[i] * a + bg[i] * (1 - a));
     const theme = document.documentElement.dataset.themeId || document.documentElement.dataset.theme || '';
-    const lightIcons = ['light', 'frost', 'cold'].includes(theme);
+    // «Стекло»: как остальные темы — светлый системный бар с тёмными иконками.
+    const isGlass = theme === 'glass2';
+    if (isGlass) {
+      document.documentElement.style.backgroundColor = '#ffffff';
+      document.body.style.backgroundColor = '#ffffff';
+      document.body.style.backgroundImage = 'none';
+    } else {
+      document.documentElement.style.removeProperty('background-color');
+      document.body.style.removeProperty('background-color');
+      document.body.style.removeProperty('background-image');
+    }
+    const mixed = isGlass ? [255, 255, 255] : [0, 1, 2].map((i) => c[i] * a + bg[i] * (1 - a));
+    const lightIcons = isGlass || ['light', 'frost', 'cold'].includes(theme);
     try { window.NativeSession.setBarsColor(toHex(mixed), lightIcons); } catch {}
   };
   new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-theme-id'] });
