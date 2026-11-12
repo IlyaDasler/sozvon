@@ -174,6 +174,10 @@ function openGlass2BackgroundPicker() {
     glass2BgModal = document.createElement('div');
     glass2BgModal.id = 'glass2-bg-modal';
     glass2BgModal.className = 'modal hidden';
+    // На мобильном модалка должна открываться моментально, без анимации и blur.
+    glass2BgModal.style.animation = 'none';
+    glass2BgModal.style.webkitBackdropFilter = 'none';
+    glass2BgModal.style.backdropFilter = 'none';
     // Android: закрывает тап по затемнению и системный back — крестик только для десктопа.
     const closeBtn = matchMedia('(max-width: 900px)').matches
       ? ''

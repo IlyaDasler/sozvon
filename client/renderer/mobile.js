@@ -151,7 +151,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.164';
+    version.textContent = 'Версия 1.0.165';
     authCard.append(version);
   }
 
@@ -1309,6 +1309,13 @@ else if (sidebar) sidebar.prepend(hubsBar);
     return true;
   };
   window.mobileBack = () => {
+    // Выбор фона «Стекла» — модалка поверх настроек: назад закрывает только её.
+    const glassBg = document.getElementById('glass2-bg-modal');
+    if (glassBg && !glassBg.classList.contains('hidden')) {
+      if (typeof closeGlass2BackgroundPicker === 'function') closeGlass2BackgroundPicker();
+      else glassBg.classList.add('hidden');
+      return true;
+    }
     if (window.mobileCameraTest?.isOpen()) { window.mobileCameraTest.close(); return true; }
     // Меню камеры — оверлей поверх настроек: одно нажатие закрывает только его,
     // экран настроек при этом не меняется.
