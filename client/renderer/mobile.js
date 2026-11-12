@@ -159,7 +159,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.196-audit';
+    version.textContent = 'Версия 1.0.197-audit';
     authCard.append(version);
   }
 
@@ -1339,6 +1339,11 @@ else if (sidebar) sidebar.prepend(hubsBar);
     }
     if (document.getElementById('fullview') && !document.getElementById('fullview').classList.contains('hidden')) {
       document.getElementById('fullview-exit')?.click();
+      return true;
+    }
+    // Настройки: раздел → корень настроек → закрытие. Иначе back уходил
+    // в комнату/чат, которые остаются под настройками.
+    if (document.body.classList.contains('mobile-settings') && window.mobileSettingsBack?.()) {
       return true;
     }
     if (document.body.classList.contains('mobile-msg-sheet')) { closeMsgSheet(); return true; }
