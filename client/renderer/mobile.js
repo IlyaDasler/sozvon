@@ -151,7 +151,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.162';
+    version.textContent = 'Версия 1.0.163';
     authCard.append(version);
   }
 
@@ -1377,7 +1377,9 @@ else if (sidebar) sidebar.prepend(hubsBar);
     if (on) {
       if (mePanel.parentElement !== home) {
         home.append(mePanel);
-        content.append(home);
+        // В body, а не в .content: темы с transform/filter создают containing block,
+        // и fixed-полоса иначе начинается от контента, оставляя дыру слева.
+        document.body.append(home);
         docked = true;
       }
     } else if (docked) {

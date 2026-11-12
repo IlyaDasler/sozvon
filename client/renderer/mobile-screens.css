@@ -2631,3 +2631,23 @@
     background-image: none;
   }
 }
+
+/* Нижние полосы одинаковы во всех темах; эталон — тема «Созвон». */
+@media (min-width: 600px) and (min-height: 620px) and (max-width: 1400px) {
+  body .content .composer {
+    padding: 0 10px 8px;
+    min-height: 0;
+  }
+  body .content .composer textarea {
+    min-height: 56px;
+    max-height: 40vh;
+    padding-top: 15px;
+    padding-bottom: 15px;
+  }
+  body .sidebar .me-panel,
+  body .friends-profile-dock .me-panel {
+    height: 56px;
+    margin: 0 8px 0;
+  }
+  body .friends-profile-dock .me-panel { margin: 0; }
+}
