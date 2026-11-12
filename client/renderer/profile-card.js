@@ -220,7 +220,7 @@ function openProfileCard(userId, anchor) {
   card.append(scrollBox);
 
   // На телефоне профиль — полноэкранный лист, а не десктопный поповер.
-  const mobile = window.matchMedia('(max-width: 1000px)').matches;
+  const mobile = window.matchMedia('(max-width: 1400px)').matches;
   card.classList.toggle('mobile-profile', mobile);
   document.body.classList.toggle('mobile-profile-open', mobile);
   if (mobile) {
@@ -256,7 +256,7 @@ function placeCard(card, anchor = cardAnchor) {
   const h = card.offsetHeight;
   const margin = 12;
   const gap = 10;
-  if (window.matchMedia('(max-width: 1000px)').matches) return;
+  if (window.matchMedia('(max-width: 1400px)').matches) return;
   if (!r) {
     card.style.left = `${Math.max(margin, (innerWidth - w) / 2)}px`;
     card.style.top = `${Math.max(margin, (innerHeight - h) / 2)}px`;

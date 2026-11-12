@@ -2,7 +2,7 @@
    Только каркас экранов на токенах mobile-tokens.css.
    Бизнес-логика и разметка не меняются. */
 
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   /* ---------- Auth ---------- */
   #auth {
     display: block;
@@ -163,7 +163,7 @@
 }
 
 /* Landscape: низкая высота, ничего не фиксируем на 100vh. */
-@media (max-width: 1000px) and (max-height: 619px) {
+@media (max-width: 1400px) and (max-height: 619px) {
   #auth {
     padding-top: max(var(--m-space-3), var(--m-safe-top));
     padding-bottom: var(--m-space-3);
@@ -184,7 +184,7 @@
 }
 
 /* ---------- Channels / room list ---------- */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   .sidebar {
     padding-bottom: var(--m-safe-bottom);
     overscroll-behavior: contain;
@@ -235,7 +235,7 @@
 }
 
 /* Шапка настроек остаётся на месте при скролле раздела и корня. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings .rs-head {
     position: sticky;
     top: 0;
@@ -248,7 +248,7 @@
 /* ---------- Settings overview ---------- */
 .mobile-settings-overview { display: none; }
 
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   .mobile-settings-overview {
     display: block;
     padding: var(--m-space-2) var(--m-space-4) var(--m-space-3);
@@ -370,7 +370,7 @@
   }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings #set-nav button.mobile-theme-summary {
     display: flex !important;
     align-items: center;
@@ -414,7 +414,7 @@
   }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings #set-nav .mobile-settings-group {
     margin: var(--m-space-3) 0 var(--m-space-1);
     padding: 0 var(--m-space-4);
@@ -428,7 +428,7 @@
 
 
 /* ---------- Settings: Discord-like density ---------- */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings #set-nav .mobile-settings-overview {
     padding: var(--m-space-2) var(--m-space-4) var(--m-space-2);
   }
@@ -538,7 +538,7 @@
 
 #settings #set-nav button[data-tab="profile"] { display: none !important; }
 
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings #set-nav button[data-tab="account"]:nth-of-type(2)::before {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238a93a8' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='13' height='10' rx='2'/%3E%3Cpath d='M8 19h8M17 15h3v4h-3z'/%3E%3C/svg%3E");
   }
@@ -549,7 +549,7 @@
 
 
 /* ---------- Chat: compact call stage, больше места сообщениям ---------- */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #call-panel {
     min-height: 0;
     padding: 6px 8px;
@@ -588,7 +588,7 @@
   #chat > .messages { min-height: 120px; }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings .avatar-edit { align-items: stretch; flex-wrap: wrap; gap: 12px; }
   #settings .profile-hero {
     position: relative;
@@ -620,7 +620,7 @@
   #settings .avatar-actions { margin-top: 24px; }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   /* Стрелка занимает свою колонку, заголовок не заезжает под неё. */
   #settings .rs-head .mobile-settings-back {
     position: static !important;
@@ -633,7 +633,7 @@
 
 
 /* ---------- KIT.md: TopAppBar / ListSection / ListRow / Field ---------- */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   /* TopAppBar: 56dp, title 20sp, safe-area сверху. */
   #settings .rs-head {
     min-height: 56px;
@@ -693,7 +693,7 @@
   #settings #set-nav .rs-danger { margin: 0 16px; }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #mobile-add-friend {
     position: absolute;
     right: 12px;
@@ -722,7 +722,7 @@
 
 /* Шапка раздела: не фиксированная высота, иначе длинный заголовок
    вылезает на подвкладки приватности. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings .rs-head {
     box-sizing: border-box;
     height: auto;
@@ -739,7 +739,7 @@
 
 
 /* Темы — компактный список, а не стена превью. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings .theme-group { margin: 0 0 8px; }
   #settings .theme-group h4 { display: none; }
   #settings .theme-group-grid {
@@ -784,7 +784,7 @@
 }
 
 /* Голосовая комната: чат открывается кнопкой, не заходя в голос. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #room-list .room-row .room-tools {
     display: inline-flex;
     opacity: 1;
@@ -809,7 +809,7 @@
 
 
 /* Темы: две понятные группы, каждая — компактный список. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings .theme-group {
     margin: 0 0 24px;
   }
@@ -832,7 +832,7 @@
 
 
 /* Финальные приоритеты: воздух под треем и версия сразу за выходом. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings .rs-head {
     padding-top: max(44px, calc(var(--m-safe-top) + 20px));
     min-height: 92px;
@@ -843,11 +843,11 @@
   }
 }
 
-@media (max-width: 1000px) { #settings .rs-head { margin-top: 18px; } }
+@media (max-width: 1400px) { #settings .rs-head { margin-top: 18px; } }
 
 
 /* Звук на телефоне: только шумоподавление и проверка звука. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   .set-pane[data-pane="sound"] .set-block:has(.custom-sounds) {
     display: none !important;
   }
@@ -924,7 +924,7 @@
 
 
 /* Экран входа — по центру, а не прижат к верхнему краю. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #auth {
     display: flex;
     flex-direction: column;
@@ -941,14 +941,14 @@
     margin-right: auto;
   }
 }
-@media (max-width: 1000px) and (max-height: 619px) {
+@media (max-width: 1400px) and (max-height: 619px) {
   #auth { justify-content: flex-start; }
   #auth .auth-panel { margin: 0; }
 }
 
 
 /* Настройки: без растяжения, выход и версия сразу после списка. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings #set-nav { min-height: 0; }
   #settings #set-nav button[data-tab] { min-height: 64px; }
   #settings #set-nav .mobile-settings-footer {
@@ -959,7 +959,7 @@
 }
 
 /* Настройки комнаты на телефоне: полноэкранный лист, а не ПК-окно. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #room-manage {
     padding: 0 !important;
   }
@@ -1039,7 +1039,7 @@
 
 
 /* Настройки канала: полноэкранный мобильный лист, одна колонка. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #hub-settings { padding: 0 !important; align-items: stretch; }
   #hub-settings .rs-card {
     display: flex;
@@ -1115,7 +1115,7 @@
 }
 
 
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings #set-nav button[data-tab] { min-height: 80px; }
   #settings #set-nav .mobile-profile-card { min-height: 112px; }
   #settings #set-nav .mobile-settings-footer {
@@ -1125,7 +1125,7 @@
 }
 
 
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings #set-nav button[data-tab] { min-height: 64px; }
   #settings #set-nav .mobile-profile-card { min-height: 96px; }
   #settings #set-nav .mobile-settings-footer { margin-top: 16px; }
@@ -1133,7 +1133,7 @@
 
 
 /* Все вкладки настроек канала: одна колонка, без горизонтального переполнения. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #hub-settings .rs-body { overflow-x: hidden; }
   #hub-settings .rs-body * { box-sizing: border-box; max-width: 100%; }
   #hub-settings .rs-body .rs-row { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -1217,7 +1217,7 @@
 
 
 /* Финальная плотность корня настроек: помещается без прокрутки и без пустой плиты. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-settings:not(.mobile-settings-section) #settings #set-nav {
     overflow-y: auto !important;
     min-height: 0 !important;
@@ -1239,7 +1239,7 @@
 
 
 /* Селекторы ролей — плоские прямоугольные, без системного «круглого» вида. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #hub-settings .role-select,
   #hub-settings #rm-role-assign,
   #room-manage .role-select,
@@ -1267,7 +1267,7 @@
 
 
 /* Видимый селектор роли (gs-select) — плоский прямоугольник, на всю ширину. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #hub-settings .rs-body .gs-select,
   #room-manage .rs-body .gs-select {
     width: 100%;
@@ -1293,7 +1293,7 @@
 
 
 /* Тред на телефоне — непрозрачный полноэкранный лист, без blur и без наложения на нижнее меню. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #thread-back { display: none; }
 
   #thread-panel.thread-open {
@@ -1371,7 +1371,7 @@
 
 
 /* Настройки канала — иконкой в шапке справа, рядом с названием канала. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #mobile-channel-settings { display: none !important; }
   #mobile-channel-settings:not(.hidden) {
     display: inline-flex !important;
@@ -1407,7 +1407,7 @@
 
 
 /* Списки по центру: не прижаты к верхнему левому краю и не растянуты на пустом экране. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-channels:not(.mobile-hub-open) .sidebar {
     display: flex !important;
     flex-direction: column !important;
@@ -1484,7 +1484,7 @@
 
 
 /* Тред: страховка на любой класс панели — никакого стекла и blur на телефоне. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #thread-panel:not(.hidden),
   #thread-panel:not(.hidden) .thread-head,
   #thread-panel:not(.hidden) .thread-list,
@@ -1509,7 +1509,7 @@
 
 
 /* Нижнее меню как в Telegram: остаётся на экране во всех разделах, включая настройки. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #mobile-nav { z-index: 100 !important; }
 }
 /* На телефоне меню остаётся и в настройках; на раскрытом фолде — прежняя двухколоночная схема. */
@@ -1530,7 +1530,7 @@
 
 
 /* Альбомная ориентация телефона: та же мобильная одна колонка, без «планшета». */
-@media (max-width: 1000px) and (max-height: 619px) {
+@media (max-width: 1400px) and (max-height: 619px) {
   /* Контент не должен уходить под нижнее меню. */
   #main.main,
   .main {
@@ -1623,13 +1623,13 @@
 
 
 /* Приоритет: в открытой комнате список каналов скрыт полностью. */
-@media (max-width: 1000px) and (max-height: 619px) {
+@media (max-width: 1400px) and (max-height: 619px) {
   body.mobile-list.mobile-room-open .sidebar { display: none !important; }
 }
 
 
 /* Нижнее меню в духе Telegram: плавающая капсула, скользящая подсветка и анимации. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   :root { --mobile-nav-h: 74px; }
 
   #mobile-nav {
@@ -1724,7 +1724,7 @@
 
 
 /* Альбом: список каналов гарантированно поверх пустого .main. */
-@media (max-width: 1000px) and (max-height: 619px) {
+@media (max-width: 1400px) and (max-height: 619px) {
   body.mobile-channels.mobile-list:not(.mobile-hub-open) .sidebar {
     display: flex !important;
     z-index: 55 !important;
@@ -1744,7 +1744,7 @@
 
 
 /* Каналы сразу с комнатами: карточка канала + его чаты/голосовые, как сайдбар Discord. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #mobile-hubs .mobile-hub-card {
     width: 100%;
     max-width: 560px;
@@ -1788,7 +1788,7 @@
 
 
 /* Профиль в настройках — по левому краю, в одной сетке со списком разделов. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-settings:not(.mobile-settings-section) #settings #set-nav .mobile-settings-overview {
     padding: 6px 0 4px !important;
   }
@@ -1803,7 +1803,7 @@
 
 
 /* Вкладки друзей: та же анимация, что у нижнего меню — скользящая капсула. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #mobile-add-friend { display: none !important; }
 
   #friend-tabs { position: relative; }
@@ -1839,7 +1839,7 @@
 
 
 /* Свайп по друзьям: роллер листается влево/вправо, контент мягко подъезжает. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #empty-state.friends-swipe-left .friends-body {
     animation: friends-slide-left .24s cubic-bezier(.22, 1, .36, 1);
   }
@@ -1858,7 +1858,7 @@
 
 
 /* Профиль сохраняется на лету — десктопные «Отмена/Сохранить» здесь лишние. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-settings-section #settings .set-foot,
   #settings .set-foot { display: none !important; }
   #settings[data-mobile-tab="profile"] .set-body { padding-bottom: max(20px, var(--m-safe-bottom)) !important; }
@@ -1866,7 +1866,7 @@
 
 
 /* Панель участников — только внутри открытой комнаты, не поверх разделов. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-list #members-panel,
   body.mobile-settings #members-panel,
   body.mobile-notifications #members-panel {
@@ -1884,14 +1884,14 @@
 
 
 /* Активная вкладка друзей — только капсула, без подчёркивания. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #friend-tabs button.active::after,
   .friend-tabs button.active::after { display: none !important; content: none !important; }
 }
 
 
 /* Комната в карточке канала: кликабельна вся строка, тач-зоны не меньше 44. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #mobile-hubs .mobile-hub-room { min-height: 48px; cursor: pointer; }
   #mobile-hubs .mobile-hub-room__name {
     display: flex; align-items: center;
@@ -1904,7 +1904,7 @@
 
 /* В корне настроек не дублируем «Устройства» и «Шифрование»: это те же
    разделы «Аккаунт» и «Приватность», доступные одной строкой. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-settings:not(.mobile-settings-section) #settings #set-nav > button[data-tab="account"][data-sub^="Сеансы"],
   body.mobile-settings:not(.mobile-settings-section) #settings #set-nav > button[data-tab="privacy"][data-sub^="Ключи"] {
     display: none !important;
@@ -1914,13 +1914,13 @@
 
 /* В списке каналов не показываем плавающую карточку профиля — она
    перекрывала последнюю комнату канала. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-list .me-panel { display: none !important; }
 }
 
 
 /* Меню остаётся в комнате на всех мобильных ширинах, не только на телефоне. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-room-open #mobile-nav {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
@@ -1932,7 +1932,7 @@
 
 
 /* Слабый тир: нижняя капсула без blur, только плотный фон. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   html[data-performance='low'] #mobile-nav,
   html[data-performance='balanced'] #mobile-nav {
     -webkit-backdrop-filter: none !important;
@@ -1949,7 +1949,7 @@
 
 
 /* Карточки каналов не сжимаются: все комнаты видны, список скроллится. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-channels:not(.mobile-hub-open) #mobile-hubs {
     overflow-y: auto !important;
   }
@@ -1962,7 +1962,7 @@
 
 /* Каналы в открытом канале: горизонтальный рейл + комнаты, как Discord.
    На разложенном фолде каналы уже в рейле — полосу не показываем. */
-@media (max-width: 1000px) and (max-height: 619px) {
+@media (max-width: 1400px) and (max-height: 619px) {
   body.mobile-hub-open #mobile-hubs {
     display: flex !important;
     flex-direction: row !important;
@@ -2000,7 +2000,7 @@
 }
 
 /* Альбом: каналы/комнаты слева, чат справа — три зоны, а не пустой экран. */
-@media (max-width: 1000px) and (max-height: 619px) {
+@media (max-width: 1400px) and (max-height: 619px) {
   body.mobile-room-open.mobile-hub-open:not(.mobile-list):not(.mobile-settings):not(.mobile-notifications) .sidebar {
     display: flex !important;
     position: fixed !important;
@@ -2024,7 +2024,7 @@
 
 
 /* Разложенный фолд/планшет: это Workspace, нижней телефонной панели здесь нет. */
-@media (min-width: 600px) and (min-height: 620px) and (max-width: 1000px) {
+@media (min-width: 600px) and (min-height: 620px) and (max-width: 1400px) {
   #mobile-nav,
   body.mobile-room-open #mobile-nav,
   body.mobile-settings #mobile-nav,
@@ -2038,7 +2038,7 @@
 
 
 /* В мобильной шапке чата звонок — только иконка, чтобы имя помещалось. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #chat .chat-head #call-btn {
     width: 38px !important;
     height: 38px !important;
@@ -2055,7 +2055,7 @@
 
 
 /* Каналы: гармошка, папки и перетаскивание. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #mobile-hubs .mobile-hub-card__head { position: relative; }
   #mobile-hubs .mobile-hub-card__toggle {
     width: 36px; height: 36px; min-width: 36px;
@@ -2119,13 +2119,13 @@
 
 
 /* Свайп по нижнему меню: горизонталь обрабатывает только сама панель. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #mobile-nav { touch-action: pan-y; }
 }
 
 
 /* Приватность: горизонтальные вкладки вместо крупных плиток 2×2. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings .set-pane[data-pane="privacy"] > #privacy-subnav {
     display: flex !important;
     flex-direction: row !important;
@@ -2166,7 +2166,7 @@
 
 
 /* Звук и видео: цельные карточки, заметное текущее значение шумоподавления. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   .set-pane[data-pane="sound"] .noise-current {
     margin-top: 4px;
     color: var(--muted);
@@ -2181,7 +2181,7 @@
 
 
 /* Тред: даже до добавления класса — никакого blur/анимации, сразу непрозрачный. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #thread-panel:not(.hidden) {
     background: var(--bg-deep) !important;
     -webkit-backdrop-filter: none !important;
@@ -2195,7 +2195,7 @@
 
 
 /* Альбом: список каналов занимает всю ширину, без центрированной колонки. */
-@media (max-width: 1000px) and (max-height: 619px) {
+@media (max-width: 1400px) and (max-height: 619px) {
   body.mobile-channels.mobile-list:not(.mobile-hub-open) #mobile-hubs {
     max-width: none !important;
     width: 100% !important;
@@ -2217,7 +2217,7 @@
 
 
 /* Свайп между подвкладками приватности — мягкий сдвиг новой страницы. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #settings .set-pane[data-pane="privacy"] { touch-action: pan-y; }
   #settings .set-pane[data-pane="privacy"].privacy-swipe-left .privacy-page:not(.hidden) {
     animation: privacy-slide-left .22s cubic-bezier(.22, 1, .36, 1);
@@ -2237,7 +2237,7 @@
 
 
 /* Панель участников на телефоне — непрозрачный лист поверх скрима, без blur. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   #members-panel.drawer-open {
     background: var(--bg-deep) !important;
     -webkit-backdrop-filter: none !important;
@@ -2248,7 +2248,7 @@
 
 
 /* Профиль на телефоне — полноэкранный непрозрачный лист, как в Discord. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-profile-open #mobile-nav,
   body.mobile-profile-open #mobile-backdrop,
   body.mobile-profile-open .scrim { display: none !important; }
@@ -2325,7 +2325,7 @@
 
 
 /* Старый раздел не должен просвечивать через стекло нового. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-channels #empty-state,
   body.mobile-notifications #empty-state,
   body.mobile-channels #empty-state { display: none !important; }
@@ -2335,13 +2335,13 @@
 
 
 /* Уведомления: не перезапускаем их старую анимацию при снятии класса перехода. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-notifications #notif-panel { animation: none !important; }
 }
 
 
 /* Вход нового раздела нижнего меню: та же мягкая пружина, что у роллера друзей. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   body.mobile-tab-entering #empty-state,
   body.mobile-tab-entering #mobile-hubs {
     animation-duration: .24s;
@@ -2389,7 +2389,7 @@
 
 /* Телефон: настройки и уведомления — такие же экраны, как «Друзья»/«Каналы»,
    а не прозрачные desktop-модалки. Непрозрачны с первого кадра, без scrim-in. */
-@media (max-width: 599px), (max-width: 1000px) and (max-height: 619px) {
+@media (max-width: 599px), (max-width: 1400px) and (max-height: 619px) {
   #settings.modal:not(.hidden) {
     position: fixed !important;
     inset: 0 !important;
@@ -2429,7 +2429,7 @@
 }
 
 /* Разложенный Fold/планшет: каналы уже в рейле — ряд переключателей каналов лишний. */
-@media (min-width: 600px) and (min-height: 620px) and (max-width: 1000px) {
+@media (min-width: 600px) and (min-height: 620px) and (max-width: 1400px) {
   body.mobile-hub-open[class] #mobile-hubs,
   body.mobile-channels[class] #mobile-hubs,
   body #mobile-hubs { display: none; }
@@ -2455,6 +2455,6 @@
 }
 
 /* На телефоне/фолде нет hover-подсказок: они остаются от десктопа и перекрывают шапку. */
-@media (max-width: 1000px) {
+@media (max-width: 1400px) {
   .app-tip, .rail-tip { display: none; }
 }

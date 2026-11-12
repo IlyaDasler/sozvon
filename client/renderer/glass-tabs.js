@@ -18,7 +18,7 @@
   // В «Глубине» и «Фуджи» она обязана двигаться и по рейлу каналов, включая
   // выделенный раздел-папку, а не только по вкладкам друзей.
   const usesTabs = (root) =>
-    (root.id === 'friend-tabs' && window.matchMedia?.('(max-width: 1000px)').matches) ||
+    (root.id === 'friend-tabs' && window.matchMedia?.('(max-width: 1400px)').matches) ||
     themeName() === 'glass' ||
     themeName() === 'glass2' ||
     (root.id === 'rail' && (themeId() === 'sozvon' || themeId() === 'fuji')) ||

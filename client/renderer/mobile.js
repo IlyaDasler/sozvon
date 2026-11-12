@@ -19,7 +19,7 @@
     const nativeFocus = HTMLElement.prototype.focus;
     const guardedFocus = function (...args) {
       const editable = this.matches?.('input, textarea, [contenteditable="true"]');
-      const mobile = window.matchMedia('(max-width: 1000px)').matches;
+      const mobile = window.matchMedia('(max-width: 1400px)').matches;
       if (mobile && editable && !pointerOnField && document.activeElement !== this) return;
       return nativeFocus.apply(this, args);
     };
@@ -32,7 +32,7 @@
   }
 
   const transition = (fn) => {
-    if (innerWidth > 1000 && typeof document.startViewTransition === 'function' && document.documentElement.dataset.performance === 'high' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (innerWidth > 1400 && typeof document.startViewTransition === 'function' && document.documentElement.dataset.performance === 'high' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       document.startViewTransition(fn);
     } else {
       fn();
