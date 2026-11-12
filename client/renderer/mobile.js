@@ -52,6 +52,26 @@ if (window.NativeSession || window.Capacitor || matchMedia('(pointer: coarse)').
   }
   const camSelect = document.getElementById('cam-picker-btn');
   if (camSelect) camSelect.style.display = 'none';
+
+  // Шумоподавление: плавный ход ползунка, без четырёх «кнопок-подписей».
+  const noise = document.getElementById('set-ns-level');
+  if (noise) {
+    noise.step = '0.01';
+    document.querySelector('.noise-ticks')?.remove();
+    const names = ['Выкл', 'Мягко', 'Среднее', 'Сильно'];
+    const label = document.getElementById('set-ns-value');
+    const paint = () => {
+      if (label) label.textContent = names[Math.round(Number(noise.value))] || '';
+    };
+    noise.addEventListener('input', paint);
+    // app.js сохраняет целое 0..3; округляем до его обработчика change.
+    document.addEventListener('change', (event) => {
+      if (event.target !== noise) return;
+      noise.value = String(Math.round(Number(noise.value)));
+      paint();
+    }, true);
+    paint();
+  }
 }
 document.addEventListener('touchstart', markPointer, { capture: true, passive: true });
     document.addEventListener('pointerup', () => setTimeout(() => { pointerOnField = false; }, 0), true);
@@ -131,7 +151,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.156';
+    version.textContent = 'Версия 1.0.157';
     authCard.append(version);
   }
 
