@@ -3,7 +3,7 @@
 (() => {
   // Мобильные настройки — телефон и короткий альбом; разложенный фолд
   // остаётся Workspace с обычной боковой навигацией настроек.
-  const mq = matchMedia('(max-width: 599px), (max-width: 1000px) and (max-height: 619px)');
+  const mq = matchMedia('(max-width: 1000px)');
   const back = document.getElementById('mobile-settings-back');
   const subnav = document.getElementById('privacy-subnav');
   const privacyPane = document.querySelector('#settings .set-pane[data-pane="privacy"]');

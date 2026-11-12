@@ -1338,7 +1338,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    терял идентичность при открытии. */
 .hub-menu-avatar { display: none; }
 @media (max-width: 1000px) {
-  #hub-menu-btn {
+  #hub-menu-btn:not(.hidden) {
     display: flex !important;
     align-items: center;
     gap: 8px;
