@@ -29,7 +29,7 @@ public class MainActivity extends BridgeActivity {
         getWindow().getDecorView().setFitsSystemWindows(false);
         // Пока тема не прислала цвет, иконки трея должны быть светлыми на тёмном фоне.
         int barFlags = getWindow().getDecorView().getSystemUiVisibility();
-        barFlags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        barFlags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         getWindow().getDecorView().setSystemUiVisibility(barFlags);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
@@ -61,7 +61,7 @@ public class MainActivity extends BridgeActivity {
         int height = h > 0 ? getResources().getDimensionPixelSize(h) : 0;
         if (height <= 0) return;
         statusTint = new View(this);
-        statusTint.setBackgroundColor(Color.TRANSPARENT);
+        statusTint.setBackgroundColor(Color.WHITE);
         statusTint.setClickable(false);
         statusTint.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, height);

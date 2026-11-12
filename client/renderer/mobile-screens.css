@@ -2682,3 +2682,25 @@
     height: 44px;
   }
 }
+
+/* Аудит: зоны касания 48dp в рейле, вкладках и поиске друзей. */
+@media (min-width: 600px) and (min-height: 620px) and (max-width: 1400px) {
+  body #rail .rail-tile,
+  body #rail .rail-item {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+  }
+  body #friend-tabs {
+    height: 52px;
+    min-height: 52px;
+  }
+  body #friend-tabs > button {
+    height: 48px;
+    min-height: 48px;
+  }
+  body #friend-search {
+    height: 48px;
+  }
+}
