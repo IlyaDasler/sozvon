@@ -1,4 +1,4 @@
-// Приватность: свайп влево/вправо листает подвкладки, работает только в разделе.
+﻿// Приватность: свайп влево/вправо листает подвкладки, работает только в разделе.
 const { register, js, sleep, openClient, runTest } = require('./e2e-lib');
 
 const swipe = async (w, fromX, toX, y = 600) => {
@@ -38,9 +38,13 @@ runTest(async () => {
 
   let d = JSON.parse(await state(w));
   if (d.active !== 'data') throw new Error('старт не на «Данные»');
+  const beforeSwipe = await js(w, `JSON.stringify({body:document.body.className,nav:document.querySelector('#mobile-nav button.active')?.dataset.mobile,list:document.body.classList.contains('mobile-list')})`);
+  console.log('before-privacy-swipe', beforeSwipe);
   await swipe(w, 320, 80);
   d = JSON.parse(await state(w));
   console.log('privacy-swipe-profile', JSON.stringify(d));
+  const afterSwipe = await js(w, `JSON.stringify({body:document.body.className,nav:document.querySelector('#mobile-nav button.active')?.dataset.mobile,list:document.body.classList.contains('mobile-list')})`);
+  console.log('after-privacy-swipe', afterSwipe);
   if (d.active !== 'profile' || d.shown[0] !== 'profile') throw new Error('свайп влево не открыл профиль');
 
   await swipe(w, 320, 80);
@@ -72,3 +76,4 @@ runTest(async () => {
   d = JSON.parse(await state(w));
   if (d.active !== 'contact') throw new Error('вертикальный свайп переключил вкладку');
 });
+

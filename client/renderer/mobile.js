@@ -92,7 +92,7 @@
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.138';
+    version.textContent = 'Версия 1.0.139';
     authCard.append(version);
   }
 
@@ -1174,6 +1174,9 @@ else if (sidebar) sidebar.prepend(hubsBar);
     'touchstart',
     (event) => {
       if (event.touches.length !== 1) return;
+      // В настройках и модалках жесты принадлежат их содержимому, а не нижнему меню.
+      if (document.body.classList.contains('mobile-settings')) return;
+      if (event.target.closest('#settings, .modal, #notif-panel, #thread-panel')) return;
       if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
       const t = event.touches[0];
       // Первые/последние 24 dp и верхняя кромка принадлежат системе:
@@ -1187,6 +1190,8 @@ else if (sidebar) sidebar.prepend(hubsBar);
     'touchend',
     (event) => {
       if (!touch) return;
+      if (document.body.classList.contains('mobile-settings')) { touch = null; return; }
+      if (event.target.closest('#settings, .modal, #notif-panel, #thread-panel')) { touch = null; return; }
       const t = event.changedTouches[0];
       const dx = t.clientX - touch.x;
       const dy = t.clientY - touch.y;
