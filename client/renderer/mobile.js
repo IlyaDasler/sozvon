@@ -151,7 +151,7 @@ document.addEventListener('touchstart', markPointer, { capture: true, passive: t
   if (authCard && !document.getElementById('auth-build-version')) {
     const version = document.createElement('div');
     version.id = 'auth-build-version';
-    version.textContent = 'Версия 1.0.166';
+    version.textContent = 'Версия 1.0.167';
     authCard.append(version);
   }
 
@@ -1435,5 +1435,21 @@ else if (sidebar) sidebar.prepend(hubsBar);
   new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   new MutationObserver(sync).observe(empty, { attributes: true, attributeFilter: ['class'] });
   mq.addEventListener('change', sync);
+  sync();
+})();
+
+// В некоторых темах верхняя панель темы перебивала safe-area и залезала под
+// системный трей. Для Workspace фиксируем отступ от трея на уровне элемента.
+(() => {
+  const main = document.getElementById('main');
+  if (!main) return;
+  const sync = () => {
+    if (matchMedia('(max-width: 1400px)').matches) {
+      main.style.paddingTop = 'max(6px, var(--mobile-safe-top, env(safe-area-inset-top, 0px)))';
+    } else {
+      main.style.removeProperty('padding-top');
+    }
+  };
+  matchMedia('(max-width: 1400px)').addEventListener('change', sync);
   sync();
 })();

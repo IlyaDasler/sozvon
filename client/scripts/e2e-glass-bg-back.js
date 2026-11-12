@@ -18,7 +18,7 @@ runTest(async () => {
   console.log('glass-bg-open', JSON.stringify(d));
   if (!d.open) throw new Error('модалка не открылась');
   if (d.animation !== 'none') throw new Error('модалка с анимацией: ' + d.animation);
-  const handled = await js(w, `window.mobileBack()`);
+  const handled = await js(w, `window.sozvonBack()`);
   await sleep(250);
   d = JSON.parse(await js(w, `JSON.stringify({open:!document.getElementById('glass2-bg-modal').classList.contains('hidden'),settings:!document.getElementById('settings').classList.contains('hidden')})`));
   console.log('glass-bg-after-back', JSON.stringify(d), 'handled=' + handled);

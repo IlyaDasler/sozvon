@@ -7,6 +7,12 @@
   };
 
   function handleBack() {
+    // Выбор фона «Стекла» — верхний оверлей поверх настроек.
+    if (visible('#glass2-bg-modal')) {
+      if (typeof closeGlass2BackgroundPicker === 'function') closeGlass2BackgroundPicker();
+      else document.getElementById('glass2-bg-modal')?.classList.add('hidden');
+      return true;
+    }
     // Полноэкранный профиль на телефоне закрывается первым.
     if (document.querySelector('#profile-card.mobile-profile:not(.hidden)')) {
       if (typeof closeProfileCard === 'function') closeProfileCard();
