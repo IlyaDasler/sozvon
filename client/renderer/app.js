@@ -2097,7 +2097,13 @@ function normalizeHex(value) {
 function readableText(hex) {
   const n = parseInt(hex.slice(1), 16);
   const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#11131a' : '#ffffff';
+  // WCAG: выбираем тот цвет, у которого контраст к фону выше.
+  const linear = (v) => {
+    const s = v / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  const lum = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  return lum > 0.179 ? '#11131a' : '#ffffff';
 }
 
 let colorResolve = null;
