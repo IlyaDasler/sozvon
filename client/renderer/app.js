@@ -3880,7 +3880,10 @@ function enhancePasswordFields() {
     input.dataset.passwordEye = '1';
     const host = input.parentElement;
     if (!host) return;
-    host.classList.add('password-eye-host');
+    const wrap = document.createElement('span');
+    wrap.className = 'password-eye-wrap';
+    host.insertBefore(wrap, input);
+    wrap.append(input);
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'password-eye';
@@ -3895,7 +3898,7 @@ function enhancePasswordFields() {
       button.setAttribute('aria-label', show ? 'Скрыть пароль' : 'Показать пароль');
       button.title = show ? 'Скрыть пароль' : 'Показать пароль';
     };
-    input.after(button);
+    wrap.append(button);
   });
 }
 enhancePasswordFields();
