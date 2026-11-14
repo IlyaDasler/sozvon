@@ -2,6 +2,8 @@ package main
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -80,11 +82,39 @@ func (a *server) accountPurgeLoop() {
 		} else if n > 0 {
 			slog.Info("удалены аккаунты с истёкшим сроком", "count", n)
 		}
+		a.cleanupOrphanFiles()
 	}
 	purge()
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 	for range ticker.C {
 		purge()
+	}
+}
+
+// cleanupOrphanFiles убирает файлы, на которые больше не ссылается база.
+func (a *server) cleanupOrphanFiles() {
+	uploads, err := a.store.UploadIDs()
+	if err == nil {
+		entries, readErr := os.ReadDir(a.filesDir())
+		if readErr == nil {
+			for _, entry := range entries {
+				if !entry.IsDir() && !uploads[entry.Name()] {
+					_ = os.Remove(filepath.Join(a.filesDir(), entry.Name()))
+				}
+			}
+		}
+	}
+	media, err := a.store.MediaNames()
+	if err == nil {
+		entries, readErr := os.ReadDir(a.mediaDir())
+		if readErr == nil {
+			for _, entry := range entries {
+				name := strings.TrimSuffix(entry.Name(), ".webp")
+				if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".webp") && !media[name] {
+					_ = os.Remove(filepath.Join(a.mediaDir(), entry.Name()))
+				}
+			}
+		}
 	}
 }

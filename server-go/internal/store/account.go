@@ -73,3 +73,48 @@ func (s *Store) PurgeDeletedUsers(cutoff int64) (int, error) {
 	return removed, nil
 }
 
+func (s *Store) UploadIDs() (map[string]bool, error) {
+	rows, err := s.db.Query(`SELECT id FROM uploads`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	ids := map[string]bool{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids[id] = true
+	}
+	return ids, rows.Err()
+}
+
+func (s *Store) MediaNames() (map[string]bool, error) {
+	names := map[string]bool{}
+	for _, query := range []string{
+		`SELECT avatar FROM users WHERE COALESCE(avatar, '') <> ''`,
+		`SELECT banner FROM users WHERE COALESCE(banner, '') <> ''`,
+		`SELECT background FROM rooms WHERE COALESCE(background, '') <> ''`,
+		`SELECT icon FROM hubs WHERE COALESCE(icon, '') <> ''`,
+	} {
+		rows, err := s.db.Query(query)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			var name string
+			if err := rows.Scan(&name); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			names[name] = true
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		rows.Close()
+	}
+	return names, nil
+}
