@@ -48,6 +48,10 @@ type server struct {
 	// Фиктивный хеш для выравнивания времени входа: не даёт отличить
 	// несуществующий логин от неверного пароля по скорости ответа.
 	dummyHash string
+
+	telegramToken       string
+	telegramAPIBase     string
+	telegramBotUsername string
 }
 
 func authRandomID() string { return auth.RandomID(16) }
@@ -85,6 +89,11 @@ func main() {
 	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), oauth: oauth.Options{ClientID: cfg.YandexClientID, ClientSecret: cfg.YandexClientSecret, TestBase: cfg.OAuthTestBase}, preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}, limits: newLimiter()}
 	// Хеш для «пустой» проверки пароля (см. login): та же стоимость scrypt.
 	app.dummyHash, _ = auth.HashPassword(auth.RandomID(32))
+	app.telegramToken = strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN"))
+	app.telegramAPIBase = strings.TrimSpace(os.Getenv("TELEGRAM_API_BASE"))
+	if app.telegramAPIBase == "" {
+		app.telegramAPIBase = "https://api.telegram.org"
+	}
 
 	router := app.routes()
 
@@ -97,6 +106,9 @@ func main() {
 	}
 	// Напоминания о событиях: раз в полминуты, как в серверной логике
 	go app.eventRemindersLoop()
+	if app.telegramToken != "" {
+		go app.telegramBotLoop(context.Background())
+	}
 	go func() {
 		logger.Info("сервер запущен", "addr", httpServer.Addr, "data", cfg.DataDir)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -166,6 +178,8 @@ func (a *server) routes() http.Handler {
 		})
 		r.Post("/register/code", a.registerCode)
 		r.Post("/register", a.register)
+		r.Post("/phone/signup/start", a.phoneSignupStart)
+		r.Post("/phone/signup/status", a.phoneSignupStatus)
 		r.Post("/login", a.login)
 		r.Post("/password/code", a.passwordCode)
 		r.Post("/password/reset", a.passwordReset)
@@ -470,6 +484,7 @@ func (a *server) health(w http.ResponseWriter, _ *http.Request) {
 		"app":            "sozvon",
 		"inviteRequired": a.cfg.InviteCode != "",
 		"emailCodes":     a.cfg.EmailCodes(),
+		"phoneAuth":      a.telegramBotUsername != "",
 		"latestVersion":  a.cfg.LatestClientVersion,
 		"minClient":      a.cfg.MinClientVersion,
 		"updateUrl":      a.cfg.ClientUpdateURL,
@@ -559,7 +574,9 @@ func (a *server) login(w http.ResponseWriter, r *http.Request) {
 	login := strings.ToLower(strings.TrimSpace(body.Username))
 	var user *store.User
 	var err error
-	if strings.Contains(login, "@") {
+	if phone, ok := normalizePhone(body.Username); ok && strings.HasPrefix(strings.TrimSpace(body.Username), "+") {
+		user, err = a.store.UserByPhoneHMAC(a.phoneDigest(phone))
+	} else if strings.Contains(login, "@") {
 		user, err = a.store.UserByEmail(login)
 	} else {
 		user, err = a.store.UserByUsername(login)
