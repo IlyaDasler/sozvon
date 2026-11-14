@@ -1,7 +1,8 @@
 // Сквозное шифрование переписки в приложении: свой ключ, ключи переписок, отправка и расшифровка.
 // Шифры и ключи — в e2ee-crypto.js; здесь — когда и что с ними делать.
-// - Свой ключ создаётся при первом входе и хранится только на этом устройстве. Если у аккаунта уже есть
-//   ключ с другого устройства — предлагаем перенести его кодом или создать новый (окно e2ee-setup).
+// - Свой ключ создаётся при первом входе. Для аккаунтов с паролем он автоматически сохраняется
+//   на сервере запечатанным паролем; на новом устройстве вход тем же паролем открывает его сам.
+//   Ручной код переноса остаётся только запасным путём: OAuth без пароля, сброс пароля без локального ключа.
 // - Ключ переписки грузится один раз, открывается своим ключом; тем, у кого его ещё нет (новичок, сменил
 //   ключ), делимся сами. Выгнали участника — при следующей отправке ключ меняем.
 // - Сообщение и файлы шифруются перед отправкой; входящие расшифровываются, файлы — когда их показывают.
@@ -97,10 +98,74 @@ async function publishIdentity(identity) {
 }
 
 /** При входе: свой ключ есть и совпадает — работаем; нет нигде — создаём; на сервере другой — спрашиваем */
-async function setupE2EE() {
+async function fetchKeyBackup(password) {
+  if (!password || !state.me?.hasPassword) return null;
+  try {
+    return await Api.post('/key-backup/read', { password });
+  } catch (err) {
+    if (err.status !== 404) console.warn('Резервная копия ключа:', err.message);
+    return null;
+  }
+}
+
+/** Сохранить ключ профиля на сервере, запечатав его паролем. Сервер не может его открыть. */
+async function uploadKeyBackup(identity, password) {
+  if (!password || !identity || !state.me?.hasPassword) return false;
+  try {
+    const blob = await E2EE.wrapKeyBackup(identity, password, state.me.id);
+    await Api.put('/key-backup', { password, ...blob });
+    return true;
+  } catch (err) {
+    console.warn('Не удалось сохранить резервную копию ключа:', err.message);
+    return false;
+  }
+}
+
+/** Смена пароля: старый blob больше не откроется, сразу перезапечатываем текущий ключ. */
+async function backupKeyWithPassword(password) {
+  return uploadKeyBackup(e2ee.identity, password);
+}
+
+async function setupE2EE(password = '') {
   const local = readScoped('identity', null);
   const server = state.me.publicKey;
   try {
+    // Пароль есть только в момент входа. По нему открываем серверную копию
+    // автоматически — без кодов переноса и второго устройства.
+    if (password && state.me.hasPassword) {
+      const backup = await fetchKeyBackup(password);
+      let fromBackup = null;
+      if (backup?.ct) {
+        try {
+          fromBackup = await E2EE.unwrapKeyBackup(backup, password, state.me.id);
+        } catch {
+          // Пароль сменили сбросом: старую копию открыть нечем.
+        }
+      }
+      if (fromBackup?.publicKey && (!server || server === fromBackup.publicKey)) {
+        store.set(identityStoreKey(), fromBackup);
+        await useIdentity(fromBackup);
+        if (!server) await publishIdentity(fromBackup);
+        return;
+      }
+      if (local && (!server || server === local.publicKey)) {
+        await useIdentity(local);
+        if (!server) await publishIdentity(local);
+        // Обновляем/создаём копию: при следующем входе новое устройство
+        // подхватит ключ само.
+        await uploadKeyBackup(local, password);
+        return;
+      }
+      if (!local && !server) {
+        const identity = await E2EE.generateIdentity();
+        store.set(identityStoreKey(), identity);
+        await useIdentity(identity);
+        await publishIdentity(identity);
+        await uploadKeyBackup(identity, password);
+        return;
+      }
+    }
+    // OAuth без пароля или сброс без локального ключа: остаётся ручной перенос.
     if (local && (!server || server === local.publicKey)) {
       await useIdentity(local);
       if (!server) await publishIdentity(local);
