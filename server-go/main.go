@@ -106,6 +106,7 @@ func main() {
 	}
 	// Напоминания о событиях: раз в полминуты, как в серверной логике
 	go app.eventRemindersLoop()
+	go app.accountPurgeLoop()
 	if app.telegramToken != "" {
 		go app.telegramBotLoop(context.Background())
 	}
@@ -204,6 +205,10 @@ func (a *server) routes() http.Handler {
 			r.Get("/key-transfer/{id}", a.keyTransferGet)
 			r.Post("/key-backup/read", a.keyBackupRead)
 			r.Put("/key-backup", a.keyBackupPut)
+			r.Post("/account/delete", a.accountDelete)
+			r.Post("/me/phone/start", a.phoneLinkStart)
+			r.Post("/me/phone/status", a.phoneLinkStatus)
+			r.Post("/account/restore", a.accountRestore)
 			r.Post("/me/email/code", a.emailCode)
 			r.Put("/me/email", a.updateEmail)
 			r.Delete("/me/identities/{provider}", a.unlinkIdentity)
@@ -409,6 +414,8 @@ type selfJSON struct {
 	TwoFactor   bool           `json:"twoFactor"`
 	Identities  []identityJSON `json:"identities"`
 	Privacy     privacyJSON    `json:"privacy"`
+	DeletedAt   int64          `json:"deletedAt"`
+	HasPhone    bool           `json:"hasPhone"`
 }
 
 func optional(value string) *string {
@@ -426,6 +433,8 @@ func (a *server) self(user *store.User) (selfJSON, error) {
 	}
 	body := selfJSON{
 		ID:          user.ID,
+		DeletedAt:   user.DeletedAt,
+		HasPhone:    user.PhoneHMAC != "",
 		Username:    user.Username,
 		DisplayName: user.DisplayName,
 		AvatarColor: user.AvatarColor,
@@ -658,6 +667,10 @@ func (a *server) requireAuth(next http.Handler) http.Handler {
 		user, err := a.store.UserByID(session.UserID)
 		if err != nil {
 			fail(http.StatusUnauthorized, "Требуется вход").write(w)
+			return
+		}
+		if user.DeletedAt != 0 && r.URL.Path != "/api/me" && r.URL.Path != "/api/account/restore" {
+			fail(http.StatusForbidden, "Аккаунт удаляется. Восстановите его или дождитесь окончания срока").write(w)
 			return
 		}
 		if time.Now().UnixMilli()-session.LastSeen > 5*60*1000 {

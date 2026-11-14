@@ -29,6 +29,8 @@ type User struct {
 	PrivacyGame    bool
 	FriendRequests bool
 	InvitePolicy   string
+	DeletedAt      int64
+	PhoneHMAC      string
 }
 
 type Session struct {
@@ -49,17 +51,19 @@ var ErrNotFound = errors.New("not found")
 // Только настоящие столбцы: строку подставляем и в одиночный SELECT, и в JOIN с префиксом
 const userColumns = `id, username, password_hash, display_name, avatar_color, created_at,
 	avatar, email, email_shown, bio, banner_color, banner, game, name_color, status, public_key, totp_secret,
-	privacy_typing, privacy_read, privacy_game, friend_requests, invite_policy`
+	privacy_typing, privacy_read, privacy_game, friend_requests, invite_policy, deleted_at, phone_hmac`
 
 // scanUserInto читает строку users с учётом NULL и добавляет поля из JOIN.
 func scanUserInto(row interface{ Scan(...any) error }, user *User, extra ...any) error {
 	var avatar, email, emailShown, bio, bannerColor, banner, game, nameColor, status, publicKey, totp sql.NullString
 	var invitePolicy sql.NullString
 	var privacyTyping, privacyRead, privacyGame, friendRequests sql.NullInt64
+	var deletedAt sql.NullInt64
+	var phoneHMAC sql.NullString
 	args := []any{
 		&user.ID, &user.Username, &user.PasswordHash, &user.DisplayName, &user.AvatarColor, &user.CreatedAt,
 		&avatar, &email, &emailShown, &bio, &bannerColor, &banner, &game, &nameColor, &status, &publicKey, &totp,
-		&privacyTyping, &privacyRead, &privacyGame, &friendRequests, &invitePolicy,
+		&privacyTyping, &privacyRead, &privacyGame, &friendRequests, &invitePolicy, &deletedAt, &phoneHMAC,
 	}
 	args = append(args, extra...)
 	if err := row.Scan(args...); err != nil {
@@ -88,6 +92,8 @@ func scanUserInto(row interface{ Scan(...any) error }, user *User, extra ...any)
 	user.PrivacyGame = !privacyGame.Valid || privacyGame.Int64 != 0
 	user.FriendRequests = !friendRequests.Valid || friendRequests.Int64 != 0
 	user.InvitePolicy = invitePolicy.String
+	user.DeletedAt = deletedAt.Int64
+	user.PhoneHMAC = phoneHMAC.String
 	if user.InvitePolicy != "friends" {
 		user.InvitePolicy = "all"
 	}

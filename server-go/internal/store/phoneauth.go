@@ -24,6 +24,7 @@ type PhoneSignup struct {
 	Username     string
 	DisplayName  string
 	AvatarColor  string
+	UserID       int64
 	TokenHash    string
 	PollHash     string
 	ChatID       int64
@@ -37,17 +38,17 @@ func (s *Store) CreatePhoneSignup(p PhoneSignup) error {
 	_, err := s.db.Exec(`
 		INSERT INTO phone_signups
 			(id, phone_hmac, password_hash, username, display_name, avatar_color,
-			 token_hash, poll_hash, created_at, expires_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 token_hash, poll_hash, user_id, created_at, expires_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, 0), ?, ?)`,
 		p.ID, p.PhoneHMAC, p.PasswordHash, p.Username, p.DisplayName, p.AvatarColor,
-		p.TokenHash, p.PollHash, p.CreatedAt, p.ExpiresAt)
+		p.TokenHash, p.PollHash, p.UserID, p.CreatedAt, p.ExpiresAt)
 	return err
 }
 
 func (s *Store) PhoneSignupByID(id string) (*PhoneSignup, error) {
 	return scanPhoneSignup(s.db.QueryRow(`
 		SELECT id, phone_hmac, password_hash, username, display_name, avatar_color,
-		       token_hash, poll_hash, COALESCE(telegram_chat_id, 0), COALESCE(verified_at, 0),
+		       token_hash, poll_hash, COALESCE(user_id, 0), COALESCE(telegram_chat_id, 0), COALESCE(verified_at, 0),
 		       COALESCE(used_at, 0), created_at, expires_at
 		FROM phone_signups WHERE id = ?`, id))
 }
@@ -55,7 +56,7 @@ func (s *Store) PhoneSignupByID(id string) (*PhoneSignup, error) {
 func (s *Store) PhoneSignupByUsername(username string) (*PhoneSignup, error) {
 	return scanPhoneSignup(s.db.QueryRow(`
 		SELECT id, phone_hmac, password_hash, username, display_name, avatar_color,
-		       token_hash, poll_hash, COALESCE(telegram_chat_id, 0), COALESCE(verified_at, 0),
+		       token_hash, poll_hash, COALESCE(user_id, 0), COALESCE(telegram_chat_id, 0), COALESCE(verified_at, 0),
 		       COALESCE(used_at, 0), created_at, expires_at
 		FROM phone_signups WHERE username = ?`, username))
 }
@@ -63,7 +64,7 @@ func (s *Store) PhoneSignupByUsername(username string) (*PhoneSignup, error) {
 func (s *Store) PhoneSignupByTokenHash(hash string) (*PhoneSignup, error) {
 	return scanPhoneSignup(s.db.QueryRow(`
 		SELECT id, phone_hmac, password_hash, username, display_name, avatar_color,
-		       token_hash, poll_hash, COALESCE(telegram_chat_id, 0), COALESCE(verified_at, 0),
+		       token_hash, poll_hash, COALESCE(user_id, 0), COALESCE(telegram_chat_id, 0), COALESCE(verified_at, 0),
 		       COALESCE(used_at, 0), created_at, expires_at
 		FROM phone_signups WHERE token_hash = ?`, hash))
 }
@@ -72,7 +73,7 @@ func (s *Store) PhoneSignupByTokenHash(hash string) (*PhoneSignup, error) {
 func (s *Store) PhoneSignupForChat(chatID int64) (*PhoneSignup, error) {
 	return scanPhoneSignup(s.db.QueryRow(`
 		SELECT id, phone_hmac, password_hash, username, display_name, avatar_color,
-		       token_hash, poll_hash, COALESCE(telegram_chat_id, 0), COALESCE(verified_at, 0),
+		       token_hash, poll_hash, COALESCE(user_id, 0), COALESCE(telegram_chat_id, 0), COALESCE(verified_at, 0),
 		       COALESCE(used_at, 0), created_at, expires_at
 		FROM phone_signups
 		WHERE telegram_chat_id = ? AND used_at IS NULL AND verified_at IS NULL
@@ -82,7 +83,7 @@ func (s *Store) PhoneSignupForChat(chatID int64) (*PhoneSignup, error) {
 func scanPhoneSignup(row interface{ Scan(...any) error }) (*PhoneSignup, error) {
 	var p PhoneSignup
 	err := row.Scan(&p.ID, &p.PhoneHMAC, &p.PasswordHash, &p.Username, &p.DisplayName,
-		&p.AvatarColor, &p.TokenHash, &p.PollHash, &p.ChatID, &p.VerifiedAt,
+		&p.AvatarColor, &p.TokenHash, &p.PollHash, &p.UserID, &p.ChatID, &p.VerifiedAt,
 		&p.UsedAt, &p.CreatedAt, &p.ExpiresAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrPhoneSignupNotFound
@@ -135,11 +136,11 @@ func (s *Store) CompletePhoneSignup(id, pollHash string) (*User, error) {
 	var p PhoneSignup
 	err = tx.QueryRow(`
 		SELECT id, phone_hmac, password_hash, username, display_name, avatar_color,
-		       token_hash, poll_hash, COALESCE(telegram_chat_id, 0), COALESCE(verified_at, 0),
+		       token_hash, poll_hash, COALESCE(user_id, 0), COALESCE(telegram_chat_id, 0), COALESCE(verified_at, 0),
 		       COALESCE(used_at, 0), created_at, expires_at
 		FROM phone_signups WHERE id = ?`, id).
 		Scan(&p.ID, &p.PhoneHMAC, &p.PasswordHash, &p.Username, &p.DisplayName,
-			&p.AvatarColor, &p.TokenHash, &p.PollHash, &p.ChatID, &p.VerifiedAt,
+			&p.AvatarColor, &p.TokenHash, &p.PollHash, &p.UserID, &p.ChatID, &p.VerifiedAt,
 			&p.UsedAt, &p.CreatedAt, &p.ExpiresAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrPhoneSignupNotFound
@@ -202,4 +203,9 @@ func (s *Store) DeletePhoneSignup(id, pollHash string) error {
 		return ErrPhoneSignupNotFound
 	}
 	return nil
+}
+
+func (s *Store) SetUserPhone(userID int64, phoneHMAC string) error {
+	_, err := s.db.Exec(`UPDATE users SET phone_hmac = ? WHERE id = ?`, phoneHMAC, userID)
+	return err
 }
