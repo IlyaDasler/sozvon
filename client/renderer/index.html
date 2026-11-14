@@ -133,7 +133,7 @@
           <input id="server-url" placeholder="https://135-106-226-12.sslip.io" spellcheck="false">
         </label>
         <label class="field" id="username-field">
-          <span>Почта или логин</span>
+          <span>Почта, логин или телефон</span>
           <input id="auth-username" autocomplete="username" spellcheck="false" placeholder="name@yandex.ru" required>
         </label>
         <label class="field hidden" id="email-field">
@@ -184,6 +184,10 @@
         <p class="auth-switch">
           <span id="auth-switch-text">Нет аккаунта?</span>
           <a href="#" id="auth-toggle">Зарегистрироваться</a>
+        </p>
+        <p class="auth-switch auth-phone-switch">
+          <button type="button" class="linkish" id="phone-open">Регистрация по телефону</button>
+          <span class="muted small">— подтверждение через Telegram, без SMS</span>
         </p>
         <!-- Свой сервер: по умолчанию общий, но можно указать адрес своего (docs/self-hosting.md) -->
         <p class="muted center small auth-server">
@@ -1419,7 +1423,29 @@
   <script src="vendor/livekit-client.umd.js"></script>
   <script src="sfu.js"></script>
   <script src="privacy.js"></script>
+  <div id="phone-signup" class="modal hidden">
+    <div class="modal-card dialog-card phone-signup-card">
+      <h3>Регистрация по телефону</h3>
+      <p class="hint-text">Пароль защищает аккаунт. Номер подтвердит Telegram — SMS не нужны.</p>
+      <label class="field"><span>Телефон</span><input id="phone-input" type="tel" autocomplete="tel" placeholder="+7 999 123-45-67" spellcheck="false"></label>
+      <label class="field"><span>Логин для друзей</span><input id="phone-username" autocomplete="username" placeholder="latin, 3–24 символа" spellcheck="false"></label>
+      <label class="field"><span>Имя в профиле</span><input id="phone-display" maxlength="32" placeholder="Как вас называть"></label>
+      <label class="field"><span>Пароль</span><input id="phone-password" type="password" autocomplete="new-password" placeholder="Не короче 8 символов"></label>
+      <label class="field hidden" id="phone-invite-field"><span>Код приглашения</span><input id="phone-invite" spellcheck="false" placeholder="Если сервер его требует"></label>
+      <p class="error" id="phone-error"></p>
+      <div id="phone-pending" class="hidden">
+        <p class="hint-text" id="phone-pending-text">Откройте Telegram и нажмите «Отправить номер». Это окно закроется само.</p>
+        <p><a id="phone-deeplink" class="btn primary" target="_blank" rel="noopener">Открыть Telegram</a></p>
+        <p class="muted small" id="phone-status">Ожидаем подтверждение…</p>
+      </div>
+      <div class="row phone-signup-actions">
+        <button type="button" class="btn primary" id="phone-submit">Продолжить в Telegram</button>
+        <button type="button" class="btn" id="phone-cancel">Отмена</button>
+      </div>
+    </div>
+  </div>
   <script src="app.js"></script>
+  <script src="phone-auth.js"></script>
 <script type="module" src="room-utils.mjs"></script>
 <script type="module" src="update-bar.mjs"></script>
   <script src="ptt-keys.js"></script>

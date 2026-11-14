@@ -2966,3 +2966,8 @@ html.is-win .titlebar { padding-right: 146px; }
 .rail-tip {
   z-index: 2000 !important;
 }
+
+/* Регистрация по телефону через Telegram Contact Share */
+.auth-phone-switch { margin-top: 8px; }
+.phone-signup-card { width: min(420px, calc(100% - 32px)); }
+.phone-signup-actions { margin-top: 16px; }
