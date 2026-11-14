@@ -10,6 +10,8 @@
   const pendingBox = byId('phone-pending');
   const statusLine = byId('phone-status');
   const deeplink = byId('phone-deeplink');
+  const copyLink = byId('phone-copy');
+  const linkText = byId('phone-link-text');
   let timer = null;
   let current = null;
 
@@ -19,6 +21,7 @@
     current = null;
     error.textContent = '';
     pendingBox.classList.add('hidden');
+    if (linkText) linkText.textContent = '';
     submit.disabled = false;
     submit.classList.remove('hidden');
     for (const id of ['phone-input', 'phone-username', 'phone-display', 'phone-password', 'phone-invite']) {
@@ -37,6 +40,30 @@
     submit.disabled = false;
     submit.classList.remove('hidden');
     error.textContent = message;
+  };
+
+  const openUrl = async (url) => {
+    if (!url) return false;
+    if (window.desktop?.openExternal) {
+      try {
+        const result = await window.desktop.openExternal(url);
+        if (result?.ok) return true;
+      } catch {}
+    }
+    try {
+      window.open(url, '_blank', 'noopener');
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const openTelegram = async () => {
+    if (!current) return;
+    const https = current.deepLink;
+    const tg = https.replace('https://t.me/', 'tg://resolve?domain=').replace('?start=', '&start=');
+    // Сначала https-ссылка: её понимают и Telegram, и браузер. tg:// — запасной вариант.
+    if (!(await openUrl(https))) await openUrl(tg);
   };
 
   const poll = async () => {
@@ -65,6 +92,17 @@
     modal.classList.remove('hidden');
     byId('phone-input').focus();
   };
+  deeplink.onclick = openTelegram;
+  copyLink.onclick = async () => {
+    if (!current) return;
+    try {
+      if (window.desktop?.copy) await window.desktop.copy(current.deepLink);
+      else await navigator.clipboard.writeText(current.deepLink);
+      statusLine.textContent = 'Ссылка скопирована. Вставьте её в Telegram или браузер.';
+    } catch {
+      statusLine.textContent = current.deepLink;
+    }
+  };
   cancel.onclick = close;
   modal.addEventListener('click', (event) => { if (event.target === modal) close(); });
   document.addEventListener('keydown', (event) => {
@@ -89,14 +127,14 @@
       });
       current = { ...result, password };
       pendingBox.classList.remove('hidden');
-      deeplink.href = result.deepLink;
+      if (linkText) linkText.textContent = result.deepLink;
       statusLine.textContent = `Код подтверждения ждёт в Telegram @${result.botUsername}`;
       for (const id of ['phone-input', 'phone-username', 'phone-display', 'phone-password', 'phone-invite']) {
         const field = byId(id);
         if (field) field.disabled = true;
       }
       submit.classList.add('hidden');
-      window.open(result.deepLink, '_blank', 'noopener');
+      openTelegram();
       timer = setTimeout(poll, 1500);
     } catch (err) {
       submit.disabled = false;

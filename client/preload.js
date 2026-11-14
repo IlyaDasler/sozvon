@@ -33,6 +33,8 @@ contextBridge.exposeInMainWorld('desktop', {
   // Давно не трогали мышь и клавиатуру (true) или вернулись (false) — для статуса «Неактивен»
   onIdle: (callback) => ipcRenderer.on('idle', (_event, idle) => callback(idle)),
   oauth: (authUrl) => ipcRenderer.invoke('oauth', authUrl),
+  // Открыть ссылку Telegram во внешнем приложении (https://t.me/ или tg://)
+  openExternal: (url) => ipcRenderer.invoke('open-external', String(url)),
   // Буфер обмена и правка текста (вырезать, вставить…) — средствами Electron, они надёжнее браузерных
   copy: (text) => ipcRenderer.invoke('clipboard:write', String(text)),
   paste: () => ipcRenderer.invoke('clipboard:read'),
