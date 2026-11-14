@@ -295,6 +295,11 @@ async function sendEmailCode() {
     $('auth-email').focus();
     return false;
   }
+  if (looksLikePhone(email)) {
+    $('code-field').classList.add('hidden');
+    $('auth-error').textContent = 'Для телефона код из письма не нужен — нажмите «Создать аккаунт»';
+    return false;
+  }
   const button = $('auth-send-code');
   button.disabled = true;
   $('auth-error').textContent = '';
@@ -654,6 +659,7 @@ $('auth-toggle').onclick = (e) => {
     $('code-field').classList.toggle('hidden', phone);
   };
   $('auth-email').addEventListener('input', syncPhoneCodeVisibility);
+  syncPhoneCodeVisibility();
 ;
 
 $('auth-form').onsubmit = async (e) => {
