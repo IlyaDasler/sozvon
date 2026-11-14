@@ -310,8 +310,9 @@ func (a *server) updateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Email string `json:"email"`
-		Code  string `json:"code"`
+		Email       string `json:"email"`
+		Code        string `json:"code"`
+		NewPassword string `json:"newPassword"`
 	}
 	if err := decode(r, &body); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
@@ -328,6 +329,21 @@ func (a *server) updateEmail(w http.ResponseWriter, r *http.Request) {
 	}
 	if !a.verifyEmailCode(w, "register", email, body.Code) {
 		return
+	}
+	if user.PasswordHash == "" {
+		if !auth.ValidPassword(body.NewPassword) {
+			fail(http.StatusBadRequest, "Придумайте пароль для аккаунта: от 8 до 128 символов").write(w)
+			return
+		}
+		hash, err := auth.HashPassword(body.NewPassword)
+		if err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+		if err := a.store.UpdatePassword(user.ID, hash); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
 	}
 	if err := a.store.SetEmail(user.ID, email, email); err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)

@@ -3024,3 +3024,16 @@ html.is-win .titlebar { padding-right: 146px; }
 @media (prefers-reduced-motion: reduce) {
   .auth-phone-tip__pulse { animation: none; }
 }
+
+/* Восстановление удалённого аккаунта */
+.recovery { display: grid; place-items: center; padding: 24px; }
+.recovery-card { width: min(420px, calc(100% - 32px)); padding: 28px; border-radius: var(--r-xl); background: var(--bg-2); border: 1px solid var(--line-strong); box-shadow: var(--shadow); text-align: center; }
+.recovery-card img { margin-bottom: 14px; }
+.recovery-card h1 { margin: 0 0 12px; font-size: 22px; }
+.recovery-timer { margin: 10px 0; font: 700 28px/1.2 var(--font-mono); letter-spacing: .02em; color: var(--accent); }
+.recovery-card p { line-height: 1.5; }
+.delete-account-card { width: min(460px, calc(100% - 32px)); }
+.delete-account-card p { line-height: 1.5; }
+
+.phone-link-form { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.phone-link-form .field { margin: 10px 0; }

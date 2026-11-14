@@ -148,10 +148,11 @@ function toast(text, ms = 4000) {
 function showScreen(name) {
   $('auth').classList.toggle('hidden', name !== 'auth');
   $('main').classList.toggle('hidden', name !== 'main');
+  $('recovery').classList.toggle('hidden', name !== 'recovery');
   // 'boot' — пока проверяем связь, не показываем ни вход, ни приложение
   // На экране входа окно фиксированное, после входа — свободное
   window.desktop?.window?.authMode?.(name !== 'main');
-  document.documentElement.classList.toggle('auth-screen', name === 'auth' || name === 'boot');
+  document.documentElement.classList.toggle('auth-screen', name === 'auth' || name === 'boot' || name === 'recovery');
 }
 
 const formatTime = (ts) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -351,6 +352,56 @@ function showPendingSignup(ticket, provider) {
   $('auth-invite').focus();
 }
 
+let recoveryTimer = null;
+let recoveryPassword = '';
+let recoveryUser = null;
+
+function stopRecoveryTimer() {
+  if (recoveryTimer) clearInterval(recoveryTimer);
+  recoveryTimer = null;
+}
+
+function showRecovery(user, password = '') {
+  stopRecoveryTimer();
+  recoveryUser = user;
+  recoveryPassword = password;
+  state.me = user;
+  $('recovery-error').textContent = '';
+  $('recovery-btn').disabled = false;
+  const deadline = (Number(user.deletedAt) || 0) * 1000 + 30 * 86400 * 1000;
+  const tick = () => {
+    const left = Math.max(0, deadline - Date.now());
+    if (left <= 0) {
+      $('recovery-timer').textContent = 'Срок истёк';
+      $('recovery-btn').disabled = true;
+      stopRecoveryTimer();
+      return;
+    }
+    const days = Math.floor(left / 86400000);
+    const hours = String(Math.floor((left % 86400000) / 3600000)).padStart(2, '0');
+    const mins = String(Math.floor((left % 3600000) / 60000)).padStart(2, '0');
+    const secs = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
+    $('recovery-timer').textContent = `${days} д ${hours}:${mins}:${secs}`;
+  };
+  tick();
+  recoveryTimer = setInterval(tick, 1000);
+  showScreen('recovery');
+}
+
+$('recovery-btn').onclick = async () => {
+  const button = $('recovery-btn');
+  button.disabled = true;
+  $('recovery-error').textContent = '';
+  try {
+    const result = await Api.post('/account/restore', {});
+    stopRecoveryTimer();
+    finishLogin(Api.base, { token: Api.token, user: result.user }, recoveryPassword);
+  } catch (err) {
+    $('recovery-error').textContent = err.message;
+    button.disabled = false;
+  }
+};
+
 function finishLogin(base, { token, user, created }, password = '') {
   // «Запомнить меня»: без галочки вход действует до закрытия приложения
   const remember = $('auth-remember')?.checked !== false;
@@ -360,6 +411,10 @@ function finishLogin(base, { token, user, created }, password = '') {
   else sessionStorage.setItem('sozvon.tab', '1');
   store.set('server', base);
   $('auth-password').value = '';
+  if (user.deletedAt) {
+    showRecovery(user, password);
+    return;
+  }
   enterMain(user, password);
   if (created) toast(`Профиль создан! Ваш логин для друзей: ${user.username}`, 8000);
 }
@@ -722,6 +777,10 @@ $('auth-form').onsubmit = async (e) => {
 };
 
 function enterMain(user, password = '') {
+  if (user.deletedAt) {
+    showRecovery(user, password);
+    return;
+  }
   state.me = user;
   renderMe();
   if (!state.providers.length) loadProviders(Api.base);
@@ -2411,10 +2470,122 @@ function showBannerPeek(swatch) {
   peek.style.top = `${top}px`;
 }
 
+let phoneLink = null;
+let phoneLinkTimer = null;
+
+function resetPhoneLink() {
+  if (phoneLinkTimer) clearTimeout(phoneLinkTimer);
+  phoneLinkTimer = null;
+  phoneLink = null;
+  $('phone-link-form').classList.add('hidden');
+  $('phone-link-pending').classList.add('hidden');
+  $('link-phone-hint').textContent = '';
+  $('link-phone-link').textContent = '';
+  $('link-phone').disabled = false;
+  $('link-phone-start').disabled = false;
+  $('link-phone-start').classList.remove('hidden');
+}
+
+const openPhoneLink = async () => {
+  if (!phoneLink) return;
+  if (window.desktop?.openTelegram && (await window.desktop.openTelegram(phoneLink.deepLink))?.ok) return;
+  try { window.open(phoneLink.deepLink, '_blank', 'noopener'); } catch {}
+};
+
+async function pollPhoneLink() {
+  if (!phoneLink) return;
+  try {
+    const result = await Api.post('/me/phone/status', { id: phoneLink.id, secret: phoneLink.secret });
+    if (result.status === 'ready') {
+      const needsPassword = phoneLink.needsPassword;
+      const password = phoneLink.password;
+      state.me = result.user;
+      resetPhoneLink();
+      if (needsPassword) await backupKeyWithPassword(password);
+      renderIdentities();
+      renderPasswordSection();
+      toast('Телефон привязан');
+      return;
+    }
+    if (result.status === 'expired') {
+      $('link-phone-status').textContent = 'Срок истёк. Начните заново.';
+      return;
+    }
+    phoneLinkTimer = setTimeout(pollPhoneLink, 2000);
+  } catch (err) {
+    $('link-phone-status').textContent = err.message;
+  }
+}
+
+function phoneIdentityRow() {
+  const row = document.createElement('div');
+  row.className = 'identity-row';
+  const info = document.createElement('div');
+  const name = document.createElement('div');
+  name.textContent = 'Телефон';
+  const sub = document.createElement('div');
+  sub.className = 'muted small ellipsis';
+  sub.textContent = state.me?.hasPhone ? 'привязан' : 'не привязан';
+  info.append(name, sub);
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = state.me?.hasPhone ? 'btn' : 'btn';
+  button.textContent = state.me?.hasPhone ? 'Привязан' : 'Привязать';
+  button.disabled = Boolean(state.me?.hasPhone);
+  button.onclick = () => {
+    if (state.me?.hasPhone) return;
+    resetPhoneLink();
+    $('phone-link-form').classList.remove('hidden');
+    $('link-phone-password-field').classList.toggle('hidden', Boolean(state.me?.hasPassword));
+    $('link-phone').focus();
+  };
+  row.append(info, button);
+  return row;
+}
+
+$('link-phone-start').onclick = async () => {
+  const phone = $('link-phone').value.trim();
+  const password = $('link-phone-password').value;
+  const needsPassword = !state.me?.hasPassword;
+  if (!phone) return ($('link-phone-hint').textContent = 'Введите номер');
+  if (needsPassword && !password) return ($('link-phone-hint').textContent = 'Придумайте пароль для аккаунта');
+  $('link-phone-start').disabled = true;
+  $('link-phone-hint').textContent = '';
+  try {
+    const result = await Api.post('/me/phone/start', { phone, newPassword: needsPassword ? password : '' });
+    phoneLink = { ...result, password, needsPassword };
+    $('link-phone-link').textContent = result.deepLink;
+    $('link-phone-pending').classList.remove('hidden');
+    $('link-phone-start').classList.add('hidden');
+    $('link-phone').disabled = true;
+    $('link-phone-status').textContent = 'Ожидаем подтверждение в Telegram…';
+    await openPhoneLink();
+    phoneLinkTimer = setTimeout(pollPhoneLink, 1500);
+  } catch (err) {
+    $('link-phone-start').disabled = false;
+    $('link-phone-hint').textContent = err.message;
+  }
+};
+$('link-phone-open').onclick = openPhoneLink;
+$('link-phone-copy').onclick = async () => {
+  if (!phoneLink) return;
+  if (window.desktop?.copy) await window.desktop.copy(phoneLink.deepLink);
+  else await navigator.clipboard.writeText(phoneLink.deepLink);
+  $('link-phone-status').textContent = 'Ссылка скопирована.';
+};
+$('link-phone-cancel').onclick = async () => {
+  const current = phoneLink;
+  resetPhoneLink();
+  if (current) {
+    try { await Api.post('/phone/signup/cancel', { id: current.id, secret: current.secret }); } catch {}
+  }
+};
+
 function renderIdentities() {
   const list = $('identity-list');
   list.replaceChildren();
   list.append(emailIdentityRow());
+  list.append(phoneIdentityRow());
 
   for (const p of state.providers) {
     const linked = state.me.identities.find((i) => i.provider === p.id);
@@ -2476,6 +2647,8 @@ function emailIdentityRow() {
       form.classList.toggle('hidden');
       $('link-hint').textContent = '';
       $('link-code').value = '';
+      $('link-new-password').value = '';
+      $('link-password-field').classList.toggle('hidden', Boolean(state.me?.hasPassword));
       if (!form.classList.contains('hidden')) $('link-email').focus();
       return;
     }
@@ -2524,11 +2697,15 @@ $('link-send').onclick = async () => {
 $('link-confirm').onclick = async () => {
   const email = $('link-email').value.trim();
   const code = $('link-code').value.trim();
+  const newPassword = $('link-new-password').value;
+  const needsPassword = !state.me.hasPassword;
   if (!email || !code) return ($('settings-error').textContent = 'Введите почту и код из письма');
+  if (!state.me.hasPassword && !newPassword) return ($('settings-error').textContent = 'Придумайте пароль для аккаунта');
   $('link-confirm').disabled = true;
   $('settings-error').textContent = '';
   try {
-    state.me = await Api.put('/me/email', { email, code });
+    state.me = await Api.put('/me/email', { email, code, ...(state.me.hasPassword ? {} : { newPassword }) });
+    if (needsPassword) await backupKeyWithPassword(newPassword);
     $('email-link').classList.add('hidden');
     renderIdentities();
     toast('Почта привязана');
@@ -2933,6 +3110,54 @@ $('camera-picker').addEventListener('close', () => {
 $('set-cam').onchange = () => {
   updateCamLabel();
   if (!$('camera-picker').classList.contains('hidden')) startCameraPreview($('set-cam').value);
+};
+
+// Удаление аккаунта: мягкое удаление на 30 дней с восстановлением.
+const deleteAccountModal = document.getElementById('delete-account-modal');
+const deleteAccountOpen = document.getElementById('delete-account-btn');
+const deleteAccountClose = () => deleteAccountModal.classList.add('hidden');
+const deletePasswordField = document.getElementById('delete-password-field');
+const resetDeleteModal = () => {
+  document.getElementById('delete-account-error').textContent = '';
+  document.getElementById('delete-password').value = '';
+  document.getElementById('delete-confirm').value = '';
+  deletePasswordField.classList.toggle('hidden', !state.me?.hasPassword);
+};
+deleteAccountOpen.onclick = () => {
+  resetDeleteModal();
+  deleteAccountModal.classList.remove('hidden');
+  (state.me?.hasPassword ? document.getElementById('delete-password') : document.getElementById('delete-confirm')).focus();
+};
+document.getElementById('delete-account-cancel').onclick = deleteAccountClose;
+deleteAccountModal.addEventListener('click', (event) => { if (event.target === deleteAccountModal) deleteAccountClose(); });
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !deleteAccountModal.classList.contains('hidden')) deleteAccountClose();
+});
+document.getElementById('delete-account-confirm').onclick = async () => {
+  const button = document.getElementById('delete-account-confirm');
+  const password = document.getElementById('delete-password').value;
+  const confirm = document.getElementById('delete-confirm').value.trim();
+  const error = document.getElementById('delete-account-error');
+  error.textContent = '';
+  if (confirm !== 'УДАЛИТЬ') {
+    error.textContent = 'Введите слово УДАЛИТЬ';
+    return;
+  }
+  if (state.me?.hasPassword && !password) {
+    error.textContent = 'Введите текущий пароль';
+    return;
+  }
+  button.disabled = true;
+  try {
+    const result = await Api.post('/account/delete', { password, confirm });
+    deleteAccountClose();
+    closeSettings();
+    showRecovery({ ...state.me, deletedAt: result.deletedAt }, password);
+  } catch (err) {
+    error.textContent = err.message;
+  } finally {
+    button.disabled = false;
+  }
 };
 
 $('settings-form').onsubmit = async (e) => {

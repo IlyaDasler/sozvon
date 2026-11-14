@@ -193,6 +193,11 @@ func (a *server) phoneSignupStatus(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	if signup.UserID != 0 {
+		// Это привязка к существующему аккаунту, а не новая регистрация.
+		fail(http.StatusNotFound, "Заявка не найдена").write(w)
+		return
+	}
 	if subtle.ConstantTimeCompare([]byte(signup.PollHash), []byte(tokenHash(body.Secret))) != 1 {
 		fail(http.StatusForbidden, "Заявка не найдена").write(w)
 		return
@@ -236,4 +241,116 @@ func (a *server) phoneSignupStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ready", "token": token, "user": self})
+}
+
+type phoneLinkStartRequest struct {
+	Phone       string `json:"phone"`
+	NewPassword string `json:"newPassword"`
+}
+
+func (a *server) phoneLinkStart(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	if a.telegramBotUsername == "" {
+		fail(http.StatusServiceUnavailable, "Привязка телефона не настроена на сервере").write(w)
+		return
+	}
+	if user.PhoneHMAC != "" {
+		fail(http.StatusConflict, "Телефон уже привязан").write(w)
+		return
+	}
+	var body phoneLinkStartRequest
+	if err := decode(r, &body); err != nil {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	phone, ok := normalizePhone(body.Phone)
+	if !ok {
+		fail(http.StatusBadRequest, "Введите номер в формате +7 999 123-45-67").write(w)
+		return
+	}
+	phoneHMAC := a.phoneDigest(phone)
+	if other, err := a.store.UserByPhoneHMAC(phoneHMAC); err == nil && other.ID != user.ID {
+		fail(http.StatusConflict, "Этот номер уже привязан к другому аккаунту").write(w)
+		return
+	} else if err != nil && !errors.Is(err, store.ErrNotFound) {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	if user.PasswordHash == "" {
+		if !auth.ValidPassword(body.NewPassword) {
+			fail(http.StatusBadRequest, "Придумайте пароль для аккаунта: от 8 до 128 символов").write(w)
+			return
+		}
+		hash, err := auth.HashPassword(body.NewPassword)
+		if err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+		if err := a.store.UpdatePassword(user.ID, hash); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+	}
+	now := time.Now().Unix()
+	id := randomURLToken(18)
+	token := randomURLToken(24)
+	poll := randomURLToken(24)
+	signup := store.PhoneSignup{
+		ID: id, PhoneHMAC: phoneHMAC, PasswordHash: user.PasswordHash,
+		Username: user.Username, DisplayName: user.DisplayName,
+		AvatarColor: user.AvatarColor, UserID: user.ID,
+		TokenHash: tokenHash(token), PollHash: tokenHash(poll),
+		CreatedAt: now, ExpiresAt: now + int64(phoneSignupTTL/time.Second),
+	}
+	if err := a.store.CreatePhoneSignup(signup); err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"id": id, "secret": poll,
+		"deepLink":    "https://t.me/" + a.telegramBotUsername + "?start=" + url.QueryEscape(token),
+		"botUsername": a.telegramBotUsername,
+		"expiresAt":   signup.ExpiresAt,
+	})
+}
+
+func (a *server) phoneLinkStatus(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	var body struct {
+		ID     string `json:"id"`
+		Secret string `json:"secret"`
+	}
+	if err := decode(r, &body); err != nil || body.ID == "" || body.Secret == "" {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	signup, err := a.store.PhoneSignupByID(body.ID)
+	if err != nil || signup.UserID != user.ID || subtle.ConstantTimeCompare([]byte(signup.PollHash), []byte(tokenHash(body.Secret))) != 1 {
+		fail(http.StatusNotFound, "Заявка не найдена").write(w)
+		return
+	}
+	if signup.ExpiresAt <= time.Now().Unix() {
+		writeJSON(w, http.StatusOK, map[string]any{"status": "expired"})
+		return
+	}
+	if signup.VerifiedAt == 0 {
+		writeJSON(w, http.StatusOK, map[string]any{"status": "pending"})
+		return
+	}
+	if err := a.store.SetUserPhone(user.ID, signup.PhoneHMAC); err != nil {
+		fail(http.StatusConflict, "Не удалось привязать номер").write(w)
+		return
+	}
+	_ = a.store.DeletePhoneSignup(signup.ID, tokenHash(body.Secret))
+	fresh, err := a.store.UserByID(user.ID)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	self, err := a.self(fresh)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": "ready", "user": self})
 }

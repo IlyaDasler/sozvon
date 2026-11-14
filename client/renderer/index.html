@@ -54,6 +54,18 @@
     </div>
   </div>
 
+  <section id="recovery" class="screen recovery hidden">
+    <div class="recovery-card">
+      <img src="logo.svg" alt="" width="48" height="48">
+      <p class="auth-eyebrow">АККАУНТ УДАЛЯЕТСЯ</p>
+      <h1>До удаления осталось</h1>
+      <div class="recovery-timer" id="recovery-timer">—</div>
+      <p class="muted">Аккаунт, сообщения, каналы, комнаты и файлы сохраняются 30 дней. Восстановите профиль, пока срок не истёк.</p>
+      <p class="error" id="recovery-error"></p>
+      <button type="button" class="btn primary wide" id="recovery-btn">Восстановить</button>
+    </div>
+  </section>
+
   <!-- Вход и регистрация: слева — рассказ о приложении, справа — форма -->
   <section id="auth" class="screen auth hidden">
     <aside class="auth-hero" aria-hidden="true">
@@ -675,6 +687,27 @@
             <div class="set-block" id="identities-section">
               <h4>Способы входа</h4>
               <div id="identity-list" class="identity-list"></div>
+              <div id="phone-link-form" class="phone-link-form hidden">
+                <div class="row code-row">
+                  <input id="link-phone" type="tel" autocomplete="tel" placeholder="+7 999 123-45-67" spellcheck="false">
+                  <button type="button" class="btn primary" id="link-phone-start">Привязать</button>
+                </div>
+                <label class="field hidden" id="link-phone-password-field">
+                  <span>Пароль для аккаунта</span>
+                  <input id="link-phone-password" type="password" autocomplete="new-password" placeholder="От 8 символов">
+                  <span class="hint-text">Защитит вход и ключ шифрования на новых устройствах.</span>
+                </label>
+                <div id="link-phone-pending" class="hidden">
+                  <div class="row phone-open-actions">
+                    <button type="button" class="btn primary" id="link-phone-open">Открыть Telegram</button>
+                    <button type="button" class="btn" id="link-phone-copy">Скопировать ссылку</button>
+                    <button type="button" class="btn" id="link-phone-cancel">Отмена</button>
+                  </div>
+                  <p class="hint-text phone-link-text" id="link-phone-link"></p>
+                  <p class="muted small" id="link-phone-status"></p>
+                </div>
+                <p class="hint-text" id="link-phone-hint"></p>
+              </div>
               <!-- Привязка почты: адрес, код из письма -->
               <div id="email-link" class="email-link hidden">
                 <div class="row code-row">
@@ -685,6 +718,11 @@
                   <input id="link-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Код из письма">
                   <button type="button" class="btn primary" id="link-confirm">Привязать</button>
                 </div>
+                <label class="field hidden" id="link-password-field">
+                  <span>Пароль для аккаунта</span>
+                  <input id="link-new-password" type="password" autocomplete="new-password" placeholder="От 8 символов">
+                  <span class="hint-text">Нужен для входа по почте и для защиты ключа шифрования на новых устройствах.</span>
+                </label>
                 <span class="hint-text" id="link-hint"></span>
               </div>
             </div>
@@ -753,6 +791,13 @@
               <div class="row">
                 <label class="field grow" id="cur-pass-field"><span>Текущий</span><input type="password" id="set-cur-pass" autocomplete="current-password"></label>
                 <label class="field grow"><span>Новый</span><input type="password" id="set-new-pass" autocomplete="new-password"></label>
+              </div>
+            </div>
+            <div class="set-block" id="delete-account-section">
+              <h4>Удаление аккаунта</h4>
+              <span class="hint-text">Аккаунт можно восстановить в течение 30 дней. После этого профиль и вся история удаляются навсегда.</span>
+              <div class="row">
+                <button type="button" class="btn danger-outline" id="delete-account-btn">Удалить аккаунт</button>
               </div>
             </div>
           </div>
@@ -1439,6 +1484,20 @@
   <script src="vendor/livekit-client.umd.js"></script>
   <script src="sfu.js"></script>
   <script src="privacy.js"></script>
+  <div id="delete-account-modal" class="modal hidden">
+    <div class="modal-card dialog-card delete-account-card" role="dialog" aria-labelledby="delete-account-title">
+      <h3 id="delete-account-title">Удалить аккаунт?</h3>
+      <p>Аккаунт, сообщения, каналы, комнаты, контакты и файлы станут недоступны. В течение <b>30 дней</b> профиль можно восстановить, если войти с логином и паролем или через Яндекс и нажать «Восстановить».</p>
+      <p>Если не восстановить аккаунт за 30 дней, он и вся история будут удалены <b>навсегда</b>. Это действие нельзя отменить.</p>
+      <label class="field" id="delete-password-field"><span>Пароль</span><input id="delete-password" type="password" autocomplete="current-password" placeholder="Текущий пароль"></label>
+      <label class="field"><span>Введите слово УДАЛИТЬ</span><input id="delete-confirm" autocomplete="off" spellcheck="false" placeholder="УДАЛИТЬ"></label>
+      <p class="error" id="delete-account-error"></p>
+      <div class="row">
+        <button type="button" class="btn danger" id="delete-account-confirm">Удалить аккаунт</button>
+        <button type="button" class="btn" id="delete-account-cancel">Отмена</button>
+      </div>
+    </div>
+  </div>
   <script src="app.js"></script>
 <script type="module" src="room-utils.mjs"></script>
 <script type="module" src="update-bar.mjs"></script>
