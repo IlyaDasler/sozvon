@@ -126,6 +126,16 @@
         <p class="auth-eyebrow" id="auth-eyebrow">С возвращением</p>
         <h1 class="auth-title" id="auth-title">Войдите в Созвон</h1>
         <p class="muted auth-sub" id="auth-subtitle">Войдите, чтобы созвониться с друзьями</p>
+        <button type="button" class="auth-phone-tip" id="phone-help" aria-label="Как зарегистрироваться по телефону" aria-expanded="false" title="Регистрация по телефону">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 3-7.2 18-3.9-7.2L3 9.6 21 3Z"/><path d="m9.9 13.8 4.2-4.2"/></svg>
+          <span class="auth-phone-tip__pulse"></span>
+        </button>
+        <div class="auth-phone-pop hidden" id="phone-help-pop" role="dialog" aria-labelledby="phone-help-title">
+          <b id="phone-help-title">Хотите по номеру телефона?</b>
+          <p>Введите телефон в поле «Почта или телефон», заполните имя и пароль. Нажмите «Создать аккаунт» — откроется Telegram @sozvon_verify_bot. Нажмите там «Отправить номер», и регистрация завершится сама.</p>
+          <p class="muted small">SMS не нужны. Номер хранится только как необратимый хеш.</p>
+          <button type="button" class="btn" id="phone-help-close">Понятно</button>
+        </div>
 
         <!-- Адрес сервера задан в приложении; поле скрыто и нужно только автотестам -->
         <label class="field hidden" id="server-field">
@@ -139,7 +149,6 @@
         <label class="field hidden" id="email-field">
           <span>Почта или телефон</span>
           <input id="auth-email" type="text" autocomplete="email" spellcheck="false" placeholder="name@yandex.ru или +7 999 123-45-67">
-          <span class="hint-text">Телефон подтверждается через Telegram, без SMS</span>
         </label>
         <label class="field hidden" id="display-field">
           <span>Имя в профиле</span>

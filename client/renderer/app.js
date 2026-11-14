@@ -621,6 +621,26 @@ $('auth-toggle').onclick = (e) => {
       $('phone-confirm-status').textContent = phoneSignup.deepLink;
     }
   };
+  const phoneHelp = document.getElementById('phone-help');
+  const phoneHelpPop = document.getElementById('phone-help-pop');
+  const setPhoneHelp = (open) => {
+    phoneHelpPop.classList.toggle('hidden', !open);
+    phoneHelp.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  phoneHelp.onclick = (event) => {
+    event.stopPropagation();
+    setPhoneHelp(phoneHelpPop.classList.contains('hidden'));
+  };
+  document.getElementById('phone-help-close').onclick = () => setPhoneHelp(false);
+  document.addEventListener('click', (event) => {
+    if (!phoneHelpPop.classList.contains('hidden') && !phoneHelpPop.contains(event.target) && event.target !== phoneHelp) {
+      setPhoneHelp(false);
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !phoneHelpPop.classList.contains('hidden')) setPhoneHelp(false);
+  });
+
   $('phone-cancel').onclick = async () => {
     const current = phoneSignup;
     $('auth-error').textContent = '';

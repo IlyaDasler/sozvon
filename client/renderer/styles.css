@@ -289,6 +289,7 @@ body:has(#auth:not(.hidden)) .nav-btn { display: none; }
 }
 
 .auth-card {
+  position: relative;
   width: 100%; max-width: 386px; margin: auto;
   padding: 24px 24px 17px;
   border: 1px solid color-mix(in srgb, var(--line-strong) 65%, transparent);
@@ -2971,3 +2972,55 @@ html.is-win .titlebar { padding-right: 146px; }
 .phone-confirm { margin: 12px 0; padding: 12px; border-radius: var(--r-m); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line); }
 .phone-open-actions { margin-top: 4px; }
 .phone-link-text { word-break: break-all; user-select: all; margin: 4px 0 8px; }
+
+/* Значок-подсказка о регистрации по телефону. */
+.auth-phone-tip {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-3));
+  color: color-mix(in srgb, var(--accent) 78%, var(--text));
+  cursor: pointer;
+  transition: transform var(--dur-2) var(--ease-out), background var(--dur-2) var(--ease-out);
+}
+.auth-phone-tip:hover { transform: translateY(-1px) scale(1.04); background: color-mix(in srgb, var(--accent) 22%, var(--bg-3)); }
+.auth-phone-tip svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.auth-phone-tip__pulse {
+  position: absolute;
+  inset: -3px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 50%;
+  animation: phone-tip-pulse 2.8s var(--ease-out) infinite;
+  pointer-events: none;
+}
+@keyframes phone-tip-pulse {
+  0%, 70%, 100% { transform: scale(1); opacity: .55; }
+  82% { transform: scale(1.22); opacity: 0; }
+}
+.auth-phone-pop {
+  position: absolute;
+  top: 60px;
+  right: 18px;
+  z-index: 4;
+  width: min(292px, calc(100% - 36px));
+  padding: 14px;
+  border-radius: var(--r-l);
+  background: var(--bg-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow);
+  animation: pop var(--dur-3) var(--ease-out);
+}
+.auth-phone-pop b { display: block; margin-bottom: 6px; font-size: 13px; }
+.auth-phone-pop p { margin: 0 0 10px; font-size: 12px; line-height: 1.45; color: var(--text-2); }
+.auth-phone-pop .small { color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  .auth-phone-tip__pulse { animation: none; }
+}
