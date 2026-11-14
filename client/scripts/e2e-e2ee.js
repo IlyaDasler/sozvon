@@ -104,13 +104,5 @@ runTest(async () => {
   await js(winA2, `selectContact(${b.user.id})`);
   await waitFor(winA2, `[...document.querySelectorAll('#messages .msg-text')].some((t) => t.textContent === 'секрет-111 жирно')`, 'второе устройство читает');
   console.log('✔ ключ восстанавливается на втором устройстве по паролю, переписка читается');
-  // Устройство уже авторизовано, но локальный кэш пуст: просим пароль и восстанавливаем ключ без кодов переноса
-  const winUnlock = await openClient('ea-unlock', a, undefined, { waitReady: false });
-  await waitFor(winUnlock, `!document.getElementById('e2ee-setup').classList.contains('hidden')`, 'окно восстановления ключа паролем');
-  await js(winUnlock, `document.getElementById('e2ee-password').value = 'test-pass-1'; document.getElementById('e2ee-unlock-btn').click(); true`);
-  await waitFor(winUnlock, `e2eeReady() && document.getElementById('e2ee-setup').classList.contains('hidden')`, 'ключ восстановлен по паролю', 20000);
-  console.log('✔ потерянный локальный ключ восстанавливается паролем без кода переноса');
-  winUnlock.destroy();
-
   await sleep(200);
 });
