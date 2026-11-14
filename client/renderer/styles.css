@@ -2970,7 +2970,9 @@ html.is-win .titlebar { padding-right: 146px; }
 
 /* Регистрация по телефону через Telegram Contact Share */
 .phone-confirm { margin: 12px 0; padding: 12px; border-radius: var(--r-m); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line); }
-.phone-open-actions { margin-top: 4px; }
+.phone-open-actions { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+.phone-open-actions .btn { flex: 1 1 calc(50% - 4px); min-width: 0; white-space: normal; line-height: 1.25; padding-inline: 10px; }
+#phone-open-telegram { flex-basis: 100%; }
 .phone-link-text { word-break: break-all; user-select: all; margin: 4px 0 8px; }
 
 /* Значок-подсказка о регистрации по телефону. */

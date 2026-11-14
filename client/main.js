@@ -1,4 +1,4 @@
-const { execFile, spawn } = require('node:child_process');
+const { exec, execFile, spawn } = require('node:child_process');
 const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, nativeTheme, powerMonitor, screen, session, shell, systemPreferences } = require('electron');
 const path = require('node:path');
 // Ранний обработчик: preload спрашивает версию до создания окна, иначе X-Client-Version пустой
@@ -622,6 +622,22 @@ ipcMain.handle('open-external', async (_event, rawUrl) => {
   }
 });
 
+function focusTelegramWindow() {
+  if (process.platform !== 'win32') return;
+  const script = [
+    "$sig = '[DllImport(\"user32.dll\")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport(\"user32.dll\")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);'",
+    "Add-Type -MemberDefinition $sig -Name Win -Namespace TgFocus",
+    "$p = Get-Process Telegram -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1",
+    "if ($p) { [TgFocus.Win]::ShowWindow($p.MainWindowHandle, 9) | Out-Null; [TgFocus.Win]::SetForegroundWindow($p.MainWindowHandle) | Out-Null }",
+  ].join("\n");
+  const encoded = Buffer.from(script, 'utf16le').toString('base64');
+  try {
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', encoded], {
+      windowsHide: true,
+    }, () => {});
+  } catch {}
+}
+
 ipcMain.handle('open-telegram', async (_event, rawUrl) => {
   let url;
   try {
@@ -635,10 +651,21 @@ ipcMain.handle('open-telegram', async (_event, rawUrl) => {
   const username = url.pathname.slice(1);
   const start = url.searchParams.get('start') || '';
   const tgUrl = `tg://resolve?domain=${encodeURIComponent(username)}${start ? `&start=${encodeURIComponent(start)}` : ''}`;
+  if (process.platform === 'win32') {
+    try {
+      // cmd start с кавычками — единственный способ, который стабильно передал
+      // URL уже запущенному Telegram. spawn/execFile теряли &start=..., и
+      // Telegram просто открывал последний чат.
+      exec(`cmd.exe /c start "" "${tgUrl}"`, { windowsHide: true }, () => {});
+      setTimeout(focusTelegramWindow, 700);
+      setTimeout(focusTelegramWindow, 1600);
+      return { ok: true, mode: 'desktop' };
+    } catch {}
+  }
   const executable = telegramDesktopPath();
   if (executable) {
     try {
-      spawn(executable, [tgUrl], { detached: true, stdio: 'ignore' }).unref();
+      spawn(executable, ['--', tgUrl], { detached: true, stdio: 'ignore' }).unref();
       return { ok: true, mode: 'desktop' };
     } catch {}
   }

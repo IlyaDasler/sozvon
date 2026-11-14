@@ -602,10 +602,20 @@ $('auth-toggle').onclick = (e) => {
   const openTelegram = async () => {
     if (!phoneSignup) return;
     const https = phoneSignup.deepLink;
-    if (window.desktop?.openTelegram) {
-      try {
-        if ((await window.desktop.openTelegram(https))?.ok) return;
-      } catch {}
+    const status = document.getElementById('phone-confirm-status');
+    if (!window.desktop?.openTelegram) {
+      if (status) status.textContent = 'Кнопка Telegram недоступна. Скопируйте ссылку ниже.';
+      return;
+    }
+    try {
+      const result = await window.desktop.openTelegram(https);
+      if (result?.ok) {
+        if (status) status.textContent = result.mode === 'web' ? 'Открываем веб-версию Telegram…' : 'Открываем Telegram…';
+        return;
+      }
+      if (status) status.textContent = `Не удалось открыть Telegram: ${result?.error || 'неизвестная ошибка'}. Скопируйте ссылку ниже.`;
+    } catch (err) {
+      if (status) status.textContent = `Не удалось открыть Telegram: ${err.message}. Скопируйте ссылку ниже.`;
     }
     try { window.open(https, '_blank', 'noopener'); } catch {}
   };
