@@ -2973,3 +2973,5 @@ html.is-win .titlebar { padding-right: 146px; }
 .phone-auth-cta span { color: var(--muted); font-size: 12px; font-weight: 400; }
 .phone-signup-card { width: min(420px, calc(100% - 32px)); }
 .phone-signup-actions { margin-top: 16px; }
+.phone-open-actions { margin-top: 4px; }
+.phone-link-text { word-break: break-all; user-select: all; margin: 4px 0 8px; }

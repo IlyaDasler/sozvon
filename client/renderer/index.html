@@ -1436,7 +1436,11 @@
       <p class="error" id="phone-error"></p>
       <div id="phone-pending" class="hidden">
         <p class="hint-text" id="phone-pending-text">Откройте Telegram и нажмите «Отправить номер». Это окно закроется само.</p>
-        <p><a id="phone-deeplink" class="btn primary" target="_blank" rel="noopener">Открыть Telegram</a></p>
+        <div class="row phone-open-actions">
+          <button type="button" class="btn primary" id="phone-deeplink">Открыть Telegram</button>
+          <button type="button" class="btn" id="phone-copy">Скопировать ссылку</button>
+        </div>
+        <p class="hint-text phone-link-text" id="phone-link-text"></p>
         <p class="muted small" id="phone-status">Ожидаем подтверждение…</p>
       </div>
       <div class="row phone-signup-actions">
