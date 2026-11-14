@@ -3,7 +3,7 @@
 runTest(async () => {
   const auth = await register('phonelink', 'Привязка телефона');
   const win = await openClient('phonelink', auth, undefined, { waitReady: false });
-  await sleep(800);
+  await waitFor(win, `Boolean(state.me) && !document.getElementById('main').classList.contains('hidden')`, 'главный экран');
   await js(win, `openSettings(); showSettingsTab('account'); true`);
   await sleep(400);
 
