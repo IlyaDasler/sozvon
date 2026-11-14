@@ -35,6 +35,8 @@ contextBridge.exposeInMainWorld('desktop', {
   oauth: (authUrl) => ipcRenderer.invoke('oauth', authUrl),
   // Открыть ссылку Telegram во внешнем приложении (https://t.me/ или tg://)
   openExternal: (url) => ipcRenderer.invoke('open-external', String(url)),
+  // Открыть Telegram: установленное приложение, иначе веб-версия
+  openTelegram: (url) => ipcRenderer.invoke('open-telegram', String(url)),
   // Буфер обмена и правка текста (вырезать, вставить…) — средствами Electron, они надёжнее браузерных
   copy: (text) => ipcRenderer.invoke('clipboard:write', String(text)),
   paste: () => ipcRenderer.invoke('clipboard:read'),

@@ -542,11 +542,9 @@ $('auth-toggle').onclick = (e) => {
   const openTelegram = async () => {
     if (!phoneSignup) return;
     const https = phoneSignup.deepLink;
-    const tg = https.replace('https://t.me/', 'tg://resolve?domain=').replace('?start=', '&start=');
-    if (window.desktop?.openExternal) {
+    if (window.desktop?.openTelegram) {
       try {
-        if ((await window.desktop.openExternal(https))?.ok) return;
-        if ((await window.desktop.openExternal(tg))?.ok) return;
+        if ((await window.desktop.openTelegram(https))?.ok) return;
       } catch {}
     }
     try { window.open(https, '_blank', 'noopener'); } catch {}

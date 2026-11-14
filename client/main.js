@@ -1,4 +1,4 @@
-const { execFile } = require('node:child_process');
+const { execFile, spawn } = require('node:child_process');
 const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, nativeTheme, powerMonitor, screen, session, shell, systemPreferences } = require('electron');
 const path = require('node:path');
 // Ранний обработчик: preload спрашивает версию до создания окна, иначе X-Client-Version пустой
@@ -597,6 +597,63 @@ try {
   systemPreferences.subscribeNotification('AppleColorPreferencesChangedNotification', broadcastSystemTheme);
 } catch {}
 setInterval(broadcastSystemTheme, 20_000).unref();
+function telegramDesktopPath() {
+  if (process.platform !== 'win32') return '';
+  const candidates = [
+    path.join(app.getPath('appData'), 'Telegram Desktop', 'Telegram.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'Telegram Desktop', 'Telegram.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Telegram Desktop', 'Telegram.exe'),
+    path.join(process.env.ProgramFiles || '', 'Telegram Desktop', 'Telegram.exe'),
+    path.join(process.env['ProgramFiles(x86)'] || '', 'Telegram Desktop', 'Telegram.exe'),
+  ];
+  return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || '';
+}
+
+ipcMain.handle('open-external', async (_event, rawUrl) => {
+  const url = String(rawUrl || '');
+  if (!/^https:\/\/t\.me\//i.test(url) && !/^tg:\/\/resolve\?/i.test(url)) {
+    return { ok: false, error: 'Ссылка не разрешена' };
+  }
+  try {
+    await shell.openExternal(url);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('open-telegram', async (_event, rawUrl) => {
+  let url;
+  try {
+    url = new URL(String(rawUrl || ''));
+  } catch {
+    return { ok: false, error: 'Некорректная ссылка Telegram' };
+  }
+  if (url.protocol !== 'https:' || url.hostname !== 't.me' || !/^\/[A-Za-z0-9_]{4,}$/.test(url.pathname)) {
+    return { ok: false, error: 'Ссылка не разрешена' };
+  }
+  const username = url.pathname.slice(1);
+  const start = url.searchParams.get('start') || '';
+  const tgUrl = `tg://resolve?domain=${encodeURIComponent(username)}${start ? `&start=${encodeURIComponent(start)}` : ''}`;
+  const executable = telegramDesktopPath();
+  if (executable) {
+    try {
+      spawn(executable, [tgUrl], { detached: true, stdio: 'ignore' }).unref();
+      return { ok: true, mode: 'desktop' };
+    } catch {}
+  }
+  try {
+    await shell.openExternal(tgUrl);
+    return { ok: true, mode: 'desktop' };
+  } catch {}
+  try {
+    await shell.openExternal(url.toString());
+    return { ok: true, mode: 'web' };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
 ipcMain.handle('oauth', async (_event, authUrl) => {
   // Только https: адрес приходит из ответа сервера, открывать по нему что попало нельзя
   if (!/^https:\/\/[^\s]+$/i.test(String(authUrl || ''))) throw new Error('Неверный адрес входа');
