@@ -1,7 +1,7 @@
 // Обзор всего приложения глазами людей: каждая история идёт через интерфейс и не останавливает остальные.
 // В конце — список всего, что не работает. Запуск (сервер должен работать): npx electron scripts/e2e-stories.js
 // E2E_ONLY=слово — только истории с этим словом в названии
-const { ACCEPT_DIALOGS, api, befriend, register, js, waitFor, sleep, openClient, tilePlaying, runTest } = require('./e2e-lib');
+const { ACCEPT_DIALOGS, SERVER, api, befriend, register, js, waitFor, sleep, openClient, tilePlaying, runTest } = require('./e2e-lib');
 
 const crypto = require('node:crypto');
 const { clipboard } = require('electron');
@@ -706,20 +706,15 @@ runTest(async () => {
     await waitFor(winC, `Boolean(${row('messages', 'прочитаешь потом')})`, 'сообщение прочитано');
   });
 
-  await story('перенос ключа на новое устройство: старая переписка читается', async () => {
-    const second = await openClient('stb2', { ...b, token: (await api('POST', '/login', { username: b.user.username, password: 'test-pass-1' })).token });
-    await sleep(800);
-    await waitFor(second, `!${hidden('e2ee-setup')}`, 'предложение перенести ключ', 5000);
-    await js(winB, `openSettings(); showSettingsTab('account'); true`);
-    await js(winB, click('#e2ee-share-btn'));
-    await waitFor(winB, `${text('e2ee-share-code')}.length > 8`, 'код переноса', 5000);
-    const code = await js(winB, text('e2ee-share-code'));
-    await js(second, fill('e2ee-code', code));
-    await js(second, click('#e2ee-transfer-btn'));
-    await waitFor(second, 'e2eeReady()', 'ключ перенесён', 5000);
+  await story('ключ на новом устройстве восстанавливается по паролю', async () => {
+    if (!(await js(winB, `backupKeyWithPassword('${PASSWORD}')`))) throw new Error('не удалось сохранить резервную копию ключа');
+    const second = await openClient('stb2', null, undefined, { waitReady: false, serverUrl: SERVER });
+    await waitFor(second, `!${hidden('auth')}`, 'вход на новом устройстве', 5000);
+    await js(second, `document.getElementById('auth-username').value = ${JSON.stringify(b.user.username)}; document.getElementById('auth-password').value = '${PASSWORD}'; document.getElementById('auth-form').requestSubmit(); true`);
+    await waitFor(second, `e2eeReady() && !${hidden('main')}`, 'ключ восстановлен по паролю', 15000);
+    if (!(await js(second, `${hidden('e2ee-setup')}`))) throw new Error('показано окно ручного переноса ключа');
     await js(second, `selectContact(${a.user.id}).then(() => true)`);
     await waitFor(second, `document.getElementById('messages').textContent.includes('перешли это')`, 'старая переписка читается', 5000);
-    await js(winB, `closeSettings(); true`);
     second.destroy();
   });
 
