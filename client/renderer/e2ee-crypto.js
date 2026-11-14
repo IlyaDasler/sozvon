@@ -135,7 +135,7 @@ const E2EE = (() => {
 
   // Ключ профиля запечатывается паролем на устройстве и уезжает на сервер.
   // Сервер хранит только шифротекст; новый вход с тем же паролем открывает его сам.
-  const BACKUP_ITERATIONS = 310_000;
+  const BACKUP_ITERATIONS = 600_000;
   const backupAad = (userId) => enc.encode(`sozvon-key-backup-v1|${userId}`);
 
   async function passwordKey(password, salt, iterations) {

@@ -43,7 +43,18 @@ const store = {
       const value = JSON.parse(localStorage.getItem(key));
       if (!isSecret(key) || !window.desktop?.vault) return value ?? fallback;
       if (value?.vault) return JSON.parse(window.desktop.vault.open(value.vault)) ?? fallback;
-      if (value !== null) store.set(key, value); // запись прежних версий, ещё открытая
+      if (value !== null) {
+        store.set(key, value); // миграция открытой записи прежней версии
+        try {
+          if (!JSON.parse(localStorage.getItem(key))?.vault) {
+            localStorage.removeItem(key);
+            return fallback;
+          }
+        } catch {
+          localStorage.removeItem(key);
+          return fallback;
+        }
+      }
       return value ?? fallback;
     } catch {
       return fallback;
@@ -52,7 +63,11 @@ const store = {
   set(key, value) {
     try {
       // Нет хранилища системы (веб-версия) — остаётся как есть
+      const hasSecureVault = isSecret(key) && Boolean(window.desktop?.vault);
       const sealed = value !== null && isSecret(key) ? window.desktop?.vault?.seal(JSON.stringify(value)) : null;
+      // Если Electron vault есть, но ОС не смогла зашифровать запись, не сохраняем
+      // bearer-сессию открытым текстом в localStorage.
+      if (value !== null && hasSecureVault && !sealed) return;
       localStorage.setItem(key, JSON.stringify(sealed ? { vault: sealed } : value));
     } catch {}
   },
