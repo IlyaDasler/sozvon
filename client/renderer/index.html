@@ -192,6 +192,16 @@
           <p class="hint-text phone-link-text" id="phone-link-text"></p>
           <p class="muted small" id="phone-confirm-status">Ожидаем подтверждение…</p>
         </div>
+        <div id="phone-reset" class="phone-confirm hidden">
+          <p class="hint-text" id="phone-reset-text">Подтвердите номер в Telegram, затем задайте новый пароль.</p>
+          <div class="row phone-open-actions">
+            <button type="button" class="btn primary" id="phone-reset-open">Открыть Telegram</button>
+            <button type="button" class="btn" id="phone-reset-copy">Скопировать ссылку</button>
+            <button type="button" class="btn" id="phone-reset-cancel">Отмена</button>
+          </div>
+          <p class="hint-text phone-link-text" id="phone-reset-link"></p>
+          <p class="muted small" id="phone-reset-status">Ожидаем подтверждение…</p>
+        </div>
         <label class="field hidden" id="invite-field">
           <span>Код приглашения</span>
           <input id="auth-invite" spellcheck="false" placeholder="Если сервер его требует">

@@ -3039,3 +3039,10 @@ html.is-win .titlebar { padding-right: 146px; }
 
 .phone-link-form { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
 .phone-link-form .field { margin: 10px 0; }
+
+.phone-confirm { margin: 12px 0; }
+.password-eye-host { position: relative; }
+.password-eye { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; }
+.password-eye:hover { color: var(--text); background: var(--bg-3); }
+.password-eye svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.password-eye-host > input[type="password"], .password-eye-host > input[type="text"].password-visible { padding-right: 38px; }

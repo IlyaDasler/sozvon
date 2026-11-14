@@ -270,7 +270,7 @@ function renderAuthFields() {
   $('password-field').classList.remove('hidden');
   $('invite-field').classList.toggle('hidden', !register || !state.inviteRequired);
   $('forgot-row').classList.toggle('hidden', mode !== 'login');
-  $('auth-forgot').hidden = !state.emailCodes;
+  $('auth-forgot').hidden = false;
   $('password-label').textContent = reset ? 'Новый пароль' : 'Пароль';
   $('auth-title').textContent = register ? 'Создайте аккаунт' : reset ? 'Сброс пароля' : 'Войдите в Созвон';
   $('auth-eyebrow').textContent = register ? 'Первый раз здесь' : reset ? 'Восстановление доступа' : 'С возвращением';
@@ -278,7 +278,7 @@ function renderAuthFields() {
   $('auth-subtitle').textContent = register
     ? 'Создайте аккаунт по почте или телефону — это займёт полминуты'
     : reset
-      ? 'Пришлём код на почту, с которой вы регистрировались'
+      ? 'Введите почту или телефон — пришлём код или откроем Telegram'
       : 'Войдите, чтобы созвониться с друзьями';
   $('auth-switch-text').textContent = register ? 'Уже есть аккаунт?' : reset ? 'Вспомнили пароль?' : 'Нет аккаунта?';
   $('auth-toggle').textContent = mode === 'login' ? 'Зарегистрироваться' : 'Войти';
@@ -333,7 +333,7 @@ $('auth-forgot').onclick = (e) => {
   e.preventDefault();
   const login = $('auth-username').value.trim();
   setAuthMode('reset');
-  if (login.includes('@')) $('auth-email').value = login;
+  if (login) $('auth-email').value = login;
   $('auth-email').focus();
 };
 
@@ -719,13 +719,103 @@ $('auth-toggle').onclick = (e) => {
     }
   }
   const syncPhoneCodeVisibility = () => {
-    if ((state.authMode || 'login') !== 'register') return;
+    if (!['register', 'reset'].includes(state.authMode || 'login')) return;
     const phone = looksLikePhone($('auth-email').value);
     $('code-field').classList.toggle('hidden', phone);
   };
   $('auth-email').addEventListener('input', syncPhoneCodeVisibility);
   syncPhoneCodeVisibility();
 ;
+
+
+  // ---------- Сброс пароля по телефону через Telegram ----------
+
+  let phoneResetSignup = null;
+  let phoneResetTimer = null;
+
+  const resetPhoneReset = () => {
+    if (phoneResetTimer) clearTimeout(phoneResetTimer);
+    phoneResetTimer = null;
+    phoneResetSignup = null;
+    $('phone-reset').classList.add('hidden');
+    $('phone-reset-link').textContent = '';
+    $('phone-reset-status').textContent = 'Ожидаем подтверждение…';
+    $('auth-submit').disabled = false;
+    $('auth-submit').classList.remove('hidden');
+  };
+
+  const openPhoneReset = async () => {
+    if (!phoneResetSignup) return;
+    if (window.desktop?.openTelegram && (await window.desktop.openTelegram(phoneResetSignup.deepLink))?.ok) return;
+    try { window.open(phoneResetSignup.deepLink, '_blank', 'noopener'); } catch {}
+  };
+
+  const pollPhoneReset = async () => {
+    if (!phoneResetSignup) return;
+    try {
+      const result = await Api.post('/password/phone/status', { id: phoneResetSignup.id, secret: phoneResetSignup.secret });
+      if (result.status === 'ready') {
+        const password = phoneResetSignup.password;
+        const signup = phoneResetSignup;
+        await Api.post('/password/phone/reset', { id: signup.id, secret: signup.secret, password });
+        resetPhoneReset();
+        setAuthMode('login');
+        $('auth-username').value = signup.phone;
+        $('auth-error').textContent = '';
+        toast('Пароль изменён — войдите с новым паролем');
+        return;
+      }
+      if (result.status === 'expired') {
+        $('phone-reset-status').textContent = 'Срок подтверждения истёк. Начните заново.';
+        return;
+      }
+      phoneResetTimer = setTimeout(pollPhoneReset, 2000);
+    } catch (err) {
+      $('auth-error').textContent = err.message;
+      resetPhoneReset();
+    }
+  };
+
+  async function startPhoneReset(phone, password) {
+    const button = $('auth-submit');
+    button.disabled = true;
+    $('auth-error').textContent = '';
+    Api.token = '';
+    try {
+      const result = await Api.post('/password/phone/start', { phone });
+      if (!result.id || !result.deepLink) {
+        button.disabled = false;
+        $('auth-error').textContent = 'Если номер зарегистрирован, бот придёт в Telegram. Проверьте номер.';
+        return;
+      }
+      phoneResetSignup = { ...result, phone, password };
+      $('phone-reset-link').textContent = result.deepLink;
+      $('phone-reset-status').textContent = 'Ожидаем подтверждение…';
+      $('phone-reset').classList.remove('hidden');
+      $('code-field').classList.add('hidden');
+      button.classList.add('hidden');
+      await openPhoneReset();
+      phoneResetTimer = setTimeout(pollPhoneReset, 1500);
+    } catch (err) {
+      button.disabled = false;
+      $('auth-error').textContent = err.message;
+    }
+  }
+
+  $('phone-reset-open').onclick = openPhoneReset;
+  $('phone-reset-copy').onclick = async () => {
+    if (!phoneResetSignup) return;
+    if (window.desktop?.copy) await window.desktop.copy(phoneResetSignup.deepLink);
+    else await navigator.clipboard.writeText(phoneResetSignup.deepLink);
+    $('phone-reset-status').textContent = 'Ссылка скопирована.';
+  };
+  $('phone-reset-cancel').onclick = async () => {
+    const current = phoneResetSignup;
+    resetPhoneReset();
+    if (current) {
+      try { await Api.post('/phone/signup/cancel', { id: current.id, secret: current.secret }); } catch {}
+    }
+  };
 
 $('auth-form').onsubmit = async (e) => {
   e.preventDefault();
@@ -744,9 +834,12 @@ $('auth-form').onsubmit = async (e) => {
       return ($('auth-error').textContent = mode === 'reset' ? 'Введите почту и новый пароль' : 'Введите почту или телефон, имя и пароль');
     // Сразу, а не после письма с кодом: иначе человек узнает о слабом пароле в самом конце
     if (mode !== 'login' && password.length < 8) return ($('auth-error').textContent = 'Пароль должен быть не короче 8 символов');
-    // Телефон регистрируется отдельным подтверждением Telegram, без кода из письма.
+    // Телефон подтверждается в Telegram — и при регистрации, и при сбросе.
     if (mode === 'register' && looksLikePhone(email)) {
       return startPhoneRegistration(base, email, $('auth-display').value.trim(), password, inviteCode);
+    }
+    if (mode === 'reset' && looksLikePhone(email)) {
+      return startPhoneReset(email, password);
     }
     // Кода ещё нет — сначала отправляем его на почту
     if (!code && mode !== 'login') return sendEmailCode();
@@ -3777,3 +3870,32 @@ $('banner-remove-btn').onclick = async () => {
     $('settings-error').textContent = err.message;
   }
 };
+
+// Кнопка «показать пароль» для всех полей с паролем.
+function enhancePasswordFields() {
+  const eye = '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const eyeOff = '<svg viewBox="0 0 24 24"><path d="m3 3 18 18M10.6 6.2A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.7M6.2 6.2C3.6 8.1 2 12 2 12s3.5 6 10 6a10.7 10.7 0 0 0 4.8-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+  document.querySelectorAll('input[type="password"]').forEach((input) => {
+    if (input.dataset.passwordEye) return;
+    input.dataset.passwordEye = '1';
+    const host = input.parentElement;
+    if (!host) return;
+    host.classList.add('password-eye-host');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'password-eye';
+    button.setAttribute('aria-label', 'Показать пароль');
+    button.title = 'Показать пароль';
+    button.innerHTML = eye;
+    button.onclick = () => {
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      input.classList.toggle('password-visible', show);
+      button.innerHTML = show ? eyeOff : eye;
+      button.setAttribute('aria-label', show ? 'Скрыть пароль' : 'Показать пароль');
+      button.title = show ? 'Скрыть пароль' : 'Показать пароль';
+    };
+    input.after(button);
+  });
+}
+enhancePasswordFields();
