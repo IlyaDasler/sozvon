@@ -346,7 +346,7 @@ function showPendingSignup(ticket, provider) {
   $('auth-invite').focus();
 }
 
-function finishLogin(base, { token, user, created }) {
+function finishLogin(base, { token, user, created }, password = '') {
   // «Запомнить меня»: без галочки вход действует до закрытия приложения
   const remember = $('auth-remember')?.checked !== false;
   Api.token = token;
@@ -355,7 +355,7 @@ function finishLogin(base, { token, user, created }) {
   else sessionStorage.setItem('sozvon.tab', '1');
   store.set('server', base);
   $('auth-password').value = '';
-  enterMain(user);
+  enterMain(user, password);
   if (created) toast(`Профиль создан! Ваш логин для друзей: ${user.username}`, 8000);
 }
 
@@ -538,7 +538,7 @@ $('auth-form').onsubmit = async (e) => {
   Api.token = '';
   try {
     if (state.pendingSignup) {
-      finishLogin(base, await Api.post('/signup/complete', { ticket: state.pendingSignup.ticket, inviteCode }));
+      finishLogin(base, await Api.post('/signup/complete', { ticket: state.pendingSignup.ticket, inviteCode }), password);
       return;
     }
     if (mode === 'reset') {
@@ -546,14 +546,14 @@ $('auth-form').onsubmit = async (e) => {
       toast('Пароль изменён');
       // С двухфакторным входом письма мало: дальше обычный вход с кодом
       if (result.needLogin) setAuthMode('login');
-      else finishLogin(base, result);
+      else finishLogin(base, result, password);
       return;
     }
     if (mode === 'register') {
-      finishLogin(base, await Api.post('/register', { email, password, displayName: $('auth-display').value.trim(), inviteCode, code }));
+      finishLogin(base, await Api.post('/register', { email, password, displayName: $('auth-display').value.trim(), inviteCode, code }), password);
       return;
     }
-    finishLogin(base, await Api.post('/login', { username, password, totpCode: $('auth-totp').value.trim() }));
+    finishLogin(base, await Api.post('/login', { username, password, totpCode: $('auth-totp').value.trim() }), password);
   } catch (err) {
     $('auth-error').textContent = err.message;
     if (err.data?.needTotp) {
@@ -565,14 +565,14 @@ $('auth-form').onsubmit = async (e) => {
   }
 };
 
-function enterMain(user) {
+function enterMain(user, password = '') {
   state.me = user;
   renderMe();
   if (!state.providers.length) loadProviders(Api.base);
   applyAudioState();
   showScreen('main');
   selectContact(null);
-  setupE2EE();
+  setupE2EE(password);
   loadCustomSounds();
 
   socket = new ServerSocket({
@@ -2804,7 +2804,10 @@ $('settings-form').onsubmit = async (e) => {
       renderMe();
       renderMessages();
       renderVoice();
-      if (body.newPassword) toast('Пароль сохранён');
+      if (body.newPassword) {
+        const rewrapped = await backupKeyWithPassword(body.newPassword);
+        toast(rewrapped ? 'Пароль сохранён' : 'Пароль сохранён, но ключ шифрования не сохранён на сервере');
+      }
     }
   } catch (err) {
     $('settings-error').textContent = err.message;

@@ -187,6 +187,8 @@ func (a *server) routes() http.Handler {
 			r.Put("/me/key", a.setMyKey)
 			r.Post("/key-transfer", a.keyTransferPut)
 			r.Get("/key-transfer/{id}", a.keyTransferGet)
+			r.Post("/key-backup/read", a.keyBackupRead)
+			r.Put("/key-backup", a.keyBackupPut)
 			r.Post("/me/email/code", a.emailCode)
 			r.Put("/me/email", a.updateEmail)
 			r.Delete("/me/identities/{provider}", a.unlinkIdentity)

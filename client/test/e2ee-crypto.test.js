@@ -54,3 +54,14 @@ test('код проверки ключей: у обоих одинаковый, 
   assert.deepEqual(await E.keyCode(b.publicKey, a.publicKey), ab);
   assert.notDeepEqual(await E.keyCode(a.publicKey, c.publicKey), ab);
 });
+
+test('резервная копия ключа: пароль открывает её на новом устройстве, чужой пароль и профиль — нет', async () => {
+  const me = await E.generateIdentity();
+  const password = 'правильный пароль-1';
+  const blob = await E.wrapKeyBackup(me, password, 42);
+  assert.ok(!JSON.stringify(blob).includes(me.privateJwk.d));
+  assert.equal(blob.iterations, 310000);
+  assert.deepEqual(await E.unwrapKeyBackup(blob, password, 42), me);
+  await assert.rejects(E.unwrapKeyBackup(blob, 'другой пароль-2', 42));
+  await assert.rejects(E.unwrapKeyBackup(blob, password, 43));
+});

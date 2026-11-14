@@ -131,13 +131,60 @@ const E2EE = (() => {
     return JSON.parse(dec.decode(plain));
   }
 
+  // ---------- Автоматическая резервная копия ключа ----------
+
+  // Ключ профиля запечатывается паролем на устройстве и уезжает на сервер.
+  // Сервер хранит только шифротекст; новый вход с тем же паролем открывает его сам.
+  const BACKUP_ITERATIONS = 310_000;
+  const backupAad = (userId) => enc.encode(`sozvon-key-backup-v1|${userId}`);
+
+  async function passwordKey(password, salt, iterations) {
+    const base = await subtle.importKey(
+      'raw',
+      enc.encode(String(password).normalize('NFKC')),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+    return subtle.deriveKey(
+      { name: 'PBKDF2', hash: 'SHA-256', salt, iterations },
+      base,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  async function wrapKeyBackup(identity, password, userId) {
+    const salt = randomBytes(16);
+    const iv = randomBytes(12);
+    const key = await passwordKey(password, salt, BACKUP_ITERATIONS);
+    const ct = await subtle.encrypt(
+      { name: 'AES-GCM', iv, additionalData: backupAad(userId) },
+      key,
+      enc.encode(JSON.stringify(identity))
+    );
+    return { salt: toB64(salt), iv: toB64(iv), ct: toB64(ct), iterations: BACKUP_ITERATIONS };
+  }
+
+  async function unwrapKeyBackup(backup, password, userId) {
+    const iterations = Number(backup?.iterations) || BACKUP_ITERATIONS;
+    const key = await passwordKey(password, fromB64(backup.salt), iterations);
+    const plain = await subtle.decrypt(
+      { name: 'AES-GCM', iv: fromB64(backup.iv), additionalData: backupAad(userId) },
+      key,
+      fromB64(backup.ct)
+    );
+    return JSON.parse(dec.decode(plain));
+  }
+
   /** Код проверки ключей двоих: одинаковый у обоих; подменят ключ — код разойдётся */
   const keyCode = (publicA, publicB) =>
     (typeof securityCode === 'function' ? securityCode : require('./call-code').securityCode)([publicA, publicB]);
 
   return {
     generateIdentity, importPrivate, newConvKey, seal, open, encryptMessage, decryptMessage,
-    encryptFile, decryptFile, makeTransferCode, transferId, wrapIdentity, unwrapIdentity, keyCode, toB64, fromB64,
+    encryptFile, decryptFile, makeTransferCode, transferId, wrapIdentity, unwrapIdentity, wrapKeyBackup, unwrapKeyBackup, keyCode, toB64, fromB64,
   };
 })();
 
