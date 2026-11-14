@@ -48,6 +48,8 @@ contextBridge.exposeInMainWorld('desktop', {
   },  vault: {
     seal: (text) => ipcRenderer.sendSync('vault:seal', String(text)),
     open: (sealed) => ipcRenderer.sendSync('vault:open', String(sealed)),
+    saveIdentity: (text) => ipcRenderer.sendSync('identity:save', String(text)),
+    loadIdentity: () => ipcRenderer.sendSync('identity:load'),
   },
   // Превью ссылки: { url, title, description, image, siteName } или null
   preview: (url) => ipcRenderer.invoke('preview:fetch', String(url)),

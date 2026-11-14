@@ -68,7 +68,53 @@ function readScoped(name, fallback) {
   return moved;
 }
 
+const identityLooksValid = (value) => Boolean(value && value.publicKey && value.privateJwk);
 const identityStoreKey = () => scopedKey('identity');
+
+/** Сохранить ключ и в localStorage, и отдельным файлом профиля. */
+function saveLocalIdentity(identity) {
+  store.set(identityStoreKey(), identity);
+  try {
+    window.desktop?.vault?.saveIdentity(JSON.stringify({ server: serverScope(), userId: state.me?.id, identity }));
+  } catch {}
+}
+
+/** Найти ключ, даже если имя хранилища сменилось вместе с адресом сервера,
+ *  или если кэш localStorage почистился при обновлении. */
+function readLocalIdentity() {
+  const direct = readScoped('identity', null);
+  if (identityLooksValid(direct)) {
+    saveLocalIdentity(direct);
+    return direct;
+  }
+  const id = state.me?.id;
+  if (!id) return null;
+  const suffix = `:identity:${id}`;
+  let keys = [];
+  try {
+    keys = Object.keys(localStorage).filter((key) => key.startsWith('e2ee:') && (key.endsWith(suffix) || key === `e2ee:identity:${id}`));
+  } catch {}
+  for (const key of keys) {
+    try {
+      const value = store.get(key, null);
+      if (identityLooksValid(value)) {
+        saveLocalIdentity(value);
+        return value;
+      }
+    } catch {}
+  }
+  try {
+    const raw = window.desktop?.vault?.loadIdentity();
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved?.server === serverScope() && Number(saved?.userId) === Number(id) && identityLooksValid(saved.identity)) {
+        saveLocalIdentity(saved.identity);
+        return saved.identity;
+      }
+    }
+  } catch {}
+  return null;
+}
 const dmConvOf = (peerId) => `dm:${Math.min(state.me.id, peerId)}-${Math.max(state.me.id, peerId)}`;
 const roomConvOf = (roomId) => `room:${roomId}`;
 const e2eeReady = () => Boolean(e2ee.privateKey);
@@ -127,7 +173,7 @@ async function backupKeyWithPassword(password) {
 }
 
 async function setupE2EE(password = '') {
-  const local = readScoped('identity', null);
+  const local = readLocalIdentity();
   const server = state.me.publicKey;
   try {
     // Пароль есть только в момент входа. По нему открываем серверную копию
@@ -143,7 +189,7 @@ async function setupE2EE(password = '') {
         }
       }
       if (fromBackup?.publicKey && (!server || server === fromBackup.publicKey)) {
-        store.set(identityStoreKey(), fromBackup);
+        saveLocalIdentity(fromBackup);
         await useIdentity(fromBackup);
         if (!server) await publishIdentity(fromBackup);
         return;
@@ -158,65 +204,42 @@ async function setupE2EE(password = '') {
       }
       if (!local && !server) {
         const identity = await E2EE.generateIdentity();
-        store.set(identityStoreKey(), identity);
+        saveLocalIdentity(identity);
         await useIdentity(identity);
         await publishIdentity(identity);
         await uploadKeyBackup(identity, password);
         return;
       }
     }
-    // OAuth без пароля или сброс без локального ключа: остаётся ручной перенос.
+    // Пароля нет (вход через Яндекс) или серверная копия не открылась.
+    // Локальный ключ всё равно используем — он уже есть на этом устройстве.
     if (local && (!server || server === local.publicKey)) {
       await useIdentity(local);
       if (!server) await publishIdentity(local);
     } else if (!local && !server) {
       const identity = await E2EE.generateIdentity();
-      store.set(identityStoreKey(), identity);
+      saveLocalIdentity(identity);
       await useIdentity(identity);
       await publishIdentity(identity);
+    } else if (state.me?.hasPassword) {
+      // Это уже авторизованное устройство с потерянным localStorage или новое
+      // устройство. Вместо кода переноса просим пароль — серверная копия
+      // открывается автоматически.
+      openKeyUnlock();
     } else {
-      openKeySetup(local ? 'changed' : 'elsewhere');
+      toast('Ключ шифрования этого аккаунта сохранён на другом устройстве. Задайте пароль в настройках, чтобы включить автовосстановление.');
     }
   } catch (err) {
     toast(`Шифрование: ${err.message}`);
   }
 }
 
-function openKeySetup(reason) {
-  $('e2ee-setup-text').textContent =
-    reason === 'changed'
-      ? 'Ключ шифрования вашего аккаунта сменили на другом устройстве. Перенесите его сюда кодом — тогда здесь можно будет читать новую переписку.'
-      : 'У вашего аккаунта уже есть ключ шифрования на другом устройстве. Перенесите его сюда кодом — тогда здесь будет видна вся зашифрованная переписка.';
-  $('e2ee-code').value = '';
+function openKeyUnlock() {
+  $('e2ee-setup-text').textContent = 'Введите пароль от аккаунта — ключ шифрования восстановится автоматически. Код с другого устройства больше не нужен.';
+  $('e2ee-password').value = '';
   $('e2ee-setup-error').textContent = '';
   $('e2ee-setup').classList.remove('hidden');
-  $('e2ee-code').focus();
-}
-
-/** Перенос ключа: код с другого устройства → забираем зашифрованный ключ и открываем его кодом */
-async function receiveTransfer(code) {
-  const { blob } = await Api.get(`/key-transfer/${await E2EE.transferId(code)}`);
-  const identity = await E2EE.unwrapIdentity(blob, code).catch(() => {
-    throw new Error('Код не подошёл — проверьте его');
-  });
-  store.set(identityStoreKey(), identity);
-  await useIdentity(identity);
-  if (state.me.publicKey !== identity.publicKey) await publishIdentity(identity);
-}
-
-/** Новый ключ: старая зашифрованная переписка на этом устройстве станет недоступна, новую ключи раздадут заново */
-async function resetIdentity() {
-  const identity = await E2EE.generateIdentity();
-  store.set(identityStoreKey(), identity);
-  await publishIdentity(identity);
-  await useIdentity(identity);
-}
-
-/** Код для переноса ключа на другое устройство: ключ, зашифрованный кодом, сервер хранит 10 минут */
-async function startTransfer() {
-  const code = E2EE.makeTransferCode();
-  await Api.post('/key-transfer', { id: await E2EE.transferId(code), blob: await E2EE.wrapIdentity(e2ee.identity, code) });
-  return code;
+  $('e2ee-password').focus();
 }
 
 // ---------- Ключи переписок ----------
@@ -430,7 +453,8 @@ function onUserKey(user) {
     if (e2ee.identity.publicKey === user.publicKey) return;
     e2ee.identity = e2ee.privateKey = null;
     e2ee.convs.clear();
-    return openKeySetup('changed');
+    if (!state.me?.hasPassword) { toast('Ключ шифрования этого аккаунта сохранён на другом устройстве.'); return; }
+    return openKeyUnlock();
   }
   if (userById(user.id)?.publicKey === user.publicKey) return;
   for (const u of noteKeys([user])) toast(`У ${u.displayName} сменился ключ шифрования — сверьте код в его профиле`, 6000);
@@ -459,98 +483,32 @@ function resetE2EE() {
   $('e2ee-setup').classList.add('hidden');
 }
 
-// ---------- Окно настройки ключа ----------
+// ---------- Восстановление ключа паролем ----------
 
-$('e2ee-transfer-btn').onclick = async () => {
-  const code = $('e2ee-code').value.trim();
-  if (!code) return ($('e2ee-setup-error').textContent = 'Введите код с другого устройства');
-  $('e2ee-transfer-btn').disabled = true;
-  try {
-    await receiveTransfer(code);
-    toast('Ключ шифрования перенесён');
-  } catch (err) {
-    $('e2ee-setup-error').textContent = err.message;
-  } finally {
-    $('e2ee-transfer-btn').disabled = false;
-  }
-};
-
-$('e2ee-later-btn').onclick = () => $('e2ee-setup').classList.add('hidden');
-
-// Поле кода: буквы-цифры, регистр не важен, автоматом ставим дефисы по 4 символа.
-// Так видно, что ввод доходит, и вставленный код сразу выглядит как на другом устройстве
-const CODE_CHARS = 16;
-function formatTransferCode(raw) {
-  const clean = String(raw).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_CHARS);
-  return clean.match(/.{1,4}/g)?.join('-') ?? '';
-}
-const codeInput = $('e2ee-code');
-codeInput.oninput = () => {
-  const caretAtEnd = codeInput.selectionStart === codeInput.value.length;
-  const next = formatTransferCode(codeInput.value);
-  if (next !== codeInput.value) {
-    codeInput.value = next;
-    if (caretAtEnd) codeInput.setSelectionRange(next.length, next.length);
-  }
-};
-// На macOS клик по полю иногда не отдаёт фокус (окно без рамки) — фокусируем явно
-codeInput.onmousedown = (e) => {
-  e.preventDefault();
-  codeInput.focus();
-  codeInput.select();
-};
-
-$('e2ee-paste-btn').onclick = async () => {
-  let text = '';
-  try {
-    text = (await window.desktop?.paste?.()) ?? '';
-  } catch {}
-  // Запасной путь для веб-версии: обычное чтение буфера браузером
-  if (!text) {
-    try {
-      text = await navigator.clipboard.readText();
-    } catch {}
-  }
-  if (!text.trim()) {
-    $('e2ee-setup-error').textContent = 'В буфере нет кода — скопируйте его на другом устройстве';
-    return;
-  }
-  codeInput.value = text.trim();
-  codeInput.oninput();
+$('e2ee-unlock-btn').onclick = async () => {
+  const password = $('e2ee-password').value;
+  if (!password) return ($('e2ee-setup-error').textContent = 'Введите пароль аккаунта');
+  $('e2ee-unlock-btn').disabled = true;
   $('e2ee-setup-error').textContent = '';
-  codeInput.focus();
-};
-
-codeInput.onkeydown = (e) => e.key === 'Enter' && $('e2ee-transfer-btn').click();
-
-// Настройки → Аккаунт: показать код для нового устройства (или ввести код, если ключа здесь ещё нет)
-$('e2ee-share-btn').onclick = async () => {
-  if (!e2eeReady()) return openKeySetup('elsewhere');
-  $('e2ee-share-btn').disabled = true;
   try {
-    $('e2ee-share-code').textContent = await startTransfer();
-    $('e2ee-share-code').classList.remove('hidden');
-    $('e2ee-share-hint').textContent = 'Введите этот код на новом устройстве в течение 10 минут. Код одноразовый — никому его не показывайте.';
-  } catch (err) {
-    $('e2ee-share-hint').textContent = err.message;
-  } finally {
-    $('e2ee-share-btn').disabled = false;
-  }
-};
-
-$('e2ee-reset-btn').onclick = async () => {
-  const ok = await ask(
-    'Зашифрованная переписка до этого момента на этом устройстве станет недоступна, а на другом устройстве понадобится перенести новый ключ. Новую переписку ключи раздадут заново.',
-    { title: 'Создать новый ключ?', ok: 'Создать новый ключ', danger: true }
-  );
-  if (!ok) return;
-  try {
-    await resetIdentity();
-    toast('Создан новый ключ шифрования');
+    await setupE2EE(password);
+    if (e2eeReady()) {
+      $('e2ee-setup').classList.add('hidden');
+      toast('Ключ шифрования восстановлен');
+    } else {
+      $('e2ee-setup-error').textContent = 'Не удалось открыть резервную копию. Проверьте пароль.';
+    }
   } catch (err) {
     $('e2ee-setup-error').textContent = err.message;
+  } finally {
+    $('e2ee-unlock-btn').disabled = false;
   }
 };
+
+$('e2ee-password').onkeydown = (e) => {
+  if (e.key === 'Enter') $('e2ee-unlock-btn').click();
+};
+$('e2ee-later-btn').onclick = () => $('e2ee-setup').classList.add('hidden');
 
 // ---------- Код проверки ключей в карточке профиля ----------
 

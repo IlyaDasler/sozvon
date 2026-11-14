@@ -1,7 +1,7 @@
 // Сквозной тест шифрования переписки: сервер получает и хранит только шифр, собеседники читают;
 // в комнате новичок получает ключ и читает историю, выгнанный не читает новое; ключ переносится
 // на второе устройство кодом. Запуск (сервер должен работать): npx electron scripts/e2e-e2ee.js [адрес сервера]
-const { api, befriend, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
+const { SERVER, api, befriend, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
 
 const lastText = (box) => `[...document.querySelectorAll('#${box} .msg-text')].at(-1)?.textContent`;
 const send = (win, form, input, text) =>
@@ -19,6 +19,8 @@ runTest(async () => {
   // При первом входе ключ создаётся сам, без вопросов
   for (const [win, u] of [[winA, a], [winB, b]]) await waitFor(win, `e2eeReady() && state.me.publicKey === e2ee.identity.publicKey`, `${u.user.displayName}: свой ключ`);
   console.log('✔ при первом входе у каждого появился свой ключ');
+  // Сессия e2e создана сразу с токеном, без пароля; сохраняем копию так же, как это делает обычный вход по паролю.
+  if (!(await js(winA, `backupKeyWithPassword('test-pass-1')`))) throw new Error('не удалось сохранить резервную копию ключа');
 
   // Личная переписка: сервер получает заглушку и шифр, Боря читает текст
   await js(winA, `selectContact(${b.user.id})`);
@@ -93,16 +95,22 @@ runTest(async () => {
   );
   console.log('✔ после кика ключ комнаты сменился, выгнанной он не достаётся');
 
-  // Второе устройство Ани: ключа нет — окно переноса; код с первого устройства переносит ключ
-  const winA2 = await openClient('ea2', a);
-  await waitFor(winA2, `!document.getElementById('e2ee-setup').classList.contains('hidden')`, 'окно переноса ключа');
+  // Второе устройство Ани: вход по паролю — ключ восстанавливается из серверной копии сам, без кодов переноса
+  const winA2 = await openClient('ea2', null, undefined, { waitReady: false, serverUrl: SERVER });
+  await waitFor(winA2, `!document.getElementById('auth').classList.contains('hidden')`, 'вход на втором устройстве');
+  await js(winA2, `document.getElementById('auth-username').value = ${JSON.stringify(a.user.username)}; document.getElementById('auth-password').value = 'test-pass-1'; document.getElementById('auth-form').requestSubmit(); true`);
+  await waitFor(winA2, `e2eeReady() && !document.getElementById('main').classList.contains('hidden')`, 'ключ восстановлен по паролю', 20000);
+  if (!(await js(winA2, `document.getElementById('e2ee-setup').classList.contains('hidden')`))) throw new Error('показано окно ручного переноса ключа');
   await js(winA2, `selectContact(${b.user.id})`);
-  await waitFor(winA2, `document.querySelectorAll('#messages .msg-locked').length > 0`, 'без ключа сообщения закрыты');
-  await screenshot(winA2, 'e2ee-setup');
-  const code = await js(winA, `startTransfer()`);
-  await js(winA2, `document.getElementById('e2ee-code').value = ${JSON.stringify(code.toLowerCase())}; document.getElementById('e2ee-transfer-btn').click(); true`);
-  await waitFor(winA2, `e2eeReady() && document.getElementById('e2ee-setup').classList.contains('hidden')`, 'ключ перенесён', 20000);
   await waitFor(winA2, `[...document.querySelectorAll('#messages .msg-text')].some((t) => t.textContent === 'секрет-111 жирно')`, 'второе устройство читает');
-  console.log('✔ ключ переносится на второе устройство кодом, переписка читается');
+  console.log('✔ ключ восстанавливается на втором устройстве по паролю, переписка читается');
+  // Устройство уже авторизовано, но локальный кэш пуст: просим пароль и восстанавливаем ключ без кодов переноса
+  const winUnlock = await openClient('ea-unlock', a, undefined, { waitReady: false });
+  await waitFor(winUnlock, `!document.getElementById('e2ee-setup').classList.contains('hidden')`, 'окно восстановления ключа паролем');
+  await js(winUnlock, `document.getElementById('e2ee-password').value = 'test-pass-1'; document.getElementById('e2ee-unlock-btn').click(); true`);
+  await waitFor(winUnlock, `e2eeReady() && document.getElementById('e2ee-setup').classList.contains('hidden')`, 'ключ восстановлен по паролю', 20000);
+  console.log('✔ потерянный локальный ключ восстанавливается паролем без кода переноса');
+  winUnlock.destroy();
+
   await sleep(200);
 });
