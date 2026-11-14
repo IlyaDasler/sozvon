@@ -139,8 +139,11 @@ async function useIdentity(identity) {
   redecryptAll();
 }
 
-async function publishIdentity(identity) {
-  state.me = await Api.put('/me/key', { publicKey: identity.publicKey });
+async function publishIdentity(identity, password = '') {
+  // Замена существующего ключа на сервере требует пароль: одной сессии мало.
+  const body = { publicKey: identity.publicKey };
+  if (password) body.password = password;
+  state.me = await Api.put('/me/key', body);
 }
 
 /** При входе: свой ключ есть и совпадает — работаем; нет нигде — создаём; на сервере другой — спрашиваем */
@@ -208,6 +211,15 @@ async function setupE2EE(password = '') {
         await useIdentity(identity);
         await publishIdentity(identity);
         await uploadKeyBackup(identity, password);
+        return;
+      }
+      // На этом устройстве есть ключ, а на сервере другой и копия не открылась.
+      // После проверенного пароля возвращаем ключ этого устройства на сервер —
+      // без кода переноса и без ручного «отправить ключ».
+      if (local && password) {
+        await useIdentity(local);
+        await publishIdentity(local, password);
+        await uploadKeyBackup(local, password);
         return;
       }
     }
