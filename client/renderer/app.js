@@ -103,6 +103,7 @@ const state = {
 const PROVIDER_STYLE = {
   yandex: { label: 'Я', bg: '#fc3f1d', fg: '#ffffff' },
   email: { label: '@', bg: '#3e9cff', fg: '#ffffff' },
+  phone: { label: '✆', bg: '#2aabee', fg: '#ffffff' },
 };
 
 let socket = null;
@@ -2581,7 +2582,7 @@ function resetPhoneLink() {
   phoneLinkTimer = null;
   phoneLink = null;
   $('phone-link-form').classList.add('hidden');
-  $('phone-link-pending').classList.add('hidden');
+  $('link-phone-pending').classList.add('hidden');
   $('link-phone-hint').textContent = '';
   $('link-phone-link').textContent = '';
   $('link-phone').disabled = false;
@@ -2642,7 +2643,7 @@ function phoneIdentityRow() {
     $('link-phone-password-field').classList.toggle('hidden', Boolean(state.me?.hasPassword));
     $('link-phone').focus();
   };
-  row.append(info, button);
+  row.append(providerBadge('phone'), info, button);
   return row;
 }
 
