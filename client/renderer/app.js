@@ -275,7 +275,7 @@ function renderAuthFields() {
   $('auth-eyebrow').textContent = register ? 'Первый раз здесь' : reset ? 'Восстановление доступа' : 'С возвращением';
   $('auth-submit').textContent = register ? 'Создать аккаунт' : reset ? 'Сменить пароль' : 'Войти';
   $('auth-subtitle').textContent = register
-    ? 'Создайте аккаунт по своей почте — это займёт полминуты'
+    ? 'Создайте аккаунт по почте или телефону — это займёт полминуты'
     : reset
       ? 'Пришлём код на почту, с которой вы регистрировались'
       : 'Войдите, чтобы созвониться с друзьями';
@@ -510,6 +510,134 @@ $('auth-toggle').onclick = (e) => {
   setAuthMode(state.authMode === 'login' || !state.authMode ? 'register' : 'login');
 };
 
+
+  // ---------- Телефон внутри общего окна входа/регистрации ----------
+
+  const looksLikePhone = (value) => {
+    const text = String(value || '').trim();
+    const digits = text.replace(/\D/g, '');
+    return digits.length >= 10 && digits.length <= 15 && (text.startsWith('+') || digits.length >= 10);
+  };
+
+  let phoneSignup = null;
+  let phoneTimer = null;
+
+  const phonePanel = () => document.getElementById('phone-confirm');
+  const resetPhonePanel = () => {
+    if (phoneTimer) clearTimeout(phoneTimer);
+    phoneTimer = null;
+    phoneSignup = null;
+    phonePanel().classList.add('hidden');
+    document.getElementById('phone-link-text').textContent = '';
+    document.getElementById('phone-confirm-status').textContent = 'Ожидаем подтверждение…';
+    $('phone-cancel').disabled = false;
+    $('auth-submit').disabled = false;
+    $('auth-submit').classList.remove('hidden');
+    for (const id of ['auth-email', 'auth-display', 'auth-password', 'auth-invite', 'auth-username']) {
+      const field = $(id);
+      if (field) field.disabled = false;
+    }
+  };
+
+  const openTelegram = async () => {
+    if (!phoneSignup) return;
+    const https = phoneSignup.deepLink;
+    const tg = https.replace('https://t.me/', 'tg://resolve?domain=').replace('?start=', '&start=');
+    if (window.desktop?.openExternal) {
+      try {
+        if ((await window.desktop.openExternal(https))?.ok) return;
+        if ((await window.desktop.openExternal(tg))?.ok) return;
+      } catch {}
+    }
+    try { window.open(https, '_blank', 'noopener'); } catch {}
+  };
+
+  const pollPhone = async () => {
+    if (!phoneSignup) return;
+    try {
+      const result = await Api.post('/phone/signup/status', { id: phoneSignup.id, secret: phoneSignup.secret });
+      if (result.status === 'ready') {
+        const password = phoneSignup.password;
+        resetPhonePanel();
+        finishLogin(Api.base, result, password);
+        return;
+      }
+      if (result.status === 'expired' || result.status === 'used') {
+        $('auth-error').textContent = result.status === 'expired'
+          ? 'Срок подтверждения истёк. Начните регистрацию заново.'
+          : 'Регистрация уже завершена. Войдите по телефону и паролю.';
+        resetPhonePanel();
+        return;
+      }
+      phoneTimer = setTimeout(pollPhone, 2000);
+    } catch (err) {
+      $('auth-error').textContent = err.message || 'Сервер не ответил';
+      resetPhonePanel();
+    }
+  };
+
+  async function startPhoneRegistration(base, phone, displayName, password, inviteCode) {
+    const button = $('auth-submit');
+    button.disabled = true;
+    $('auth-error').textContent = '';
+    Api.base = base;
+    Api.token = '';
+    try {
+      const result = await Api.post('/phone/signup/start', {
+        phone,
+        username: displayName,
+        displayName,
+        password,
+        inviteCode,
+      });
+      phoneSignup = { ...result, password };
+      document.getElementById('phone-confirm-text').textContent =
+        `Откройте Telegram @${result.botUsername} и нажмите «Отправить номер». Регистрация завершится сама.`;
+      document.getElementById('phone-link-text').textContent = result.deepLink;
+      document.getElementById('phone-confirm-status').textContent = 'Ожидаем подтверждение…';
+      phonePanel().classList.remove('hidden');
+      $('code-field').classList.add('hidden');
+      for (const id of ['auth-email', 'auth-display', 'auth-password', 'auth-invite', 'auth-username']) {
+        const field = $(id);
+        if (field) field.disabled = true;
+      }
+      button.classList.add('hidden');
+      await openTelegram();
+      phoneTimer = setTimeout(pollPhone, 1500);
+    } catch (err) {
+      button.disabled = false;
+      $('auth-error').textContent = err.message || 'Не удалось начать регистрацию';
+    }
+  }
+
+  $('phone-open-telegram').onclick = openTelegram;
+  $('phone-copy').onclick = async () => {
+    if (!phoneSignup) return;
+    try {
+      if (window.desktop?.copy) await window.desktop.copy(phoneSignup.deepLink);
+      else await navigator.clipboard.writeText(phoneSignup.deepLink);
+      $('phone-confirm-status').textContent = 'Ссылка скопирована — вставьте её в Telegram.';
+    } catch {
+      $('phone-confirm-status').textContent = phoneSignup.deepLink;
+    }
+  };
+  $('phone-cancel').onclick = async () => {
+    const current = phoneSignup;
+    $('auth-error').textContent = '';
+    resetPhonePanel();
+    renderAuthFields();
+    if (current) {
+      try { await Api.post('/phone/signup/cancel', { id: current.id, secret: current.secret }); } catch {}
+    }
+  }
+  const syncPhoneCodeVisibility = () => {
+    if ((state.authMode || 'login') !== 'register') return;
+    const phone = looksLikePhone($('auth-email').value);
+    $('code-field').classList.toggle('hidden', phone);
+  };
+  $('auth-email').addEventListener('input', syncPhoneCodeVisibility);
+;
+
 $('auth-form').onsubmit = async (e) => {
   e.preventDefault();
   const base = isWeb ? location.origin : normalizeServer($('server-url').value);
@@ -522,11 +650,15 @@ $('auth-form').onsubmit = async (e) => {
   if (!base) return ($('auth-error').textContent = 'Укажите адрес сервера');
   if (state.pendingSignup && !inviteCode) return ($('auth-error').textContent = 'Введите код приглашения');
   if (!state.pendingSignup) {
-    if (mode === 'login' && (!username || !password)) return ($('auth-error').textContent = 'Введите почту (или логин) и пароль');
-    if (mode !== 'login' && (!email || !password))
-      return ($('auth-error').textContent = mode === 'reset' ? 'Введите почту и новый пароль' : 'Введите почту и пароль');
+    if (mode === 'login' && (!username || !password)) return ($('auth-error').textContent = 'Введите почту, логин или телефон и пароль');
+    if (mode !== 'login' && (!email || !password || (mode === 'register' && !$('auth-display').value.trim())))
+      return ($('auth-error').textContent = mode === 'reset' ? 'Введите почту и новый пароль' : 'Введите почту или телефон, имя и пароль');
     // Сразу, а не после письма с кодом: иначе человек узнает о слабом пароле в самом конце
     if (mode !== 'login' && password.length < 8) return ($('auth-error').textContent = 'Пароль должен быть не короче 8 символов');
+    // Телефон регистрируется отдельным подтверждением Telegram, без кода из письма.
+    if (mode === 'register' && looksLikePhone(email)) {
+      return startPhoneRegistration(base, email, $('auth-display').value.trim(), password, inviteCode);
+    }
     // Кода ещё нет — сначала отправляем его на почту
     if (!code && mode !== 'login') return sendEmailCode();
   }
