@@ -52,6 +52,14 @@ func (s *Store) PhoneSignupByID(id string) (*PhoneSignup, error) {
 		FROM phone_signups WHERE id = ?`, id))
 }
 
+func (s *Store) PhoneSignupByUsername(username string) (*PhoneSignup, error) {
+	return scanPhoneSignup(s.db.QueryRow(`
+		SELECT id, phone_hmac, password_hash, username, display_name, avatar_color,
+		       token_hash, poll_hash, COALESCE(telegram_chat_id, 0), COALESCE(verified_at, 0),
+		       COALESCE(used_at, 0), created_at, expires_at
+		FROM phone_signups WHERE username = ?`, username))
+}
+
 func (s *Store) PhoneSignupByTokenHash(hash string) (*PhoneSignup, error) {
 	return scanPhoneSignup(s.db.QueryRow(`
 		SELECT id, phone_hmac, password_hash, username, display_name, avatar_color,

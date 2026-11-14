@@ -510,13 +510,13 @@ func (a *server) register(w http.ResponseWriter, r *http.Request) {
 		a.registerByEmail(w, r, body)
 		return
 	}
-	username := strings.ToLower(strings.TrimSpace(body.Username))
+	username := auth.NormalizeUsername(body.Username)
 	displayName := strings.TrimSpace(body.DisplayName)
 	if displayName == "" {
 		displayName = username
 	}
 	if !auth.ValidUsername(username) {
-		fail(http.StatusBadRequest, "Логин: 3–24 символа, латинские буквы, цифры, точка или _").write(w)
+		fail(http.StatusBadRequest, "Логин: от 1 до 32 символов, без HTML-знаков; пробелы и кириллица разрешены").write(w)
 		return
 	}
 	if !auth.ValidPassword(body.Password) {
@@ -571,7 +571,7 @@ func (a *server) login(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
 	}
-	login := strings.ToLower(strings.TrimSpace(body.Username))
+	login := auth.NormalizeUsername(body.Username)
 	var user *store.User
 	var err error
 	if phone, ok := normalizePhone(body.Username); ok && strings.HasPrefix(strings.TrimSpace(body.Username), "+") {
