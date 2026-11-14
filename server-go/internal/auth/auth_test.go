@@ -53,3 +53,21 @@ func TestExpiredToken(t *testing.T) {
 	}
 	_ = time.Now()
 }
+
+func TestUsernamesAllowUnicodeAndNormalizeForUniqueness(t *testing.T) {
+	if !ValidUsername("Соломон Ицхакович") {
+		t.Fatal("кириллица и пробелы должны быть допустимы")
+	}
+	if !ValidUsername("Solo Das") {
+		t.Fatal("пробелы должны быть допустимы")
+	}
+	if ValidUsername("<script>") {
+		t.Fatal("HTML-опасные знаки должны быть запрещены")
+	}
+	if ValidUsername("a\x00b") {
+		t.Fatal("управляющие символы должны быть запрещены")
+	}
+	if got := NormalizeUsername("  Соломон   Ицхакович "); got != "соломон ицхакович" {
+		t.Fatalf("normalize=%q", got)
+	}
+}

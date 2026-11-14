@@ -21,8 +21,6 @@ import (
 
 const TokenTTL = 30 * 24 * time.Hour
 
-var usernameRe = regexp.MustCompile(`^[a-z0-9_.]{3,24}$`)
-
 // Secret — тот же секрет, что у Node: JWT_SECRET или dataDir/secret.key.
 // Файл создаётся один раз, поэтому токены переживают смену реализации.
 func Secret(dataDir string) ([]byte, error) {
@@ -134,7 +132,29 @@ func VerifyPassword(password, stored string) bool {
 	return subtle.ConstantTimeCompare(expected, actual) == 1
 }
 
-func ValidUsername(value string) bool { return usernameRe.MatchString(value) }
+// NormalizeUsername приводит имя к одному виду: без краевых пробелов,
+// с одним пробелом между словами и в нижнем регистре. По нему проверяется уникальность.
+func NormalizeUsername(value string) string {
+	return strings.ToLower(strings.Join(strings.Fields(strings.TrimSpace(value)), " "))
+}
+
+// ValidUsername разрешает человеческие имена, а не только латиницу.
+// Запрещены только управляющие символы, HTML-опасные знаки и слишком длинные имена.
+func ValidUsername(value string) bool {
+	runes := []rune(value)
+	if len(runes) < 1 || len(runes) > 32 {
+		return false
+	}
+	for _, r := range runes {
+		if r == '<' || r == '>' || r == '&' || r == '"' || r == '\'' || r == '/' || r == '\\' {
+			return false
+		}
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	return true
+}
 
 func ValidPassword(value string) bool { return len(value) >= 8 && len(value) <= 128 }
 

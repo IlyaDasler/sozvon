@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
 
@@ -19,8 +18,6 @@ import (
 )
 
 const phoneSignupTTL = 10 * time.Minute
-
-var phoneSignupUsername = regexp.MustCompile(`^[a-z0-9_.]{3,24}$`)
 
 func normalizePhone(value string) (string, bool) {
 	raw := strings.TrimSpace(value)
@@ -97,10 +94,10 @@ func (a *server) phoneSignupStart(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusBadRequest, "Введите номер в формате +7 999 123-45-67").write(w)
 		return
 	}
-	username := strings.ToLower(strings.TrimSpace(body.Username))
+	username := auth.NormalizeUsername(body.Username)
 	displayName := strings.TrimSpace(body.DisplayName)
-	if !phoneSignupUsername.MatchString(username) || !auth.ValidUsername(username) {
-		fail(http.StatusBadRequest, "Логин: 3–24 символа, латинские буквы, цифры, точка или _").write(w)
+	if !auth.ValidUsername(username) {
+		fail(http.StatusBadRequest, "Логин: от 1 до 32 символов, без HTML-знаков; пробелы и кириллица разрешены").write(w)
 		return
 	}
 	if !auth.ValidPassword(body.Password) {
@@ -119,6 +116,13 @@ func (a *server) phoneSignupStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	phoneHMAC := a.phoneDigest(phone)
+	if _, err := a.store.PhoneSignupByUsername(username); err == nil {
+		fail(http.StatusConflict, "Этот логин уже занят").write(w)
+		return
+	} else if !errors.Is(err, store.ErrPhoneSignupNotFound) {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
 	if _, err := a.store.UserByPhoneHMAC(phoneHMAC); err == nil {
 		// Не раскрываем, что номер уже зарегистрирован.
 		fail(http.StatusConflict, "Не удалось начать регистрацию по этому номеру").write(w)
