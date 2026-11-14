@@ -868,7 +868,7 @@
                 </div>
                 <div class="privacy-state">
                   <span class="privacy-state-icon on"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>
-                  <span class="privacy-text"><b>Ключ устройства</b><span class="muted small">При входе на новое устройство старые ключи переносятся только по вашему коду. Без него новая сессия не прочитает старую переписку.</span></span>
+                  <span class="privacy-text"><b>Ключ устройства</b><span class="muted small">При входе на новое устройство ключ восстанавливается по паролю аккаунта. Ручные коды переноса больше не используются.</span></span>
                 </div>
               </div>
             </section>
@@ -1314,7 +1314,7 @@
     </div>
   </dialog>
 
-  <!-- Ключ шифрования на этом устройстве: перенести кодом с другого или создать новый (e2ee.js) -->
+  <!-- Ключ шифрования на этом устройстве: восстановление по паролю (e2ee.js) -->
   <div id="e2ee-setup" class="modal hidden">
     <div class="modal-card dialog-card e2ee-card">
       <h3>Восстановите ключ шифрования</h3>
