@@ -159,6 +159,22 @@ func (a *server) phoneSignupStart(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *server) phoneSignupCancel(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		ID     string `json:"id"`
+		Secret string `json:"secret"`
+	}
+	if err := decode(r, &body); err != nil || body.ID == "" || body.Secret == "" {
+		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
+		return
+	}
+	if err := a.store.DeletePhoneSignup(body.ID, tokenHash(body.Secret)); err != nil && !errors.Is(err, store.ErrPhoneSignupNotFound) {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
 func (a *server) phoneSignupStatus(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		ID     string `json:"id"`

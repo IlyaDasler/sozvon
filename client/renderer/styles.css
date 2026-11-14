@@ -2968,10 +2968,6 @@ html.is-win .titlebar { padding-right: 146px; }
 }
 
 /* Регистрация по телефону через Telegram Contact Share */
-.phone-auth-cta { margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-.phone-auth-cta svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.phone-auth-cta span { color: var(--muted); font-size: 12px; font-weight: 400; }
-.phone-signup-card { width: min(420px, calc(100% - 32px)); }
-.phone-signup-actions { margin-top: 16px; }
+.phone-confirm { margin: 12px 0; padding: 12px; border-radius: var(--r-m); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line); }
 .phone-open-actions { margin-top: 4px; }
 .phone-link-text { word-break: break-all; user-select: all; margin: 4px 0 8px; }

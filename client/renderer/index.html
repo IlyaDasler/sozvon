@@ -134,11 +134,12 @@
         </label>
         <label class="field" id="username-field">
           <span>Почта, логин или телефон</span>
-          <input id="auth-username" autocomplete="username" spellcheck="false" placeholder="name@yandex.ru" required>
+          <input id="auth-username" autocomplete="username" spellcheck="false" placeholder="name@yandex.ru или +7 999 123-45-67" required>
         </label>
         <label class="field hidden" id="email-field">
-          <span>Почта</span>
-          <input id="auth-email" type="email" autocomplete="email" spellcheck="false" placeholder="name@yandex.ru">
+          <span>Почта или телефон</span>
+          <input id="auth-email" type="text" autocomplete="email" spellcheck="false" placeholder="name@yandex.ru или +7 999 123-45-67">
+          <span class="hint-text">Телефон подтверждается через Telegram, без SMS</span>
         </label>
         <label class="field hidden" id="display-field">
           <span>Имя в профиле</span>
@@ -160,6 +161,16 @@
           </div>
           <span class="hint-text" id="code-hint"></span>
         </div>
+        <div id="phone-confirm" class="phone-confirm hidden">
+          <p class="hint-text" id="phone-confirm-text">Откройте Telegram и нажмите «Отправить номер». Регистрация завершится сама.</p>
+          <div class="row phone-open-actions">
+            <button type="button" class="btn primary" id="phone-open-telegram">Открыть Telegram</button>
+            <button type="button" class="btn" id="phone-copy">Скопировать ссылку</button>
+            <button type="button" class="btn" id="phone-cancel">Отмена</button>
+          </div>
+          <p class="hint-text phone-link-text" id="phone-link-text"></p>
+          <p class="muted small" id="phone-confirm-status">Ожидаем подтверждение…</p>
+        </div>
         <label class="field hidden" id="invite-field">
           <span>Код приглашения</span>
           <input id="auth-invite" spellcheck="false" placeholder="Если сервер его требует">
@@ -175,11 +186,6 @@
 
         <p class="error" id="auth-error"></p>
         <button class="btn primary wide" id="auth-submit">Войти</button>
-        <button type="button" class="btn wide phone-auth-cta" id="phone-open">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 3-7.2 18-3.9-7.2L3 9.6 21 3Z"/><path d="m9.9 13.8 4.2-4.2"/></svg>
-          Регистрация по телефону
-          <span>через Telegram, без SMS</span>
-        </button>
 
         <div id="oauth-block" class="oauth hidden">
           <div class="divider"><span>или</span></div>
@@ -1424,33 +1430,7 @@
   <script src="vendor/livekit-client.umd.js"></script>
   <script src="sfu.js"></script>
   <script src="privacy.js"></script>
-  <div id="phone-signup" class="modal hidden">
-    <div class="modal-card dialog-card phone-signup-card">
-      <h3>Регистрация по телефону</h3>
-      <p class="hint-text">Пароль защищает аккаунт. Номер подтвердит Telegram — SMS не нужны.</p>
-      <label class="field"><span>Телефон</span><input id="phone-input" type="tel" autocomplete="tel" placeholder="+7 999 123-45-67" spellcheck="false"></label>
-      <label class="field"><span>Логин для друзей</span><input id="phone-username" autocomplete="username" placeholder="Любое имя, до 32 символов" spellcheck="false"></label>
-      <label class="field"><span>Имя в профиле</span><input id="phone-display" maxlength="32" placeholder="Как вас называть"></label>
-      <label class="field"><span>Пароль</span><input id="phone-password" type="password" autocomplete="new-password" placeholder="Не короче 8 символов"></label>
-      <label class="field hidden" id="phone-invite-field"><span>Код приглашения</span><input id="phone-invite" spellcheck="false" placeholder="Если сервер его требует"></label>
-      <p class="error" id="phone-error"></p>
-      <div id="phone-pending" class="hidden">
-        <p class="hint-text" id="phone-pending-text">Откройте Telegram и нажмите «Отправить номер». Это окно закроется само.</p>
-        <div class="row phone-open-actions">
-          <button type="button" class="btn primary" id="phone-deeplink">Открыть Telegram</button>
-          <button type="button" class="btn" id="phone-copy">Скопировать ссылку</button>
-        </div>
-        <p class="hint-text phone-link-text" id="phone-link-text"></p>
-        <p class="muted small" id="phone-status">Ожидаем подтверждение…</p>
-      </div>
-      <div class="row phone-signup-actions">
-        <button type="button" class="btn primary" id="phone-submit">Продолжить в Telegram</button>
-        <button type="button" class="btn" id="phone-cancel">Отмена</button>
-      </div>
-    </div>
-  </div>
   <script src="app.js"></script>
-  <script src="phone-auth.js"></script>
 <script type="module" src="room-utils.mjs"></script>
 <script type="module" src="update-bar.mjs"></script>
   <script src="ptt-keys.js"></script>

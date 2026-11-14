@@ -191,3 +191,15 @@ func (s *Store) DeleteExpiredPhoneSignups(now int64) error {
 	_, err := s.db.Exec(`DELETE FROM phone_signups WHERE expires_at < ? OR used_at IS NOT NULL AND used_at < ?`, now, now-86400)
 	return err
 }
+
+func (s *Store) DeletePhoneSignup(id, pollHash string) error {
+	res, err := s.db.Exec(`DELETE FROM phone_signups WHERE id = ? AND poll_hash = ? AND used_at IS NULL`, id, pollHash)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrPhoneSignupNotFound
+	}
+	return nil
+}

@@ -180,6 +180,7 @@ func (a *server) routes() http.Handler {
 		r.Post("/register", a.register)
 		r.Post("/phone/signup/start", a.phoneSignupStart)
 		r.Post("/phone/signup/status", a.phoneSignupStatus)
+		r.Post("/phone/signup/cancel", a.phoneSignupCancel)
 		r.Post("/login", a.login)
 		r.Post("/password/code", a.passwordCode)
 		r.Post("/password/reset", a.passwordReset)
