@@ -124,13 +124,20 @@ func (a *server) phoneSignupStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := a.store.UserByPhoneHMAC(phoneHMAC); err == nil {
-		// Не раскрываем, что номер уже зарегистрирован.
-		fail(http.StatusConflict, "Не удалось начать регистрацию по этому номеру").write(w)
+		fail(http.StatusConflict, "Аккаунт с таким номером уже существует — войдите или восстановите пароль").write(w)
 		return
 	} else if !errors.Is(err, store.ErrNotFound) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	if _, err := a.store.PhoneSignupByPhoneHMAC(phoneHMAC); err == nil {
+		fail(http.StatusConflict, "Регистрация на этот номер уже начата — завершите её в Telegram").write(w)
+		return
+	} else if !errors.Is(err, store.ErrPhoneSignupNotFound) {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+
 	hash, err := auth.HashPassword(body.Password)
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
@@ -298,7 +305,7 @@ func (a *server) phoneLinkStart(w http.ResponseWriter, r *http.Request) {
 	signup := store.PhoneSignup{
 		ID: id, PhoneHMAC: phoneHMAC, PasswordHash: user.PasswordHash,
 		Username: user.Username, DisplayName: user.DisplayName,
-		AvatarColor: user.AvatarColor, UserID: user.ID,
+		AvatarColor: user.AvatarColor, UserID: user.ID, Purpose: "link",
 		TokenHash: tokenHash(token), PollHash: tokenHash(poll),
 		CreatedAt: now, ExpiresAt: now + int64(phoneSignupTTL/time.Second),
 	}
