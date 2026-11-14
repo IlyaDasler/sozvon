@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"sozvon/server/internal/auth"
 	"sozvon/server/internal/store"
 )
 
@@ -903,12 +904,31 @@ func (a *server) setMyGame(w http.ResponseWriter, r *http.Request) {
 
 func (a *server) setMyKey(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
+	// Сверяемся со свежей записью: ключ могли сменить с другого устройства
+	// между запросами, и решение о пароле нельзя принимать по старым данным.
+	if fresh, err := a.store.UserByID(user.ID); err == nil {
+		user = fresh
+	}
 	var request struct {
 		PublicKey string `json:"publicKey"`
+		Password  string `json:"password"`
 	}
 	if err := decode(r, &request); err != nil || len(request.PublicKey) < 16 || len(request.PublicKey) > 4096 {
 		fail(http.StatusBadRequest, "Неверный ключ").write(w)
 		return
+	}
+	// Первичная публикация разрешена после входа. Замена уже существующего ключа
+	// требует пароль: одной украденной сессии недостаточно, чтобы подменить ключ
+	// и начать получать новые сообщения.
+	if user.PublicKey != "" && user.PublicKey != request.PublicKey {
+		if user.PasswordHash == "" {
+			fail(http.StatusForbidden, "Для смены ключа нужен пароль аккаунта").write(w)
+			return
+		}
+		if !auth.VerifyPassword(request.Password, user.PasswordHash) {
+			fail(http.StatusUnauthorized, "Неверный пароль").write(w)
+			return
+		}
 	}
 	if err := a.store.SetPublicKey(user.ID, request.PublicKey); err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
