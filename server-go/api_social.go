@@ -903,6 +903,10 @@ func (a *server) setMyGame(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *server) setMyKey(w http.ResponseWriter, r *http.Request) {
+	if !a.authLimit(r, "key-change") {
+		fail(http.StatusTooManyRequests, "Слишком много попыток смены ключа").write(w)
+		return
+	}
 	user := r.Context().Value(userKey).(*store.User)
 	// Сверяемся со свежей записью: ключ могли сменить с другого устройства
 	// между запросами, и решение о пароле нельзя принимать по старым данным.
@@ -930,9 +934,25 @@ func (a *server) setMyKey(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	keyChanged := user.PublicKey != "" && user.PublicKey != request.PublicKey
 	if err := a.store.SetPublicKey(user.ID, request.PublicKey); err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
+	}
+	if keyChanged {
+		// Смена ключа — событие уровня аккаунта: остальные сессии должны
+		// заново войти, чтобы подтвердить пароль и получить новый ключ.
+		current := ""
+		if session, ok := r.Context().Value(sessionKey).(*store.Session); ok && session != nil {
+			current = session.ID
+		}
+		if sessions, err := a.store.SessionsOf(user.ID); err == nil {
+			for _, session := range sessions {
+				if session.ID != current {
+					_ = a.store.DeleteSession(session.ID)
+				}
+			}
+		}
 	}
 	fresh, _ := a.store.UserByID(user.ID)
 	// Друзья должны узнать ключ, иначе не смогут запечатать для нас сообщение

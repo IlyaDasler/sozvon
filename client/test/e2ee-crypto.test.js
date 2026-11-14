@@ -60,7 +60,7 @@ test('резервная копия ключа: пароль открывает 
   const password = 'правильный пароль-1';
   const blob = await E.wrapKeyBackup(me, password, 42);
   assert.ok(!JSON.stringify(blob).includes(me.privateJwk.d));
-  assert.equal(blob.iterations, 310000);
+  assert.equal(blob.iterations, 600000);
   assert.deepEqual(await E.unwrapKeyBackup(blob, password, 42), me);
   await assert.rejects(E.unwrapKeyBackup(blob, 'другой пароль-2', 42));
   await assert.rejects(E.unwrapKeyBackup(blob, password, 43));

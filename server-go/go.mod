@@ -1,10 +1,10 @@
 module sozvon/server
 
-go 1.27
+go 1.27.4
 
 require (
 	github.com/go-chi/chi/v5 v5.5.0
-	golang.org/x/crypto v0.58.0
+	golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2
 	modernc.org/sqlite v1.61.1
 )
 
