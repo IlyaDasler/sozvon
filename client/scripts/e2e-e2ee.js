@@ -33,7 +33,6 @@ runTest(async () => {
   if (JSON.stringify(onServer).includes('секрет-111')) throw new Error('Сервер хранит текст сообщения');
   if (last.enc?.v !== 2 || !last.enc?.ratchet?.ct || !last.text.startsWith('🔒')) throw new Error('Личное сообщение ушло не через v2');
   console.log('✔ личное сообщение: на сервере только шифр, собеседник читает');
-
   // Код шифрования в карточке профиля: у Ани про Борю и у Бори про Аню — один и тот же
   const cardCode = async (win, userId) => {
     await js(win, `openProfileCard(${userId}, document.getElementById('peer-avatar')); true`);

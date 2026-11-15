@@ -18,8 +18,9 @@ function workerPath() {
 
 function startWorker() {
   if (worker) return worker;
-  worker = utilityProcess.fork(workerPath(), [], { serviceName: 'Sozvon identity' });
-  worker.on('message', (message) => {
+  const child = utilityProcess.fork(workerPath(), [], { serviceName: 'Sozvon identity' });
+  worker = child;
+  child.on('message', (message) => {
     const item = pending.get(message.id);
     if (!item) return;
     pending.delete(message.id);
@@ -27,24 +28,26 @@ function startWorker() {
     if (message.ok) item.resolve(message.result);
     else item.reject(new Error(message.error || 'identity worker error'));
   });
-  worker.on('error', (type, location, report) => {
+  child.on('error', (type, location, report) => {
+    if (worker !== child) return;
     const err = new Error(`identity utility: ${type || 'error'}`);
     for (const item of pending.values()) {
       clearTimeout(item.timer);
       item.reject(err);
     }
     pending.clear();
-    worker = null;
+    if (worker === child) worker = null;
   });
-  worker.on('exit', (code) => {
+  child.on('exit', (code) => {
+    if (worker !== child) return;
     for (const item of pending.values()) {
       clearTimeout(item.timer);
       item.reject(new Error('identity worker stopped'));
     }
     pending.clear();
-    worker = null;
+    if (worker === child) worker = null;
   });
-  return worker;
+  return child;
 }
 
 function rpc(op, data = {}) {
@@ -102,7 +105,7 @@ async function persist() {
 }
 
 async function persistRatchets() {
-  if (!safeStorage.isEncryptionAvailable()) return false;
+  if (!safeStorage.isEncryptionAvailable()) { console.error('ratchet persist: safeStorage unavailable'); return false; }
   try {
     const entries = await rpc('ratchet-export');
     const file = ratchetPath();
@@ -111,8 +114,8 @@ async function persistRatchets() {
     try { fs.unlinkSync(file); } catch {}
     fs.renameSync(temp, file);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+      return false;
   }
 }
 
