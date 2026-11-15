@@ -14,6 +14,7 @@ if (IS_BETA) {
 const fs = require('node:fs');
 const { guardConsoleStream, writeMainError } = require('./main-log');
 const { autoUpdater } = require('electron-updater');
+const { findTelegramDesktop, webTelegramUrl } = require('./telegram-open');
 const { listenForOAuth, openOAuthWindow, opensInApp } = require('./oauth-loopback');
 const { parseBinding } = require('./renderer/ptt-keys');
 const { offerRemoveOldCopy, repairShortcuts } = require('./install-repair');
@@ -690,30 +691,19 @@ ipcMain.handle('open-telegram', async (_event, rawUrl) => {
   const username = url.pathname.slice(1);
   const start = url.searchParams.get('start') || '';
   const tgUrl = `tg://resolve?domain=${encodeURIComponent(username)}${start ? `&start=${encodeURIComponent(start)}` : ''}`;
-  if (process.platform === 'win32') {
+  const desktop = findTelegramDesktop();
+  if (desktop) {
     try {
-      // cmd start с кавычками — единственный способ, который стабильно передал
-      // URL уже запущенному Telegram. spawn/execFile теряли &start=..., и
-      // Telegram просто открывал последний чат.
-      exec(`cmd.exe /c start "" "${tgUrl}"`, { windowsHide: true }, () => {});
+      if (desktop.kind === 'app') spawn('open', ['-a', desktop.path, tgUrl], { detached: true, stdio: 'ignore' }).unref();
+      else spawn(desktop.path, [tgUrl], { detached: true, stdio: 'ignore' }).unref();
       setTimeout(focusTelegramWindow, 700);
       setTimeout(focusTelegramWindow, 1600);
       return { ok: true, mode: 'desktop' };
     } catch {}
   }
-  const executable = telegramDesktopPath();
-  if (executable) {
-    try {
-      spawn(executable, ['--', tgUrl], { detached: true, stdio: 'ignore' }).unref();
-      return { ok: true, mode: 'desktop' };
-    } catch {}
-  }
+  // Telegram не установлен: никакого tg:// и Microsoft Store.
   try {
-    await shell.openExternal(tgUrl);
-    return { ok: true, mode: 'desktop' };
-  } catch {}
-  try {
-    await shell.openExternal(url.toString());
+    await shell.openExternal(webTelegramUrl(tgUrl));
     return { ok: true, mode: 'web' };
   } catch (error) {
     return { ok: false, error: error.message };
