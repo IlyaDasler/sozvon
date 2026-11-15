@@ -211,7 +211,7 @@ async function setupE2EE(password = '') {
         try {
           fromBackup = await window.desktop.identity.unwrapBackup(identityContext(), backup, password, state.me.id);
         } catch {
-          lastKeyBackupError = 'Резервная копия найдена, но не открылась. Проверьте пароль и версию приложения.';
+          lastKeyBackupError = 'Резервная копия найдена, но не открылась. Если пароль менялся, введите прежний пароль.';
         }
       }
       if (fromBackup?.publicKey && (!server || server === fromBackup.publicKey)) {
@@ -269,7 +269,7 @@ async function setupE2EE(password = '') {
 }
 
 function openKeyUnlock() {
-  $('e2ee-setup-text').textContent = 'Введите пароль от аккаунта — ключ шифрования восстановится автоматически. Код с другого устройства больше не нужен.';
+  $('e2ee-setup-text').textContent = 'Введите пароль от аккаунта — ключ шифрования восстановится автоматически. Если пароль недавно меняли, введите прежний: копия могла быть зашифрована им.';
   $('e2ee-password').value = '';
   $('e2ee-setup-error').textContent = '';
   $('e2ee-setup').classList.remove('hidden');
