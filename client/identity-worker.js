@@ -132,6 +132,19 @@ async function ratchetHandshake(context, conv, remotePublic) {
   return true;
 }
 
+async function ratchetExportAll() {
+  return [...ratchets.entries()].map(([key, state]) => ({ key, state: ratchet.exportState(state) }));
+}
+
+async function ratchetImportAll(entries) {
+  for (const entry of entries || []) {
+    try {
+      ratchets.set(String(entry.key), await ratchet.importState(entry.state));
+    } catch {}
+  }
+  return true;
+}
+
 async function ratchetEncrypt(context, conv, payload, aad) {
   const state = ratchets.get(ratchetKey(context, conv));
   if (!state) throw new Error('Ratchet не создан');
@@ -209,6 +222,8 @@ parentPort.on('message', async (event) => {
     else if (op === 'ratchet-handshake') result = await ratchetHandshake(message.context, message.conv, message.remotePublic);
     else if (op === 'ratchet-encrypt') result = await ratchetEncrypt(message.context, message.conv, message.payload, message.aad);
     else if (op === 'ratchet-decrypt') result = await ratchetDecrypt(message.context, message.conv, message.envelope, message.aad);
+    else if (op === 'ratchet-export') result = await ratchetExportAll();
+    else if (op === 'ratchet-import') result = await ratchetImportAll(message.entries);
     else if (op === 'open') result = await open(message.context, message.sealed);
     else if (op === 'wrap') result = await wrapBackup(message.context, message.password, message.userId);
     else if (op === 'unwrap') result = await unwrapBackup(message.context, message.backup, message.password, message.userId);

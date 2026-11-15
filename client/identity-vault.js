@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const filePath = () => path.join(app.getPath('userData'), 'e2ee-identity-v2.bin');
+const ratchetPath = () => path.join(app.getPath('userData'), 'e2ee-ratchet-v1.bin');
 let worker = null;
 let seq = 0;
 let initialized = false;
@@ -76,6 +77,12 @@ async function loadFile() {
     }
   } catch {}
   await rpc('init', { entries });
+  try {
+    if (safeStorage.isEncryptionAvailable() && fs.existsSync(ratchetPath())) {
+      const packed = JSON.parse(safeStorage.decryptString(fs.readFileSync(ratchetPath())));
+      await rpc('ratchet-import', { entries: packed.entries || [] });
+    }
+  } catch {}
 }
 
 async function persist() {
@@ -86,6 +93,21 @@ async function persist() {
     const file = filePath();
     const temp = `${file}.tmp`;
     fs.writeFileSync(temp, safeStorage.encryptString(packed), { mode: 0o600 });
+    try { fs.unlinkSync(file); } catch {}
+    fs.renameSync(temp, file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function persistRatchets() {
+  if (!safeStorage.isEncryptionAvailable()) return false;
+  try {
+    const entries = await rpc('ratchet-export');
+    const file = ratchetPath();
+    const temp = `${file}.tmp`;
+    fs.writeFileSync(temp, safeStorage.encryptString(JSON.stringify({ entries })), { mode: 0o600 });
     try { fs.unlinkSync(file); } catch {}
     fs.renameSync(temp, file);
     return true;
@@ -107,11 +129,11 @@ async function importFor(context, identity) {
   return result;
 }
 
-async function ratchetInit(context, conv, root, role) { return rpc('ratchet-init', { context, conv, root, role }); }
-async function ratchetEnsureStatic(context, conv, root, role, remotePublic) { return rpc('ratchet-ensure-static', { context, conv, root, role, remotePublic }); }
+async function ratchetInit(context, conv, root, role) { const result = await rpc('ratchet-init', { context, conv, root, role }); await persistRatchets(); return result; }
+async function ratchetEnsureStatic(context, conv, root, role, remotePublic) { const result = await rpc('ratchet-ensure-static', { context, conv, root, role, remotePublic }); await persistRatchets(); return result; }
 async function ratchetHandshake(context, conv, remotePublic) { return rpc('ratchet-handshake', { context, conv, remotePublic }); }
-async function ratchetEncrypt(context, conv, payload, aad) { return rpc('ratchet-encrypt', { context, conv, payload, aad }); }
-async function ratchetDecrypt(context, conv, envelope, aad) { return rpc('ratchet-decrypt', { context, conv, envelope, aad }); }
+async function ratchetEncrypt(context, conv, payload, aad) { const result = await rpc('ratchet-encrypt', { context, conv, payload, aad }); await persistRatchets(); return result; }
+async function ratchetDecrypt(context, conv, envelope, aad) { const result = await rpc('ratchet-decrypt', { context, conv, envelope, aad }); await persistRatchets(); return result; }
 
 async function verifyX3dhBundle(bundle, serverPublicKey) {
   return rpc('x3dh-verify', { bundle, serverPublicKey });
