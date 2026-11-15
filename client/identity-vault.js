@@ -26,7 +26,8 @@ function startWorker() {
     if (message.ok) item.resolve(message.result);
     else item.reject(new Error(message.error || 'identity worker error'));
   });
-  worker.on('error', (err) => {
+  worker.on('error', (type, location, report) => {
+    const err = new Error(`identity utility: ${type || 'error'}`);
     for (const item of pending.values()) {
       clearTimeout(item.timer);
       item.reject(err);
@@ -34,7 +35,7 @@ function startWorker() {
     pending.clear();
     worker = null;
   });
-  worker.on('exit', () => {
+  worker.on('exit', (code) => {
     for (const item of pending.values()) {
       clearTimeout(item.timer);
       item.reject(new Error('identity worker stopped'));

@@ -100,6 +100,7 @@ ipcMain.handle('screen:choose', (_e, id) => {
   return Boolean(screenChoice);
 });
 ipcMain.handle('update:status', () => ({ state: 'idle', current: 'e2e' }));
+ipcMain.handle('update:public-key', () => process.env.SOZVON_UPDATE_PUBLIC_KEY || require('../update-signature').PUBLIC_KEY);
 ipcMain.handle('preview:fetch', (_e, url) => fetchPreview(String(url)));
 
 // root — папка с preload.js и renderer/ (по умолчанию текущая версия; для проверки совместимости — старая)

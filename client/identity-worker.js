@@ -1,8 +1,9 @@
 // Единственный владелец privateJwk. Main и renderer получают только результаты операций.
 const parentPort = process.parentPort || require('node:worker_threads').parentPort;
 const { webcrypto } = require('node:crypto');
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
 const { argon2id } = require('hash-wasm');
-const x3dh = require('../renderer/x3dh');
+const x3dh = require('./renderer/x3dh');
 
 const subtle = webcrypto.subtle;
 const enc = new TextEncoder();
