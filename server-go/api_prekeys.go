@@ -48,6 +48,12 @@ func (a *server) putPrekey(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	if owner != "" {
+		if err := a.store.PutDevicePrekey(user.ID, owner, body.SignedPrekeyPublic, signature, createdAt); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "createdAt": createdAt})
 }
 
@@ -92,4 +98,32 @@ func (a *server) prekeyStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	owner := auth.HashDeviceKey(r.Header.Get("X-Device-Key"))
 	writeJSON(w, http.StatusOK, map[string]any{"owner": owner != "" && owner == bundle.OwnerDeviceHash})
+}
+
+func (a *server) getDevicePrekeys(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		fail(http.StatusBadRequest, "Неверный пользователь").write(w)
+		return
+	}
+	user, err := a.store.UserByID(id)
+	if err != nil || user.PublicKey == "" {
+		fail(http.StatusNotFound, "Ключ не найден").write(w)
+		return
+	}
+	devices, err := a.store.DevicePrekeys(id)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	list := make([]map[string]any, 0, len(devices))
+	for _, device := range devices {
+		list = append(list, map[string]any{
+			"deviceHash":         device.DeviceHash,
+			"signedPrekeyPublic": device.SignedPrekeyPublic,
+			"signature":          device.Signature,
+			"createdAt":          device.CreatedAt,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"identityPublic": user.PublicKey, "devices": list})
 }

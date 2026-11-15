@@ -273,6 +273,7 @@ func (a *server) routes() http.Handler {
 			r.Get("/me/security-events", a.securityEvents)
 			r.Get("/users/{id}/key-history", a.keyHistory)
 			r.Get("/users/{id}/prekey", a.getPrekey)
+			r.Get("/users/{id}/prekeys", a.getDevicePrekeys)
 			r.Put("/me/prekey", a.putPrekey)
 			r.Get("/me/prekey/status", a.prekeyStatus)
 			r.Get("/me", a.me)
