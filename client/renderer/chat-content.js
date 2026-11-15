@@ -149,14 +149,15 @@ function messageContent(m) {
     }
   }
   // Ссылка в сообщении: плеер (YouTube, Vimeo, прямой видеофайл) или карточка превью
-  const link = (m.preview && m.preview.url) || findLinks(m.text || '')[0] || null;
+  const preview = window.sozvonUrlPolicy.normalizeLinkPreview(m.preview);
+  const link = (preview && preview.url) || findLinks(m.text || '')[0] || null;
   if (link) {
-    const video = videoCard(link, m.preview);
+    const video = videoCard(link, preview);
     if (video) box.append(video);
-    else if (m.preview) box.append(linkCard(m.preview));
-    else if (m.preview === null) box.append(bareLinkCard(link));
-  } else if (m.preview) {
-    box.append(linkCard(m.preview));
+    else if (preview) box.append(linkCard(preview));
+    else box.append(bareLinkCard(link));
+  } else if (preview) {
+    box.append(linkCard(preview));
   }
   return box;
 }
@@ -234,7 +235,8 @@ function socialCard({ label, title, thumb, embed, href, thumbClass = '', frameCl
   const cover = document.createElement('button');
   cover.type = 'button';
   cover.className = `yt-thumb${thumbClass ? ` ${thumbClass}` : ''}`;
-  if (thumb) cover.style.backgroundImage = `url("${thumb}")`;
+  const safeThumb = window.sozvonUrlPolicy.safeHttpUrl(thumb);
+  if (safeThumb) cover.style.backgroundImage = `url("${safeThumb}")`;
   cover.title = 'Смотреть в чате';
   cover.innerHTML = '<span class="yt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>';
   const text = document.createElement('div');
@@ -303,7 +305,8 @@ function tiktokId(url) {
 /** Прямая ссылка на видеофайл — его можно проигрывать самим, без чужого плеера */
 function directVideo(url) {
   try {
-    return /\.(mp4|webm|ogv|ogg|m4v|mov|m3u8)$/i.test(new URL(url).pathname);
+    const safeUrl = window.sozvonUrlPolicy.safeHttpUrl(url);
+    return !!safeUrl && /\.(mp4|webm|ogv|ogg|m4v|mov|m3u8)$/i.test(new URL(safeUrl).pathname);
   } catch {
     return false;
   }
@@ -315,8 +318,13 @@ function fileVideo(src, poster) {
   video.className = 'video-card';
   video.controls = true;
   video.preload = 'metadata';
-  if (poster) video.poster = poster;
-  video.src = src;
+  const safeSrc = window.sozvonUrlPolicy.safeHttpUrl(src);
+  const safePoster = window.sozvonUrlPolicy.safeHttpUrl(poster);
+  if (safePoster) video.poster = safePoster;
+  if (safeSrc) {
+    video.src = safeSrc;
+    video.referrerPolicy = 'no-referrer';
+  }
   return video;
 }
 
@@ -328,9 +336,16 @@ function siteLine(name) {
 }
 
 function titleLink(text, href) {
+  const safeHref = window.sozvonUrlPolicy.safeHttpUrl(href);
+  if (!safeHref) {
+    const label = document.createElement('span');
+    label.className = 'link-card-title';
+    label.textContent = text;
+    return label;
+  }
   const a = document.createElement('a');
   a.className = 'link-card-title';
-  a.href = href;
+  a.href = safeHref;
   a.target = '_blank';
   a.rel = 'noopener noreferrer';
   a.textContent = text;
@@ -338,11 +353,14 @@ function titleLink(text, href) {
 }
 
 function embedFrame(src, title, href, frameClass = '') {
+  const safeSrc = window.sozvonUrlPolicy.safeHttpUrl(src);
+  const safeHref = window.sozvonUrlPolicy.safeHttpUrl(href);
+  if (!safeSrc || !safeHref) return document.createDocumentFragment();
   const wrap = document.createElement('div');
   wrap.className = `embed-wrap${frameClass ? ` ${frameClass}` : ''}`;
   const frame = document.createElement('iframe');
   frame.className = 'yt-frame';
-  frame.src = src;
+  frame.src = safeSrc;
   // Чужой странице нечего делать с нашим окном: только её собственный скрипт, полноэкранный
   // показ и всплывающие окна плеера — ничего из возможностей Electron
   frame.sandbox = 'allow-scripts allow-same-origin allow-presentation allow-popups allow-forms';
@@ -352,7 +370,7 @@ function embedFrame(src, title, href, frameClass = '') {
   // Если встроенный плеер не поднимется — останется ссылка «Открыть»
   const open = document.createElement('a');
   open.className = 'yt-open small';
-  open.href = href;
+  open.href = safeHref;
   open.target = '_blank';
   open.rel = 'noopener noreferrer';
   open.textContent = 'Открыть на сайте';
@@ -515,6 +533,8 @@ function fileCard(a) {
 
 /** Карточка превью ссылки: сайт, заголовок-ссылка, описание и картинка */
 function linkCard(p) {
+  const safeUrl = window.sozvonUrlPolicy.safeHttpUrl(p?.url);
+  if (!safeUrl) return document.createDocumentFragment();
   const card = document.createElement('div');
   card.className = 'link-card';
   const text = document.createElement('div');
@@ -524,7 +544,7 @@ function linkCard(p) {
   site.textContent = p.siteName || '';
   const title = document.createElement('a');
   title.className = 'link-card-title';
-  title.href = p.url;
+  title.href = safeUrl;
   title.target = '_blank';
   title.rel = 'noopener noreferrer';
   title.textContent = p.title;
@@ -536,10 +556,11 @@ function linkCard(p) {
     text.append(d);
   }
   card.append(text);
-  if (p.image) {
+  const safeImage = window.sozvonUrlPolicy.safeHttpUrl(p.image);
+  if (safeImage) {
     const img = document.createElement('img');
     img.className = 'link-card-image';
-    img.src = p.image;
+    img.src = safeImage;
     img.alt = '';
     img.loading = 'lazy';
     img.referrerPolicy = 'no-referrer';
