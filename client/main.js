@@ -368,9 +368,9 @@ function setupUpdater({ checkNow = true } = {}) {
   configureUpdateFeed();
   // Сами не качаем: сначала спрашиваем пользователя в окне обновления
   autoUpdater.autoDownload = false;
-  // Автоустановка при выходе — только Windows: на macOS Squirrel.Mac ставит лишь подписанное
-  // приложение и на неподписанном просто зависает на заставке «Устанавливаем…»
-  autoUpdater.autoInstallOnAppQuit = process.platform !== 'darwin';
+  // Установку при выходе не разрешаем: сначала hash установщика должен
+  // совпасть с подписанным манифестом. Иначе update:install сам её запустит.
+  autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.on('checking-for-update', () => setUpdateStatus({ state: 'checking', message: '' }));
   autoUpdater.on('update-available', async (info) => {
     try {
@@ -414,6 +414,7 @@ function setupUpdater({ checkNow = true } = {}) {
       setUpdateStatus({ state: 'ready', version: info.version });
     } catch (err) {
       updateDownloadVerified = false;
+      try { if (info.downloadedFile) fs.unlinkSync(info.downloadedFile); } catch {}
       setUpdateStatus({ state: 'error', message: err.message, checkedAt: Date.now() });
     }
   });
