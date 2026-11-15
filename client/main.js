@@ -28,6 +28,7 @@ const { registerDeviceKey } = require('./device-key');
 const { registerClipboardImage } = require('./clipboard-image');
 const { applyChromiumFlags } = require('./chromium-flags');
 const { UPDATE_EVERY_MS, checkDue } = require('./update-schedule');
+const { fetchSignedManifest } = require('./update-signature');
 const { isTrustedLocalNavigation } = require('./navigation-policy');
 const { canOpenPip, canSendPipFrame, canClosePip } = require('./pip-bridge-policy');
 
@@ -310,6 +311,14 @@ function setUpdateStatus(status) {
 }
 
 let updateRetried = false;
+let updateFeedVerified = false;
+
+async function verifyUpdateFeed() {
+  if (process.env.SOZVON_UPDATE_TEST === '1') return;
+  const name = process.platform === 'darwin' ? 'latest-mac.yml' : 'latest.yml';
+  const dir = process.platform === 'darwin' ? 'mac' : 'win';
+  await fetchSignedManifest(`${UPDATE_SERVER}/updates/${dir}`, name);
+}
 
 function checkForUpdates() {
   if (!app.isPackaged) {
@@ -321,6 +330,7 @@ function checkForUpdates() {
   // Пока качаем или уже скачали, повторно не проверяем
   if (updateStatus.state === 'downloading' || updateStatus.state === 'ready') return;
   lastUpdateCheck = Date.now();
+  updateFeedVerified = false;
   autoUpdater.checkForUpdates().catch(() => {}); // ошибка придёт через событие 'error'
 }
 
@@ -360,7 +370,15 @@ function setupUpdater({ checkNow = true } = {}) {
   // приложение и на неподписанном просто зависает на заставке «Устанавливаем…»
   autoUpdater.autoInstallOnAppQuit = process.platform !== 'darwin';
   autoUpdater.on('checking-for-update', () => setUpdateStatus({ state: 'checking', message: '' }));
-  autoUpdater.on('update-available', (info) =>
+  autoUpdater.on('update-available', async (info) => {
+    try {
+      await verifyUpdateFeed();
+      updateFeedVerified = true;
+    } catch (err) {
+      updateFeedVerified = false;
+      setUpdateStatus({ state: 'error', message: err.message, checkedAt: Date.now() });
+      return;
+    }
     setUpdateStatus({
       state: 'available',
       version: info.version,
@@ -370,8 +388,8 @@ function setupUpdater({ checkNow = true } = {}) {
         : releaseNotes(info),
       percent: 0,
       checkedAt: Date.now(),
-    })
-  );
+    });
+  });
   autoUpdater.on('download-progress', (p) => setUpdateStatus({ state: 'downloading', percent: Math.round(p.percent) }));
   // Последняя версия — вместе с её описанием: в окне проверки видно, что нового
   autoUpdater.on('update-not-available', (info) => {
@@ -467,6 +485,10 @@ ipcMain.on('update:download', (_event, clientBase) => {
     return;
   }
   if (updateStatus.state !== 'available' && updateStatus.state !== 'error') return;
+  if (!updateFeedVerified) {
+    setUpdateStatus({ state: 'error', message: 'Подпись обновления не проверена — загрузка отменена', checkedAt: Date.now() });
+    return;
+  }
   setUpdateStatus({ state: 'downloading', percent: 0 });
   autoUpdater.downloadUpdate().catch(() => {}); // ошибка придёт через событие 'error'
 });
@@ -474,6 +496,12 @@ ipcMain.on('update:download', (_event, clientBase) => {
 // Обновление для macOS: скачать zip и распаковать рядом во временной папке
 async function downloadMacUpdate(clientBase = '') {
   if (updateStatus.state === 'downloading') return;
+  try {
+    await verifyUpdateFeed();
+  } catch (err) {
+    setUpdateStatus({ state: 'error', message: err.message, checkedAt: Date.now() });
+    return;
+  }
   setUpdateStatus({ state: 'downloading', percent: 0 });
   try {
     macUpdateApp = await macUpdate.prepare({
