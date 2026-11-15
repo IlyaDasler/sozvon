@@ -1,4 +1,5 @@
 // Работа с сервером: REST-запросы и WebSocket для событий в реальном времени
+import './server-url.js';
 
 const Api = {
   base: '',
@@ -13,6 +14,7 @@ const Api = {
   },
 
   async request(method, path, body, retry = method === 'GET') {
+    this.base = window.SozvonServerUrl.normalizeServerUrl(this.base);
     let res;
     try {
       res = await fetch(`${this.base}/api${path}`, {
@@ -61,6 +63,7 @@ const Api = {
 
   // Отправка файла как есть (например, картинки аватарки)
   async upload(method, path, blob) {
+    this.base = window.SozvonServerUrl.normalizeServerUrl(this.base);
     let res;
     try {
       res = await fetch(`${this.base}/api${path}`, {

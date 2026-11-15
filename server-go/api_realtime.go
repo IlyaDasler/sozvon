@@ -16,8 +16,7 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  4096,
 	WriteBufferSize: 4096,
-	// Приложение десктопное: Origin не несёт смысла, вход проверяется билетом/токеном
-	CheckOrigin: func(_ *http.Request) bool { return true },
+	CheckOrigin:     checkWebSocketOrigin,
 }
 
 // ---------- статусы ----------
@@ -322,11 +321,23 @@ func (a *server) broadcastRoomMessage(roomID int64, message *store.Message, ment
 		// Уведомление о треде — только его участникам и явно упомянутым.
 		// Остальные участники канала не должны получать событие и счётчик.
 		allowed := make(map[int64]bool, len(ids))
-		for _, id := range ids { allowed[id] = true }
+		for _, id := range ids {
+			allowed[id] = true
+		}
 		recipients := make(map[int64]bool, len(participants)+len(mentions)+1)
-		for _, id := range participants { if allowed[id] { recipients[id] = true } }
-		for _, id := range mentions { if allowed[id] { recipients[id] = true } }
-		if allowed[message.FromID] { recipients[message.FromID] = true }
+		for _, id := range participants {
+			if allowed[id] {
+				recipients[id] = true
+			}
+		}
+		for _, id := range mentions {
+			if allowed[id] {
+				recipients[id] = true
+			}
+		}
+		if allowed[message.FromID] {
+			recipients[message.FromID] = true
+		}
 		for id := range recipients {
 			a.hub.Send(id, event)
 		}

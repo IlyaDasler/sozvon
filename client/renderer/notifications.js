@@ -13,9 +13,9 @@ const STATUS = {
 };
 
 /** Как выглядит человек для других: online, idle, dnd или offline (версии сервера до 1.7.3 присылают только online) */
-const presenceOf = (user) => user?.status || (user?.online ? 'online' : 'offline');
+const presenceOf = (user) => window.SozvonPresence.forUser(user);
 const isAvailable = (user) => presenceOf(user) !== 'offline';
-const myStatus = () => state.me?.status || 'online';
+const myStatus = () => window.SozvonPresence.forSelf(state.me?.status);
 const doNotDisturb = () => myStatus() === 'dnd';
 
 // ---------- Свой статус ----------
@@ -58,7 +58,9 @@ async function setMyStatus(status) {
 // Другое устройство поменяло статус
 function onMyStatus(status) {
   if (!state.me) return;
-  state.me.status = status;
+  const safeStatus = window.SozvonPresence.forSelf(status);
+  if (safeStatus !== status) return;
+  state.me.status = safeStatus;
   renderMe();
 }
 

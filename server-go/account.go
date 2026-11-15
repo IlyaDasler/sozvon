@@ -76,6 +76,9 @@ func (a *server) accountRestore(w http.ResponseWriter, r *http.Request) {
 // accountPurgeLoop окончательно удаляет аккаунты, у которых истекли 30 дней.
 func (a *server) accountPurgeLoop() {
 	purge := func() {
+		if err := a.store.DeleteExpiredPhoneSignups(time.Now().Unix()); err != nil {
+			slog.Error("не удалось очистить заявки подтверждения телефона", "error", err)
+		}
 		cutoff := time.Now().Unix() - accountRestoreDays*86400
 		if n, err := a.store.PurgeDeletedUsers(cutoff); err != nil {
 			slog.Error("не удалось удалить истёкшие аккаунты", "error", err)

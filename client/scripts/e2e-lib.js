@@ -14,6 +14,7 @@ applyChromiumFlags(app);
 ipcMain.on('app:version', (event) => { event.returnValue = require('../package.json').version; });
 
 const SERVER = process.argv.find((a) => /^https?:\/\//.test(a)) || 'http://127.0.0.1:3000'; // localhost клиент считает старым адресом и сбрасывает вход
+require('./e2e-target-policy').assertE2EServerAllowed(SERVER, process.env.SOZVON_ALLOW_REMOTE_E2E === '1');
 
 // Виртуальные микрофон и камера. Захват экрана они тоже подменяют (картинка 16:9, 20 кадров/с) — для замеров
 // настоящей трансляции E2E_REAL_DEVICES=1 включает настоящие устройства

@@ -81,7 +81,7 @@ func PreviewableURL(value string) *url.URL {
 		return nil
 	}
 	u, err := url.Parse(value)
-	if err != nil || !previewable(u) || u.Host == "" {
+	if err != nil || !previewable(u) || u.Host == "" || u.User != nil {
 		return nil
 	}
 	return u

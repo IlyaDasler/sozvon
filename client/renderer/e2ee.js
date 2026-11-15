@@ -139,11 +139,24 @@ async function useIdentity(identity) {
   redecryptAll();
 }
 
-async function publishIdentity(identity, password = '') {
+async function publishIdentity(identity, password = '', totpCode = '') {
   // Замена существующего ключа на сервере требует пароль: одной сессии мало.
   const body = { publicKey: identity.publicKey };
   if (password) body.password = password;
-  state.me = await Api.put('/me/key', body);
+  if (totpCode) body.totpCode = totpCode;
+  try {
+    state.me = await Api.put('/me/key', body);
+  } catch (err) {
+    if (err.data?.needTotp && !totpCode && typeof askText === 'function') {
+      const code = await askText('Введите код из приложения-аутентификатора', '', {
+        hint: '6 цифр — приложение-аутентификатор',
+        maxlength: 6,
+      });
+      if (!code) throw err;
+      return publishIdentity(identity, password, code);
+    }
+    throw err;
+  }
 }
 
 /** При входе: свой ключ есть и совпадает — работаем; нет нигде — создаём; на сервере другой — спрашиваем */

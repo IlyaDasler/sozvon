@@ -75,7 +75,8 @@ func (a *server) phoneSignupStart(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusTooManyRequests, "Слишком много попыток, подождите минуту").write(w)
 		return
 	}
-	if a.telegramBotUsername == "" {
+	botUsername := a.getTelegramBotUsername()
+	if botUsername == "" {
 		fail(http.StatusServiceUnavailable, "Регистрация по телефону не настроена на сервере").write(w)
 		return
 	}
@@ -160,8 +161,8 @@ func (a *server) phoneSignupStart(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"id": id, "secret": poll,
-		"deepLink":    "https://t.me/" + a.telegramBotUsername + "?start=" + url.QueryEscape(token),
-		"botUsername": a.telegramBotUsername,
+		"deepLink":    "https://t.me/" + botUsername + "?start=" + url.QueryEscape(token),
+		"botUsername": botUsername,
 		"expiresAt":   signup.ExpiresAt,
 	})
 }
@@ -257,7 +258,12 @@ type phoneLinkStartRequest struct {
 
 func (a *server) phoneLinkStart(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
-	if a.telegramBotUsername == "" {
+	if !a.userLimit(user.ID, "phone-link", 3, time.Minute) {
+		fail(http.StatusTooManyRequests, "Слишком много попыток, подождите минуту").write(w)
+		return
+	}
+	botUsername := a.getTelegramBotUsername()
+	if botUsername == "" {
 		fail(http.StatusServiceUnavailable, "Привязка телефона не настроена на сервере").write(w)
 		return
 	}
@@ -283,7 +289,8 @@ func (a *server) phoneLinkStart(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
-	if user.PasswordHash == "" {
+	pendingPasswordHash := user.PasswordHash
+	if pendingPasswordHash == "" {
 		if !auth.ValidPassword(body.NewPassword) {
 			fail(http.StatusBadRequest, "Придумайте пароль для аккаунта: от 8 до 128 символов").write(w)
 			return
@@ -293,17 +300,14 @@ func (a *server) phoneLinkStart(w http.ResponseWriter, r *http.Request) {
 			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 			return
 		}
-		if err := a.store.UpdatePassword(user.ID, hash); err != nil {
-			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
-			return
-		}
+		pendingPasswordHash = hash
 	}
 	now := time.Now().Unix()
 	id := randomURLToken(18)
 	token := randomURLToken(24)
 	poll := randomURLToken(24)
 	signup := store.PhoneSignup{
-		ID: id, PhoneHMAC: phoneHMAC, PasswordHash: user.PasswordHash,
+		ID: id, PhoneHMAC: phoneHMAC, PasswordHash: pendingPasswordHash,
 		Username: user.Username, DisplayName: user.DisplayName,
 		AvatarColor: user.AvatarColor, UserID: user.ID, Purpose: "link",
 		TokenHash: tokenHash(token), PollHash: tokenHash(poll),
@@ -315,8 +319,8 @@ func (a *server) phoneLinkStart(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"id": id, "secret": poll,
-		"deepLink":    "https://t.me/" + a.telegramBotUsername + "?start=" + url.QueryEscape(token),
-		"botUsername": a.telegramBotUsername,
+		"deepLink":    "https://t.me/" + botUsername + "?start=" + url.QueryEscape(token),
+		"botUsername": botUsername,
 		"expiresAt":   signup.ExpiresAt,
 	})
 }
@@ -344,7 +348,7 @@ func (a *server) phoneLinkStatus(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"status": "pending"})
 		return
 	}
-	if err := a.store.SetUserPhone(user.ID, signup.PhoneHMAC); err != nil {
+	if err := a.store.SetUserPhone(user.ID, signup.PhoneHMAC, signup.PasswordHash); err != nil {
 		fail(http.StatusConflict, "Не удалось привязать номер").write(w)
 		return
 	}

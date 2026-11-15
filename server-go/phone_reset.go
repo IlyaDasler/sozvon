@@ -20,7 +20,8 @@ func (a *server) passwordPhoneStart(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusTooManyRequests, "Слишком много попыток, подождите минуту").write(w)
 		return
 	}
-	if a.telegramBotUsername == "" {
+	botUsername := a.getTelegramBotUsername()
+	if botUsername == "" {
 		fail(http.StatusServiceUnavailable, "Сброс по телефону не настроен на сервере").write(w)
 		return
 	}
@@ -63,8 +64,8 @@ func (a *server) passwordPhoneStart(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"id": id, "secret": poll,
-		"deepLink":    "https://t.me/" + a.telegramBotUsername + "?start=" + url.QueryEscape(token),
-		"botUsername": a.telegramBotUsername,
+		"deepLink":    "https://t.me/" + botUsername + "?start=" + url.QueryEscape(token),
+		"botUsername": botUsername,
 		"expiresAt":   signup.ExpiresAt,
 	})
 }
@@ -95,6 +96,10 @@ func (a *server) passwordPhoneStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *server) passwordPhoneReset(w http.ResponseWriter, r *http.Request) {
+	if !a.authLimit(r, "password-phone-reset") {
+		fail(http.StatusTooManyRequests, "Слишком много попыток, подождите минуту").write(w)
+		return
+	}
 	var body struct {
 		ID       string `json:"id"`
 		Secret   string `json:"secret"`
