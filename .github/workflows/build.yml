@@ -106,6 +106,10 @@ jobs:
           $env:MAIL_TEST_FILE = Join-Path $env:RUNNER_TEMP 'mail.log'
           $env:LINK_PREVIEW_ALLOW_PRIVATE = '1'
           $env:LIVEKIT_MIN_MEMBERS = '5'
+          $env:UPDATE_SIGNING_KEY = Join-Path $env:RUNNER_TEMP 'update-signing.key'
+          $env:UPDATE_PUBLIC_KEY_FILE = Join-Path $env:RUNNER_TEMP 'update-public.b64'
+          node -e "const {generateKeyPairSync}=require('crypto'); const fs=require('fs'); const {privateKey,publicKey}=generateKeyPairSync('ed25519'); fs.writeFileSync(process.env.UPDATE_SIGNING_KEY, privateKey.export({type:'pkcs8',format:'pem'})); fs.writeFileSync(process.env.UPDATE_PUBLIC_KEY_FILE, publicKey.export({type:'spki',format:'der'}).toString('base64'));"
+          $env:SOZVON_UPDATE_PUBLIC_KEY = (Get-Content $env:UPDATE_PUBLIC_KEY_FILE -Raw).Trim()
           $server = Start-Process -FilePath (Join-Path $env:RUNNER_TEMP 'sozvon-e2e.exe') `
             -WorkingDirectory (Join-Path $env:GITHUB_WORKSPACE 'server-go') `
             -RedirectStandardOutput (Join-Path $env:RUNNER_TEMP 'server.log') `
