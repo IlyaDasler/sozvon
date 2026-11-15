@@ -3937,12 +3937,12 @@ function enhancePasswordFields() {
     button.className = 'password-eye';
     button.setAttribute('aria-label', 'Показать пароль');
     button.title = 'Показать пароль';
-    button.innerHTML = eye;
+    button.innerHTML = eyeOff;
     button.onclick = () => {
       const show = input.type === 'password';
       input.type = show ? 'text' : 'password';
       input.classList.toggle('password-visible', show);
-      button.innerHTML = show ? eyeOff : eye;
+      button.innerHTML = show ? eye : eyeOff;
       button.setAttribute('aria-label', show ? 'Скрыть пароль' : 'Показать пароль');
       button.title = show ? 'Скрыть пароль' : 'Показать пароль';
     };
