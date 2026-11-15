@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 
 	"sozvon/server/internal/auth"
@@ -37,10 +36,8 @@ func (a *server) keyBackupRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	passwordOK := auth.VerifyPassword(body.Password, user.PasswordHash)
-	hasHistory := false
-	if hashes, err := a.store.PasswordHistory(user.ID, 5); err == nil {
-		hasHistory = len(hashes) > 0
-		if !passwordOK {
+	if !passwordOK {
+		if hashes, err := a.store.PasswordHistory(user.ID, 5); err == nil {
 			for _, hash := range hashes {
 				if auth.VerifyPassword(body.Password, hash) {
 					passwordOK = true
@@ -49,14 +46,9 @@ func (a *server) keyBackupRead(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if !passwordOK && hasHistory {
+	if !passwordOK {
 		fail(http.StatusUnauthorized, "Неверный пароль").write(w)
 		return
-	}
-	if !passwordOK {
-		// Переходный режим для копий, созданных до появления истории паролей:
-		// отдаём только шифртекст, открыть его можно лишь старым паролем.
-		log.Printf("key-backup: legacy read user=%d", user.ID)
 	}
 	backup, err := a.store.KeyBackup(user.ID)
 	if err == store.ErrNotFound {

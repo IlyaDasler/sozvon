@@ -784,6 +784,7 @@
               <span class="hint-text">Личные сообщения и переписка в комнатах шифруются на устройстве: сервер хранит только шифр. Если ключ не загрузился, восстановите его по паролю — ручные коды переноса не нужны.</span>
               <div class="row">
                 <button type="button" class="btn" id="e2ee-restore-btn">Восстановить ключ по паролю</button>
+                <button type="button" class="btn" id="e2ee-rebind-btn">Сохранить под текущим паролем</button>
               </div>
             </div>
             <div class="set-block" id="server-section">
@@ -1320,7 +1321,7 @@
   <!-- Ключ шифрования на этом устройстве: восстановление по паролю (e2ee.js) -->
   <div id="e2ee-setup" class="modal hidden">
     <div class="modal-card dialog-card e2ee-card">
-      <h3>Восстановите ключ шифрования</h3>
+      <h3 id="e2ee-setup-title">Восстановите ключ шифрования</h3>
       <p class="muted" id="e2ee-setup-text"></p>
       <label class="field">
         <span>Пароль аккаунта</span>
