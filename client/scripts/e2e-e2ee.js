@@ -33,6 +33,11 @@ runTest(async () => {
   if (JSON.stringify(onServer).includes('секрет-111')) throw new Error('Сервер хранит текст сообщения');
   if (last.enc?.v !== 2 || !last.enc?.ratchet?.ct || !last.text.startsWith('🔒')) throw new Error('Личное сообщение ушло не через v2');
   console.log('✔ личное сообщение: на сервере только шифр, собеседник читает');
+  await js(winB, `location.reload()`).catch(() => {});
+  await waitFor(winB, `e2eeReady() && state.me.publicKey === e2ee.identity.publicKey`, 'после reload');
+  await js(winB, `selectContact(${a.user.id})`);
+  await waitFor(winB, `${lastText('messages')} === 'секрет-111 жирно'`, 'v2-история после reload');
+  console.log('✔ v2-история пережила reload');
   // Код шифрования в карточке профиля: у Ани про Борю и у Бори про Аню — один и тот же
   const cardCode = async (win, userId) => {
     await js(win, `openProfileCard(${userId}, document.getElementById('peer-avatar')); true`);
