@@ -521,9 +521,13 @@ func (a *server) self(user *store.User) (selfJSON, error) {
 
 // ---------- вход и регистрация ----------
 
-func (a *server) openSession(user *store.User, userAgent string) (string, error) {
+func (a *server) openSession(user *store.User, userAgent string, clientVersion ...string) (string, error) {
 	sid := auth.RandomID(16)
-	if err := a.store.CreateSession(sid, user.ID, auth.DeviceName(userAgent)); err != nil {
+	version := ""
+	if len(clientVersion) > 0 {
+		version = clientVersion[0]
+	}
+	if err := a.store.CreateSession(sid, user.ID, auth.DeviceNameWithVersion(userAgent, version)); err != nil {
 		return "", err
 	}
 	return auth.SignToken(a.secret, user.ID, sid), nil
@@ -595,7 +599,7 @@ func (a *server) register(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
-	token, err := a.openSession(user, r.UserAgent())
+	token, err := a.openSession(user, r.UserAgent(), r.Header.Get("X-Client-Version"))
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
@@ -664,7 +668,7 @@ func (a *server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.loginSucceeded(login)
-	token, err := a.openSession(user, r.UserAgent())
+	token, err := a.openSession(user, r.UserAgent(), r.Header.Get("X-Client-Version"))
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
@@ -880,6 +884,11 @@ func (a *server) revokeOtherSessions(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(userKey).(*store.User)
 	current := ""
 	if session, ok := r.Context().Value(sessionKey).(*store.Session); ok && session != nil {
+		const minimumAge = 24 * time.Hour
+		if time.Since(time.UnixMilli(session.CreatedAt)) < minimumAge {
+			fail(http.StatusForbidden, "Нельзя завершить другие сессии в течение 24 часов после входа на этом устройстве. Попробуйте позже.").write(w)
+			return
+		}
 		current = session.ID
 	}
 	list, err := a.store.SessionsOf(user.ID)
