@@ -236,9 +236,17 @@ function socialCard({ label, title, thumb, embed, href, thumbClass = '', frameCl
   cover.type = 'button';
   cover.className = `yt-thumb${thumbClass ? ` ${thumbClass}` : ''}`;
   const safeThumb = window.sozvonUrlPolicy.safeHttpUrl(thumb);
-  if (safeThumb) cover.style.backgroundImage = `url("${safeThumb}")`;
   cover.title = 'Смотреть в чате';
   cover.innerHTML = '<span class="yt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>';
+  if (safeThumb) {
+    const image = document.createElement('img');
+    image.className = 'yt-thumb-image';
+    image.src = safeThumb;
+    image.alt = '';
+    image.loading = 'lazy';
+    image.referrerPolicy = 'no-referrer';
+    cover.prepend(image);
+  }
   const text = document.createElement('div');
   text.className = 'link-card-text';
   text.append(siteLine(label), titleLink(title || 'Смотреть видео', href));
