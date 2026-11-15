@@ -134,4 +134,34 @@ async function decrypt(state, envelope, aad) {
   return JSON.parse(dec.decode(plain));
 }
 
-module.exports = { createState, handshake, rotate, encrypt, decrypt };
+function exportState(state) {
+  return {
+    root: state.root,
+    role: state.role,
+    localPrivateJwk: state.local.privateJwk,
+    localPublic: state.local.publicKey,
+    remote: state.remote,
+    sendChain: state.sendChain,
+    recvChain: state.recvChain,
+    sendN: state.sendN,
+    recvN: state.recvN,
+    skipped: [...state.skipped.entries()],
+  };
+}
+
+async function importState(saved) {
+  const privateKey = await importPrivate(saved.localPrivateJwk);
+  return {
+    root: saved.root,
+    role: saved.role,
+    local: { privateKey, privateJwk: saved.localPrivateJwk, publicKey: saved.localPublic },
+    remote: saved.remote,
+    sendChain: saved.sendChain,
+    recvChain: saved.recvChain,
+    sendN: saved.sendN,
+    recvN: saved.recvN,
+    skipped: new Map(saved.skipped || []),
+  };
+}
+
+module.exports = { createState, handshake, rotate, encrypt, decrypt, exportState, importState };
