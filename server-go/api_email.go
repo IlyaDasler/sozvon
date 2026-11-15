@@ -137,7 +137,7 @@ func (a *server) registerByEmail(w http.ResponseWriter, r *http.Request, body re
 		fail(http.StatusConflict, "Этот логин уже занят").write(w)
 		return
 	}
-	token, err := a.openSession(user, r.UserAgent(), r.Header.Get("X-Client-Version"))
+	token, err := a.openSession(user, r)
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
@@ -258,7 +258,7 @@ func (a *server) passwordReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Письмо не заменяет вход: сразу пускаем человека с новым паролем
-	token, err := a.openSession(user, r.UserAgent(), r.Header.Get("X-Client-Version"))
+	token, err := a.openSession(user, r)
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return

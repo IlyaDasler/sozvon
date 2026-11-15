@@ -207,3 +207,16 @@ func RandomID(bytes int) string {
 	}
 	return hex.EncodeToString(raw)
 }
+
+// HashDeviceKey — хеш секрета устройства. В базе хранится только он.
+func HashDeviceKey(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])
+}
+
+func CheckDeviceKey(expectedHash, key string) bool {
+	if expectedHash == "" || key == "" {
+		return false
+	}
+	return hmac.Equal([]byte(expectedHash), []byte(HashDeviceKey(key)))
+}

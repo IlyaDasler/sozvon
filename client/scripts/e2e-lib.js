@@ -1,3 +1,4 @@
+process.env.SOZVON_E2E = '1';
 // Общее для сквозных тестов: окна приложения с виртуальными микрофоном и камерой, вход, ожидание условий
 const { app, BrowserWindow, desktopCapturer, ipcMain, session } = require('electron');
 const fs = require('node:fs');
@@ -7,6 +8,7 @@ const { fetchPreview } = require('../link-preview');
 const { registerNativeScreen } = require('../screen-native');
 const { registerVault } = require('../vault');
 const { registerIdentityVault } = require('../identity-vault');
+const { registerDeviceKey } = require('../device-key');
 const { registerClipboardImage } = require('../clipboard-image');
 const { applyChromiumFlags } = require('../chromium-flags');
 
@@ -29,7 +31,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function api(method, url, body, token) {
   const res = await fetch(`${SERVER}/api${url}`, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
+    headers: { 'Content-Type': 'application/json', 'X-Device-Key': 'e2e-device-key', ...(token && { Authorization: `Bearer ${token}` }) },
     body: body && JSON.stringify(body),
   });
   const data = await res.json();
@@ -91,6 +93,7 @@ ipcMain.handle('screen:sources', async () => {
 registerNativeScreen(() => screenChoice);
 registerVault();
 registerIdentityVault();
+registerDeviceKey();
 registerClipboardImage();
 ipcMain.handle('screen:choose', (_e, id) => {
   screenChoice = screenSources.get(id) || null;

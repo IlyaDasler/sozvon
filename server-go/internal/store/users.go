@@ -34,11 +34,12 @@ type User struct {
 }
 
 type Session struct {
-	ID        string
-	UserID    int64
-	Device    string
-	CreatedAt int64
-	LastSeen  int64
+	ID            string
+	UserID        int64
+	Device        string
+	DeviceKeyHash string
+	CreatedAt     int64
+	LastSeen      int64
 }
 
 type Identity struct {
@@ -153,10 +154,14 @@ func (s *Store) IdentitiesOf(userID int64) ([]Identity, error) {
 }
 
 func (s *Store) CreateSession(id string, userID int64, device string) error {
+	return s.CreateSessionWithKey(id, userID, device, "")
+}
+
+func (s *Store) CreateSessionWithKey(id string, userID int64, device, deviceKeyHash string) error {
 	now := time.Now().UnixMilli()
 	_, err := s.db.Exec(
-		`INSERT INTO sessions (id, user_id, device, created_at, last_seen) VALUES (?, ?, ?, ?, ?)`,
-		id, userID, device, now, now,
+		`INSERT INTO sessions (id, user_id, device, device_key_hash, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?)`,
+		id, userID, device, deviceKeyHash, now, now,
 	)
 	return err
 }
@@ -164,8 +169,8 @@ func (s *Store) CreateSession(id string, userID int64, device string) error {
 func (s *Store) SessionByID(id string) (*Session, error) {
 	var session Session
 	err := s.db.QueryRow(
-		`SELECT id, user_id, device, created_at, last_seen FROM sessions WHERE id = ?`, id,
-	).Scan(&session.ID, &session.UserID, &session.Device, &session.CreatedAt, &session.LastSeen)
+		`SELECT id, user_id, device, device_key_hash, created_at, last_seen FROM sessions WHERE id = ?`, id,
+	).Scan(&session.ID, &session.UserID, &session.Device, &session.DeviceKeyHash, &session.CreatedAt, &session.LastSeen)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -187,6 +192,11 @@ func (s *Store) SetSessionDevice(id, device string) error {
 	return err
 }
 
+func (s *Store) SetSessionDeviceKeyHash(id, hash string) error {
+	_, err := s.db.Exec(`UPDATE sessions SET device_key_hash = ? WHERE id = ?`, hash, id)
+	return err
+}
+
 func (s *Store) DeleteSession(id string) error {
 	_, err := s.db.Exec(`DELETE FROM sessions WHERE id = ?`, id)
 	return err
@@ -194,7 +204,7 @@ func (s *Store) DeleteSession(id string) error {
 
 func (s *Store) SessionsOf(userID int64) ([]Session, error) {
 	rows, err := s.db.Query(
-		`SELECT id, user_id, device, created_at, last_seen FROM sessions WHERE user_id = ? ORDER BY last_seen DESC`, userID,
+		`SELECT id, user_id, device, device_key_hash, created_at, last_seen FROM sessions WHERE user_id = ? ORDER BY last_seen DESC`, userID,
 	)
 	if err != nil {
 		return nil, err
@@ -203,7 +213,7 @@ func (s *Store) SessionsOf(userID int64) ([]Session, error) {
 	var list []Session
 	for rows.Next() {
 		var session Session
-		if err := rows.Scan(&session.ID, &session.UserID, &session.Device, &session.CreatedAt, &session.LastSeen); err != nil {
+		if err := rows.Scan(&session.ID, &session.UserID, &session.Device, &session.DeviceKeyHash, &session.CreatedAt, &session.LastSeen); err != nil {
 			return nil, err
 		}
 		list = append(list, session)

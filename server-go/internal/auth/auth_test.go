@@ -78,3 +78,19 @@ func TestUsernamesAllowUnicodeAndNormalizeForUniqueness(t *testing.T) {
 		t.Fatalf("normalize=%q", got)
 	}
 }
+
+func TestDeviceKeyHash(t *testing.T) {
+	hash := HashDeviceKey("device-secret")
+	if hash == "" || hash == "device-secret" {
+		t.Fatal("device key must be hashed")
+	}
+	if !CheckDeviceKey(hash, "device-secret") {
+		t.Fatal("correct device key rejected")
+	}
+	if CheckDeviceKey(hash, "other-secret") {
+		t.Fatal("wrong device key accepted")
+	}
+	if CheckDeviceKey("", "device-secret") {
+		t.Fatal("empty hash accepted")
+	}
+}

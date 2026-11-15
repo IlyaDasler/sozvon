@@ -52,6 +52,9 @@ contextBridge.exposeInMainWorld('desktop', {
     loadIdentity: () => ipcRenderer.sendSync('identity:load'),
 
   },
+  device: {
+    key: () => ipcRenderer.sendSync('device:key'),
+  },
   identity: {
     load: (context) => ipcRenderer.invoke('identity-vault:load', context),
     import: (context, identity) => ipcRenderer.invoke('identity-vault:import', context, identity),

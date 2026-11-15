@@ -38,6 +38,8 @@ function uploadFile(file, onProgress) {
   const done = new Promise((resolve, reject) => {
     xhr.open('POST', `${Api.base}/api/uploads?name=${encodeURIComponent(file.name || 'файл')}`);
     xhr.setRequestHeader('Authorization', `Bearer ${Api.token}`);
+  for (const [name, value] of Object.entries(Api.versionHeaders())) xhr.setRequestHeader(name, value);
+  for (const [name, value] of Object.entries(Api.deviceHeaders())) xhr.setRequestHeader(name, value);
     if (Api.clientVersion) xhr.setRequestHeader('X-Client-Version', Api.clientVersion);
     xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);

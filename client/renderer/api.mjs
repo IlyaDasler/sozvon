@@ -13,6 +13,15 @@ const Api = {
     return this.clientVersion ? { 'X-Client-Version': this.clientVersion } : {};
   },
 
+  deviceHeaders() {
+    try {
+      const key = window.desktop?.device?.key?.();
+      return key ? { 'X-Device-Key': key } : {};
+    } catch {
+      return {};
+    }
+  },
+
   async request(method, path, body, retry = method === 'GET') {
     this.base = window.SozvonServerUrl.normalizeServerUrl(this.base);
     let res;
@@ -21,6 +30,7 @@ const Api = {
         method,
         headers: {
           ...this.versionHeaders(),
+          ...this.deviceHeaders(),
           ...(body && { 'Content-Type': 'application/json' }),
           ...(this.token && { Authorization: `Bearer ${this.token}` })
         },
@@ -68,7 +78,7 @@ const Api = {
     try {
       res = await fetch(`${this.base}/api${path}`, {
         method,
-        headers: { 'Content-Type': blob.type, Authorization: `Bearer ${this.token}`, ...this.versionHeaders() },
+        headers: { 'Content-Type': blob.type, Authorization: `Bearer ${this.token}`, ...this.versionHeaders(), ...this.deviceHeaders() },
         body: blob
       });
     } catch (err) {
