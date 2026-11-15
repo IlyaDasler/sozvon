@@ -556,6 +556,7 @@ $('e2ee-password').onkeydown = (e) => {
   if (e.key === 'Enter') $('e2ee-unlock-btn').click();
 };
 $('e2ee-later-btn').onclick = () => $('e2ee-setup').classList.add('hidden');
+$('e2ee-restore-btn').onclick = () => openKeyUnlock();
 
 // ---------- Код проверки ключей в карточке профиля ----------
 
