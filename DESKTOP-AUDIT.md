@@ -79,7 +79,7 @@
 
 - Added desktop server regression coverage for its 16 KiB JSON body cap and security response headers (`nosniff`, frame denial, referrer policy, HSTS). Both focused tests pass. The mobile server checkout separately tests the same body cap and additionally rejects arbitrary foreign CORS origins while allowing the Capacitor origin.
 - Source review confirmed authenticated upload handling and a 25 MiB cap, HMAC-signed expiring file URLs, and WebSocket frame/rate limits. Current desktop and mobile clients request a one-time `/ws-ticket` and connect with that ticket.
-- The server retains a legacy WebSocket session-token query fallback for older clients. It is not used by the current clients; removing it requires coordinating the minimum supported client version and deployment compatibility. Request logs omit query strings, but upstream proxy logging configuration was not available for review.
+- Both current desktop and mobile clients use `/api/ws-ticket`. The Go WebSocket handlers now reject JWTs passed in the query and accept only short-lived, single-use tickets. Proxy access-log retention still needs deployment-side review.
 - These source-level checks do not substitute for a live VPS/proxy configuration review or dynamic penetration test.
 
 ## Link-preview SSRF follow-up — 2026-11-15
@@ -131,3 +131,16 @@
 
 - Replaced the hand-written callback query escaping in both Go backends with Go's `net/url.QueryEscape`. This ensures provider error text containing percent escapes, plus signs, Unicode, separators, and fragments round-trips as one query value.
 - Added a regression test for the callback error query in both server checkouts. `go test ./...` passes in each backend. This is a correctness hardening; it does not alter OAuth state/PKCE checks or deploy either server.
+
+## Main-process EPIPE dialog regression — 2026-11-15
+
+- `console.warn/error` could throw synchronously when Electron outlived the parent shell whose stdout/stderr pipe had closed. The previous stream error listener only covered asynchronous `error` events.
+- `main-log.js` now guards synchronous `Writable.write()` and async error events, swallowing only `EPIPE`; other failures continue through the existing main log/error path. A Node `Console.warn` regression test and full client suite pass (desktop 100/100).
+- Built a separate unsigned Windows x64 `win-unpacked` package and inspected `app.asar`; it includes `main.js` and `main-log.js` with the guard. Extracted files pass `node --check`.
+- After the user approved replacing the running 3.6.4 copy, built and installed unsigned NSIS 3.6.6. The installed `C:/Program Files/Sozvon/resources/app.asar` was extracted and verified to contain the stdout/stderr guards; both files pass `node --check`, and the focused EPIPE suite passes 3/3. The installer closed the previous process; the updated app was left closed to avoid opening/viewing the PC UI. A live GUI launch with an intentionally closed parent pipe remains unverified.
+
+## WebSocket token query removal — 2026-11-15
+
+- Electron and Android clients currently obtain one-time WebSocket tickets. Removed the Go backend's legacy `?token=<session JWT>` acceptance path in both server checkouts; `/ws` now requires a short-lived single-use ticket.
+- Regression test reproduced the old behavior with a valid session JWT, then verified 401 after the change; another test proves ticket redemption is one-use. Full `go test ./...` passes in both mobile and desktop server trees.
+- Not deployed to the VPS. Any older third-party client using query JWTs must update to the ticket flow; current Sozvon clients already do.
