@@ -1102,6 +1102,8 @@ kbd {
   animation: toast-in var(--slow) var(--ease-out);
 }
 
+#devices-revoke-error { margin: 10px 4px 0; }
+
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
 

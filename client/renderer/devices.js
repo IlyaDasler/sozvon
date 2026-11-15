@@ -62,20 +62,28 @@ async function renderDevices() {
   revokeOthersAllowedAt = Number.isFinite(createdAt) && createdAt > 0
     ? createdAt + REVOKE_OTHERS_MIN_AGE
     : 0;
+  $('devices-revoke-error').classList.add('hidden');
   $('device-list').replaceChildren(...list.map(deviceRow));
   $('devices-revoke').classList.toggle('hidden', !list.some((s) => !s.current));
 }
 
+function showRevokeOthersError(message) {
+  const error = $('devices-revoke-error');
+  error.textContent = message;
+  error.classList.remove('hidden');
+}
+
 $('devices-revoke').onclick = async () => {
   if (revokeOthersAllowedAt && Date.now() < revokeOthersAllowedAt) {
-    toast(REVOKE_OTHERS_TOO_EARLY);
+    showRevokeOthersError(REVOKE_OTHERS_TOO_EARLY);
     return;
   }
+  $('devices-revoke-error').classList.add('hidden');
   if (!(await ask('На всех остальных устройствах придётся войти заново.', { title: 'Выйти на других устройствах?', ok: 'Выйти', danger: true }))) return;
   try {
     rememberToken((await Api.post('/sessions/revoke-others')).token);
     renderDevices();
   } catch (err) {
-    toast(err.message);
+    showRevokeOthersError(err.message);
   }
 };

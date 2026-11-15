@@ -213,6 +213,7 @@ func (a *server) passwordReset(w http.ResponseWriter, r *http.Request) {
 		Email    string `json:"email"`
 		Code     string `json:"code"`
 		Password string `json:"password"`
+		TotpCode string `json:"totpCode"`
 	}
 	if err := decode(r, &body); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
@@ -236,8 +237,30 @@ func (a *server) passwordReset(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusServiceUnavailable, err.Error()).write(w)
 		return
 	}
+	var totpStepValue int64
+	if user.TotpSecret != "" {
+		if body.TotpCode == "" {
+			writeJSON(w, http.StatusForbidden, map[string]any{
+				"error":    "Введите код из приложения-аутентификатора",
+				"needTotp": true,
+			})
+			return
+		}
+		step, ok := totpStep(user.TotpSecret, body.TotpCode, time.Now())
+		if !ok {
+			fail(http.StatusUnauthorized, "Неверный код").write(w)
+			return
+		}
+		totpStepValue = step
+	}
 	if !a.verifyEmailCode(w, "reset", email, body.Code) {
 		return
+	}
+	if user.TotpSecret != "" {
+		if used, err := a.store.UseTotpStep(user.ID, totpStepValue); err == nil && !used {
+			fail(http.StatusUnauthorized, "Код уже использован").write(w)
+			return
+		}
 	}
 	hash, err := auth.HashPassword(body.Password)
 	if err != nil {

@@ -871,7 +871,7 @@ $('auth-form').onsubmit = async (e) => {
       return;
     }
     if (mode === 'reset') {
-      const result = await Api.post('/password/reset', { email, code, password });
+      const result = await Api.post('/password/reset', { email, code, password, totpCode: $('auth-totp').value.trim() });
       toast('Пароль изменён');
       // С двухфакторным входом письма мало: дальше обычный вход с кодом
       if (result.needLogin) setAuthMode('login');

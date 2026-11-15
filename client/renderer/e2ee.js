@@ -257,8 +257,9 @@ async function setupE2EE(password = '') {
         await publishIdentity(local);
       }
     } else if (!local && !server) {
-      if (state.me?.hasPassword) {
-        openKeyUnlock();
+      if (!state.me?.hasPassword) {
+        toast('Сначала задайте пароль аккаунта — без него ключ нельзя восстановить на новом устройстве.', 8000);
+        openSettings('account');
         return;
       }
       const generated = await window.desktop.identity.generate(identityContext());
