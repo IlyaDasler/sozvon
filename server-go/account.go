@@ -56,6 +56,10 @@ func (a *server) accountRestore(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"user": self})
 		return
 	}
+	if user.DeletedAt <= time.Now().Unix()-accountRestoreDays*86400 {
+		fail(http.StatusGone, "Срок восстановления аккаунта истёк").write(w)
+		return
+	}
 	if err := a.store.RestoreUser(user.ID); err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
