@@ -40,8 +40,11 @@ func TestPublicKeyChangeNeedsPassword(t *testing.T) {
 	}
 	first := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 	second := "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="
-	if code := put(first, ""); code != http.StatusOK {
-		t.Fatalf("first key: %d", code)
+	if code := put(first, ""); code != http.StatusUnauthorized {
+		t.Fatalf("first key without password: %d", code)
+	}
+	if code := put(first, "test-pass-1"); code != http.StatusOK {
+		t.Fatalf("first key with password: %d", code)
 	}
 	if code := put(second, ""); code != http.StatusUnauthorized {
 		t.Fatalf("change without password: %d", code)
