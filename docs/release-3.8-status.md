@@ -4,6 +4,7 @@
 
 - Версия: 3.7.1.
 - 3.8 не выпущен.
+- CI 3.8: e2e, multi-device, Windows и macOS — success.
 
 ## Готово
 
