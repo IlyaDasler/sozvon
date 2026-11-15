@@ -52,6 +52,7 @@ type server struct {
 	telegramToken       string
 	telegramAPIBase     string
 	telegramBotUsername string
+	telegramBotMu       sync.RWMutex
 }
 
 func authRandomID() string { return auth.RandomID(16) }
@@ -508,7 +509,7 @@ func (a *server) health(w http.ResponseWriter, _ *http.Request) {
 		"app":            "sozvon",
 		"inviteRequired": a.cfg.InviteCode != "",
 		"emailCodes":     a.cfg.EmailCodes(),
-		"phoneAuth":      a.telegramBotUsername != "",
+		"phoneAuth":      a.getTelegramBotUsername() != "",
 		"latestVersion":  a.cfg.LatestClientVersion,
 		"minClient":      a.cfg.MinClientVersion,
 		"updateUrl":      a.cfg.ClientUpdateURL,
@@ -711,6 +712,7 @@ func (a *server) me(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	w.Header().Set("Cache-Control", "private, no-store")
 	writeJSON(w, http.StatusOK, self)
 }
 

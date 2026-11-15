@@ -2,10 +2,11 @@
 // с приглашением, фото с выбором области, смена имени, звонок, голосовая комната, выход и вход обратно.
 // Нужен сервер с почтой в файл: MAIL_TEST_FILE=<файл> node src/index.js. Запуск: MAIL_TEST_FILE=<тот же файл> npx electron scripts/e2e-journey.js
 const fs = require('fs');
+const { randomBytes } = require('node:crypto');
 const { SERVER, register, js, waitFor, sleep, openClient, screenshot, runTest } = require('./e2e-lib');
 
 const stamp = Date.now().toString(36).slice(-5);
-const PASSWORD = 'journey-pass-1';
+const PASSWORD = randomBytes(24).toString('base64url');
 const click = (selector) => `(() => { document.querySelector(${JSON.stringify(selector)}).click(); return true; })()`;
 const fill = (id, value) => `(() => { const i = document.getElementById('${id}'); i.value = ${JSON.stringify(value)}; i.dispatchEvent(new InputEvent('input', { inputType: 'insertText', bubbles: true })); return true; })()`;
 const shown = (id) => `!document.getElementById('${id}').classList.contains('hidden')`;

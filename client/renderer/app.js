@@ -144,7 +144,7 @@ function fillAvatar(el, user, online) {
   el.style.backgroundImage = hasImage ? `url("${Api.base}${user.avatarUrl}")` : '';
   el.textContent = hasImage ? '' : (user.displayName || user.username || '?').trim().charAt(0).toUpperCase();
   if (online !== undefined) {
-    const status = typeof online === 'string' ? online : online ? 'online' : 'offline';
+    const status = window.SozvonPresence.forAvatar(online);
     const dot = document.createElement('span');
     dot.className = `status s-${status}${status === 'online' ? ' online' : ''}`;
     dot.title = STATUS[status]?.label || '';
@@ -547,9 +547,8 @@ async function oauthLogin(provider) {
 }
 
 function normalizeServer(url) {
-  url = url.trim().replace(/\/+$/, '');
-  if (url && !/^https?:\/\//i.test(url)) url = `http://${url}`;
-  return url;
+  try { return window.SozvonServerUrl.normalizeServerUrl(url); }
+  catch { return ''; }
 }
 
 // Свой сервер: ссылка на экране входа открывает поле адреса
@@ -3744,14 +3743,15 @@ async function completeWebOAuth() {
     $('auth-error').textContent = error;
     return false;
   }
-  Api.base = location.origin;
+  Api.base = normalizeServer(location.origin);
+  if (!Api.base) throw new Error('Для входа требуется защищённое HTTPS-соединение');
   try {
     const result = await Api.post('/oauth/web/exchange', { code });
     if (result.ticket) {
       showPendingSignup(result.ticket, 'yandex');
       return false;
     }
-    finishLogin(location.origin, result);
+    finishLogin(Api.base, result);
     return true;
   } catch (err) {
     $('auth-error').textContent = err.message || 'Не удалось войти через сервис';
@@ -3762,7 +3762,7 @@ async function completeWebOAuth() {
 async function bootAfterConnection() {
   // Провайдеры входа и политику версий спрашиваем заново: при запуске без сети
   // первый раз они не ответили, а после восстановления должны появиться
-  await loadProviders(isWeb ? location.origin : Api.base);
+  await loadProviders(isWeb ? normalizeServer(location.origin) : Api.base);
   Api.get('/version')
     .then((policy) => {
       if (policy?.updateRequired) showVersionGate(policy);
@@ -3786,7 +3786,17 @@ async function bootAfterConnection() {
     store.set('session', null);
     session = null;
   }
-  if (session && (!isWeb || session.base === location.origin)) {
+  if (session) {
+    const safeBase = normalizeServer(session.base);
+    if (!safeBase || (isWeb && safeBase !== normalizeServer(location.origin))) {
+      store.set('session', null);
+      session = null;
+    } else if (safeBase !== session.base) {
+      session = { ...session, base: safeBase };
+      store.set('session', session);
+    }
+  }
+  if (session && (!isWeb || session.base === normalizeServer(location.origin))) {
     Api.base = session.base;
     Api.token = session.token;
     $('server-current-main').textContent = session.base.replace(/^https?:\/\//, '');
@@ -3820,7 +3830,12 @@ async function boot() {
   Api.onUpdateRequired = showVersionGate;
   // Сервер по умолчанию общий; свой адрес вводят по ссылке «Свой сервер» (docs/self-hosting.md)
   const applyServer = () => {
-    const url = isWeb ? location.origin : normalizeServer($('server-url').value) || DEFAULT_SERVER;
+    const url = isWeb ? normalizeServer(location.origin) : normalizeServer($('server-url').value) || DEFAULT_SERVER;
+    if (!url) {
+      $('server-hint').classList.remove('hidden');
+      $('server-hint').textContent = 'Удалённый сервер должен иметь HTTPS. HTTP доступен только для localhost на компьютере.';
+      return '';
+    }
     const host = url.replace(/^https?:\/\//, '');
     $('server-hint').classList.toggle('hidden', isWeb || url === DEFAULT_SERVER);
     $('server-current').textContent = host;
@@ -3830,7 +3845,12 @@ async function boot() {
   $('server-url').value = (!isWeb && store.get('customServer', '')) || DEFAULT_SERVER;
   $('server-url').onchange = () => {
     if (isWeb) return;
-    const url = normalizeServer($('server-url').value) || DEFAULT_SERVER;
+    const url = normalizeServer($('server-url').value);
+    if (!url) {
+      $('server-hint').classList.remove('hidden');
+      $('server-hint').textContent = 'Удалённый сервер должен иметь HTTPS. HTTP доступен только для localhost на компьютере.';
+      return;
+    }
     store.set('customServer', url === DEFAULT_SERVER ? '' : url);
     $('server-url').value = url;
     applyServer();
@@ -3838,7 +3858,7 @@ async function boot() {
     loadProviders(url);
     checkServerNow();
   };
-  const startServer = applyServer();
+  const startServer = applyServer() || DEFAULT_SERVER;
   Api.base = startServer;
 
   // Пока не знаем, отвечает ли сервер, не показываем ни вход, ни приложение:

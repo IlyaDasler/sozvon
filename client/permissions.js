@@ -16,7 +16,7 @@ function isTrustedAppUrl(value) {
 }
 
 function isTrustedRequester(value) {
-  if (!value) return true;
+  if (!value) return false;
   if (isTrustedAppUrl(value)) return true;
   // setPermissionCheckHandler supplies an origin rather than a document URL.
   // Electron represents the packaged app's origin as `file://` (no path).
@@ -28,19 +28,22 @@ function isTrustedRequester(value) {
   }
 }
 
-function isTrustedRequest(webContents, requestingUrl) {
+function isTrustedRequest(webContents, requestingUrl, isMainFrame) {
+  if (isMainFrame !== true) return false;
   if (!isTrustedAppUrl(webContents?.getURL?.())) return false;
-  // Electron may omit requestingUrl for a permission check. The owning
-  // top-level document must still be one of our packaged renderer pages.
+  // Permission checks may expose only the origin. The owning top-level
+  // document must still be one of our packaged renderer pages.
   return isTrustedRequester(requestingUrl);
 }
 
 function applyPermissions(ses) {
   ses.setPermissionRequestHandler((webContents, permission, callback, details = {}) => {
-    callback(ALLOWED_PERMISSIONS.includes(permission) && isTrustedRequest(webContents, details.requestingUrl));
+    callback(ALLOWED_PERMISSIONS.includes(permission) &&
+      isTrustedRequest(webContents, details.requestingUrl, details.isMainFrame));
   });
-  ses.setPermissionCheckHandler((webContents, permission, requestingOrigin) =>
-    ALLOWED_PERMISSIONS.includes(permission) && isTrustedRequest(webContents, requestingOrigin));
+  ses.setPermissionCheckHandler((webContents, permission, requestingOrigin, details = {}) =>
+    ALLOWED_PERMISSIONS.includes(permission) &&
+    isTrustedRequest(webContents, details.requestingUrl || requestingOrigin, details.isMainFrame));
 }
 
 module.exports = { applyPermissions, isTrustedAppUrl, isTrustedRequester, isTrustedRequest };

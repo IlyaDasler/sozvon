@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -45,7 +46,14 @@ func TestTelegramContactShareConfirmsPhone(t *testing.T) {
 		t.Fatal(err)
 	}
 	from := &telegramUser{ID: 42}
-	chat := &telegramChat{ID: 42}
+	chat := &telegramChat{ID: 42, Type: "private"}
+	// A deep link opened in a group must not bind the signup to that chat.
+	app.handleTelegramUpdate(telegramUpdate{Message: &telegramMessage{
+		From: from, Chat: &telegramChat{ID: -10042, Type: "supergroup"}, Text: "/start " + token,
+	}})
+	if _, err := st.PhoneSignupForChat(-10042); !errors.Is(err, store.ErrPhoneSignupNotFound) {
+		t.Fatalf("групповой чат привязал заявку: %v", err)
+	}
 	app.handleTelegramUpdate(telegramUpdate{Message: &telegramMessage{
 		From: from, Chat: chat, Text: "/start " + token,
 	}})
@@ -59,6 +67,15 @@ func TestTelegramContactShareConfirmsPhone(t *testing.T) {
 	pending, _ := st.PhoneSignupByID(signup.ID)
 	if pending.VerifiedAt != 0 {
 		t.Fatal("чужой контакт подтвердил номер")
+	}
+	// Even the owner's own contact cannot confirm a pending request from a group.
+	app.handleTelegramUpdate(telegramUpdate{Message: &telegramMessage{
+		From: from, Chat: &telegramChat{ID: -10042, Type: "supergroup"},
+		Contact: &telegramContact{PhoneNumber: phone, UserID: 42},
+	}})
+	pending, _ = st.PhoneSignupByID(signup.ID)
+	if pending.VerifiedAt != 0 {
+		t.Fatal("групповой чат подтвердил номер")
 	}
 	// Свой контакт подтверждает.
 	app.handleTelegramUpdate(telegramUpdate{Message: &telegramMessage{

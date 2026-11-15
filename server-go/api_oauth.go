@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -394,7 +395,7 @@ func (a *server) oauthWebCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func urlQueryEscape(value string) string {
-	return strings.NewReplacer(" ", "%20", "&", "%26", "#", "%23", "?", "%3F").Replace(value)
+	return url.QueryEscape(value)
 }
 
 // oauthWebExchange — браузер меняет одноразовый код на вход или пропуск регистрации.

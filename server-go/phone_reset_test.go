@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"sozvon/server/internal/auth"
+	"sozvon/server/internal/config"
 	"sozvon/server/internal/store"
 )
 
@@ -28,7 +29,7 @@ func TestPasswordResetByTelegram(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := st.SetUserPhone(user.ID, app.phoneDigest("+79990002233")); err != nil {
+	if err := st.SetUserPhone(user.ID, app.phoneDigest("+79990002233"), ""); err != nil {
 		t.Fatal(err)
 	}
 	now := time.Now().Unix()
@@ -58,5 +59,20 @@ func TestPasswordResetByTelegram(t *testing.T) {
 	app.login(loginRec, httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewReader(loginBody)))
 	if loginRec.Code != http.StatusOK {
 		t.Fatalf("login new password: %d %s", loginRec.Code, loginRec.Body.String())
+	}
+}
+
+func TestPasswordPhoneResetRateLimitedByIP(t *testing.T) {
+	app := &server{cfg: config.Config{AuthRateLimit: 2}, limits: newLimiter()}
+	for i := 0; i < 3; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/api/password/phone/reset", bytes.NewBufferString("{}"))
+		rec := httptest.NewRecorder()
+		app.passwordPhoneReset(rec, req)
+		if i < 2 && rec.Code != http.StatusBadRequest {
+			t.Fatalf("attempt %d: want validation response, got %d %s", i+1, rec.Code, rec.Body.String())
+		}
+		if i == 2 && rec.Code != http.StatusTooManyRequests {
+			t.Fatalf("third attempt should be rate limited, got %d %s", rec.Code, rec.Body.String())
+		}
 	}
 }

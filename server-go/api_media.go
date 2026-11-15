@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -259,6 +260,11 @@ func (a *server) serveHubIcon(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filepath.Join(a.mediaDir(), hub.Icon+".webp"))
 }
 func (a *server) linkPreview(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	if !a.userLimit(user.ID, "link-preview", 30, time.Minute) {
+		fail(http.StatusTooManyRequests, "Слишком много запросов предпросмотра, подождите минуту").write(w)
+		return
+	}
 	value := r.URL.Query().Get("url")
 	if linkpreview.PreviewableURL(value) == nil {
 		fail(http.StatusBadRequest, "Неверная ссылка").write(w)

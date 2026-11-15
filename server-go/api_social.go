@@ -916,6 +916,7 @@ func (a *server) setMyKey(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		PublicKey string `json:"publicKey"`
 		Password  string `json:"password"`
+		TotpCode  string `json:"totpCode"`
 	}
 	if err := decode(r, &request); err != nil || len(request.PublicKey) < 16 || len(request.PublicKey) > 4096 {
 		fail(http.StatusBadRequest, "Неверный ключ").write(w)
@@ -932,6 +933,24 @@ func (a *server) setMyKey(w http.ResponseWriter, r *http.Request) {
 		if !auth.VerifyPassword(request.Password, user.PasswordHash) {
 			fail(http.StatusUnauthorized, "Неверный пароль").write(w)
 			return
+		}
+		if user.TotpSecret != "" {
+			if request.TotpCode == "" {
+				writeJSON(w, http.StatusForbidden, map[string]any{
+					"error":    "Введите код из приложения-аутентификатора",
+					"needTotp": true,
+				})
+				return
+			}
+			step, ok := totpStep(user.TotpSecret, request.TotpCode, time.Now())
+			if !ok {
+				fail(http.StatusUnauthorized, "Неверный код").write(w)
+				return
+			}
+			if used, err := a.store.UseTotpStep(user.ID, step); err == nil && !used {
+				fail(http.StatusUnauthorized, "Код уже использован").write(w)
+				return
+			}
 		}
 	}
 	keyChanged := user.PublicKey != "" && user.PublicKey != request.PublicKey

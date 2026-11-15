@@ -27,7 +27,8 @@ type telegramUser struct {
 }
 
 type telegramChat struct {
-	ID int64 `json:"id"`
+	ID   int64  `json:"id"`
+	Type string `json:"type"`
 }
 
 type telegramContact struct {
@@ -53,6 +54,18 @@ type telegramResponse struct {
 	OK          bool            `json:"ok"`
 	Description string          `json:"description"`
 	Result      json.RawMessage `json:"result"`
+}
+
+func (a *server) getTelegramBotUsername() string {
+	a.telegramBotMu.RLock()
+	defer a.telegramBotMu.RUnlock()
+	return a.telegramBotUsername
+}
+
+func (a *server) setTelegramBotUsername(username string) {
+	a.telegramBotMu.Lock()
+	a.telegramBotUsername = username
+	a.telegramBotMu.Unlock()
 }
 
 func (a *server) telegramHTTP(method string, payload any) (json.RawMessage, error) {
@@ -116,7 +129,7 @@ func (a *server) telegramBotLoop(ctx context.Context) {
 		slog.Error("Telegram: пустой ответ getMe")
 		return
 	}
-	a.telegramBotUsername = bot.Username
+	a.setTelegramBotUsername(bot.Username)
 	slog.Info("Telegram-бот готов", "username", bot.Username)
 
 	var offset int64
@@ -150,6 +163,11 @@ func (a *server) telegramBotLoop(ctx context.Context) {
 func (a *server) handleTelegramUpdate(update telegramUpdate) {
 	msg := update.Message
 	if msg == nil || msg.From == nil || msg.Chat == nil || msg.From.IsBot {
+		return
+	}
+	// Registration links and contact shares carry account-recovery capability.
+	// Accept them only in a private chat, where Telegram user id equals chat id.
+	if msg.Chat.Type != "private" || msg.Chat.ID != msg.From.ID {
 		return
 	}
 	chatID := msg.Chat.ID

@@ -206,8 +206,15 @@ func (s *Store) DeletePhoneSignup(id, pollHash string) error {
 	return nil
 }
 
-func (s *Store) SetUserPhone(userID int64, phoneHMAC string) error {
-	_, err := s.db.Exec(`UPDATE users SET phone_hmac = ? WHERE id = ?`, phoneHMAC, userID)
+func (s *Store) SetUserPhone(userID int64, phoneHMAC, pendingPasswordHash string) error {
+	_, err := s.db.Exec(`
+		UPDATE users
+		SET phone_hmac = ?,
+		    password_hash = CASE
+		      WHEN COALESCE(password_hash, '') = '' AND ? <> '' THEN ?
+		      ELSE password_hash
+		    END
+		WHERE id = ?`, phoneHMAC, pendingPasswordHash, pendingPasswordHash, userID)
 	return err
 }
 

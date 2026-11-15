@@ -12,6 +12,7 @@ if (IS_BETA) {
   } catch {}
 }
 const fs = require('node:fs');
+const { guardConsoleStream, writeMainError } = require('./main-log');
 const { autoUpdater } = require('electron-updater');
 const { listenForOAuth, openOAuthWindow, opensInApp } = require('./oauth-loopback');
 const { parseBinding } = require('./renderer/ptt-keys');
@@ -25,12 +26,19 @@ const { registerVault } = require('./vault');
 const { registerClipboardImage } = require('./clipboard-image');
 const { applyChromiumFlags } = require('./chromium-flags');
 const { UPDATE_EVERY_MS, checkDue } = require('./update-schedule');
+const { isTrustedLocalNavigation } = require('./navigation-policy');
+const { canOpenPip, canSendPipFrame, canClosePip } = require('./pip-bridge-policy');
 
 applyChromiumFlags(app);
 
 // --profile=имя запускает отдельный экземпляр со своим входом (удобно, чтобы проверить звонок на одном ПК)
 const profileArg = process.argv.find((a) => a.startsWith('--profile='));
 if (profileArg) app.setPath('userData', path.join(app.getPath('appData'), `Sozvon-${profileArg.split('=')[1]}`));
+
+const mainLogFile = path.join(app.getPath('userData'), 'main.log');
+const reportMainError = (context, error) => writeMainError(mainLogFile, context, error);
+guardConsoleStream(process.stdout, (error) => reportMainError('stdout stream', error));
+guardConsoleStream(process.stderr, (error) => reportMainError('stderr stream', error));
 
 // Одна копия приложения: повторный запуск ярлыка показывает уже открытое (или спрятанное в трей) окно.
 // В бете блокировку не берём: бета и установленная версия — разные копии и должны работать вместе
@@ -90,7 +98,8 @@ function createWindow({ show = true } = {}) {
 
   if (saved?.maximized) show ? win.maximize() : win.once('show', () => win.maximize());
   trackWindow(win, stateFile);
-  win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  const rendererEntry = path.join(__dirname, 'renderer', 'index.html');
+  win.loadFile(rendererEntry);
   // Кнопки окна — системные (Windows Snap Layouts), но их цвета берём из темы
   ipcMain.on('window:titlebar', (_event, colors) => {
     if (process.platform !== 'win32' || !win || win.isDestroyed()) return;
@@ -144,7 +153,7 @@ function createWindow({ show = true } = {}) {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (event, url) => {
-    if (url.startsWith('file:')) return;
+    if (isTrustedLocalNavigation(url, rendererEntry)) return;
     event.preventDefault();
     openOutside(url);
   });
@@ -769,7 +778,8 @@ function pipTitle(text) {
   if (pipWin && !pipWin.isDestroyed()) pipWin.webContents.send('pip:title', String(text || ''));
 }
 
-ipcMain.handle('pip:open', (_event, opts = {}) => {
+ipcMain.handle('pip:open', (event, opts = {}) => {
+  if (!canOpenPip(event.sender, win?.webContents)) throw new Error('Недостаточно прав для открытия PiP');
   if (pipWin && !pipWin.isDestroyed()) {
     pipTitle(opts.title);
     pipWin.focus();
@@ -777,6 +787,7 @@ ipcMain.handle('pip:open', (_event, opts = {}) => {
   }
   const bounds = opts.bounds && typeof opts.bounds === 'object' ? opts.bounds : {};
   const main = win && !win.isDestroyed() ? win.getBounds() : { x: 100, y: 100, width: 1100, height: 720 };
+  const pipEntry = path.join(__dirname, 'renderer', 'pip.html');
   pipWin = new BrowserWindow({
     width: Math.max(240, Math.round(bounds.width || 480)),
     height: Math.max(150, Math.round(bounds.height || 300)),
@@ -790,7 +801,7 @@ ipcMain.handle('pip:open', (_event, opts = {}) => {
     backgroundColor: '#07080c',
     title: 'Созвон — трансляция',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload-pip.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -798,7 +809,12 @@ ipcMain.handle('pip:open', (_event, opts = {}) => {
       autoplayPolicy: 'no-user-gesture-required',
     },
   });
-  pipWin.loadFile(path.join(__dirname, 'renderer', 'pip.html'));
+  pipWin.loadFile(pipEntry);
+  pipWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  pipWin.webContents.on('will-navigate', (event, url) => {
+    if (isTrustedLocalNavigation(url, pipEntry)) return;
+    event.preventDefault();
+  });
   pipWin.webContents.once('did-finish-load', () => pipTitle(opts.title));
   // Место и размер окна запоминаем: в следующий раз откроется там же
   pipWin.on('close', () => {
@@ -810,10 +826,13 @@ ipcMain.handle('pip:open', (_event, opts = {}) => {
   return { ok: true };
 });
 
-ipcMain.on('pip:frame', (_event, dataUrl) => {
+ipcMain.on('pip:frame', (event, dataUrl) => {
+  if (!canSendPipFrame(event.sender, win?.webContents)) return;
   if (pipWin && !pipWin.isDestroyed() && typeof dataUrl === 'string') pipWin.webContents.send('pip:frame', dataUrl);
 });
-ipcMain.on('pip:close', () => closePip());
+ipcMain.on('pip:close', (event) => {
+  if (canClosePip(event.sender, win?.webContents, pipWin?.webContents)) closePip();
+});
 
 const EDIT_COMMANDS = new Set(['cut', 'copy', 'paste', 'selectAll']);
 ipcMain.on('edit', (event, command) => {
