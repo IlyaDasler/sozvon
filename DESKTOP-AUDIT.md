@@ -156,3 +156,7 @@
 
 - Read-only requests to the configured production host returned `/api/health` 200 but no `Access-Control-Allow-Origin` for `https://localhost`; `OPTIONS /api/me` returned 405. Public OAuth providers list Yandex, and `/api/oauth/yandex/web` responds 302 with a state cookie. No callback/account login was attempted.
 - The mobile backend already had an exact localhost-origin CORS wrapper; ported the same middleware to this `main` checkout and added regression coverage for health, preflight (including chi's otherwise-405 path), and foreign-origin denial. `go test ./...` passes. Production remains unchanged; the server update still needs an authorized deployment and live recheck.
+
+## Account recovery deadline — 2026-11-15
+
+- The UI timer enforced the 30-day restore window, but the server endpoint did not. Added the same cutoff check used by permanent purge; expired recovery requests return 410 and leave the profile soft-deleted. `go test ./...` passes. The matching mobile server fix is in the separate `mobile-stage3` checkout; neither backend was deployed.
