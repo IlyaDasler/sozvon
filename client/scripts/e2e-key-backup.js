@@ -28,7 +28,7 @@ runTest(async () => {
   const token = await js(a, `Api.token`);
   const base = await js(a, `Api.base`);
   const backup = await fetch(`${base}/api/key-backup/read`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Device-Key': 'e2e-device-key', 'X-Client-Version': '3.7.0', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ password: 'test-pass-1' }),
   });
   if (!backup.ok) throw new Error(`key-backup ${backup.status}`);
