@@ -114,8 +114,18 @@ async function generateFor(context) {
   return result;
 }
 
+const openEvents = new Map();
+
 async function open(context, sealed) {
   await loadFile();
+  // Ограничиваем массовое открытие ключей переписок: XSS не должен
+  // выгружать всю историю одним циклом IPC-вызовов.
+  const key = `${context?.server || ''}|${Number(context?.userId) || 0}`;
+  const now = Date.now();
+  const recent = (openEvents.get(key) || []).filter((at) => now - at < 60_000);
+  if (recent.length >= 240) throw new Error('Слишком много открытий ключей, подождите минуту');
+  recent.push(now);
+  openEvents.set(key, recent);
   return rpc('open', { context, sealed });
 }
 
