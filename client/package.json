@@ -99,6 +99,7 @@
     "uiohook-napi": "^1.5.5"
   },
   "overrides": {
-    "minimatch": "11.0.6"
+    "minimatch": "11.0.6",
+    "js-yaml": "4.3.2"
   }
 }

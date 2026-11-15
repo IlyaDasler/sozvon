@@ -28,7 +28,7 @@ const { registerDeviceKey } = require('./device-key');
 const { registerClipboardImage } = require('./clipboard-image');
 const { applyChromiumFlags } = require('./chromium-flags');
 const { UPDATE_EVERY_MS, checkDue } = require('./update-schedule');
-const { fetchSignedManifest } = require('./update-signature');
+const { fetchSignedManifest, manifestHashForFile, fileSha512Base64 } = require('./update-signature');
 const { isTrustedLocalNavigation } = require('./navigation-policy');
 const { canOpenPip, canSendPipFrame, canClosePip } = require('./pip-bridge-policy');
 
@@ -312,6 +312,7 @@ function setUpdateStatus(status) {
 
 let updateRetried = false;
 let updateFeedVerified = false;
+let updateDownloadVerified = false;
 
 async function verifyUpdateFeed() {
   if (process.env.SOZVON_UPDATE_TEST === '1') return;
@@ -331,6 +332,7 @@ function checkForUpdates() {
   if (updateStatus.state === 'downloading' || updateStatus.state === 'ready') return;
   lastUpdateCheck = Date.now();
   updateFeedVerified = false;
+  updateDownloadVerified = false;
   autoUpdater.checkForUpdates().catch(() => {}); // ошибка придёт через событие 'error'
 }
 
@@ -396,10 +398,24 @@ function setupUpdater({ checkNow = true } = {}) {
     updateRetried = false;
     setUpdateStatus({ state: 'latest', notes: releaseNotes(info), checkedAt: Date.now() });
   });
-  autoUpdater.on('update-downloaded', (info) => {
+  autoUpdater.on('update-downloaded', async (info) => {
     // macOS ставит обновление только через mac-update; Squirrel здесь не источник ready.
     if (process.platform === 'darwin') return;
-    setUpdateStatus({ state: 'ready', version: info.version });
+    try {
+      if (process.env.SOZVON_UPDATE_TEST !== '1') {
+        const text = await fetchSignedManifest(`${UPDATE_SERVER}/updates/win`, 'latest.yml');
+        const name = path.basename(String(info.downloadedFile || ''));
+        const expected = manifestHashForFile(text, name);
+        if (!name || !expected || fileSha512Base64(info.downloadedFile) !== expected) {
+          throw new Error('Скачанный установщик не совпал с подписанным манифестом');
+        }
+      }
+      updateDownloadVerified = true;
+      setUpdateStatus({ state: 'ready', version: info.version });
+    } catch (err) {
+      updateDownloadVerified = false;
+      setUpdateStatus({ state: 'error', message: err.message, checkedAt: Date.now() });
+    }
   });
   autoUpdater.on('error', (err) => {
     const message = String(err?.message || '');
@@ -521,6 +537,10 @@ async function downloadMacUpdate(clientBase = '') {
 // Окно приложения закрываем заранее: установщик не должен застать Созвон ещё запущенным
 ipcMain.on('update:install', () => {
   if (updateStatus.state !== 'ready') return;
+  if (!manualUpdate() && !updateDownloadVerified) {
+    setUpdateStatus({ state: 'error', message: 'Установщик не проверен по подписи', checkedAt: Date.now() });
+    return;
+  }
   // macOS: подменяем бандл скриптом после выхода и запускаем заново
   if (manualUpdate()) {
     const bundle = macUpdate.bundlePath();
