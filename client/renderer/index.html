@@ -168,7 +168,7 @@
         </label>
         <label class="field" id="password-field">
           <span id="password-label">Пароль</span>
-          <input id="auth-password" type="password" autocomplete="current-password" required>
+          <input id="auth-password" type="password" autocomplete="current-password" required autocapitalize="off" autocorrect="off" spellcheck="false">
         </label>
         <label class="field hidden" id="totp-field">
           <span>Код из приложения-аутентификатора</span>
@@ -704,7 +704,7 @@
                 </div>
                 <label class="field hidden" id="link-phone-password-field">
                   <span>Пароль для аккаунта</span>
-                  <input id="link-phone-password" type="password" autocomplete="new-password" placeholder="От 8 символов">
+                  <input id="link-phone-password" type="password" autocomplete="new-password" placeholder="От 8 символов" autocapitalize="off" autocorrect="off" spellcheck="false">
                   <span class="hint-text">Защитит вход и ключ шифрования на новых устройствах.</span>
                 </label>
                 <div id="link-phone-pending" class="hidden">
@@ -730,7 +730,7 @@
                 </div>
                 <label class="field hidden" id="link-password-field">
                   <span>Пароль для аккаунта</span>
-                  <input id="link-new-password" type="password" autocomplete="new-password" placeholder="От 8 символов">
+                  <input id="link-new-password" type="password" autocomplete="new-password" placeholder="От 8 символов" autocapitalize="off" autocorrect="off" spellcheck="false">
                   <span class="hint-text">Нужен для входа по почте и для защиты ключа шифрования на новых устройствах.</span>
                 </label>
                 <span class="hint-text" id="link-hint"></span>
@@ -750,7 +750,7 @@
               </div>
               <div class="tf-step hidden" id="tf-password-step">
                 <div class="row code-row" id="tf-password-row">
-                  <input id="tf-password" type="password" autocomplete="current-password" placeholder="Текущий пароль">
+                  <input id="tf-password" type="password" autocomplete="current-password" placeholder="Текущий пароль" autocapitalize="off" autocorrect="off" spellcheck="false">
                 </div>
                 <button type="button" class="btn primary" id="tf-next">Продолжить</button>
               </div>
@@ -794,8 +794,8 @@
             <div class="set-block">
               <h4 id="password-title">Сменить пароль</h4>
               <div class="row">
-                <label class="field grow" id="cur-pass-field"><span>Текущий</span><input type="password" id="set-cur-pass" autocomplete="current-password"></label>
-                <label class="field grow"><span>Новый</span><input type="password" id="set-new-pass" autocomplete="new-password"></label>
+                <label class="field grow" id="cur-pass-field"><span>Текущий</span><input type="password" id="set-cur-pass" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                <label class="field grow"><span>Новый</span><input type="password" id="set-new-pass" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
               </div>
             </div>
             <div class="set-block" id="delete-account-section">
@@ -1321,8 +1321,9 @@
       <p class="muted" id="e2ee-setup-text"></p>
       <label class="field">
         <span>Пароль аккаунта</span>
-        <input id="e2ee-password" type="password" autocomplete="current-password" placeholder="Пароль от Созвона">
+        <input id="e2ee-password" type="password" autocomplete="current-password" placeholder="Пароль от Созвона" autocapitalize="off" autocorrect="off" spellcheck="false">
       </label>
+      <p class="hint-text">Пароль чувствителен к регистру.</p>
       <p class="error" id="e2ee-setup-error"></p>
       <div class="row">
         <div class="spacer"></div>
@@ -1490,7 +1491,7 @@
       <h3 id="delete-account-title">Удалить аккаунт?</h3>
       <p>Аккаунт, сообщения, каналы, комнаты, контакты и файлы станут недоступны. В течение <b>30 дней</b> профиль можно восстановить, если войти с логином и паролем или через Яндекс и нажать «Восстановить».</p>
       <p>Если не восстановить аккаунт за 30 дней, он и вся история будут удалены <b>навсегда</b>. Это действие нельзя отменить.</p>
-      <label class="field" id="delete-password-field"><span>Пароль</span><input id="delete-password" type="password" autocomplete="current-password" placeholder="Текущий пароль"></label>
+      <label class="field" id="delete-password-field"><span>Пароль</span><input id="delete-password" type="password" autocomplete="current-password" placeholder="Текущий пароль" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
       <label class="field"><span>Введите слово УДАЛИТЬ</span><input id="delete-confirm" autocomplete="off" spellcheck="false" placeholder="УДАЛИТЬ"></label>
       <p class="error" id="delete-account-error"></p>
       <div class="row">
