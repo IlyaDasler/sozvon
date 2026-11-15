@@ -106,6 +106,13 @@ async function importFor(context, identity) {
   return result;
 }
 
+async function ensurePrekey(context) {
+  await loadFile();
+  const result = await rpc('prekey', { context });
+  await persist();
+  return result;
+}
+
 async function generateFor(context) {
   await loadFile();
   const result = await rpc('generate', { context });
@@ -144,6 +151,7 @@ function registerIdentityVault() {
   ipcMain.handle('identity-vault:load', (_event, context) => load(context || {}));
   ipcMain.handle('identity-vault:import', (_event, context, identity) => importFor(context || {}, identity));
   ipcMain.handle('identity-vault:generate', (_event, context) => generateFor(context || {}));
+  ipcMain.handle('identity-vault:prekey', (_event, context) => ensurePrekey(context || {}));
   ipcMain.handle('identity-vault:open', (_event, context, sealed) => open(context || {}, String(sealed)));
   ipcMain.handle('identity-vault:wrap-backup', (_event, context, password, userId) => wrapBackup(context || {}, String(password), Number(userId)));
   ipcMain.handle('identity-vault:unwrap-backup', (_event, context, backup, password, userId) => unwrapBackup(context || {}, backup, String(password), Number(userId)));

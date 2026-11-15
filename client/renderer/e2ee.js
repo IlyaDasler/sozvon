@@ -134,6 +134,17 @@ const publicKeyOf = (userId) => (userId === state.me.id ? e2ee.identity?.publicK
 
 // ---------- Свой ключ ----------
 
+async function publishPrekey() {
+  try {
+    const prekey = await window.desktop?.identity?.ensurePrekey(identityContext());
+    if (prekey?.publicKey && state.me?.publicKey) {
+      await Api.put('/me/prekey', { signedPrekeyPublic: prekey.publicKey });
+    }
+  } catch (err) {
+    console.warn('Prekey не опубликован:', err.message);
+  }
+}
+
 async function useIdentity(identity) {
   if (identity?.privateJwk) {
     await window.desktop?.identity?.import(identityContext(), identity);
@@ -143,6 +154,7 @@ async function useIdentity(identity) {
   e2ee.convs.clear();
   $('e2ee-setup').classList.add('hidden');
   redecryptAll();
+  void publishPrekey();
 }
 
 async function publishIdentity(identity, password = '', totpCode = '') {
@@ -152,6 +164,7 @@ async function publishIdentity(identity, password = '', totpCode = '') {
   if (totpCode) body.totpCode = totpCode;
   try {
     state.me = await Api.put('/me/key', body);
+    await publishPrekey();
   } catch (err) {
     if (err.data?.needTotp && !totpCode && typeof askText === 'function') {
       const code = await askText('Введите код из приложения-аутентификатора', '', {

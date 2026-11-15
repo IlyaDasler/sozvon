@@ -59,6 +59,7 @@ contextBridge.exposeInMainWorld('desktop', {
     load: (context) => ipcRenderer.invoke('identity-vault:load', context),
     import: (context, identity) => ipcRenderer.invoke('identity-vault:import', context, identity),
     generate: (context) => ipcRenderer.invoke('identity-vault:generate', context),
+    ensurePrekey: (context) => ipcRenderer.invoke('identity-vault:prekey', context),
     open: (context, sealed) => ipcRenderer.invoke('identity-vault:open', context, String(sealed)),
     wrapBackup: (context, password, userId) => ipcRenderer.invoke('identity-vault:wrap-backup', context, String(password), Number(userId)),
     unwrapBackup: (context, backup, password, userId) => ipcRenderer.invoke('identity-vault:unwrap-backup', context, backup, String(password), Number(userId)),

@@ -102,6 +102,19 @@ async function unwrapBackup(context, backup, password, userId) {
   return store(context, JSON.parse(dec.decode(plain)));
 }
 
+async function ensurePrekey(context) {
+  const value = ensure(context);
+  if (!value.identity.signedPrekey) {
+    const pair = await subtle.generateKey(ECDH, true, ['deriveBits']);
+    value.identity.signedPrekey = {
+      publicKey: b64(await subtle.exportKey('raw', pair.publicKey)),
+      privateJwk: await subtle.exportKey('jwk', pair.privateKey),
+      createdAt: Math.floor(Date.now() / 1000),
+    };
+  }
+  return { publicKey: value.identity.signedPrekey.publicKey, createdAt: value.identity.signedPrekey.createdAt };
+}
+
 async function generate(context) {
   const pair = await subtle.generateKey(ECDH, true, ['deriveBits']);
   const identity = {
@@ -128,6 +141,7 @@ parentPort.on('message', async (event) => {
     } else if (op === 'load') result = vaults.get(contextKey(message.context))?.identity.publicKey ? { publicKey: vaults.get(contextKey(message.context)).identity.publicKey } : null;
     else if (op === 'import') result = await store(message.context, message.identity);
     else if (op === 'generate') result = await generate(message.context);
+    else if (op === 'prekey') result = await ensurePrekey(message.context);
     else if (op === 'open') result = await open(message.context, message.sealed);
     else if (op === 'wrap') result = await wrapBackup(message.context, message.password, message.userId);
     else if (op === 'unwrap') result = await unwrapBackup(message.context, message.backup, message.password, message.userId);
