@@ -530,7 +530,7 @@ async function decryptMessages(list, conv) {
       }
     }),
     ...v2.map(async (m) => {
-      const cacheKey = `e2ee:v2plain:${serverScope()}:${m.id}`;
+      const cacheKey = `e2ee:v2plain:${serverScope()}:${m.id}:${m.editedAt || 0}`;
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
