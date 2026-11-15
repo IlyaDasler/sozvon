@@ -23,6 +23,7 @@ const { restoreBounds, readState, trackWindow } = require('./window-state');
 const { runStartup, CHECK_TIMEOUT_MS, canAutoInstall } = require('./startup');
 const { registerNativeScreen } = require('./screen-native');
 const { registerVault } = require('./vault');
+const { registerIdentityVault } = require('./identity-vault');
 const { registerClipboardImage } = require('./clipboard-image');
 const { applyChromiumFlags } = require('./chromium-flags');
 const { UPDATE_EVERY_MS, checkDue } = require('./update-schedule');

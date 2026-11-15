@@ -2,10 +2,16 @@
 
 ## Current desktop + mobile security recheck — 2026-11-15
 
-- Rechecked the separate desktop `main` and mobile `mobile-stage3` source trees. Desktop client tests pass 97/97; mobile client tests pass 123/123. Full `npm audit --json` reports zero advisories across both dependency trees.
-- Both Go backend trees pass `go test ./...`, `go vet ./...`, and `govulncheck ./...` with no known vulnerabilities.
+- Rechecked the separate desktop `main` and mobile `mobile-stage3` source trees on 2026-11-15. Desktop client tests pass 100/100; mobile client tests pass 126/126. `npm audit --audit-level=info` reports zero advisories across both dependency trees.
+- Both Go backend trees pass `go test ./...`, `go vet ./...`, and `govulncheck ./...` with no known vulnerabilities (latest rerun: 2026-11-15).
 - The desktop Electron review covers sandbox/context isolation, navigation and popup restrictions, sender-scoped PiP IPC, permission origin and main-frame validation, HTTPS-only remote API transport, protected session persistence, and CSP. The Android review covers the Capacitor-only native bridge, disabled cleartext/backup, debug-only WebView inspection, and PKCE-bound OAuth code exchange.
 - This source and automated-test review does not include a dynamic penetration test, live VPS/proxy/TLS inspection, real provider login, Firebase cloud configuration, or an unlocked-device permission test. See the mobile `SECURITY-AUDIT.md` for the combined findings and remaining risks.
+
+## Phone identity status contract — 2026-11-15
+
+- Desktop previously treated an omitted `/me.hasPhone` field as `false` and offered a new phone link. It now distinguishes confirmed linked, confirmed unlinked, and status unavailable; the unavailable state disables linking until the server reports a reliable value. Legacy phone fields remain recognized without displaying the number.
+- Re-run against the current 3.6.7 checkout: `e2e-phone-link` and `e2e-layout` pass against a disposable local Go API; desktop `npm test` 100/100, `npm audit` 0 advisories, `go test ./...`, and `go vet ./...` pass. The local API used a new temporary SQLite directory and has been stopped. No production profile or Telegram contact was used.
+- The installed desktop binary remains 3.6.6 while the current source package is 3.6.7; multiple 3.6.6 processes were already running, so no process was stopped or upgraded in this audit. Unsigned installer 3.6.7 was built locally and `app.asar` was checked for the new status contract; the installer was not run or published.
 
 Ветка: `main` в отдельном worktree `sozvon-desktop`. Ветка `mobile-stage3` не изменялась.
 
@@ -137,7 +143,8 @@
 - `console.warn/error` could throw synchronously when Electron outlived the parent shell whose stdout/stderr pipe had closed. The previous stream error listener only covered asynchronous `error` events.
 - `main-log.js` now guards synchronous `Writable.write()` and async error events, swallowing only `EPIPE`; other failures continue through the existing main log/error path. A Node `Console.warn` regression test and full client suite pass (desktop 100/100).
 - Built a separate unsigned Windows x64 `win-unpacked` package and inspected `app.asar`; it includes `main.js` and `main-log.js` with the guard. Extracted files pass `node --check`.
-- After the user approved replacing the running 3.6.4 copy, built and installed unsigned NSIS 3.6.6. The installed `C:/Program Files/Sozvon/resources/app.asar` was extracted and verified to contain the stdout/stderr guards; both files pass `node --check`, and the focused EPIPE suite passes 3/3. The installer closed the previous process; the updated app was left closed to avoid opening/viewing the PC UI. A live GUI launch with an intentionally closed parent pipe remains unverified.
+- After the user approved replacing the running 3.6.4 copy, built and installed unsigned NSIS 3.6.6. The installed `C:/Program Files/Sozvon/resources/app.asar` was extracted and verified to contain the stdout/stderr guards; both files pass `node --check`, and the focused EPIPE suite passes 3/3. Current recheck confirms the installed package version is still 3.6.6 and has the guard; four Sozvon processes are running and were left untouched.
+- Dynamic pipe probe: a Node child loaded `main-log.js` extracted read-only from the installed 3.6.6 `app.asar`, emitted repeated `console.log`/`console.warn` writes, and its parent deliberately closed stdout and stderr in separate runs. Both children completed 100 write cycles with exit code 0 and no uncaught EPIPE. This proves the installed guard against real OS pipe closure in Node; launching the full Electron GUI under a closed launcher pipe remains unverified, and no application window was opened.
 
 ## WebSocket token query removal — 2026-11-15
 

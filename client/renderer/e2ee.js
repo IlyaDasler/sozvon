@@ -68,25 +68,25 @@ function readScoped(name, fallback) {
   return moved;
 }
 
-const identityLooksValid = (value) => Boolean(value && value.publicKey && value.privateJwk);
-const identityStoreKey = () => scopedKey('identity');
+const identityLooksValid = (value) => Boolean(value && value.publicKey);
+const identityContext = () => ({ server: serverScope(), userId: Number(state.me?.id) || 0 });
 
-/** Сохранить ключ и в localStorage, и отдельным файлом профиля. */
-function saveLocalIdentity(identity) {
-  store.set(identityStoreKey(), identity);
+function clearLegacyIdentityKeys(id) {
   try {
-    window.desktop?.vault?.saveIdentity(JSON.stringify({ server: serverScope(), userId: state.me?.id, identity }));
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('e2ee:') && key.endsWith(`:identity:${id}`)) localStorage.removeItem(key);
+    }
   } catch {}
 }
 
-/** Найти ключ, даже если имя хранилища сменилось вместе с адресом сервера,
- *  или если кэш localStorage почистился при обновлении. */
-function readLocalIdentity() {
-  const direct = readScoped('identity', null);
-  if (identityLooksValid(direct)) {
-    saveLocalIdentity(direct);
-    return direct;
-  }
+/** Main-процесс — единственное место, где живёт privateJwk. Renderer получает
+ *  только publicKey; legacy-ключ из localStorage импортируется один раз и стирается. */
+async function readLocalIdentity() {
+  const context = identityContext();
+  try {
+    const loaded = await window.desktop?.identity?.load(context);
+    if (loaded?.publicKey) return { publicKey: loaded.publicKey };
+  } catch {}
   const id = state.me?.id;
   if (!id) return null;
   const suffix = `:identity:${id}`;
@@ -97,9 +97,10 @@ function readLocalIdentity() {
   for (const key of keys) {
     try {
       const value = store.get(key, null);
-      if (identityLooksValid(value)) {
-        saveLocalIdentity(value);
-        return value;
+      if (value?.publicKey && value?.privateJwk) {
+        await useIdentity(value);
+        clearLegacyIdentityKeys(id);
+        return { publicKey: value.publicKey };
       }
     } catch {}
   }
@@ -107,14 +108,16 @@ function readLocalIdentity() {
     const raw = window.desktop?.vault?.loadIdentity();
     if (raw) {
       const saved = JSON.parse(raw);
-      if (saved?.server === serverScope() && Number(saved?.userId) === Number(id) && identityLooksValid(saved.identity)) {
-        saveLocalIdentity(saved.identity);
-        return saved.identity;
+      if (saved?.server === serverScope() && Number(saved?.userId) === Number(id) && saved.identity?.privateJwk) {
+        await useIdentity(saved.identity);
+        clearLegacyIdentityKeys(id);
+        return { publicKey: saved.identity.publicKey };
       }
     }
   } catch {}
   return null;
 }
+
 const dmConvOf = (peerId) => `dm:${Math.min(state.me.id, peerId)}-${Math.max(state.me.id, peerId)}`;
 const roomConvOf = (roomId) => `room:${roomId}`;
 const e2eeReady = () => Boolean(e2ee.privateKey);
@@ -132,8 +135,11 @@ const publicKeyOf = (userId) => (userId === state.me.id ? e2ee.identity?.publicK
 // ---------- Свой ключ ----------
 
 async function useIdentity(identity) {
-  e2ee.identity = identity;
-  e2ee.privateKey = await E2EE.importPrivate(identity.privateJwk);
+  if (identity?.privateJwk) {
+    await window.desktop?.identity?.import(identityContext(), identity);
+  }
+  e2ee.identity = { publicKey: identity.publicKey };
+  e2ee.privateKey = true;
   e2ee.convs.clear();
   $('e2ee-setup').classList.add('hidden');
   redecryptAll();
@@ -171,10 +177,10 @@ async function fetchKeyBackup(password) {
 }
 
 /** Сохранить ключ профиля на сервере, запечатав его паролем. Сервер не может его открыть. */
-async function uploadKeyBackup(identity, password) {
-  if (!password || !identity || !state.me?.hasPassword) return false;
+async function uploadKeyBackup(password) {
+  if (!password || !state.me?.hasPassword) return false;
   try {
-    const blob = await E2EE.wrapKeyBackup(identity, password, state.me.id);
+    const blob = await window.desktop.identity.wrapBackup(identityContext(), password, state.me.id);
     await Api.put('/key-backup', { password, ...blob });
     return true;
   } catch (err) {
@@ -185,11 +191,11 @@ async function uploadKeyBackup(identity, password) {
 
 /** Смена пароля: старый blob больше не откроется, сразу перезапечатываем текущий ключ. */
 async function backupKeyWithPassword(password) {
-  return uploadKeyBackup(e2ee.identity, password);
+  return uploadKeyBackup(password);
 }
 
 async function setupE2EE(password = '') {
-  const local = readLocalIdentity();
+  const local = await readLocalIdentity();
   const server = state.me.publicKey;
   try {
     // Пароль есть только в момент входа. По нему открываем серверную копию
@@ -199,13 +205,12 @@ async function setupE2EE(password = '') {
       let fromBackup = null;
       if (backup?.ct) {
         try {
-          fromBackup = await E2EE.unwrapKeyBackup(backup, password, state.me.id);
+          fromBackup = await window.desktop.identity.unwrapBackup(identityContext(), backup, password, state.me.id);
         } catch {
           // Пароль сменили сбросом: старую копию открыть нечем.
         }
       }
       if (fromBackup?.publicKey && (!server || server === fromBackup.publicKey)) {
-        saveLocalIdentity(fromBackup);
         await useIdentity(fromBackup);
         if (!server) await publishIdentity(fromBackup);
         return;
@@ -215,15 +220,15 @@ async function setupE2EE(password = '') {
         if (!server) await publishIdentity(local);
         // Обновляем/создаём копию: при следующем входе новое устройство
         // подхватит ключ само.
-        await uploadKeyBackup(local, password);
+        await uploadKeyBackup(password);
         return;
       }
       if (!local && !server) {
-        const identity = await E2EE.generateIdentity();
-        saveLocalIdentity(identity);
+        const generated = await window.desktop.identity.generate(identityContext());
+        const identity = { publicKey: generated.publicKey };
         await useIdentity(identity);
         await publishIdentity(identity);
-        await uploadKeyBackup(identity, password);
+        await uploadKeyBackup(password);
         return;
       }
       // На этом устройстве есть ключ, а на сервере другой и копия не открылась.
@@ -232,7 +237,7 @@ async function setupE2EE(password = '') {
       if (local && password) {
         await useIdentity(local);
         await publishIdentity(local, password);
-        await uploadKeyBackup(local, password);
+        await uploadKeyBackup(password);
         return;
       }
     }
@@ -242,8 +247,8 @@ async function setupE2EE(password = '') {
       await useIdentity(local);
       if (!server) await publishIdentity(local);
     } else if (!local && !server) {
-      const identity = await E2EE.generateIdentity();
-      saveLocalIdentity(identity);
+      const generated = await window.desktop.identity.generate(identityContext());
+      const identity = { publicKey: generated.publicKey };
       await useIdentity(identity);
       await publishIdentity(identity);
     } else if (state.me?.hasPassword) {
@@ -277,7 +282,7 @@ function loadConv(conv) {
     const data = await Api.get(`/keys/${conv}`);
     for (const [epoch, sealed] of Object.entries(data.mine)) {
       try {
-        c.keys.set(Number(epoch), await E2EE.open(sealed, e2ee.privateKey));
+        c.keys.set(Number(epoch), await window.desktop.identity.open(identityContext(), sealed));
       } catch {}
     }
     Object.assign(c, { epoch: data.epoch, missing: data.missing, rotate: data.rotate });

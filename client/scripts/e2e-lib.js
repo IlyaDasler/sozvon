@@ -6,6 +6,7 @@ const { applyPermissions } = require('../permissions');
 const { fetchPreview } = require('../link-preview');
 const { registerNativeScreen } = require('../screen-native');
 const { registerVault } = require('../vault');
+const { registerIdentityVault } = require('../identity-vault');
 const { registerClipboardImage } = require('../clipboard-image');
 const { applyChromiumFlags } = require('../chromium-flags');
 
@@ -89,6 +90,7 @@ ipcMain.handle('screen:sources', async () => {
 });
 registerNativeScreen(() => screenChoice);
 registerVault();
+registerIdentityVault();
 registerClipboardImage();
 ipcMain.handle('screen:choose', (_e, id) => {
   screenChoice = screenSources.get(id) || null;

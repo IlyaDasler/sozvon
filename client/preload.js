@@ -50,8 +50,17 @@ contextBridge.exposeInMainWorld('desktop', {
     open: (sealed) => ipcRenderer.sendSync('vault:open', String(sealed)),
     saveIdentity: (text) => ipcRenderer.sendSync('identity:save', String(text)),
     loadIdentity: () => ipcRenderer.sendSync('identity:load'),
+
   },
-  // Превью ссылки: { url, title, description, image, siteName } или null
+  identity: {
+    load: (context) => ipcRenderer.invoke('identity:load', context),
+    import: (context, identity) => ipcRenderer.invoke('identity:import', context, identity),
+    generate: (context) => ipcRenderer.invoke('identity:generate', context),
+    open: (context, sealed) => ipcRenderer.invoke('identity:open', context, String(sealed)),
+    wrapBackup: (context, password, userId) => ipcRenderer.invoke('identity:wrap-backup', context, String(password), Number(userId)),
+    unwrapBackup: (context, backup, password, userId) => ipcRenderer.invoke('identity:unwrap-backup', context, backup, String(password), Number(userId)),
+    clear: () => ipcRenderer.invoke('identity:clear'),
+  },  // Превью ссылки: { url, title, description, image, siteName } или null
   preview: (url) => ipcRenderer.invoke('preview:fetch', String(url)),
   // Запущенные игры: список названий, определённых по процессам Windows
   games: { running: () => ipcRenderer.invoke('games:running') },
