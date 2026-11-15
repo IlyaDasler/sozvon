@@ -271,6 +271,7 @@ func (a *server) passwordReset(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	_ = a.store.AddSecurityEvent(user.ID, "password.reset", "", clientIP(r))
 	// Пароль сменили — остальные устройства выходят
 	list, _ := a.store.SessionsOf(user.ID)
 	for _, session := range list {

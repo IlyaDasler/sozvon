@@ -237,6 +237,7 @@ func (a *server) routes() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(a.requireAuth)
 			r.Get("/link-preview", a.linkPreview)
+			r.Get("/me/security-events", a.securityEvents)
 			r.Get("/users/{id}/key-history", a.keyHistory)
 			r.Get("/me", a.me)
 			r.Patch("/me/privacy", a.updatePrivacy)
