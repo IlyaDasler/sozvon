@@ -181,6 +181,9 @@ async function open(context, sealed) {
   return rpc('open', { context, sealed });
 }
 
+async function cacheSeal(context, text) { await loadFile(); return rpc('cache-seal', { context, text }); }
+async function cacheOpen(context, blob) { await loadFile(); return rpc('cache-open', { context, blob }); }
+
 async function wrapBackup(context, password, userId) {
   await loadFile();
   return rpc('wrap', { context, password, userId });
@@ -207,6 +210,8 @@ function registerIdentityVault() {
   ipcMain.handle('identity-vault:ratchet-encrypt', (_event, context, conv, payload, aad) => ratchetEncrypt(context || {}, String(conv), payload, String(aad)));
   ipcMain.handle('identity-vault:ratchet-decrypt', (_event, context, conv, envelope, aad) => ratchetDecrypt(context || {}, String(conv), envelope, String(aad)));
   ipcMain.handle('identity-vault:open', (_event, context, sealed) => open(context || {}, String(sealed)));
+  ipcMain.handle('identity-vault:cache-seal', (_event, context, text) => cacheSeal(context || {}, String(text)));
+  ipcMain.handle('identity-vault:cache-open', (_event, context, blob) => cacheOpen(context || {}, String(blob)));
   ipcMain.handle('identity-vault:wrap-backup', (_event, context, password, userId) => wrapBackup(context || {}, String(password), Number(userId)));
   ipcMain.handle('identity-vault:unwrap-backup', (_event, context, backup, password, userId) => unwrapBackup(context || {}, backup, String(password), Number(userId)));
   ipcMain.handle('identity-vault:clear', async () => {

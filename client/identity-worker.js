@@ -33,8 +33,29 @@ async function importIdentity(identity) {
 
 async function store(context, identity) {
   const opened = await importIdentity(identity);
+  if (!opened.identity.cacheKey) opened.identity.cacheKey = b64(random(32));
   vaults.set(contextKey(context), { ...opened, context: contextOf(context) });
   return { publicKey: opened.identity.publicKey };
+}
+
+async function cacheKey(context) {
+  const value = ensure(context);
+  if (!value.identity.cacheKey) value.identity.cacheKey = b64(random(32));
+  return subtle.importKey('raw', fromB64(value.identity.cacheKey), 'AES-GCM', false, ['encrypt', 'decrypt']);
+}
+
+async function cacheSeal(context, text) {
+  const key = await cacheKey(context);
+  const iv = random(12);
+  const ct = await subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(String(text)));
+  return `${b64(iv)}.${b64(ct)}`;
+}
+
+async function cacheOpen(context, blob) {
+  const key = await cacheKey(context);
+  const [iv, ct] = String(blob).split('.');
+  const plain = await subtle.decrypt({ name: 'AES-GCM', iv: fromB64(iv) }, key, fromB64(ct));
+  return dec.decode(plain);
 }
 
 async function sharedKey(privateKey, publicB64, info) {
@@ -227,6 +248,8 @@ parentPort.on('message', async (event) => {
     else if (op === 'open') result = await open(message.context, message.sealed);
     else if (op === 'wrap') result = await wrapBackup(message.context, message.password, message.userId);
     else if (op === 'unwrap') result = await unwrapBackup(message.context, message.backup, message.password, message.userId);
+    else if (op === 'cache-seal') result = await cacheSeal(message.context, message.text);
+    else if (op === 'cache-open') result = await cacheOpen(message.context, message.blob);
     else if (op === 'exportAll') result = await exportAll();
     else if (op === 'clear') { vaults.clear(); result = true; }
     else throw new Error('unknown identity op');

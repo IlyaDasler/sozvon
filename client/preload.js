@@ -71,6 +71,8 @@ contextBridge.exposeInMainWorld('desktop', {
     open: (context, sealed) => ipcRenderer.invoke('identity-vault:open', context, String(sealed)),
     wrapBackup: (context, password, userId) => ipcRenderer.invoke('identity-vault:wrap-backup', context, String(password), Number(userId)),
     unwrapBackup: (context, backup, password, userId) => ipcRenderer.invoke('identity-vault:unwrap-backup', context, backup, String(password), Number(userId)),
+    cacheSeal: (context, text) => ipcRenderer.invoke('identity-vault:cache-seal', context, String(text)),
+    cacheOpen: (context, blob) => ipcRenderer.invoke('identity-vault:cache-open', context, String(blob)),
     clear: () => ipcRenderer.invoke('identity-vault:clear'),
   },  // Превью ссылки: { url, title, description, image, siteName } или null
   preview: (url) => ipcRenderer.invoke('preview:fetch', String(url)),

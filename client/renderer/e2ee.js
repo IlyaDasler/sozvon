@@ -508,9 +508,25 @@ async function decryptMessages(list, conv) {
       }
     }),
     ...v2.map(async (m) => {
+      const cacheKey = `e2ee:v2plain:${serverScope()}:${m.id}`;
       try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            m.plain = await window.desktop.identity.cacheOpen(identityContext(), cached);
+            delete m.locked;
+            return;
+          } catch (err) {
+            localStorage.removeItem(cacheKey);
+          }
+        }
         m.plain = await decryptV2(m, conv);
         delete m.locked;
+        try {
+          const blob = await window.desktop.identity.cacheSeal(identityContext(), JSON.stringify(m.plain));
+          localStorage.setItem(cacheKey, blob);
+        } catch (err) {
+        }
       } catch (err) {
         m.locked = 'broken';
       }
