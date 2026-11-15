@@ -763,6 +763,7 @@ ipcMain.on('focus', showWindow);
 // Превью ссылки для зашифрованного сообщения — страницу грузит приложение отправителя, а не сервер
 ipcMain.handle('preview:fetch', (_event, url) => fetchPreview(String(url)));
 registerVault();
+registerIdentityVault();
 registerClipboardImage();
 
 // ---------- Плавающее окно трансляции ----------
