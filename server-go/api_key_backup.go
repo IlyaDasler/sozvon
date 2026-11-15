@@ -13,11 +13,15 @@ import (
 // запечатан на клиенте: сервер видит только ciphertext и не может его открыть.
 
 type keyBackupBody struct {
-	Password   string `json:"password"`
-	Salt       string `json:"salt"`
-	IV         string `json:"iv"`
-	CT         string `json:"ct"`
-	Iterations int    `json:"iterations"`
+	Password         string `json:"password"`
+	Salt             string `json:"salt"`
+	IV               string `json:"iv"`
+	CT               string `json:"ct"`
+	Iterations       int    `json:"iterations"`
+	LegacySalt       string `json:"legacySalt"`
+	LegacyIV         string `json:"legacyIv"`
+	LegacyCT         string `json:"legacyCt"`
+	LegacyIterations int    `json:"legacyIterations"`
 }
 
 func keyBackupClientTooOld(r *http.Request) bool {
@@ -25,10 +29,6 @@ func keyBackupClientTooOld(r *http.Request) bool {
 }
 
 func (a *server) keyBackupRead(w http.ResponseWriter, r *http.Request) {
-	if keyBackupClientTooOld(r) {
-		writeJSON(w, http.StatusUpgradeRequired, map[string]any{"error": "Обновите Созвон, чтобы восстановить ключ", "updateRequired": true})
-		return
-	}
 	if !a.authLimit(r, "key-backup") {
 		fail(http.StatusTooManyRequests, "Слишком много попыток, подождите минуту").write(w)
 		return
@@ -69,9 +69,18 @@ func (a *server) keyBackupRead(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	oldClient := keyBackupClientTooOld(r)
+	if oldClient && backup.LegacySalt == "" {
+		writeJSON(w, http.StatusUpgradeRequired, map[string]any{"error": "Обновите Созвон, чтобы восстановить ключ", "updateRequired": true})
+		return
+	}
+	salt, iv, ct, iterations := backup.Salt, backup.IV, backup.CT, backup.Iterations
+	if oldClient {
+		salt, iv, ct, iterations = backup.LegacySalt, backup.LegacyIV, backup.LegacyCT, backup.LegacyIterations
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"salt": backup.Salt, "iv": backup.IV, "ct": backup.CT,
-		"iterations": backup.Iterations, "updatedAt": backup.UpdatedAt,
+		"salt": salt, "iv": iv, "ct": ct, "iterations": iterations,
+		"updatedAt": backup.UpdatedAt,
 	})
 }
 
@@ -98,11 +107,13 @@ func (a *server) keyBackupPut(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusBadRequest, "Неверные данные резервной копии").write(w)
 		return
 	}
-	if len(body.Salt) > 256 || len(body.IV) > 256 || len(body.CT) > 16*1024 {
+	if len(body.Salt) > 256 || len(body.IV) > 256 || len(body.CT) > 16*1024 ||
+		len(body.LegacySalt) > 256 || len(body.LegacyIV) > 256 || len(body.LegacyCT) > 16*1024 {
 		fail(http.StatusBadRequest, "Резервная копия слишком большая").write(w)
 		return
 	}
-	if body.Iterations < 100_000 || body.Iterations > 2_000_000 {
+	if body.Iterations < 100_000 || body.Iterations > 2_000_000 ||
+		(body.LegacySalt != "" && (body.LegacyIterations < 100_000 || body.LegacyIterations > 2_000_000)) {
 		fail(http.StatusBadRequest, "Неверные параметры KDF").write(w)
 		return
 	}
@@ -112,6 +123,8 @@ func (a *server) keyBackupPut(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := a.store.PutKeyBackup(user.ID, store.KeyBackup{
 		Salt: body.Salt, IV: body.IV, CT: body.CT, Iterations: body.Iterations,
+		LegacySalt: body.LegacySalt, LegacyIV: body.LegacyIV, LegacyCT: body.LegacyCT,
+		LegacyIterations: body.LegacyIterations,
 	}); err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return

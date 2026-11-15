@@ -1,0 +1,4 @@
+ALTER TABLE key_backups ADD COLUMN legacy_salt TEXT NOT NULL DEFAULT '';
+ALTER TABLE key_backups ADD COLUMN legacy_iv TEXT NOT NULL DEFAULT '';
+ALTER TABLE key_backups ADD COLUMN legacy_ct TEXT NOT NULL DEFAULT '';
+ALTER TABLE key_backups ADD COLUMN legacy_iterations INTEGER NOT NULL DEFAULT 0;

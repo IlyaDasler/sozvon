@@ -8,19 +8,23 @@ import (
 // KeyBackup — ключ шифрования пользователя, запечатанный паролем на клиенте.
 // Сервер не знает пароль и не может открыть этот blob.
 type KeyBackup struct {
-	Salt       string
-	IV         string
-	CT         string
-	Iterations int
-	UpdatedAt  int64
+	Salt             string
+	IV               string
+	CT               string
+	Iterations       int
+	LegacySalt       string
+	LegacyIV         string
+	LegacyCT         string
+	LegacyIterations int
+	UpdatedAt        int64
 }
 
 func (s *Store) KeyBackup(userID int64) (*KeyBackup, error) {
 	var b KeyBackup
 	err := s.db.QueryRow(
-		`SELECT salt, iv, ct, iterations, updated_at FROM key_backups WHERE user_id = ?`,
+		`SELECT salt, iv, ct, iterations, legacy_salt, legacy_iv, legacy_ct, legacy_iterations, updated_at FROM key_backups WHERE user_id = ?`,
 		userID,
-	).Scan(&b.Salt, &b.IV, &b.CT, &b.Iterations, &b.UpdatedAt)
+	).Scan(&b.Salt, &b.IV, &b.CT, &b.Iterations, &b.LegacySalt, &b.LegacyIV, &b.LegacyCT, &b.LegacyIterations, &b.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -32,14 +36,18 @@ func (s *Store) KeyBackup(userID int64) (*KeyBackup, error) {
 
 func (s *Store) PutKeyBackup(userID int64, b KeyBackup) error {
 	_, err := s.db.Exec(`
-		INSERT INTO key_backups (user_id, salt, iv, ct, iterations, updated_at)
-		VALUES (?, ?, ?, ?, ?, unixepoch())
+		INSERT INTO key_backups (user_id, salt, iv, ct, iterations, legacy_salt, legacy_iv, legacy_ct, legacy_iterations, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
 		ON CONFLICT(user_id) DO UPDATE SET
 			salt = excluded.salt,
 			iv = excluded.iv,
 			ct = excluded.ct,
 			iterations = excluded.iterations,
+			legacy_salt = excluded.legacy_salt,
+			legacy_iv = excluded.legacy_iv,
+			legacy_ct = excluded.legacy_ct,
+			legacy_iterations = excluded.legacy_iterations,
 			updated_at = unixepoch()`,
-		userID, b.Salt, b.IV, b.CT, b.Iterations)
+		userID, b.Salt, b.IV, b.CT, b.Iterations, b.LegacySalt, b.LegacyIV, b.LegacyCT, b.LegacyIterations)
 	return err
 }

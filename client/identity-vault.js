@@ -153,8 +153,21 @@ async function wrapBackup(context, password, userId) {
     enc.encode(JSON.stringify(value.identity))
   );
   const marker = `argon2id$m=${ARGON2.memorySize},t=${ARGON2.iterations},p=${ARGON2.parallelism}$${b64(salt)}`;
+  // Совместимость со старыми клиентами: та же копия, но PBKDF2.
+  const legacySalt = random(16);
+  const legacyIV = random(12);
+  const legacyKey = await passwordKey(password, legacySalt);
+  const legacyCT = await subtle.encrypt(
+    { name: 'AES-GCM', iv: legacyIV, additionalData: AAD(userId) },
+    legacyKey,
+    enc.encode(JSON.stringify(value.identity))
+  );
   // iterations оставлен для старого сервера/валидатора; параметры Argon2 — в salt.
-  return { salt: marker, iv: b64(iv), ct: b64(ct), iterations: 100_000 };
+  return {
+    salt: marker, iv: b64(iv), ct: b64(ct), iterations: 100_000,
+    legacySalt: b64(legacySalt), legacyIv: b64(legacyIV), legacyCt: b64(legacyCT),
+    legacyIterations: ITERATIONS,
+  };
 }
 
 async function unwrapBackup(context, backup, password, userId) {
