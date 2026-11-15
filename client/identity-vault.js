@@ -1,9 +1,8 @@
 // PrivateJwk живёт в отдельном worker-процессе. Main хранит только
 // зашифрованный файл и проксирует узкие операции.
-const { app, ipcMain, safeStorage } = require('electron');
+const { app, ipcMain, safeStorage, utilityProcess } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
-const { Worker } = require('node:worker_threads');
 
 const filePath = () => path.join(app.getPath('userData'), 'e2ee-identity-v2.bin');
 let worker = null;
@@ -18,7 +17,7 @@ function workerPath() {
 
 function startWorker() {
   if (worker) return worker;
-  worker = new Worker(workerPath());
+  worker = utilityProcess.fork(workerPath(), [], { serviceName: 'Sozvon identity' });
   worker.on('message', (message) => {
     const item = pending.get(message.id);
     if (!item) return;

@@ -1,5 +1,5 @@
 // Единственный владелец privateJwk. Main и renderer получают только результаты операций.
-const { parentPort } = require('node:worker_threads');
+const parentPort = process.parentPort || require('node:worker_threads').parentPort;
 const { webcrypto } = require('node:crypto');
 const { argon2id } = require('hash-wasm');
 
@@ -115,7 +115,8 @@ async function exportAll() {
   return [...vaults.entries()].map(([key, value]) => ({ context: value.context, identity: value.identity }));
 }
 
-parentPort.on('message', async (message) => {
+parentPort.on('message', async (event) => {
+  const message = event?.data || event;
   const { id, op } = message;
   try {
     let result;
