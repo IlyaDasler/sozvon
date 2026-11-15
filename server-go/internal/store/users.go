@@ -324,6 +324,13 @@ func (s *Store) SetEmail(userID int64, email, shown string) error {
 }
 
 func (s *Store) UpdatePassword(userID int64, hash string) error {
+	var previous string
+	_ = s.db.QueryRow(`SELECT password_hash FROM users WHERE id = ?`, userID).Scan(&previous)
+	if previous != "" {
+		if err := s.rememberPasswordHash(userID, previous); err != nil {
+			return err
+		}
+	}
 	_, err := s.db.Exec(`UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID)
 	return err
 }
