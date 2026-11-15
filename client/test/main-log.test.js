@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
+const { Console } = require('node:console');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -9,9 +10,10 @@ const { guardConsoleStream, writeMainError } = require('../main-log');
 test('a closed GUI console pipe does not become an uncaught EPIPE', () => {
   const stream = new EventEmitter();
   stream.write = () => { throw Object.assign(new Error('closed'), { code: 'EPIPE' }); };
+  const logger = new Console({ stdout: stream, stderr: stream, ignoreErrors: false });
   const reported = [];
   assert.equal(guardConsoleStream(stream, (error) => reported.push(error)), true);
-  assert.equal(stream.write('safeStorage warning'), false);
+  assert.doesNotThrow(() => logger.warn('safeStorage warning'));
   assert.doesNotThrow(() => stream.emit('error', Object.assign(new Error('closed'), { code: 'EPIPE' })));
   assert.equal(reported.length, 0);
 });

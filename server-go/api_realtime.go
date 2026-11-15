@@ -8,7 +8,6 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"sozvon/server/internal/auth"
 	"sozvon/server/internal/realtime"
 	"sozvon/server/internal/store"
 )
@@ -86,29 +85,13 @@ func (a *server) redeemTicket(value string) (int64, string, bool) {
 }
 
 func (a *server) websocket(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	var userID int64
-	var sid string
-	if ticket := query.Get("ticket"); ticket != "" {
-		id, sessionID, ok := a.redeemTicket(ticket)
-		if !ok {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		userID, sid = id, sessionID
-	} else if token := query.Get("token"); token != "" {
-		payload, err := auth.ReadToken(a.secret, token)
-		if err != nil || payload.SID == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		session, err := a.store.SessionByID(payload.SID)
-		if err != nil || session.UserID != payload.UID {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		userID, sid = payload.UID, payload.SID
-	} else {
+	ticket := r.URL.Query().Get("ticket")
+	if ticket == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	userID, sid, ok := a.redeemTicket(ticket)
+	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
