@@ -3,6 +3,8 @@ package main
 import (
 	"net/http"
 
+	"sozvon/server/internal/version"
+
 	"sozvon/server/internal/auth"
 	"sozvon/server/internal/store"
 )
@@ -18,7 +20,15 @@ type keyBackupBody struct {
 	Iterations int    `json:"iterations"`
 }
 
+func keyBackupClientTooOld(r *http.Request) bool {
+	return version.Compare(r.Header.Get("X-Client-Version"), "3.6.8") < 0
+}
+
 func (a *server) keyBackupRead(w http.ResponseWriter, r *http.Request) {
+	if keyBackupClientTooOld(r) {
+		writeJSON(w, http.StatusUpgradeRequired, map[string]any{"error": "Обновите Созвон, чтобы восстановить ключ", "updateRequired": true})
+		return
+	}
 	if !a.authLimit(r, "key-backup") {
 		fail(http.StatusTooManyRequests, "Слишком много попыток, подождите минуту").write(w)
 		return
@@ -66,6 +76,10 @@ func (a *server) keyBackupRead(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *server) keyBackupPut(w http.ResponseWriter, r *http.Request) {
+	if keyBackupClientTooOld(r) {
+		writeJSON(w, http.StatusUpgradeRequired, map[string]any{"error": "Обновите Созвон, чтобы сохранить ключ", "updateRequired": true})
+		return
+	}
 	if !a.authLimit(r, "key-backup") {
 		fail(http.StatusTooManyRequests, "Слишком много попыток, подождите минуту").write(w)
 		return

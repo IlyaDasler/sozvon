@@ -957,6 +957,14 @@ func (a *server) setMyKey(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
+	if user.PublicKey != request.PublicKey {
+		_ = a.store.RecordKeyHistory(user.ID, request.PublicKey)
+		kind := "key.change"
+		if user.PublicKey == "" {
+			kind = "key.publish"
+		}
+		_ = a.store.AddSecurityEvent(user.ID, kind, "", clientIP(r))
+	}
 	if keyChanged {
 		// Смена ключа — событие уровня аккаунта: остальные сессии должны
 		// заново войти, чтобы подтвердить пароль и получить новый ключ.
