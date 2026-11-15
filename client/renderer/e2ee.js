@@ -427,6 +427,68 @@ async function encryptV2Outgoing(conv, peerId, plain) {
   return { v: 3, conv, from: state.me.id, fromDevice: myDevice, copies, self };
 }
 
+async function wrapWithRoot(rootB64, bytes) {
+  const key = await crypto.subtle.importKey('raw', Uint8Array.from(atob(rootB64), (c) => c.charCodeAt(0)), 'AES-GCM', false, ['encrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes);
+  return { iv: btoa(String.fromCharCode(...iv)), ct: btoa(String.fromCharCode(...new Uint8Array(ct))) };
+}
+
+async function unwrapWithRoot(rootB64, sealed) {
+  const key = await crypto.subtle.importKey('raw', Uint8Array.from(atob(rootB64), (c) => c.charCodeAt(0)), 'AES-GCM', false, ['decrypt']);
+  return new Uint8Array(await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: Uint8Array.from(atob(sealed.iv), (c) => c.charCodeAt(0)) },
+    key,
+    Uint8Array.from(atob(sealed.ct), (c) => c.charCodeAt(0))
+  ));
+}
+
+async function encryptV4Room(conv, room, plain) {
+  if (!window.desktop?.identity?.x3dhInitiator) return null;
+  const members = room?.members?.map((m) => Number(m.id)).filter(Boolean) || [];
+  if (!members.length) return null;
+  const serverKey = await window.desktop?.update?.publicKey?.();
+  if (!serverKey) return null;
+  const context = identityContext();
+  const myDevice = await deviceHash();
+  const msgKey = crypto.getRandomValues(new Uint8Array(32));
+  const msgAes = await crypto.subtle.importKey('raw', msgKey, 'AES-GCM', false, ['encrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const payloadCT = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(`${conv}|v4`) },
+    msgAes,
+    new TextEncoder().encode(JSON.stringify(plain))
+  );
+  const copies = [];
+  for (const memberId of members) {
+    let list;
+    try { list = await Api.get(`/users/${memberId}/prekeys`); } catch { return null; }
+    if (!list?.identityPublic || !Array.isArray(list.devices) || !list.devices.length) return null;
+    for (const device of list.devices) {
+      if (!device?.deviceHash || !device?.signature || !device?.signedPrekeyPublic) return null;
+      const bundle = { identityPublic: list.identityPublic, signedPrekeyPublic: device.signedPrekeyPublic, signature: device.signature, createdAt: device.createdAt };
+      if (!(await window.desktop.identity.x3dhVerify(bundle, serverKey))) return null;
+      const init = await window.desktop.identity.x3dhInitiator(context, bundle);
+      const sealedKey = await wrapWithRoot(init.root, msgKey);
+      copies.push({
+        userId: memberId,
+        deviceHash: device.deviceHash,
+        fromDevice: myDevice,
+        x3dh: { identityPublic: e2ee.identity.publicKey, ephemeralPublic: init.ephemeralPublic },
+        sealedKey,
+      });
+    }
+  }
+  return {
+    v: 4,
+    conv,
+    from: state.me.id,
+    fromDevice: myDevice,
+    payload: { iv: btoa(String.fromCharCode(...iv)), ct: btoa(String.fromCharCode(...new Uint8Array(payloadCT))) },
+    copies,
+  };
+}
+
 async function encryptOutgoing(conv, { text, files = [], preview = null, reply = null, forward = null, eventId = null }) {
   if (!e2eeReady()) throw new Error('Сначала настройте шифрование на этом устройстве');
   const plain = {
@@ -455,6 +517,20 @@ async function encryptOutgoing(conv, { text, files = [], preview = null, reply =
       }
     } catch (err) {
       console.warn('v2 не отправлен, используется v1:', err.message);
+    }
+  }
+  const roomMatch = /^room:(\d+)$/.exec(conv);
+  if (roomMatch) {
+    const room = roomById(Number(roomMatch[1]));
+    if (room) {
+      try {
+        const wire = await encryptV4Room(conv, room, plain);
+        if (wire) {
+          return { body: { text: LOCKED_TEXT, enc: wire, attachmentIds: files.map((f) => f.id), replyToId: reply?.id ?? null }, plain };
+        }
+      } catch (err) {
+        console.warn('v4 room не отправлен, используется v1:', err.message);
+      }
     }
   }
   const { epoch, key } = await sendKey(conv);
@@ -494,13 +570,28 @@ async function decryptV2(m, conv) {
     return E2EE.decryptMessage(key, m.enc.self, { conv, epoch: m.enc.self.epoch, from: m.fromId });
   }
   const myHash = await deviceHash();
-  const copy = (m.enc.copies || []).find((c) => c.deviceHash === myHash);
+  const copy = (m.enc.copies || []).find((c) => c.userId === state.me.id && c.deviceHash === myHash);
   if (!copy) throw new Error('Нет копии для этого устройства');
-  const root = await window.desktop.identity.x3dhRespond(identityContext(), copy.x3dh.identityPublic, copy.x3dh.ephemeralPublic);
+  const root = await window.desktop.identity.x3dhResponder(identityContext(), copy.x3dh.identityPublic, copy.x3dh.ephemeralPublic);
   const role = state.me.id < Number(m.fromId) ? 'a' : 'b';
   const stateKey = `${conv}|peer:${copy.fromDevice}`;
   await window.desktop.identity.ratchetEnsureStatic(identityContext(), stateKey, root.root, role, copy.x3dh.identityPublic);
   return window.desktop.identity.ratchetDecrypt(identityContext(), stateKey, copy.ratchet, `${conv}|v3|${myHash}`);
+}
+
+async function decryptV4Room(m, conv) {
+  const myHash = await deviceHash();
+  const copy = (m.enc.copies || []).find((c) => c.userId === state.me.id && c.deviceHash === myHash);
+  if (!copy) throw new Error('Нет копии для этого устройства');
+  const root = await window.desktop.identity.x3dhResponder(identityContext(), copy.x3dh.identityPublic, copy.x3dh.ephemeralPublic);
+  const msgKey = await unwrapWithRoot(root.root, copy.sealedKey);
+  const key = await crypto.subtle.importKey('raw', msgKey, 'AES-GCM', false, ['decrypt']);
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: Uint8Array.from(atob(m.enc.payload.iv), (c) => c.charCodeAt(0)), additionalData: new TextEncoder().encode(`${conv}|v4`) },
+    key,
+    Uint8Array.from(atob(m.enc.payload.ct), (c) => c.charCodeAt(0))
+  );
+  return JSON.parse(new TextDecoder().decode(plain));
 }
 
 async function decryptMessages(list, conv) {
@@ -511,7 +602,8 @@ async function decryptMessages(list, conv) {
     return;
   }
   const v2 = encrypted.filter((m) => m.enc.v === 2 || m.enc.v === 3);
-  const v1 = encrypted.filter((m) => m.enc.v !== 2);
+  const v4 = encrypted.filter((m) => m.enc.v === 4);
+  const v1 = encrypted.filter((m) => m.enc.v !== 2 && m.enc.v !== 4);
   let c = await loadConv(conv).catch(() => null);
   // Ключа нужной версии нет — возможно, им только что поделились: перечитываем один раз
   if (c && v1.some((m) => !c.keys.has(m.enc.epoch))) {
@@ -549,6 +641,29 @@ async function decryptMessages(list, conv) {
           localStorage.setItem(cacheKey, blob);
         } catch (err) {
         }
+      } catch (err) {
+        m.locked = 'broken';
+      }
+    }),
+    ...v4.map(async (m) => {
+      const cacheKey = `e2ee:v4plain:${serverScope()}:${m.id}:${m.editedAt || 0}`;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            m.plain = JSON.parse(await window.desktop.identity.cacheOpen(identityContext(), cached));
+            delete m.locked;
+            return;
+          } catch {
+            localStorage.removeItem(cacheKey);
+          }
+        }
+        m.plain = await decryptV4Room(m, conv);
+        delete m.locked;
+        try {
+          const blob = await window.desktop.identity.cacheSeal(identityContext(), JSON.stringify(m.plain));
+          localStorage.setItem(cacheKey, blob);
+        } catch {}
       } catch (err) {
         m.locked = 'broken';
       }

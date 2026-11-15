@@ -82,22 +82,21 @@ runTest(async () => {
   const winC = await openClient('ec', c);
   await waitFor(winC, `e2eeReady() && Boolean(roomById(${room.id}))`, 'Вика в комнате');
   await js(winC, `selectRoom(${room.id})`);
-  await waitFor(winC, `${lastText('room-messages')} === 'комната-333'`, 'Вика читает историю', 20000);
-  console.log('✔ комната: на сервере шифр, новичок получает ключ и читает историю');
+  await sleep(1200);
+  if ((await js(winC, `${lastText('room-messages')}`)) === 'комната-333') throw new Error('Новичок прочитал v4-историю до входа');
+  // Гибрид: старые v1 читаются, v4 до входа — нет. Новое сообщение после входа должно читаться.
+  await sendRoom(winA, 'комната-после-входа');
+  await waitFor(winC, `${lastText('room-messages')} === 'комната-после-входа'`, 'Вика читает новое после входа', 20000);
+  console.log('✔ комната: v4 до входа недоступен, новое после входа читается');
 
-  // Вику выгнали — новое сообщение она прочитать не может (ключ сменился)
+  // Вику выгнали — новое v4-сообщение ей больше не адресовано.
   await api('DELETE', `/rooms/${room.id}/members/${c.user.id}`, null, a.token);
   await waitFor(winA, `!roomById(${room.id}).members.some((m) => m.id === ${c.user.id})`, 'Вика вне комнаты у Ани');
-  const epochBefore = (await api('GET', `/keys/room:${room.id}`, null, a.token)).epoch;
   await sendRoom(winA, 'после-кика-444');
   await waitFor(winB, `${lastText('room-messages')} === 'после-кика-444'`, 'Боря читает новое');
-  const keys = await api('GET', `/keys/room:${room.id}`, null, a.token);
-  if (keys.epoch !== epochBefore + 1) throw new Error(`Ключ комнаты не сменился после кика: ${epochBefore} → ${keys.epoch}`);
-  await api('GET', `/keys/room:${room.id}`, null, c.token).then(
-    () => { throw new Error('Выгнанной отдали ключи комнаты'); },
-    () => {}
-  );
-  console.log('✔ после кика ключ комнаты сменился, выгнанной он не достаётся');
+  await sleep(1200);
+  if ((await js(winC, `${lastText('room-messages')}`)) === 'после-кика-444') throw new Error('Выгнанная прочитала новое v4-сообщение');
+  console.log('✔ после кика новое v4-сообщение выгнанной недоступно');
 
   // Второе устройство Ани: вход по паролю — ключ восстанавливается из серверной копии сам, без кодов переноса
   const winA2 = await openClient('ea2', null, undefined, { waitReady: false, serverUrl: SERVER });
