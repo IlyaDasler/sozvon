@@ -70,6 +70,14 @@ function readScoped(name, fallback) {
 
 const identityLooksValid = (value) => Boolean(value && value.publicKey);
 const identityContext = () => ({ server: serverScope(), userId: Number(state.me?.id) || 0 });
+let cachedDeviceHash = '';
+async function deviceHash() {
+  if (cachedDeviceHash) return cachedDeviceHash;
+  const key = String(window.desktop?.device?.key?.() || '');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));
+  cachedDeviceHash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return cachedDeviceHash;
+}
 
 function clearLegacyIdentityKeys(id) {
   try {
@@ -137,12 +145,6 @@ const publicKeyOf = (userId) => (userId === state.me.id ? e2ee.identity?.publicK
 async function publishPrekey() {
   try {
     if (!state.me?.publicKey) return;
-    // Второе устройство не должно перезаписывать prekey первого: иначе
-    // ломается ratchet-сессия и меняется владелец v2.
-    try {
-      const existing = await Api.get(`/users/${state.me.id}/prekey`);
-      if (existing?.identityPublic === state.me.publicKey && existing?.signature) return;
-    } catch {}
     const prekey = await window.desktop?.identity?.ensurePrekey(identityContext());
     if (prekey?.publicKey) {
       await Api.put('/me/prekey', { signedPrekeyPublic: prekey.publicKey });
@@ -389,32 +391,40 @@ async function encryptForUpload(file) {
 /** Тело запроса для отправки: конверт вместо текста; plain — то, что увидит отправитель сразу */
 async function encryptV2Outgoing(conv, peerId, plain) {
   if (!window.desktop?.identity?.x3dhInitiator) return null;
-  let bundle;
-  try { bundle = await Api.get(`/users/${peerId}/prekey`); } catch { return null; }
-  if (!bundle?.signature) return null;
-  const owner = await Api.get('/me/prekey/status').catch(() => null);
-  if (!owner?.owner) return null;
+  let list;
+  try { list = await Api.get(`/users/${peerId}/prekeys`); } catch { return null; }
+  if (!list?.identityPublic || !Array.isArray(list.devices) || !list.devices.length) { console.warn('v3: нет prekey-списка'); return null; }
   const serverKey = await window.desktop?.update?.publicKey?.();
-  if (!serverKey) return null;
-  const valid = await window.desktop.identity.x3dhVerify(bundle, serverKey);
-  if (!valid) return null;
+  if (!serverKey) { console.warn('v3: нет server key'); return null; }
   const context = identityContext();
-  const init = await window.desktop.identity.x3dhInitiator(context, bundle);
   const role = state.me.id < peerId ? 'a' : 'b';
-  await window.desktop.identity.ratchetEnsureStatic(context, conv, init.root, role, bundle.identityPublic);
-  await window.desktop.identity.ratchetRotate(context, conv);
-  const ratchet = await window.desktop.identity.ratchetEncrypt(context, conv, plain, `${conv}|v2`);
-  // Копия для собственной истории: старый конверт, чтобы отправитель прочитал её после перезапуска.
+  const myDevice = await deviceHash();
+  const copies = [];
+  for (const device of list.devices) {
+    if (!device?.deviceHash || !device?.signature || !device?.signedPrekeyPublic) continue;
+    const bundle = {
+      identityPublic: list.identityPublic,
+      signedPrekeyPublic: device.signedPrekeyPublic,
+      signature: device.signature,
+      createdAt: device.createdAt,
+    };
+    if (!(await window.desktop.identity.x3dhVerify(bundle, serverKey))) continue;
+    const init = await window.desktop.identity.x3dhInitiator(context, bundle);
+    const stateKey = `${conv}|to:${device.deviceHash}`;
+    await window.desktop.identity.ratchetEnsureStatic(context, stateKey, init.root, role, bundle.identityPublic);
+    await window.desktop.identity.ratchetRotate(context, stateKey);
+    const ratchet = await window.desktop.identity.ratchetEncrypt(context, stateKey, plain, `${conv}|v3|${device.deviceHash}`);
+    copies.push({
+      deviceHash: device.deviceHash,
+      fromDevice: myDevice,
+      x3dh: { identityPublic: e2ee.identity.publicKey, ephemeralPublic: init.ephemeralPublic },
+      ratchet,
+    });
+  }
+  if (!copies.length) { console.warn('v3: ни одна копия не собралась'); return null; }
   const { epoch, key } = await sendKey(conv);
   const self = await E2EE.encryptMessage(key, plain, { conv, epoch, from: state.me.id });
-  return {
-    v: 2,
-    conv,
-    from: state.me.id,
-    x3dh: { identityPublic: e2ee.identity.publicKey, ephemeralPublic: init.ephemeralPublic },
-    ratchet,
-    self,
-  };
+  return { v: 3, conv, from: state.me.id, fromDevice: myDevice, copies, self };
 }
 
 async function encryptOutgoing(conv, { text, files = [], preview = null, reply = null, forward = null, eventId = null }) {
@@ -483,12 +493,14 @@ async function decryptV2(m, conv) {
     if (!key) throw new Error('Нет ключа для собственной копии');
     return E2EE.decryptMessage(key, m.enc.self, { conv, epoch: m.enc.self.epoch, from: m.fromId });
   }
-  const x = m.enc.x3dh;
-  if (!x?.identityPublic || !x?.ephemeralPublic) throw new Error('v2 без X3DH');
-  const root = await window.desktop.identity.x3dhRespond(identityContext(), x.identityPublic, x.ephemeralPublic);
+  const myHash = await deviceHash();
+  const copy = (m.enc.copies || []).find((c) => c.deviceHash === myHash);
+  if (!copy) throw new Error('Нет копии для этого устройства');
+  const root = await window.desktop.identity.x3dhRespond(identityContext(), copy.x3dh.identityPublic, copy.x3dh.ephemeralPublic);
   const role = state.me.id < Number(m.fromId) ? 'a' : 'b';
-  await window.desktop.identity.ratchetEnsureStatic(identityContext(), conv, root.root, role, x.identityPublic);
-  return window.desktop.identity.ratchetDecrypt(identityContext(), conv, m.enc.ratchet, `${conv}|v2`);
+  const stateKey = `${conv}|peer:${copy.fromDevice}`;
+  await window.desktop.identity.ratchetEnsureStatic(identityContext(), stateKey, root.root, role, copy.x3dh.identityPublic);
+  return window.desktop.identity.ratchetDecrypt(identityContext(), stateKey, copy.ratchet, `${conv}|v3|${myHash}`);
 }
 
 async function decryptMessages(list, conv) {
@@ -498,7 +510,7 @@ async function decryptMessages(list, conv) {
     for (const m of encrypted) m.locked = 'no-identity';
     return;
   }
-  const v2 = encrypted.filter((m) => m.enc.v === 2);
+  const v2 = encrypted.filter((m) => m.enc.v === 2 || m.enc.v === 3);
   const v1 = encrypted.filter((m) => m.enc.v !== 2);
   let c = await loadConv(conv).catch(() => null);
   // Ключа нужной версии нет — возможно, им только что поделились: перечитываем один раз
