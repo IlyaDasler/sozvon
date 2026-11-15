@@ -140,6 +140,9 @@ async function openClient(name, auth, root = path.join(__dirname, '..'), opts = 
   if (opts.waitReady !== false) {
     await waitFor(win, `document.getElementById('conn-dot').classList.contains('ok')`, `${name}: подключение`);
   }
+  // Первая публикация ключа с 3.7 требует пароль. В e2e сессия создаётся
+  // напрямую, поэтому пароль передаём тем же тестовым значением, что и регистрация.
+  if (auth) await js(win, `setupE2EE('test-pass-1')`).catch((err) => console.error(`[${name}] e2ee setup: ${err.message}`));
   return win;
 }
 

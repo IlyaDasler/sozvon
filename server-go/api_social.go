@@ -922,15 +922,10 @@ func (a *server) setMyKey(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusBadRequest, "Неверный ключ").write(w)
 		return
 	}
-	// Первичная публикация разрешена после входа. Замена уже существующего ключа
-	// требует пароль: одной украденной сессии недостаточно, чтобы подменить ключ
-	// и начать получать новые сообщения.
-	if user.PublicKey != "" && user.PublicKey != request.PublicKey {
-		if user.PasswordHash == "" {
-			fail(http.StatusForbidden, "Для смены ключа нужен пароль аккаунта").write(w)
-			return
-		}
-		if !auth.VerifyPassword(request.Password, user.PasswordHash) {
+	// Публикация ключа — операция уровня аккаунта. Для аккаунта с паролем
+	// нужен пароль и при первой публикации: одной сессии недостаточно.
+	if user.PublicKey == "" || user.PublicKey != request.PublicKey {
+		if user.PasswordHash != "" && !auth.VerifyPassword(request.Password, user.PasswordHash) {
 			fail(http.StatusUnauthorized, "Неверный пароль").write(w)
 			return
 		}

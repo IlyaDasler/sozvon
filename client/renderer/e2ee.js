@@ -216,12 +216,12 @@ async function setupE2EE(password = '') {
       }
       if (fromBackup?.publicKey && (!server || server === fromBackup.publicKey)) {
         await useIdentity(fromBackup);
-        if (!server) await publishIdentity(fromBackup);
+        if (!server) await publishIdentity(fromBackup, password);
         return;
       }
       if (local && (!server || server === local.publicKey)) {
         await useIdentity(local);
-        if (!server) await publishIdentity(local);
+        if (!server) await publishIdentity(local, password);
         // Обновляем/создаём копию: при следующем входе новое устройство
         // подхватит ключ само.
         await uploadKeyBackup(password);
@@ -231,7 +231,7 @@ async function setupE2EE(password = '') {
         const generated = await window.desktop.identity.generate(identityContext());
         const identity = { publicKey: generated.publicKey };
         await useIdentity(identity);
-        await publishIdentity(identity);
+        await publishIdentity(identity, password);
         await uploadKeyBackup(password);
         return;
       }
@@ -249,7 +249,13 @@ async function setupE2EE(password = '') {
     // Локальный ключ всё равно используем — он уже есть на этом устройстве.
     if (local && (!server || server === local.publicKey)) {
       await useIdentity(local);
-      if (!server) await publishIdentity(local);
+      if (!server) {
+        if (state.me?.hasPassword) {
+          openKeyUnlock();
+          return;
+        }
+        await publishIdentity(local);
+      }
     } else if (!local && !server) {
       const generated = await window.desktop.identity.generate(identityContext());
       const identity = { publicKey: generated.publicKey };
