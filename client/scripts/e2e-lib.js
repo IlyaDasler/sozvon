@@ -31,7 +31,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function api(method, url, body, token) {
   const res = await fetch(`${SERVER}/api${url}`, {
     method,
-    headers: { 'Content-Type': 'application/json', 'X-Device-Key': 'e2e-device-key', 'X-Client-Version': '3.7.0', ...(token && { Authorization: `Bearer ${token}` }) },
+    headers: { 'Content-Type': 'application/json', 'X-Device-Key': process.env.SOZVON_E2E_DEVICE_KEY || 'e2e-device-key', 'X-Client-Version': '3.7.0', ...(token && { Authorization: `Bearer ${token}` }) },
     body: body && JSON.stringify(body),
   });
   const data = await res.json();
