@@ -570,7 +570,7 @@ async function decryptV2(m, conv) {
     return E2EE.decryptMessage(key, m.enc.self, { conv, epoch: m.enc.self.epoch, from: m.fromId });
   }
   const myHash = await deviceHash();
-  const copy = (m.enc.copies || []).find((c) => c.userId === state.me.id && c.deviceHash === myHash);
+  const copy = (m.enc.copies || []).find((c) => c.deviceHash === myHash);
   if (!copy) throw new Error('Нет копии для этого устройства');
   const root = await window.desktop.identity.x3dhResponder(identityContext(), copy.x3dh.identityPublic, copy.x3dh.ephemeralPublic);
   const role = state.me.id < Number(m.fromId) ? 'a' : 'b';
