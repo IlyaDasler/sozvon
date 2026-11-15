@@ -154,7 +154,7 @@ async function useIdentity(identity) {
   e2ee.convs.clear();
   $('e2ee-setup').classList.add('hidden');
   redecryptAll();
-  void publishPrekey();
+  await publishPrekey();
 }
 
 async function publishIdentity(identity, password = '', totpCode = '') {
@@ -380,9 +380,35 @@ async function encryptForUpload(file) {
 }
 
 /** Тело запроса для отправки: конверт вместо текста; plain — то, что увидит отправитель сразу */
+async function encryptV2Outgoing(conv, peerId, plain) {
+  if (!window.desktop?.identity?.x3dhInitiator) return null;
+  let bundle;
+  try { bundle = await Api.get(`/users/${peerId}/prekey`); } catch { return null; }
+  if (!bundle?.signature) return null;
+  const serverKey = await window.desktop?.update?.publicKey?.();
+  if (!serverKey) return null;
+  const valid = await window.desktop.identity.x3dhVerify(bundle, serverKey);
+  if (!valid) return null;
+  const context = identityContext();
+  const init = await window.desktop.identity.x3dhInitiator(context, bundle);
+  const role = state.me.id < peerId ? 'a' : 'b';
+  await window.desktop.identity.ratchetEnsureStatic(context, conv, init.root, role, bundle.identityPublic);
+  const ratchet = await window.desktop.identity.ratchetEncrypt(context, conv, plain, `${conv}|v2`);
+  // Копия для собственной истории: старый конверт, чтобы отправитель прочитал её после перезапуска.
+  const { epoch, key } = await sendKey(conv);
+  const self = await E2EE.encryptMessage(key, plain, { conv, epoch, from: state.me.id });
+  return {
+    v: 2,
+    conv,
+    from: state.me.id,
+    x3dh: { identityPublic: e2ee.identity.publicKey, ephemeralPublic: init.ephemeralPublic },
+    ratchet,
+    self,
+  };
+}
+
 async function encryptOutgoing(conv, { text, files = [], preview = null, reply = null, forward = null, eventId = null }) {
   if (!e2eeReady()) throw new Error('Сначала настройте шифрование на этом устройстве');
-  const { epoch, key } = await sendKey(conv);
   const plain = {
     text,
     files: files.map(({ id, key, iv, name, mime, size, kind }) => ({ id, key, iv, name, mime, size, kind })),
@@ -394,6 +420,24 @@ async function encryptOutgoing(conv, { text, files = [], preview = null, reply =
     // Событие канала: в сообщении только id, само событие приходит вместе с комнатой
     ...(eventId ? { eventId } : {}),
   };
+  const dm = /^dm:(\d+)-(\d+)$/.exec(conv);
+  if (dm) {
+    const a = Number(dm[1]);
+    const b = Number(dm[2]);
+    const peer = a === state.me.id ? b : a;
+    try {
+      const wire = await encryptV2Outgoing(conv, peer, plain);
+      if (wire) {
+        return {
+          body: { text: LOCKED_TEXT, enc: wire, attachmentIds: files.map((f) => f.id), replyToId: reply?.id ?? null },
+          plain,
+        };
+      }
+    } catch (err) {
+      console.warn('v2 не отправлен, используется v1:', err.message);
+    }
+  }
+  const { epoch, key } = await sendKey(conv);
   const enc = await E2EE.encryptMessage(key, plain, { conv, epoch, from: state.me.id });
   return {
     body: { text: LOCKED_TEXT, enc, attachmentIds: files.map((f) => f.id), replyToId: reply?.id ?? null },
@@ -422,6 +466,21 @@ function uploadEncrypted(file, onProgress) {
 // ---------- Расшифровка ----------
 
 /** Расшифровать сообщения переписки: m.plain — содержимое, m.locked — почему не получилось */
+async function decryptV2(m, conv) {
+  if (m.enc.self) {
+    const c = await loadConv(conv).catch(() => null);
+    const key = c?.keys.get(m.enc.self.epoch);
+    if (!key) throw new Error('Нет ключа для собственной копии');
+    return E2EE.decryptMessage(key, m.enc.self, { conv, epoch: m.enc.self.epoch, from: m.fromId });
+  }
+  const x = m.enc.x3dh;
+  if (!x?.identityPublic || !x?.ephemeralPublic) throw new Error('v2 без X3DH');
+  const root = await window.desktop.identity.x3dhRespond(identityContext(), x.identityPublic, x.ephemeralPublic);
+  const role = state.me.id < Number(m.fromId) ? 'a' : 'b';
+  await window.desktop.identity.ratchetEnsureStatic(identityContext(), conv, root.root, role, x.identityPublic);
+  return window.desktop.identity.ratchetDecrypt(identityContext(), conv, m.enc.ratchet, `${conv}|v2`);
+}
+
 async function decryptMessages(list, conv) {
   const encrypted = list.filter((m) => m.enc && !m.plain);
   if (!encrypted.length) return;
@@ -429,14 +488,16 @@ async function decryptMessages(list, conv) {
     for (const m of encrypted) m.locked = 'no-identity';
     return;
   }
+  const v2 = encrypted.filter((m) => m.enc.v === 2);
+  const v1 = encrypted.filter((m) => m.enc.v !== 2);
   let c = await loadConv(conv).catch(() => null);
   // Ключа нужной версии нет — возможно, им только что поделились: перечитываем один раз
-  if (c && encrypted.some((m) => !c.keys.has(m.enc.epoch))) {
+  if (c && v1.some((m) => !c.keys.has(m.enc.epoch))) {
     e2ee.convs.delete(conv);
     c = await loadConv(conv).catch(() => null);
   }
-  await Promise.all(
-    encrypted.map(async (m) => {
+  await Promise.all([
+    ...v1.map(async (m) => {
       const key = c?.keys.get(m.enc.epoch);
       if (!key) return (m.locked = 'no-key');
       try {
@@ -445,8 +506,16 @@ async function decryptMessages(list, conv) {
       } catch {
         m.locked = 'broken';
       }
-    })
-  );
+    }),
+    ...v2.map(async (m) => {
+      try {
+        m.plain = await decryptV2(m, conv);
+        delete m.locked;
+      } catch (err) {
+        m.locked = 'broken';
+      }
+    }),
+  ]);
 }
 
 /** Переписки, которые сейчас в памяти, и их сообщения */
