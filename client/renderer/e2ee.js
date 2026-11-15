@@ -453,6 +453,15 @@ const seenKeysStore = () => scopedKey('seen');
 const changedKeysStore = () => scopedKey('changed');
 const keyChanged = (userId) => readScoped('changed', []).includes(userId);
 
+async function fetchKeyHistory(userId) {
+  try {
+    const data = await Api.get(`/users/${userId}/key-history`);
+    return Array.isArray(data?.items) ? data.items : [];
+  } catch {
+    return [];
+  }
+}
+
 function setKeyChanged(userId, changed) {
   const rest = readScoped('changed', []).filter((id) => id !== userId);
   store.set(changedKeysStore(), changed ? [...rest, userId] : rest);
@@ -488,6 +497,9 @@ function onUserKey(user) {
   }
   if (userById(user.id)?.publicKey === user.publicKey) return;
   for (const u of noteKeys([user])) toast(`У ${u.displayName} сменился ключ шифрования — сверьте код в его профиле`, 6000);
+  fetchKeyHistory(user.id).then((items) => {
+    if (items.length > 1) toast(`В истории ключей ${user.displayName}: ${items.length} записей. Проверьте последнюю смену.`, 8000);
+  });
   for (const conv of [...e2ee.convs.keys()]) if (convMembersLocal(conv).includes(user.id)) refreshConv(conv);
 }
 
@@ -559,6 +571,9 @@ function keyCodeBox(user) {
     const warn = document.createElement('div');
     warn.className = 'pc-keycode-warn small';
     warn.textContent = `Ключ ${user.displayName} недавно сменился (новое устройство?) — сверьте код заново.`;
+    fetchKeyHistory(user.id).then((items) => {
+      if (items.length > 1) warn.textContent += ` В журнале ${items.length} смен ключа.`;
+    });
     const ok = Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: 'Код совпал' });
     ok.onclick = () => {
       setKeyChanged(user.id, false);
