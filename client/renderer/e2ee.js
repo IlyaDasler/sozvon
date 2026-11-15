@@ -166,12 +166,16 @@ async function publishIdentity(identity, password = '', totpCode = '') {
 }
 
 /** При входе: свой ключ есть и совпадает — работаем; нет нигде — создаём; на сервере другой — спрашиваем */
+let lastKeyBackupError = '';
+
 async function fetchKeyBackup(password) {
   if (!password || !state.me?.hasPassword) return null;
+  lastKeyBackupError = '';
   try {
     return await Api.post('/key-backup/read', { password });
   } catch (err) {
-    if (err.status !== 404) console.warn('Резервная копия ключа:', err.message);
+    if (err.status === 401) lastKeyBackupError = 'Неверный пароль аккаунта.';
+    else if (err.status !== 404) console.warn('Резервная копия ключа:', err.message);
     return null;
   }
 }
@@ -207,7 +211,7 @@ async function setupE2EE(password = '') {
         try {
           fromBackup = await window.desktop.identity.unwrapBackup(identityContext(), backup, password, state.me.id);
         } catch {
-          // Пароль сменили сбросом: старую копию открыть нечем.
+          lastKeyBackupError = 'Резервная копия найдена, но не открылась. Проверьте пароль и версию приложения.';
         }
       }
       if (fromBackup?.publicKey && (!server || server === fromBackup.publicKey)) {
@@ -532,13 +536,14 @@ $('e2ee-unlock-btn').onclick = async () => {
   if (!password) return ($('e2ee-setup-error').textContent = 'Введите пароль аккаунта');
   $('e2ee-unlock-btn').disabled = true;
   $('e2ee-setup-error').textContent = '';
+  lastKeyBackupError = '';
   try {
     await setupE2EE(password);
     if (e2eeReady()) {
       $('e2ee-setup').classList.add('hidden');
       toast('Ключ шифрования восстановлен');
     } else {
-      $('e2ee-setup-error').textContent = 'Не удалось открыть резервную копию. Проверьте пароль.';
+      $('e2ee-setup-error').textContent = lastKeyBackupError || 'Не удалось открыть резервную копию. Проверьте пароль.';
     }
   } catch (err) {
     $('e2ee-setup-error').textContent = err.message;

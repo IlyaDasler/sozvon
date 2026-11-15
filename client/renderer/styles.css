@@ -1633,7 +1633,7 @@ kbd {
 .dialog-card p { margin: 0 0 18px; line-height: 1.5; }
 .e2ee-card p { margin-bottom: 8px; }
 .e2ee-steps { margin: 0 0 14px; padding-left: 20px; line-height: 1.5; }
-.e2ee-card input { width: 100%; font-family: ui-monospace, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+.e2ee-card input { width: 100%; font-family: inherit; letter-spacing: normal; text-transform: none; }
 /* Окно переноса ключа: выше остальных слоёв, карточка не тянет окно, текст в поле выделяется.
    На macOS окно без рамки, и клик по полю иногда уходил в перетаскивание */
 #e2ee-setup { z-index: 45; }
@@ -3046,3 +3046,6 @@ html.is-win .titlebar { padding-right: 146px; }
 .password-eye:hover { color: var(--text); background: var(--bg-3); }
 .password-eye svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .password-eye-wrap > input { width: 100%; box-sizing: border-box; padding-right: 40px; }
+
+/* Пароль всегда вводится в том регистре, в котором его набрали. */
+input[type="password"] { text-transform: none !important; }
