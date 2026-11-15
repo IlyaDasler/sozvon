@@ -115,14 +115,19 @@ async function decrypt(state, envelope, aad) {
   if (!state.remote) throw new Error('dh handshake is not complete');
   if (envelope.v !== 3) throw new Error('unsupported dh version');
   if (envelope.dh !== state.remote) {
-    const derived = await deriveRoot(state.root, state.local.privateKey, envelope.dh, state.role);
-    state.root = derived.root;
+    // Входящий DH-шаг: обновляем root и цепочку приёма.
+    const inbound = await deriveRoot(state.root, state.local.privateKey, envelope.dh, state.role);
+    state.root = inbound.root;
     state.remote = envelope.dh;
-    state.recvChain = derived.recv;
-    state.sendChain = derived.send;
+    state.recvChain = inbound.recv;
     state.recvN = 0;
-    state.sendN = 0;
     state.skipped.clear();
+    // Свой DH-шаг для ответа: новую пару нельзя оставлять старой.
+    state.local = await newPair();
+    const outbound = await deriveRoot(state.root, state.local.privateKey, envelope.dh, state.role);
+    state.root = outbound.root;
+    state.sendChain = outbound.send;
+    state.sendN = 0;
   }
   const n = Number(envelope.n);
   let messageKey;

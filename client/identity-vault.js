@@ -135,6 +135,7 @@ async function importFor(context, identity) {
 async function ratchetInit(context, conv, root, role) { const result = await rpc('ratchet-init', { context, conv, root, role }); await persistRatchets(); return result; }
 async function ratchetEnsureStatic(context, conv, root, role, remotePublic) { const result = await rpc('ratchet-ensure-static', { context, conv, root, role, remotePublic }); await persistRatchets(); return result; }
 async function ratchetHandshake(context, conv, remotePublic) { return rpc('ratchet-handshake', { context, conv, remotePublic }); }
+async function ratchetRotate(context, conv) { const result = await rpc('ratchet-rotate', { context, conv }); await persistRatchets(); return result; }
 async function ratchetEncrypt(context, conv, payload, aad) { const result = await rpc('ratchet-encrypt', { context, conv, payload, aad }); await persistRatchets(); return result; }
 async function ratchetDecrypt(context, conv, envelope, aad) { const result = await rpc('ratchet-decrypt', { context, conv, envelope, aad }); await persistRatchets(); return result; }
 
@@ -206,6 +207,7 @@ function registerIdentityVault() {
   ipcMain.handle('identity-vault:x3dh-verify', (_event, bundle, serverPublicKey) => verifyX3dhBundle(bundle, String(serverPublicKey)));
   ipcMain.handle('identity-vault:ratchet-init', (_event, context, conv, root, role) => ratchetInit(context || {}, String(conv), String(root), String(role)));
   ipcMain.handle('identity-vault:ratchet-ensure-static', (_event, context, conv, root, role, remotePublic) => ratchetEnsureStatic(context || {}, String(conv), String(root), String(role), String(remotePublic)));
+  ipcMain.handle('identity-vault:ratchet-rotate', (_event, context, conv) => ratchetRotate(context || {}, String(conv)));
   ipcMain.handle('identity-vault:ratchet-handshake', (_event, context, conv, remotePublic) => ratchetHandshake(context || {}, String(conv), String(remotePublic)));
   ipcMain.handle('identity-vault:ratchet-encrypt', (_event, context, conv, payload, aad) => ratchetEncrypt(context || {}, String(conv), payload, String(aad)));
   ipcMain.handle('identity-vault:ratchet-decrypt', (_event, context, conv, envelope, aad) => ratchetDecrypt(context || {}, String(conv), envelope, String(aad)));

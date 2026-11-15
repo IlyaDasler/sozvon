@@ -146,6 +146,12 @@ async function ratchetInit(context, conv, root, role) {
   return { publicKey: state.local.publicKey };
 }
 
+async function ratchetRotate(context, conv) {
+  const state = ratchets.get(ratchetKey(context, conv));
+  if (!state) throw new Error('Ratchet не создан');
+  return { publicKey: await ratchet.rotate(state) };
+}
+
 async function ratchetHandshake(context, conv, remotePublic) {
   const state = ratchets.get(ratchetKey(context, conv));
   if (!state) throw new Error('Ratchet не создан');
@@ -241,6 +247,7 @@ parentPort.on('message', async (event) => {
     else if (op === 'ratchet-init') result = await ratchetInit(message.context, message.conv, message.root, message.role);
     else if (op === 'ratchet-ensure-static') result = await ratchetEnsureStatic(message.context, message.conv, message.root, message.role, message.remotePublic);
     else if (op === 'ratchet-handshake') result = await ratchetHandshake(message.context, message.conv, message.remotePublic);
+    else if (op === 'ratchet-rotate') result = await ratchetRotate(message.context, message.conv);
     else if (op === 'ratchet-encrypt') result = await ratchetEncrypt(message.context, message.conv, message.payload, message.aad);
     else if (op === 'ratchet-decrypt') result = await ratchetDecrypt(message.context, message.conv, message.envelope, message.aad);
     else if (op === 'ratchet-export') result = await ratchetExportAll();
