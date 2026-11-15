@@ -268,8 +268,16 @@ async function setupE2EE(password = '') {
   }
 }
 
-function openKeyUnlock() {
-  $('e2ee-setup-text').textContent = 'Введите пароль от аккаунта — ключ шифрования восстановится автоматически. Если пароль недавно меняли, введите прежний: копия могла быть зашифрована им.';
+let keyUnlockMode = 'restore';
+
+function openKeyUnlock(mode = 'restore') {
+  keyUnlockMode = mode;
+  const rebind = mode === 'rebind';
+  $('e2ee-setup-title').textContent = rebind ? 'Сохраните ключ под текущим паролем' : 'Восстановите ключ шифрования';
+  $('e2ee-setup-text').textContent = rebind
+    ? 'Введите текущий пароль аккаунта. Ключ с этого устройства будет заново сохранён под ним; старые копии больше не нужны.'
+    : 'Введите пароль от аккаунта — ключ шифрования восстановится автоматически. Если пароль недавно меняли, введите прежний: копия могла быть зашифрована им.';
+  $('e2ee-unlock-btn').textContent = rebind ? 'Сохранить' : 'Восстановить';
   $('e2ee-password').value = '';
   $('e2ee-setup-error').textContent = '';
   $('e2ee-setup').classList.remove('hidden');
@@ -538,6 +546,15 @@ $('e2ee-unlock-btn').onclick = async () => {
   $('e2ee-setup-error').textContent = '';
   lastKeyBackupError = '';
   try {
+    if (keyUnlockMode === 'rebind' && e2eeReady()) {
+      if (await uploadKeyBackup(password)) {
+        $('e2ee-setup').classList.add('hidden');
+        toast('Ключ сохранён под текущим паролем');
+        return;
+      }
+      $('e2ee-setup-error').textContent = 'Неверный пароль аккаунта.';
+      return;
+    }
     await setupE2EE(password);
     if (e2eeReady()) {
       $('e2ee-setup').classList.add('hidden');
@@ -556,7 +573,8 @@ $('e2ee-password').onkeydown = (e) => {
   if (e.key === 'Enter') $('e2ee-unlock-btn').click();
 };
 $('e2ee-later-btn').onclick = () => $('e2ee-setup').classList.add('hidden');
-$('e2ee-restore-btn').onclick = () => openKeyUnlock();
+$('e2ee-restore-btn').onclick = () => openKeyUnlock('restore');
+$('e2ee-rebind-btn').onclick = () => openKeyUnlock('rebind');
 
 // ---------- Код проверки ключей в карточке профиля ----------
 
