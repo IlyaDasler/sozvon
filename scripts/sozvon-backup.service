@@ -1,0 +1,10 @@
+[Unit]
+Description=Encrypted Sozvon database backup
+After=sozvon.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sozvon-backup-encrypted
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
