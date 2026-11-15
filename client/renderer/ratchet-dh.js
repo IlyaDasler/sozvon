@@ -45,6 +45,17 @@ async function createState(rootB64, role) {
   return { root: rootB64, role, local, remote: null, sendChain: null, recvChain: null, sendN: 0, recvN: 0, skipped: new Map() };
 }
 
+async function createStaticState(rootB64, role, privateJwk, publicB64, remoteB64) {
+  const privateKey = await importPrivate(privateJwk);
+  const state = {
+    root: rootB64, role,
+    local: { privateKey, privateJwk, publicKey: publicB64 },
+    remote: null, sendChain: null, recvChain: null, sendN: 0, recvN: 0, skipped: new Map(),
+  };
+  await handshake(state, remoteB64);
+  return state;
+}
+
 async function handshake(state, remoteB64) {
   const derived = await deriveRoot(state.root, state.local.privateKey, remoteB64, state.role);
   state.root = derived.root;
@@ -164,4 +175,4 @@ async function importState(saved) {
   };
 }
 
-module.exports = { createState, handshake, rotate, encrypt, decrypt, exportState, importState };
+module.exports = { createState, createStaticState, handshake, rotate, encrypt, decrypt, exportState, importState };

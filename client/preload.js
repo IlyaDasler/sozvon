@@ -65,6 +65,7 @@ contextBridge.exposeInMainWorld('desktop', {
     x3dhVerify: (bundle, serverPublicKey) => ipcRenderer.invoke('identity-vault:x3dh-verify', bundle, String(serverPublicKey)),
     ratchetInit: (context, conv, root, role) => ipcRenderer.invoke('identity-vault:ratchet-init', context, String(conv), String(root), String(role)),
     ratchetHandshake: (context, conv, remotePublic) => ipcRenderer.invoke('identity-vault:ratchet-handshake', context, String(conv), String(remotePublic)),
+    ratchetEnsureStatic: (context, conv, root, role, remotePublic) => ipcRenderer.invoke('identity-vault:ratchet-ensure-static', context, String(conv), String(root), String(role), String(remotePublic)),
     ratchetEncrypt: (context, conv, payload, aad) => ipcRenderer.invoke('identity-vault:ratchet-encrypt', context, String(conv), payload, String(aad)),
     ratchetDecrypt: (context, conv, envelope, aad) => ipcRenderer.invoke('identity-vault:ratchet-decrypt', context, String(conv), envelope, String(aad)),
     open: (context, sealed) => ipcRenderer.invoke('identity-vault:open', context, String(sealed)),

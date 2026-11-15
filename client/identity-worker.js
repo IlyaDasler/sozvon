@@ -110,6 +110,15 @@ function ratchetKey(context, conv) {
   return `${contextKey(context)}|${String(conv || '')}`;
 }
 
+async function ratchetEnsureStatic(context, conv, root, role, remotePublic) {
+  const key = ratchetKey(context, conv);
+  if (!ratchets.has(key)) {
+    const value = ensure(context);
+    ratchets.set(key, await ratchet.createStaticState(root, role === 'b' ? 'b' : 'a', value.identity.privateJwk, value.identity.publicKey, String(remotePublic)));
+  }
+  return true;
+}
+
 async function ratchetInit(context, conv, root, role) {
   const state = await ratchet.createState(root, role === 'b' ? 'b' : 'a');
   ratchets.set(ratchetKey(context, conv), state);
@@ -196,6 +205,7 @@ parentPort.on('message', async (event) => {
     else if (op === 'x3dh-verify') result = await x3dh.verifyBundle(message.bundle, message.serverPublicKey);
     else if (op === 'x3dh-respond') result = await x3dhRespond(message.context, message.initiatorIdentityPublic, message.initiatorEphemeralPublic);
     else if (op === 'ratchet-init') result = await ratchetInit(message.context, message.conv, message.root, message.role);
+    else if (op === 'ratchet-ensure-static') result = await ratchetEnsureStatic(message.context, message.conv, message.root, message.role, message.remotePublic);
     else if (op === 'ratchet-handshake') result = await ratchetHandshake(message.context, message.conv, message.remotePublic);
     else if (op === 'ratchet-encrypt') result = await ratchetEncrypt(message.context, message.conv, message.payload, message.aad);
     else if (op === 'ratchet-decrypt') result = await ratchetDecrypt(message.context, message.conv, message.envelope, message.aad);

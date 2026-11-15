@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createState, handshake, rotate, encrypt, decrypt, exportState, importState } = require('../renderer/ratchet-dh');
+const { createState, createStaticState, handshake, rotate, encrypt, decrypt, exportState, importState } = require('../renderer/ratchet-dh');
 
 test('dh ratchet bootstraps and decrypts', async () => {
   const root = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64');
@@ -38,4 +38,18 @@ test('dh ratchet state survives export/import', async () => {
   const restored = await importState(JSON.parse(JSON.stringify(saved)));
   const m = await encrypt(a, { text: 'after' }, 'dm:1-2|1');
   assert.deepEqual(await decrypt(restored, m, 'dm:1-2|1'), { text: 'after' });
+});
+
+test('static identity ratchet derives matching chains', async () => {
+  const root = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64');
+  const a = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+  const b = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+  const aPriv = await crypto.subtle.exportKey('jwk', a.privateKey);
+  const bPriv = await crypto.subtle.exportKey('jwk', b.privateKey);
+  const aPub = Buffer.from(await crypto.subtle.exportKey('raw', a.publicKey)).toString('base64');
+  const bPub = Buffer.from(await crypto.subtle.exportKey('raw', b.publicKey)).toString('base64');
+  const sa = await createStaticState(root, 'a', aPriv, aPub, bPub);
+  const sb = await createStaticState(root, 'b', bPriv, bPub, aPub);
+  const m = await encrypt(sa, { text: 'static' }, 'dm-static');
+  assert.deepEqual(await decrypt(sb, m, 'dm-static'), { text: 'static' });
 });

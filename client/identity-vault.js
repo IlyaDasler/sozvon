@@ -108,6 +108,7 @@ async function importFor(context, identity) {
 }
 
 async function ratchetInit(context, conv, root, role) { return rpc('ratchet-init', { context, conv, root, role }); }
+async function ratchetEnsureStatic(context, conv, root, role, remotePublic) { return rpc('ratchet-ensure-static', { context, conv, root, role, remotePublic }); }
 async function ratchetHandshake(context, conv, remotePublic) { return rpc('ratchet-handshake', { context, conv, remotePublic }); }
 async function ratchetEncrypt(context, conv, payload, aad) { return rpc('ratchet-encrypt', { context, conv, payload, aad }); }
 async function ratchetDecrypt(context, conv, envelope, aad) { return rpc('ratchet-decrypt', { context, conv, envelope, aad }); }
@@ -176,6 +177,7 @@ function registerIdentityVault() {
   ipcMain.handle('identity-vault:x3dh-respond', (_event, context, identity, ephemeral) => x3dhResponder(context || {}, String(identity), String(ephemeral)));
   ipcMain.handle('identity-vault:x3dh-verify', (_event, bundle, serverPublicKey) => verifyX3dhBundle(bundle, String(serverPublicKey)));
   ipcMain.handle('identity-vault:ratchet-init', (_event, context, conv, root, role) => ratchetInit(context || {}, String(conv), String(root), String(role)));
+  ipcMain.handle('identity-vault:ratchet-ensure-static', (_event, context, conv, root, role, remotePublic) => ratchetEnsureStatic(context || {}, String(conv), String(root), String(role), String(remotePublic)));
   ipcMain.handle('identity-vault:ratchet-handshake', (_event, context, conv, remotePublic) => ratchetHandshake(context || {}, String(conv), String(remotePublic)));
   ipcMain.handle('identity-vault:ratchet-encrypt', (_event, context, conv, payload, aad) => ratchetEncrypt(context || {}, String(conv), payload, String(aad)));
   ipcMain.handle('identity-vault:ratchet-decrypt', (_event, context, conv, envelope, aad) => ratchetDecrypt(context || {}, String(conv), envelope, String(aad)));
