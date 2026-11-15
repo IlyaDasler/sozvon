@@ -4,6 +4,8 @@ const { webcrypto } = require('node:crypto');
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 const { argon2id } = require('hash-wasm');
 const x3dh = require('./renderer/x3dh');
+const ratchet = require('./renderer/ratchet-dh');
+const ratchets = new Map();
 
 const subtle = webcrypto.subtle;
 const enc = new TextEncoder();
@@ -104,6 +106,35 @@ async function unwrapBackup(context, backup, password, userId) {
   return store(context, JSON.parse(dec.decode(plain)));
 }
 
+function ratchetKey(context, conv) {
+  return `${contextKey(context)}|${String(conv || '')}`;
+}
+
+async function ratchetInit(context, conv, root, role) {
+  const state = await ratchet.createState(root, role === 'b' ? 'b' : 'a');
+  ratchets.set(ratchetKey(context, conv), state);
+  return { publicKey: state.local.publicKey };
+}
+
+async function ratchetHandshake(context, conv, remotePublic) {
+  const state = ratchets.get(ratchetKey(context, conv));
+  if (!state) throw new Error('Ratchet не создан');
+  await ratchet.handshake(state, String(remotePublic));
+  return true;
+}
+
+async function ratchetEncrypt(context, conv, payload, aad) {
+  const state = ratchets.get(ratchetKey(context, conv));
+  if (!state) throw new Error('Ratchet не создан');
+  return ratchet.encrypt(state, payload, String(aad));
+}
+
+async function ratchetDecrypt(context, conv, envelope, aad) {
+  const state = ratchets.get(ratchetKey(context, conv));
+  if (!state) throw new Error('Ratchet не создан');
+  return ratchet.decrypt(state, envelope, String(aad));
+}
+
 async function x3dhInit(context, bundle) {
   const value = ensure(context);
   return x3dh.initiatorSecret({ identityPrivateJwk: value.identity.privateJwk, bundle });
@@ -164,6 +195,10 @@ parentPort.on('message', async (event) => {
     else if (op === 'x3dh-init') result = await x3dhInit(message.context, message.bundle);
     else if (op === 'x3dh-verify') result = await x3dh.verifyBundle(message.bundle, message.serverPublicKey);
     else if (op === 'x3dh-respond') result = await x3dhRespond(message.context, message.initiatorIdentityPublic, message.initiatorEphemeralPublic);
+    else if (op === 'ratchet-init') result = await ratchetInit(message.context, message.conv, message.root, message.role);
+    else if (op === 'ratchet-handshake') result = await ratchetHandshake(message.context, message.conv, message.remotePublic);
+    else if (op === 'ratchet-encrypt') result = await ratchetEncrypt(message.context, message.conv, message.payload, message.aad);
+    else if (op === 'ratchet-decrypt') result = await ratchetDecrypt(message.context, message.conv, message.envelope, message.aad);
     else if (op === 'open') result = await open(message.context, message.sealed);
     else if (op === 'wrap') result = await wrapBackup(message.context, message.password, message.userId);
     else if (op === 'unwrap') result = await unwrapBackup(message.context, message.backup, message.password, message.userId);

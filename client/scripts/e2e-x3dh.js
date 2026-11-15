@@ -23,4 +23,13 @@ runTest(async () => {
   const resp = await js(winB, `window.desktop.identity.x3dhResponder(${JSON.stringify(contextB)}, ${JSON.stringify(initiatorPublic)}, ${JSON.stringify(init.ephemeralPublic)})`);
   if (!init.root || init.root !== resp.root) throw new Error('X3DH root не совпал');
   console.log('✔ X3DH: prekey, подпись и общий root через utility-процесс');
+  const conv = `dm:${a.user.id}-${b.user.id}`;
+  const pubA = await js(winA, `window.desktop.identity.ratchetInit(${JSON.stringify(contextA)}, ${JSON.stringify(conv)}, ${JSON.stringify(init.root)}, 'a')`);
+  const pubB = await js(winB, `window.desktop.identity.ratchetInit(${JSON.stringify(contextB)}, ${JSON.stringify(conv)}, ${JSON.stringify(resp.root)}, 'b')`);
+  await js(winA, `window.desktop.identity.ratchetHandshake(${JSON.stringify(contextA)}, ${JSON.stringify(conv)}, ${JSON.stringify(pubB.publicKey)})`);
+  await js(winB, `window.desktop.identity.ratchetHandshake(${JSON.stringify(contextB)}, ${JSON.stringify(conv)}, ${JSON.stringify(pubA.publicKey)})`);
+  const envelope = await js(winA, `window.desktop.identity.ratchetEncrypt(${JSON.stringify(contextA)}, ${JSON.stringify(conv)}, { text: 'ratchet-777' }, 'dm-e2e')`);
+  const opened = await js(winB, `window.desktop.identity.ratchetDecrypt(${JSON.stringify(contextB)}, ${JSON.stringify(conv)}, ${JSON.stringify(envelope)}, 'dm-e2e')`);
+  if (opened?.text !== 'ratchet-777') throw new Error('ratchet не расшифровался');
+  console.log('✔ Double Ratchet: X3DH root → handshake → encrypt/decrypt через utility-процесс');
 });
