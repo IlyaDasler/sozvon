@@ -143,6 +143,31 @@ func (a *server) securityHeaders(next http.Handler) http.Handler {
 	})
 }
 
+// mobileCORS — Capacitor WebView запросы проходят с https://localhost.
+// Оборачиваем весь chi router, чтобы OPTIONS не попадал в его 405 handler.
+func (a *server) mobileCORS(next http.Handler) http.Handler {
+	allowed := map[string]bool{
+		"https://localhost":     true,
+		"capacitor://localhost": true,
+		"http://localhost":      true,
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if allowed[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Client-Version")
+			w.Header().Set("Access-Control-Max-Age", "600")
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // logRequests — свой логгер вместо chi.Logger: не пишет query-строку,
 // иначе одноразовые WS-билеты и токены оседают в журналах.
 func (a *server) logRequests(next http.Handler) http.Handler {
@@ -350,7 +375,7 @@ func (a *server) routes() http.Handler {
 		}
 		http.NotFound(w, r)
 	})
-	return router
+	return a.mobileCORS(router)
 }
 
 // staticHandler — раздача веб-клиента из WEB_DIR (если каталог задан и существует).
