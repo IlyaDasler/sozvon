@@ -4,8 +4,12 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/x509"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -32,19 +36,20 @@ import (
 var colors = []string{"#e5484d", "#f76b15", "#ffc53d", "#30a46c", "#12a594", "#0090ff", "#6e56cf", "#d6409f"}
 
 type server struct {
-	cfg     config.Config
-	store   *store.Store
-	secret  []byte
-	mu      sync.Mutex
-	tickets map[string]ticket
-	hub     *realtime.Hub
-	mail    *mail.Mailer
-	preview *linkpreview.Fetcher
-	oauth   oauth.Options
-	calls   *callManager
-	voice   *voiceManager
-	livekit livekit.Options
-	limits  *limiter
+	cfg           config.Config
+	store         *store.Store
+	secret        []byte
+	mu            sync.Mutex
+	tickets       map[string]ticket
+	hub           *realtime.Hub
+	mail          *mail.Mailer
+	preview       *linkpreview.Fetcher
+	oauth         oauth.Options
+	calls         *callManager
+	voice         *voiceManager
+	livekit       livekit.Options
+	keySigningKey ed25519.PrivateKey
+	limits        *limiter
 	// Фиктивный хеш для выравнивания времени входа: не даёт отличить
 	// несуществующий логин от неверного пароля по скорости ответа.
 	dummyHash string
@@ -61,6 +66,34 @@ type ticket struct {
 	userID  int64
 	sid     string
 	expires time.Time
+}
+
+func loadKeySigningKey() ed25519.PrivateKey {
+	path := strings.TrimSpace(os.Getenv("UPDATE_SIGNING_KEY"))
+	if path == "" {
+		path = "/etc/sozvon-update-signing.key"
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return nil
+	}
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil
+	}
+	signingKey, _ := key.(ed25519.PrivateKey)
+	return signingKey
+}
+
+func (a *server) signKeyHistory(entryHash string) string {
+	if len(a.keySigningKey) == 0 {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(ed25519.Sign(a.keySigningKey, []byte(entryHash)))
 }
 
 func main() {
@@ -87,7 +120,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), oauth: oauth.Options{ClientID: cfg.YandexClientID, ClientSecret: cfg.YandexClientSecret, TestBase: cfg.OAuthTestBase}, preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}, limits: newLimiter()}
+	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), oauth: oauth.Options{ClientID: cfg.YandexClientID, ClientSecret: cfg.YandexClientSecret, TestBase: cfg.OAuthTestBase}, preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}, limits: newLimiter(), keySigningKey: loadKeySigningKey()}
 	// Хеш для «пустой» проверки пароля (см. login): та же стоимость scrypt.
 	app.dummyHash, _ = auth.HashPassword(auth.RandomID(32))
 	app.telegramToken = strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN"))

@@ -958,7 +958,7 @@ func (a *server) setMyKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if user.PublicKey != request.PublicKey {
-		_ = a.store.RecordKeyHistory(user.ID, request.PublicKey)
+		_ = a.store.RecordKeyHistory(user.ID, request.PublicKey, a.signKeyHistory)
 		kind := "key.change"
 		if user.PublicKey == "" {
 			kind = "key.publish"

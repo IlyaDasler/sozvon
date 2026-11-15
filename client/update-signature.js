@@ -44,4 +44,12 @@ function fileSha512Base64(filePath) {
   return crypto.createHash('sha512').update(fs.readFileSync(filePath)).digest('base64');
 }
 
-module.exports = { fetchSignedManifest, manifestHashForFile, fileSha512Base64, PUBLIC_KEY };
+function verifyKeyHistorySignature(entryHash, signature) {
+  try {
+    return crypto.verify(null, Buffer.from(String(entryHash)), publicKey, Buffer.from(String(signature), 'base64'));
+  } catch {
+    return false;
+  }
+}
+
+module.exports = { fetchSignedManifest, manifestHashForFile, fileSha512Base64, verifyKeyHistorySignature, PUBLIC_KEY };

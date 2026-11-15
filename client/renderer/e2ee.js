@@ -495,6 +495,13 @@ async function verifyKeyHistory(userId, items) {
       toast('История ключей не прошла проверку целостности — не доверяйте новому ключу без сверки кода.', 10000);
       return items;
     }
+    if (item.signature && window.desktop?.update?.verifyKeyHistory) {
+      const valid = await window.desktop.update.verifyKeyHistory(item.entryHash, item.signature);
+      if (!valid) {
+        toast('Подпись истории ключей неверна — не доверяйте новому ключу.', 10000);
+        return items;
+      }
+    }
     prev = item.entryHash;
     latest = item.entryHash;
   }

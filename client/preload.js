@@ -96,6 +96,7 @@ contextBridge.exposeInMainWorld('desktop', {
     check: () => ipcRenderer.send('update:check'),
     download: (base) => ipcRenderer.send('update:download', base),
     install: () => ipcRenderer.send('update:install'),
+    verifyKeyHistory: (entryHash, signature) => ipcRenderer.invoke('update:verify-key-history', String(entryHash), String(signature)),
   },
   // Плавающее окно трансляции: отдельное окно Windows, его можно унести на другой монитор
   pip: {

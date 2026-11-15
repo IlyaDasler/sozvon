@@ -28,7 +28,7 @@ const { registerDeviceKey } = require('./device-key');
 const { registerClipboardImage } = require('./clipboard-image');
 const { applyChromiumFlags } = require('./chromium-flags');
 const { UPDATE_EVERY_MS, checkDue } = require('./update-schedule');
-const { fetchSignedManifest, manifestHashForFile, fileSha512Base64 } = require('./update-signature');
+const { fetchSignedManifest, manifestHashForFile, fileSha512Base64, verifyKeyHistorySignature } = require('./update-signature');
 const { isTrustedLocalNavigation } = require('./navigation-policy');
 const { canOpenPip, canSendPipFrame, canClosePip } = require('./pip-bridge-policy');
 
@@ -493,6 +493,7 @@ async function startWithSplash() {
 }
 
 ipcMain.handle('update:status', () => ({ ...updateStatus, current: app.getVersion() }));
+ipcMain.handle('update:verify-key-history', (_event, entryHash, signature) => verifyKeyHistorySignature(entryHash, signature));
 ipcMain.on('update:check', checkForUpdates);
 ipcMain.on('update:download', (_event, clientBase) => {
   // macOS: качаем архив с GitHub сами, потому что системный автоапдейтер без подписи не работает
