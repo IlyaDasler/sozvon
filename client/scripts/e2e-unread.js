@@ -72,7 +72,7 @@ runTest(async () => {
   await js(winB, `selectContact(null); true`);
   await js(winA, sendDm(b.user.id, 'для двух устройств'));
   await waitFor(winB, `state.unread.get(${a.user.id}) === 1`, 'счётчик перед чтением');
-  await js(winA, `fetch(Api.base + '/api/read', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ${b.token}' }, body: JSON.stringify({ conv: 'dm:${a.user.id}' }) }).then(() => true)`);
+  await js(winA, `fetch(Api.base + '/api/read', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Device-Key': 'e2e-device-key', 'X-Client-Version': '3.7.0', Authorization: 'Bearer ${b.token}' }, body: JSON.stringify({ conv: 'dm:${a.user.id}' }) }).then(() => true)`);
   await waitFor(winB, `!state.unread.has(${a.user.id})`, 'отметка снята другим устройством');
   console.log('✔ прочитано на другом устройстве — отметка ушла');
 
