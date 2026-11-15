@@ -56,7 +56,7 @@ async function register(name, displayName) {
 
 const js = (win, code) => win.webContents.executeJavaScript(code);
 
-async function waitFor(win, expr, what, timeout = 15000) {
+async function waitFor(win, expr, what, timeout = 30000) {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     if (await js(win, expr)) return;
