@@ -1,64 +1,87 @@
-// Приватный ключ E2EE хранится в main-процессе. Renderer не получает privateJwk:
-// только публичный ключ и узкие операции open/wrap/unwrap.
+// PrivateJwk живёт в отдельном worker-процессе. Main хранит только
+// зашифрованный файл и проксирует узкие операции.
 const { app, ipcMain, safeStorage } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
-const { webcrypto } = require('node:crypto');
-const { argon2id } = require('hash-wasm');
+const { Worker } = require('node:worker_threads');
 
-const subtle = webcrypto.subtle;
-const enc = new TextEncoder();
-const dec = new TextDecoder();
-const ECDH = { name: 'ECDH', namedCurve: 'P-256' };
-const AAD = (userId) => enc.encode(`sozvon-key-backup-v1|${userId}`);
-const ITERATIONS = 600_000;
-const ARGON2 = { memorySize: 65536, iterations: 3, parallelism: 1 };
-
-const b64 = (buf) => Buffer.from(buf).toString('base64');
-const fromB64 = (value) => Uint8Array.from(Buffer.from(String(value), 'base64'));
-const random = (n) => webcrypto.getRandomValues(new Uint8Array(n));
 const filePath = () => path.join(app.getPath('userData'), 'e2ee-identity-v2.bin');
+let worker = null;
+let seq = 0;
+let initialized = false;
+const pending = new Map();
 
-const vaults = new Map(); // contextKey -> { identity, privateKey }
-let loadedFile = false;
-
-function contextKey(context) {
-  return `${context?.server || ''}|${Number(context?.userId) || 0}`;
+function workerPath() {
+  if (app.isPackaged) return path.join(process.resourcesPath, 'app.asar.unpacked', 'identity-worker.js');
+  return path.join(__dirname, 'identity-worker.js');
 }
 
-function contextOf(context) {
-  return { server: String(context?.server || ''), userId: Number(context?.userId) || 0 };
+function startWorker() {
+  if (worker) return worker;
+  worker = new Worker(workerPath());
+  worker.on('message', (message) => {
+    const item = pending.get(message.id);
+    if (!item) return;
+    pending.delete(message.id);
+    clearTimeout(item.timer);
+    if (message.ok) item.resolve(message.result);
+    else item.reject(new Error(message.error || 'identity worker error'));
+  });
+  worker.on('error', (err) => {
+    for (const item of pending.values()) {
+      clearTimeout(item.timer);
+      item.reject(err);
+    }
+    pending.clear();
+    worker = null;
+  });
+  worker.on('exit', () => {
+    for (const item of pending.values()) {
+      clearTimeout(item.timer);
+      item.reject(new Error('identity worker stopped'));
+    }
+    pending.clear();
+    worker = null;
+  });
+  return worker;
 }
 
-async function importIdentity(identity) {
-  if (!identity?.publicKey || !identity?.privateJwk) throw new Error('Некорректный ключ');
-  return {
-    identity: { publicKey: String(identity.publicKey), privateJwk: identity.privateJwk },
-    privateKey: await subtle.importKey('jwk', identity.privateJwk, ECDH, false, ['deriveBits']),
-  };
+function rpc(op, data = {}) {
+  return new Promise((resolve, reject) => {
+    try {
+      const id = ++seq;
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(new Error('identity worker timeout'));
+      }, 30_000);
+      pending.set(id, { resolve, reject, timer });
+      startWorker().postMessage({ id, op, ...data });
+    } catch (err) {
+      reject(err);
+    }
+  });
 }
 
 async function loadFile() {
-  if (loadedFile) return;
-  loadedFile = true;
+  if (initialized) return;
+  initialized = true;
+  let entries = [];
   try {
-    if (!safeStorage.isEncryptionAvailable()) return;
-    const file = filePath();
-    if (!fs.existsSync(file)) return;
-    const packed = JSON.parse(safeStorage.decryptString(fs.readFileSync(file)));
-    for (const entry of packed.entries || []) {
-      try {
-        const opened = await importIdentity(entry.identity);
-        vaults.set(contextKey(entry.context), { ...opened, context: contextOf(entry.context) });
-      } catch {}
+    if (safeStorage.isEncryptionAvailable()) {
+      const file = filePath();
+      if (fs.existsSync(file)) {
+        const packed = JSON.parse(safeStorage.decryptString(fs.readFileSync(file)));
+        entries = Array.isArray(packed.entries) ? packed.entries : [];
+      }
     }
   } catch {}
+  await rpc('init', { entries });
 }
 
 async function persist() {
   if (!safeStorage.isEncryptionAvailable()) return false;
   try {
-    const entries = [...vaults.entries()].map(([key, value]) => ({ context: value.context, identity: value.identity }));
+    const entries = await rpc('exportAll');
     const packed = JSON.stringify({ entries });
     const file = filePath();
     const temp = `${file}.tmp`;
@@ -73,149 +96,51 @@ async function persist() {
 
 async function load(context) {
   await loadFile();
-  const key = contextKey(context);
-  const value = vaults.get(key);
-  return value ? { publicKey: value.identity.publicKey } : null;
+  return rpc('load', { context });
 }
 
 async function importFor(context, identity) {
-  const opened = await importIdentity(identity);
-  vaults.set(contextKey(context), { ...opened, context: contextOf(context) });
+  await loadFile();
+  const result = await rpc('import', { context, identity });
   await persist();
   try { fs.unlinkSync(path.join(app.getPath('userData'), 'e2ee-identity.bin')); } catch {}
-  return { publicKey: opened.identity.publicKey };
+  return result;
 }
 
 async function generateFor(context) {
-  const pair = await subtle.generateKey(ECDH, true, ['deriveBits']);
-  const identity = {
-    publicKey: b64(await subtle.exportKey('raw', pair.publicKey)),
-    privateJwk: await subtle.exportKey('jwk', pair.privateKey),
-  };
-  await importFor(context, identity);
-  return { publicKey: identity.publicKey };
-}
-
-async function ensure(context) {
   await loadFile();
-  const value = vaults.get(contextKey(context));
-  if (!value) throw new Error('Ключ не загружен');
-  return value.privateKey;
-}
-
-async function sharedKey(privateKey, publicB64, info) {
-  const publicKey = await subtle.importKey('raw', fromB64(publicB64), ECDH, false, []);
-  const bits = await subtle.deriveBits({ name: 'ECDH', public: publicKey }, privateKey, 256);
-  const hkdf = await subtle.importKey('raw', bits, 'HKDF', false, ['deriveKey']);
-  return subtle.deriveKey(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: enc.encode(info) },
-    hkdf,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
+  const result = await rpc('generate', { context });
+  await persist();
+  return result;
 }
 
 async function open(context, sealed) {
-  const { epk, iv, ct } = JSON.parse(sealed);
-  const key = await sharedKey(await ensure(context), epk, 'sozvon-seal-v1');
-  return b64(await subtle.decrypt({ name: 'AES-GCM', iv: fromB64(iv) }, key, fromB64(ct)));
-}
-
-async function passwordKey(password, salt) {
-  const base = await subtle.importKey('raw', enc.encode(String(password).normalize('NFKC')), 'PBKDF2', false, ['deriveKey']);
-  return subtle.deriveKey(
-    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: ITERATIONS },
-    base,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
+  await loadFile();
+  return rpc('open', { context, sealed });
 }
 
 async function wrapBackup(context, password, userId) {
   await loadFile();
-  const value = vaults.get(contextKey(context));
-  if (!value) throw new Error('Ключ не загружен');
-  const salt = random(16);
-  const iv = random(12);
-  const derived = await argon2id({
-    password: String(password).normalize('NFKC'),
-    salt,
-    ...ARGON2,
-    hashLength: 32,
-    outputType: 'binary',
-  });
-  const key = await subtle.importKey('raw', derived, 'AES-GCM', false, ['encrypt']);
-  const ct = await subtle.encrypt(
-    { name: 'AES-GCM', iv, additionalData: AAD(userId) },
-    key,
-    enc.encode(JSON.stringify(value.identity))
-  );
-  const marker = `argon2id$m=${ARGON2.memorySize},t=${ARGON2.iterations},p=${ARGON2.parallelism}$${b64(salt)}`;
-  // Совместимость со старыми клиентами: та же копия, но PBKDF2.
-  const legacySalt = random(16);
-  const legacyIV = random(12);
-  const legacyKey = await passwordKey(password, legacySalt);
-  const legacyCT = await subtle.encrypt(
-    { name: 'AES-GCM', iv: legacyIV, additionalData: AAD(userId) },
-    legacyKey,
-    enc.encode(JSON.stringify(value.identity))
-  );
-  // iterations оставлен для старого сервера/валидатора; параметры Argon2 — в salt.
-  return {
-    salt: marker, iv: b64(iv), ct: b64(ct), iterations: 100_000,
-    legacySalt: b64(legacySalt), legacyIv: b64(legacyIV), legacyCt: b64(legacyCT),
-    legacyIterations: ITERATIONS,
-  };
+  return rpc('wrap', { context, password, userId });
 }
 
 async function unwrapBackup(context, backup, password, userId) {
-  let key;
-  const marker = /^argon2id\$m=(\d+),t=(\d+),p=(\d+)\$(.+)$/.exec(String(backup?.salt || ''));
-  if (marker) {
-    const derived = await argon2id({
-      password: String(password).normalize('NFKC'),
-      salt: fromB64(marker[4]),
-      memorySize: Number(marker[1]),
-      iterations: Number(marker[2]),
-      parallelism: Number(marker[3]),
-      hashLength: 32,
-      outputType: 'binary',
-    });
-    key = await subtle.importKey('raw', derived, 'AES-GCM', false, ['decrypt']);
-  } else {
-    const iterations = Number(backup?.iterations) || ITERATIONS;
-    const base = await subtle.importKey('raw', enc.encode(String(password).normalize('NFKC')), 'PBKDF2', false, ['deriveKey']);
-    key = await subtle.deriveKey(
-      { name: 'PBKDF2', hash: 'SHA-256', salt: fromB64(backup.salt), iterations },
-      base,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['decrypt']
-    );
-  }
-  const plain = await subtle.decrypt(
-    { name: 'AES-GCM', iv: fromB64(backup.iv), additionalData: AAD(userId) },
-    key,
-    fromB64(backup.ct)
-  );
-  const identity = JSON.parse(dec.decode(plain));
-  const opened = await importIdentity(identity);
-  vaults.set(contextKey(context), { ...opened, context: contextOf(context) });
+  await loadFile();
+  const result = await rpc('unwrap', { context, backup, password, userId });
   await persist();
-  return { publicKey: opened.identity.publicKey };
+  return result;
 }
 
 function registerIdentityVault() {
   ipcMain.handle('identity-vault:load', (_event, context) => load(context || {}));
   ipcMain.handle('identity-vault:import', (_event, context, identity) => importFor(context || {}, identity));
   ipcMain.handle('identity-vault:generate', (_event, context) => generateFor(context || {}));
-  ipcMain.handle('identity-vault:open', (_event, context, sealed) => open(context || {}, sealed));
-  ipcMain.handle('identity-vault:wrap-backup', (_event, context, password, userId) => wrapBackup(context || {}, password, userId));
-  ipcMain.handle('identity-vault:unwrap-backup', (_event, context, backup, password, userId) => unwrapBackup(context || {}, backup, password, userId));
-  ipcMain.handle('identity-vault:clear', () => {
-    vaults.clear();
+  ipcMain.handle('identity-vault:open', (_event, context, sealed) => open(context || {}, String(sealed)));
+  ipcMain.handle('identity-vault:wrap-backup', (_event, context, password, userId) => wrapBackup(context || {}, String(password), Number(userId)));
+  ipcMain.handle('identity-vault:unwrap-backup', (_event, context, backup, password, userId) => unwrapBackup(context || {}, backup, String(password), Number(userId)));
+  ipcMain.handle('identity-vault:clear', async () => {
+    await loadFile();
+    await rpc('clear');
     return true;
   });
 }

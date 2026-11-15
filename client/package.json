@@ -30,7 +30,9 @@
       "native/capture/build/Release/sozvon_capture.node"
     ],
     "asarUnpack": [
-      "native/capture/build/Release/*.node"
+      "native/capture/build/Release/*.node",
+      "identity-worker.js",
+      "node_modules/hash-wasm/**"
     ],
     "publish": {
       "provider": "github",
