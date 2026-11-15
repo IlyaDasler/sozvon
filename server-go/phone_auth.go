@@ -238,7 +238,7 @@ func (a *server) phoneSignupStatus(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	token, err := a.openSession(user, r.UserAgent(), r.Header.Get("X-Client-Version"))
+	token, err := a.openSession(user, r)
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return

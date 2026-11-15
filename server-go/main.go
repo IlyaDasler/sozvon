@@ -521,13 +521,14 @@ func (a *server) self(user *store.User) (selfJSON, error) {
 
 // ---------- вход и регистрация ----------
 
-func (a *server) openSession(user *store.User, userAgent string, clientVersion ...string) (string, error) {
+func (a *server) openSession(user *store.User, r *http.Request) (string, error) {
 	sid := auth.RandomID(16)
-	version := ""
-	if len(clientVersion) > 0 {
-		version = clientVersion[0]
+	device := auth.DeviceNameWithVersion(r.UserAgent(), r.Header.Get("X-Client-Version"))
+	keyHash := ""
+	if key := strings.TrimSpace(r.Header.Get("X-Device-Key")); key != "" {
+		keyHash = auth.HashDeviceKey(key)
 	}
-	if err := a.store.CreateSession(sid, user.ID, auth.DeviceNameWithVersion(userAgent, version)); err != nil {
+	if err := a.store.CreateSessionWithKey(sid, user.ID, device, keyHash); err != nil {
 		return "", err
 	}
 	return auth.SignToken(a.secret, user.ID, sid), nil
@@ -599,7 +600,7 @@ func (a *server) register(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
-	token, err := a.openSession(user, r.UserAgent(), r.Header.Get("X-Client-Version"))
+	token, err := a.openSession(user, r)
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
@@ -668,7 +669,7 @@ func (a *server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.loginSucceeded(login)
-	token, err := a.openSession(user, r.UserAgent(), r.Header.Get("X-Client-Version"))
+	token, err := a.openSession(user, r)
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
@@ -708,6 +709,18 @@ func (a *server) requireAuth(next http.Handler) http.Handler {
 		if err != nil || session.UserID != payload.UID {
 			fail(http.StatusUnauthorized, "Сессия недействительна").write(w)
 			return
+		}
+		deviceKey := strings.TrimSpace(r.Header.Get("X-Device-Key"))
+		if session.DeviceKeyHash != "" {
+			if !auth.CheckDeviceKey(session.DeviceKeyHash, deviceKey) {
+				fail(http.StatusUnauthorized, "Сессия привязана к другому устройству").write(w)
+				return
+			}
+		} else if deviceKey != "" {
+			// Старую сессию привязываем при первом запросе с ключом устройства.
+			if err := a.store.SetSessionDeviceKeyHash(session.ID, auth.HashDeviceKey(deviceKey)); err == nil {
+				session.DeviceKeyHash = auth.HashDeviceKey(deviceKey)
+			}
 		}
 		user, err := a.store.UserByID(session.UserID)
 		if err != nil {

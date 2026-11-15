@@ -257,6 +257,10 @@ async function setupE2EE(password = '') {
         await publishIdentity(local);
       }
     } else if (!local && !server) {
+      if (state.me?.hasPassword) {
+        openKeyUnlock();
+        return;
+      }
       const generated = await window.desktop.identity.generate(identityContext());
       const identity = { publicKey: generated.publicKey };
       await useIdentity(identity);
