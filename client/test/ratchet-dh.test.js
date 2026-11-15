@@ -23,7 +23,6 @@ test('dh ratchet handles rotation', async () => {
   const m = await encrypt(a, { text: 'two' }, 'dm:1-2|1');
   assert.equal(m.dh, pub);
   assert.deepEqual(await decrypt(b, m, 'dm:1-2|1'), { text: 'two' });
-  await rotate(b);
   const reply = await encrypt(b, { text: 'reply' }, 'dm:1-2|1');
   assert.deepEqual(await decrypt(a, reply, 'dm:1-2|1'), { text: 'reply' });
 });
