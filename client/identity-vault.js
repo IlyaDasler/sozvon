@@ -195,13 +195,13 @@ async function unwrapBackup(context, backup, password, userId) {
 }
 
 function registerIdentityVault() {
-  ipcMain.handle('identity:load', (_event, context) => load(context || {}));
-  ipcMain.handle('identity:import', (_event, context, identity) => importFor(context || {}, identity));
-  ipcMain.handle('identity:generate', (_event, context) => generateFor(context || {}));
-  ipcMain.handle('identity:open', (_event, context, sealed) => open(context || {}, sealed));
-  ipcMain.handle('identity:wrap-backup', (_event, context, password, userId) => wrapBackup(context || {}, password, userId));
-  ipcMain.handle('identity:unwrap-backup', (_event, context, backup, password, userId) => unwrapBackup(context || {}, backup, password, userId));
-  ipcMain.handle('identity:clear', () => {
+  ipcMain.handle('identity-vault:load', (_event, context) => load(context || {}));
+  ipcMain.handle('identity-vault:import', (_event, context, identity) => importFor(context || {}, identity));
+  ipcMain.handle('identity-vault:generate', (_event, context) => generateFor(context || {}));
+  ipcMain.handle('identity-vault:open', (_event, context, sealed) => open(context || {}, sealed));
+  ipcMain.handle('identity-vault:wrap-backup', (_event, context, password, userId) => wrapBackup(context || {}, password, userId));
+  ipcMain.handle('identity-vault:unwrap-backup', (_event, context, backup, password, userId) => unwrapBackup(context || {}, backup, password, userId));
+  ipcMain.handle('identity-vault:clear', () => {
     vaults.clear();
     return true;
   });
