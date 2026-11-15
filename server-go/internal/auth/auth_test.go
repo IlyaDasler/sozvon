@@ -54,6 +54,13 @@ func TestExpiredToken(t *testing.T) {
 	_ = time.Now()
 }
 
+func TestDeviceNameUsesNativeClientVersion(t *testing.T) {
+	got := DeviceNameWithVersion("Mozilla/5.0 (Linux; Android 16; SM-F966B) AppleWebKit/537.36", "1.0.367")
+	if got != "Созвон 1.0.367 · Android" {
+		t.Fatalf("device label = %q, want native app and platform", got)
+	}
+}
+
 func TestUsernamesAllowUnicodeAndNormalizeForUniqueness(t *testing.T) {
 	if !ValidUsername("Соломон Ицхакович") {
 		t.Fatal("кириллица и пробелы должны быть допустимы")

@@ -244,7 +244,7 @@ func (a *server) enterUser(w http.ResponseWriter, r *http.Request, user *store.U
 		fail(http.StatusForbidden, "У аккаунта включён второй фактор — войдите по логину и паролю").write(w)
 		return
 	}
-	token, err := a.openSession(user, r.UserAgent())
+	token, err := a.openSession(user, r.UserAgent(), r.Header.Get("X-Client-Version"))
 	if err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
@@ -375,7 +375,7 @@ func (a *server) oauthWebCallback(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, "/?oauth_error="+urlQueryEscape("У аккаунта включён второй фактор — войдите по логину и паролю"), http.StatusFound)
 				return
 			}
-			entry.token, _ = a.openSession(user, r.UserAgent())
+			entry.token, _ = a.openSession(user, r.UserAgent(), r.Header.Get("X-Client-Version"))
 		}
 	} else if a.cfg.InviteCode != "" {
 		entry.ticket = a.signTicket(oauthTicket{
@@ -385,7 +385,7 @@ func (a *server) oauthWebCallback(w http.ResponseWriter, r *http.Request) {
 		})
 	} else {
 		if user, err := a.createOAuthUser(provider, profile); err == nil {
-			entry.token, _ = a.openSession(user, r.UserAgent())
+			entry.token, _ = a.openSession(user, r.UserAgent(), r.Header.Get("X-Client-Version"))
 		}
 	}
 	oauthState.mu.Lock()
