@@ -32,4 +32,13 @@ runTest(async () => {
   const opened = await js(winB, `window.desktop.identity.ratchetDecrypt(${JSON.stringify(contextB)}, ${JSON.stringify(conv)}, ${JSON.stringify(envelope)}, 'dm-e2e')`);
   if (opened?.text !== 'ratchet-777') throw new Error('ratchet не расшифровался');
   console.log('✔ Double Ratchet: X3DH root → handshake → encrypt/decrypt через utility-процесс');
+  const raw = await js(winA, `window.desktop.identity.ratchetEncrypt(${JSON.stringify(contextA)}, ${JSON.stringify(conv)}, { text: 'wire-888' }, 'dm-wire')`);
+  const wire = { v: 2, conv, from: a.user.id, x3dh: { identityPublic: initiatorPublic, ephemeralPublic: init.ephemeralPublic }, ratchet: raw };
+  await api('POST', `/messages/${b.user.id}`, { text: '🔒', enc: wire, attachmentIds: [] }, a.token);
+  const history = await api('GET', `/messages/${a.user.id}`, null, b.token);
+  const lastEnc = history.at(-1)?.enc;
+  if (!lastEnc || lastEnc.v !== 2) throw new Error('v2-конверт не дошёл через сервер: ' + JSON.stringify(lastEnc).slice(0, 500));
+  const wireOpened = await js(winB, `window.desktop.identity.ratchetDecrypt(${JSON.stringify(contextB)}, ${JSON.stringify(conv)}, ${JSON.stringify(lastEnc.ratchet)}, 'dm-wire')`);
+  if (wireOpened?.text !== 'wire-888') throw new Error('v2 через сервер не расшифровался');
+  console.log('✔ v2: конверт прошёл через сервер и расшифрован ratchet-состоянием');
 });
