@@ -393,9 +393,9 @@ async function encryptV2Outgoing(conv, peerId, plain) {
   if (!window.desktop?.identity?.x3dhInitiator) return null;
   let list;
   try { list = await Api.get(`/users/${peerId}/prekeys`); } catch { return null; }
-  if (!list?.identityPublic || !Array.isArray(list.devices) || !list.devices.length) { console.warn('v3: нет prekey-списка'); return null; }
+  if (!list?.identityPublic || !Array.isArray(list.devices) || !list.devices.length) return null;
   const serverKey = await window.desktop?.update?.publicKey?.();
-  if (!serverKey) { console.warn('v3: нет server key'); return null; }
+  if (!serverKey) return null;
   const context = identityContext();
   const role = state.me.id < peerId ? 'a' : 'b';
   const myDevice = await deviceHash();
@@ -421,7 +421,7 @@ async function encryptV2Outgoing(conv, peerId, plain) {
       ratchet,
     });
   }
-  if (!copies.length) { console.warn('v3: ни одна копия не собралась'); return null; }
+  if (!copies.length) return null;
   const { epoch, key } = await sendKey(conv);
   const self = await E2EE.encryptMessage(key, plain, { conv, epoch, from: state.me.id });
   return { v: 3, conv, from: state.me.id, fromDevice: myDevice, copies, self };

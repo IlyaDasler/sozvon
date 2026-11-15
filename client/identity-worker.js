@@ -95,11 +95,14 @@ async function wrapBackup(context, password, userId) {
   const iv = random(12);
   const derived = await argon2id({ password: String(password).normalize('NFKC'), salt, ...ARGON2, hashLength: 32, outputType: 'binary' });
   const key = await subtle.importKey('raw', derived, 'AES-GCM', false, ['encrypt']);
-  const ct = await subtle.encrypt({ name: 'AES-GCM', iv, additionalData: AAD(userId) }, key, enc.encode(JSON.stringify(value.identity)));
+  const backupIdentity = { ...value.identity };
+  delete backupIdentity.signedPrekey;
+  delete backupIdentity.cacheKey;
+  const ct = await subtle.encrypt({ name: 'AES-GCM', iv, additionalData: AAD(userId) }, key, enc.encode(JSON.stringify(backupIdentity)));
   const legacySalt = random(16);
   const legacyIV = random(12);
   const legacyKey = await passwordKey(password, legacySalt, ITERATIONS);
-  const legacyCT = await subtle.encrypt({ name: 'AES-GCM', iv: legacyIV, additionalData: AAD(userId) }, legacyKey, enc.encode(JSON.stringify(value.identity)));
+  const legacyCT = await subtle.encrypt({ name: 'AES-GCM', iv: legacyIV, additionalData: AAD(userId) }, legacyKey, enc.encode(JSON.stringify(backupIdentity)));
   return {
     salt: `argon2id$m=${ARGON2.memorySize},t=${ARGON2.iterations},p=${ARGON2.parallelism}$${b64(salt)}`,
     iv: b64(iv), ct: b64(ct), iterations: 100_000,

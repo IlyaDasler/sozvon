@@ -7,7 +7,7 @@ const path = require('node:path');
 
 const filePath = () => path.join(app.getPath('userData'), 'device-key.bin');
 let cached = '';
-const E2E_KEY = 'e2e-device-key';
+const E2E_KEY = process.env.SOZVON_E2E_DEVICE_KEY || 'e2e-device-key';
 
 function read() {
   if (cached) return cached;
