@@ -597,6 +597,22 @@ const changedKeysStore = () => scopedKey('changed');
 const keyChanged = (userId) => readScoped('changed', []).includes(userId);
 
 const keyHistoryRootKey = (userId) => `e2ee:${serverScope()}:keyhistory:${userId}`;
+const KEY_WITNESS_URL = 'https://raw.githubusercontent.com/IlyaDasler/sozvon/main/transparency/key-history.json';
+let keyWitnessCache = null;
+async function witnessedKeyHistory(entryHash) {
+  if (!entryHash) return null;
+  try {
+    if (!keyWitnessCache) {
+      const res = await fetch(KEY_WITNESS_URL, { cache: 'no-store' });
+      if (!res.ok) return null;
+      keyWitnessCache = await res.json();
+    }
+    const users = Array.isArray(keyWitnessCache?.users) ? keyWitnessCache.users : [];
+    return users.some((user) => (user.entries || []).some((entry) => entry.entryHash === entryHash));
+  } catch {
+    return null;
+  }
+}
 
 async function sha256Hex(text) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -631,6 +647,9 @@ async function verifyKeyHistory(userId, items) {
       toast('История ключей переписана сервером — сверьте ключ вручную.', 10000);
     }
     store.set(keyHistoryRootKey(userId), latest);
+    const witnessed = await witnessedKeyHistory(latest);
+    if (witnessed === false) console.warn('История ключей ещё не подтверждена внешним журналом');
+    if (witnessed === true) store.set(`${keyHistoryRootKey(userId)}:witnessed`, latest);
   }
   return items;
 }

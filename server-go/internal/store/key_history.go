@@ -56,3 +56,29 @@ func (s *Store) KeyHistory(userID int64) ([]KeyHistoryEvent, error) {
 	}
 	return items, rows.Err()
 }
+
+type KeyHistoryExportRow struct {
+	UserID    int64
+	PublicKey string
+	PrevHash  string
+	EntryHash string
+	Signature string
+	ChangedAt int64
+}
+
+func (s *Store) AllKeyHistory() ([]KeyHistoryExportRow, error) {
+	rows, err := s.db.Query(`SELECT user_id, public_key, prev_hash, entry_hash, signature, changed_at FROM user_key_history ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []KeyHistoryExportRow
+	for rows.Next() {
+		var item KeyHistoryExportRow
+		if err := rows.Scan(&item.UserID, &item.PublicKey, &item.PrevHash, &item.EntryHash, &item.Signature, &item.ChangedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}

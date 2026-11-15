@@ -243,6 +243,7 @@ func (a *server) routes() http.Handler {
 	router.Route("/api", func(r chi.Router) {
 		r.Use(a.requireClientVersion)
 		r.Get("/health", a.health)
+		r.Get("/key-transparency/export", a.keyTransparencyExport)
 		r.Get("/version", a.versionInfo)
 		r.Get("/time", func(w http.ResponseWriter, r *http.Request) {
 			// Часы сервера, а не компьютера: по ним клиент выбирает рассвет/день/закат/ночь

@@ -1,0 +1,32 @@
+name: Key transparency witness
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  witness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export public key-history hashes
+        run: |
+          mkdir -p transparency
+          curl -fsSL --retry 5 --retry-delay 3 \
+            https://135-106-226-12.sslip.io/api/key-transparency/export \
+            -o transparency/key-history.json
+      - name: Commit witness snapshot
+        run: |
+          git config user.name "sozvon-witness"
+          git config user.email "witness@sozvon.invalid"
+          git add transparency/key-history.json
+          if git diff --cached --quiet; then
+            echo "no changes"
+            exit 0
+          fi
+          git commit -m "witness: key history $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push
