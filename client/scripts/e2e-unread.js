@@ -27,6 +27,8 @@ runTest(async () => {
   await js(winA, sendDm(b.user.id, 'прочитанное'));
   await js(winB, `selectContact(${a.user.id}).then(() => true)`);
   await waitFor(winB, `document.getElementById('messages').textContent.includes('прочитанное')`, 'первое сообщение');
+  await waitFor(winB, `!state.unread.has(${a.user.id})`, 'первое сообщение прочитано');
+  await sleep(700);
   await js(winB, `selectContact(null); true`);
 
   // Пока приложения «не было»: после перезапуска счётчик на месте
