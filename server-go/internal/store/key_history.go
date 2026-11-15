@@ -1,23 +1,39 @@
 package store
 
-import "time"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"time"
+)
 
 type KeyHistoryEvent struct {
 	PublicKey string    `json:"publicKey"`
+	PrevHash  string    `json:"prevHash"`
+	EntryHash string    `json:"entryHash"`
 	ChangedAt time.Time `json:"changedAt"`
 }
 
+func keyHistoryHash(prev string, userID int64, publicKey string, at int64) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%s|%d", prev, userID, publicKey, at)))
+	return hex.EncodeToString(sum[:])
+}
+
 func (s *Store) RecordKeyHistory(userID int64, publicKey string) error {
+	var prev string
+	_ = s.db.QueryRow(`SELECT entry_hash FROM user_key_history WHERE user_id = ? ORDER BY id DESC LIMIT 1`, userID).Scan(&prev)
+	at := time.Now().Unix()
+	hash := keyHistoryHash(prev, userID, publicKey, at)
 	_, err := s.db.Exec(
-		`INSERT INTO user_key_history (user_id, public_key, changed_at) VALUES (?, ?, ?)`,
-		userID, publicKey, time.Now().Unix(),
+		`INSERT INTO user_key_history (user_id, public_key, prev_hash, entry_hash, changed_at) VALUES (?, ?, ?, ?, ?)`,
+		userID, publicKey, prev, hash, at,
 	)
 	return err
 }
 
 func (s *Store) KeyHistory(userID int64) ([]KeyHistoryEvent, error) {
 	rows, err := s.db.Query(
-		`SELECT public_key, changed_at FROM user_key_history WHERE user_id = ? ORDER BY id DESC LIMIT 100`,
+		`SELECT public_key, prev_hash, entry_hash, changed_at FROM user_key_history WHERE user_id = ? ORDER BY id DESC LIMIT 100`,
 		userID,
 	)
 	if err != nil {
@@ -26,12 +42,12 @@ func (s *Store) KeyHistory(userID int64) ([]KeyHistoryEvent, error) {
 	defer rows.Close()
 	var items []KeyHistoryEvent
 	for rows.Next() {
-		var key string
+		var key, prevHash, entryHash string
 		var at int64
-		if err := rows.Scan(&key, &at); err != nil {
+		if err := rows.Scan(&key, &prevHash, &entryHash, &at); err != nil {
 			return nil, err
 		}
-		items = append(items, KeyHistoryEvent{PublicKey: key, ChangedAt: time.Unix(at, 0)})
+		items = append(items, KeyHistoryEvent{PublicKey: key, PrevHash: prevHash, EntryHash: entryHash, ChangedAt: time.Unix(at, 0)})
 	}
 	return items, rows.Err()
 }

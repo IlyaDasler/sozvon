@@ -476,10 +476,43 @@ const seenKeysStore = () => scopedKey('seen');
 const changedKeysStore = () => scopedKey('changed');
 const keyChanged = (userId) => readScoped('changed', []).includes(userId);
 
+const keyHistoryRootKey = (userId) => `e2ee:${serverScope()}:keyhistory:${userId}`;
+
+async function sha256Hex(text) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function verifyKeyHistory(userId, items) {
+  const ordered = [...items].reverse();
+  let prev = '';
+  let latest = '';
+  for (const item of ordered) {
+    if (!item?.entryHash) continue;
+    const at = Math.floor(new Date(item.changedAt).getTime() / 1000);
+    const expected = await sha256Hex(`${item.prevHash}|${Number(userId)}|${item.publicKey}|${at}`);
+    if (item.prevHash !== prev || item.entryHash !== expected) {
+      toast('История ключей не прошла проверку целостности — не доверяйте новому ключу без сверки кода.', 10000);
+      return items;
+    }
+    prev = item.entryHash;
+    latest = item.entryHash;
+  }
+  if (latest) {
+    const cached = store.get(keyHistoryRootKey(userId), '');
+    if (cached && !ordered.some((item) => item.entryHash === cached)) {
+      toast('История ключей переписана сервером — сверьте ключ вручную.', 10000);
+    }
+    store.set(keyHistoryRootKey(userId), latest);
+  }
+  return items;
+}
+
 async function fetchKeyHistory(userId) {
   try {
     const data = await Api.get(`/users/${userId}/key-history`);
-    return Array.isArray(data?.items) ? data.items : [];
+    const items = Array.isArray(data?.items) ? data.items : [];
+    return await verifyKeyHistory(userId, items);
   } catch {
     return [];
   }
