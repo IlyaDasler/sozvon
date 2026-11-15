@@ -1,7 +1,7 @@
 {
   "name": "sozvon",
   "productName": "Sozvon",
-  "version": "3.6.7",
+  "version": "3.6.8",
   "description": "Созвон — голосовые звонки и чат с друзьями",
   "author": "IlyaDasler",
   "license": "MIT",
@@ -95,6 +95,7 @@
   },
   "dependencies": {
     "electron-updater": "^6.8.11",
+    "hash-wasm": "4.13.0",
     "uiohook-napi": "^1.5.5"
   },
   "overrides": {

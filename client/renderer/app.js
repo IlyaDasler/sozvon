@@ -2643,15 +2643,27 @@ function phoneIdentityRow() {
   name.textContent = 'Телефон';
   const sub = document.createElement('div');
   sub.className = 'muted small ellipsis';
-  sub.textContent = state.me?.hasPhone ? 'привязан' : 'не привязан';
+  const linkedFlag = typeof state.me?.hasPhone === 'boolean'
+    ? state.me.hasPhone
+    : typeof state.me?.phoneLinked === 'boolean'
+      ? state.me.phoneLinked
+      : null;
+  const linked = linkedFlag ?? (state.me?.phoneNumber || state.me?.phone
+    ? true
+    : state.me?.identities?.some((identity) => identity.provider === 'phone') ? true : null);
+  sub.textContent = linked === true
+    ? 'привязан через Telegram'
+    : linked === false
+      ? 'не привязан'
+      : 'статус не предоставлен сервером';
   info.append(name, sub);
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = state.me?.hasPhone ? 'btn' : 'btn';
-  button.textContent = state.me?.hasPhone ? 'Привязан' : 'Привязать';
-  button.disabled = Boolean(state.me?.hasPhone);
+  button.className = 'btn';
+  button.textContent = linked === true ? 'Привязан' : linked === false ? 'Привязать' : 'Статус недоступен';
+  button.disabled = linked !== false || state.phoneAuth === false;
   button.onclick = () => {
-    if (state.me?.hasPhone) return;
+    if (linked !== false || state.phoneAuth === false) return;
     resetPhoneLink();
     $('phone-link-form').classList.remove('hidden');
     $('link-phone-password-field').classList.toggle('hidden', Boolean(state.me?.hasPassword));
