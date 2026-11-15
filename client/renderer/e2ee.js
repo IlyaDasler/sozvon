@@ -136,8 +136,15 @@ const publicKeyOf = (userId) => (userId === state.me.id ? e2ee.identity?.publicK
 
 async function publishPrekey() {
   try {
+    if (!state.me?.publicKey) return;
+    // Второе устройство не должно перезаписывать prekey первого: иначе
+    // ломается ratchet-сессия и меняется владелец v2.
+    try {
+      const existing = await Api.get(`/users/${state.me.id}/prekey`);
+      if (existing?.identityPublic === state.me.publicKey && existing?.signature) return;
+    } catch {}
     const prekey = await window.desktop?.identity?.ensurePrekey(identityContext());
-    if (prekey?.publicKey && state.me?.publicKey) {
+    if (prekey?.publicKey) {
       await Api.put('/me/prekey', { signedPrekeyPublic: prekey.publicKey });
     }
   } catch (err) {
@@ -385,6 +392,8 @@ async function encryptV2Outgoing(conv, peerId, plain) {
   let bundle;
   try { bundle = await Api.get(`/users/${peerId}/prekey`); } catch { return null; }
   if (!bundle?.signature) return null;
+  const owner = await Api.get('/me/prekey/status').catch(() => null);
+  if (!owner?.owner) return null;
   const serverKey = await window.desktop?.update?.publicKey?.();
   if (!serverKey) return null;
   const valid = await window.desktop.identity.x3dhVerify(bundle, serverKey);

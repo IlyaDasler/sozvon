@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"sozvon/server/internal/auth"
 	"sozvon/server/internal/store"
 )
 
@@ -42,7 +43,8 @@ func (a *server) putPrekey(w http.ResponseWriter, r *http.Request) {
 	}
 	createdAt := time.Now().Unix()
 	signature := a.signPrekey(user.PublicKey, body.SignedPrekeyPublic, createdAt)
-	if err := a.store.PutPrekeyBundle(user.ID, body.SignedPrekeyPublic, signature, createdAt); err != nil {
+	owner := auth.HashDeviceKey(r.Header.Get("X-Device-Key"))
+	if err := a.store.PutPrekeyBundle(user.ID, body.SignedPrekeyPublic, signature, owner, createdAt); err != nil {
 		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
 		return
 	}
@@ -75,4 +77,19 @@ func (a *server) getPrekey(w http.ResponseWriter, r *http.Request) {
 		"signature":          bundle.Signature,
 		"createdAt":          bundle.CreatedAt,
 	})
+}
+
+func (a *server) prekeyStatus(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(userKey).(*store.User)
+	bundle, err := a.store.PrekeyBundle(user.ID)
+	if err == store.ErrNotFound {
+		writeJSON(w, http.StatusOK, map[string]any{"owner": false})
+		return
+	}
+	if err != nil {
+		fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+		return
+	}
+	owner := auth.HashDeviceKey(r.Header.Get("X-Device-Key"))
+	writeJSON(w, http.StatusOK, map[string]any{"owner": owner != "" && owner == bundle.OwnerDeviceHash})
 }
