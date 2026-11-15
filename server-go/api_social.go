@@ -925,7 +925,11 @@ func (a *server) setMyKey(w http.ResponseWriter, r *http.Request) {
 	// Публикация ключа — операция уровня аккаунта. Для аккаунта с паролем
 	// нужен пароль и при первой публикации: одной сессии недостаточно.
 	if user.PublicKey == "" || user.PublicKey != request.PublicKey {
-		if user.PasswordHash != "" && !auth.VerifyPassword(request.Password, user.PasswordHash) {
+		if user.PasswordHash == "" {
+			fail(http.StatusForbidden, "Сначала задайте пароль аккаунта, чтобы включить шифрование").write(w)
+			return
+		}
+		if !auth.VerifyPassword(request.Password, user.PasswordHash) {
 			fail(http.StatusUnauthorized, "Неверный пароль").write(w)
 			return
 		}
