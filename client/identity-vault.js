@@ -106,6 +106,20 @@ async function importFor(context, identity) {
   return result;
 }
 
+async function verifyX3dhBundle(bundle, serverPublicKey) {
+  return rpc('x3dh-verify', { bundle, serverPublicKey });
+}
+
+async function x3dhInitiator(context, bundle) {
+  await loadFile();
+  return rpc('x3dh-init', { context, bundle });
+}
+
+async function x3dhResponder(context, initiatorIdentityPublic, initiatorEphemeralPublic) {
+  await loadFile();
+  return rpc('x3dh-respond', { context, initiatorIdentityPublic, initiatorEphemeralPublic });
+}
+
 async function ensurePrekey(context) {
   await loadFile();
   const result = await rpc('prekey', { context });
@@ -152,6 +166,9 @@ function registerIdentityVault() {
   ipcMain.handle('identity-vault:import', (_event, context, identity) => importFor(context || {}, identity));
   ipcMain.handle('identity-vault:generate', (_event, context) => generateFor(context || {}));
   ipcMain.handle('identity-vault:prekey', (_event, context) => ensurePrekey(context || {}));
+  ipcMain.handle('identity-vault:x3dh-init', (_event, context, bundle) => x3dhInitiator(context || {}, bundle));
+  ipcMain.handle('identity-vault:x3dh-respond', (_event, context, identity, ephemeral) => x3dhResponder(context || {}, String(identity), String(ephemeral)));
+  ipcMain.handle('identity-vault:x3dh-verify', (_event, bundle, serverPublicKey) => verifyX3dhBundle(bundle, String(serverPublicKey)));
   ipcMain.handle('identity-vault:open', (_event, context, sealed) => open(context || {}, String(sealed)));
   ipcMain.handle('identity-vault:wrap-backup', (_event, context, password, userId) => wrapBackup(context || {}, String(password), Number(userId)));
   ipcMain.handle('identity-vault:unwrap-backup', (_event, context, backup, password, userId) => unwrapBackup(context || {}, backup, String(password), Number(userId)));

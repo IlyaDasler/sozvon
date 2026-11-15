@@ -2,6 +2,7 @@
 const parentPort = process.parentPort || require('node:worker_threads').parentPort;
 const { webcrypto } = require('node:crypto');
 const { argon2id } = require('hash-wasm');
+const x3dh = require('../renderer/x3dh');
 
 const subtle = webcrypto.subtle;
 const enc = new TextEncoder();
@@ -102,6 +103,23 @@ async function unwrapBackup(context, backup, password, userId) {
   return store(context, JSON.parse(dec.decode(plain)));
 }
 
+async function x3dhInit(context, bundle) {
+  const value = ensure(context);
+  return x3dh.initiatorSecret({ identityPrivateJwk: value.identity.privateJwk, bundle });
+}
+
+async function x3dhRespond(context, initiatorIdentityPublic, initiatorEphemeralPublic) {
+  const value = ensure(context);
+  if (!value.identity.signedPrekey?.privateJwk) throw new Error('Signed prekey не создан');
+  const root = await x3dh.responderSecret({
+    identityPrivateJwk: value.identity.privateJwk,
+    signedPrekeyPrivateJwk: value.identity.signedPrekey.privateJwk,
+    initiatorIdentityPublic,
+    initiatorEphemeralPublic,
+  });
+  return { root };
+}
+
 async function ensurePrekey(context) {
   const value = ensure(context);
   if (!value.identity.signedPrekey) {
@@ -142,6 +160,9 @@ parentPort.on('message', async (event) => {
     else if (op === 'import') result = await store(message.context, message.identity);
     else if (op === 'generate') result = await generate(message.context);
     else if (op === 'prekey') result = await ensurePrekey(message.context);
+    else if (op === 'x3dh-init') result = await x3dhInit(message.context, message.bundle);
+    else if (op === 'x3dh-verify') result = await x3dh.verifyBundle(message.bundle, message.serverPublicKey);
+    else if (op === 'x3dh-respond') result = await x3dhRespond(message.context, message.initiatorIdentityPublic, message.initiatorEphemeralPublic);
     else if (op === 'open') result = await open(message.context, message.sealed);
     else if (op === 'wrap') result = await wrapBackup(message.context, message.password, message.userId);
     else if (op === 'unwrap') result = await unwrapBackup(message.context, message.backup, message.password, message.userId);

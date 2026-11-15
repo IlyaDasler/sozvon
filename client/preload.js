@@ -60,6 +60,9 @@ contextBridge.exposeInMainWorld('desktop', {
     import: (context, identity) => ipcRenderer.invoke('identity-vault:import', context, identity),
     generate: (context) => ipcRenderer.invoke('identity-vault:generate', context),
     ensurePrekey: (context) => ipcRenderer.invoke('identity-vault:prekey', context),
+    x3dhInitiator: (context, bundle) => ipcRenderer.invoke('identity-vault:x3dh-init', context, bundle),
+    x3dhResponder: (context, identity, ephemeral) => ipcRenderer.invoke('identity-vault:x3dh-respond', context, String(identity), String(ephemeral)),
+    x3dhVerify: (bundle, serverPublicKey) => ipcRenderer.invoke('identity-vault:x3dh-verify', bundle, String(serverPublicKey)),
     open: (context, sealed) => ipcRenderer.invoke('identity-vault:open', context, String(sealed)),
     wrapBackup: (context, password, userId) => ipcRenderer.invoke('identity-vault:wrap-backup', context, String(password), Number(userId)),
     unwrapBackup: (context, backup, password, userId) => ipcRenderer.invoke('identity-vault:unwrap-backup', context, backup, String(password), Number(userId)),
@@ -98,6 +101,7 @@ contextBridge.exposeInMainWorld('desktop', {
     download: (base) => ipcRenderer.send('update:download', base),
     install: () => ipcRenderer.send('update:install'),
     verifyKeyHistory: (entryHash, signature) => ipcRenderer.invoke('update:verify-key-history', String(entryHash), String(signature)),
+    publicKey: () => ipcRenderer.invoke('update:public-key'),
   },
   // Плавающее окно трансляции: отдельное окно Windows, его можно унести на другой монитор
   pip: {
