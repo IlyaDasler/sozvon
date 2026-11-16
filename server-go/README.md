@@ -15,6 +15,16 @@ go run .            # http://localhost:3000
 `PORT`, `DATA_DIR`, `WEB_DIR`, `PUBLIC_URL`, `INVITE_CODE`, `LIVEKIT_*`,
 `TURN_SECRET`, `STUN_URLS`, `TURN_URLS`, `MIN_CLIENT_VERSION`, `LATEST_CLIENT_VERSION`.
 
+### Push-уведомления на Android
+
+FCM push для новых жалоб модераторам и решений по жалобам их авторам включается
+только при настройке Firebase service account на сервере. Задайте
+`FIREBASE_SERVICE_ACCOUNT` как путь к JSON-файлу, доступному процессу сервера.
+Для Docker смонтируйте файл внутрь контейнера только для чтения и укажите там
+путь `/run/secrets/firebase-service-account.json`. Не помещайте этот файл в репозиторий,
+образ приложения или APK. Без настройки FCM жалобы остаются в защищённом списке
+уведомлений приложения, но системные push не отправляются.
+
 ## Проверки
 
 - `go vet ./...`

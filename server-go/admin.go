@@ -500,7 +500,51 @@ func (a *server) adminResolveReport(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusNotFound, "Жалоба не найдена").write(w)
 		return
 	}
+	if report, err := a.store.ModerationReportByID(id); err == nil {
+		if notice, err := a.store.CreateReportDecisionNotification(*report); err == nil && notice != nil {
+			a.hub.Send(notice.UserID, map[string]any{"type": "moderation:notification", "notification": notice})
+			a.pushModerationNotification(*notice)
+		} else if err != nil {
+			slogWarn("create report decision notification", err)
+		}
+	} else {
+		slogWarn("read resolved report", err)
+	}
 	a.audit(r, "report.resolve", "report", id, body.Resolution, map[string]any{"status": body.Status})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (a *server) moderationNotifications(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value(userKey).(*store.User)
+	if !ok || user == nil {
+		fail(http.StatusUnauthorized, "Требуется вход").write(w)
+		return
+	}
+	items, err := a.store.ModerationNotifications(user.ID, 50)
+	if err != nil {
+		fail(http.StatusInternalServerError, "Не удалось загрузить уведомления").write(w)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"notifications": items})
+}
+
+func (a *server) markModerationNotificationsRead(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value(userKey).(*store.User)
+	if !ok || user == nil {
+		fail(http.StatusUnauthorized, "Требуется вход").write(w)
+		return
+	}
+	var body struct {
+		IDs []int64 `json:"ids"`
+	}
+	if err := decode(r, &body); err != nil || len(body.IDs) > 100 {
+		fail(http.StatusBadRequest, "Неверный список уведомлений").write(w)
+		return
+	}
+	if err := a.store.MarkModerationNotificationsRead(user.ID, body.IDs); err != nil {
+		fail(http.StatusInternalServerError, "Не удалось отметить уведомления").write(w)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 

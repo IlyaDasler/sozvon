@@ -180,6 +180,10 @@ func DeviceNameWithVersion(userAgent, version string) string {
 		app = "Созвон " + version
 	} else if match := regexp.MustCompile(`Sozvon/(\d+\.\d+)`).FindStringSubmatch(userAgent); match != nil {
 		app = "Созвон " + match[1]
+	} else if strings.Contains(userAgent, "Android") && strings.Contains(strings.ToLower(userAgent), "; wv)") {
+		// Capacitor/WebView sessions may be created before the native version is
+		// available to the API client. They are still app sessions, not browsers.
+		app = "Созвон"
 	}
 	osName := ""
 	switch {

@@ -61,6 +61,18 @@ func TestDeviceNameUsesNativeClientVersion(t *testing.T) {
 	}
 }
 
+func TestAndroidWebViewWithoutVersionIsNotLabeledAsBrowser(t *testing.T) {
+	webView := "Mozilla/5.0 (Linux; Android 16; SM-F966B; wv) AppleWebKit/537.36 Version/4.0 Chrome/140.0 Mobile Safari/537.36"
+	if got := DeviceNameWithVersion(webView, ""); got != "Созвон · Android" {
+		t.Fatalf("WebView device label = %q, want app and Android", got)
+	}
+
+	chrome := "Mozilla/5.0 (Linux; Android 16; SM-F966B) AppleWebKit/537.36 Chrome/140.0 Mobile Safari/537.36"
+	if got := DeviceNameWithVersion(chrome, ""); got != "Браузер · Android" {
+		t.Fatalf("Chrome device label = %q, want browser and Android", got)
+	}
+}
+
 func TestUsernamesAllowUnicodeAndNormalizeForUniqueness(t *testing.T) {
 	if !ValidUsername("Соломон Ицхакович") {
 		t.Fatal("кириллица и пробелы должны быть допустимы")

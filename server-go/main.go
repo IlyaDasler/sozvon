@@ -43,6 +43,7 @@ type server struct {
 	tickets       map[string]ticket
 	hub           *realtime.Hub
 	mail          *mail.Mailer
+	push          *pushService
 	preview       *linkpreview.Fetcher
 	oauth         oauth.Options
 	calls         *callManager
@@ -148,6 +149,12 @@ func main() {
 	}
 
 	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), oauth: oauth.Options{ClientID: cfg.YandexClientID, ClientSecret: cfg.YandexClientSecret, TestBase: cfg.OAuthTestBase}, preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}, limits: newLimiter(), keySigningKey: loadKeySigningKey()}
+	if push, err := newPushService(os.Getenv("FIREBASE_SERVICE_ACCOUNT")); err != nil {
+		logger.Warn("FCM выключен", "error", err)
+	} else if push != nil {
+		app.push = push
+		logger.Info("FCM включён", "project", push.projectID)
+	}
 	// Хеш для «пустой» проверки пароля (см. login): та же стоимость scrypt.
 	app.dummyHash, _ = auth.HashPassword(auth.RandomID(32))
 	app.backfillKeyHistory()
@@ -324,6 +331,10 @@ func (a *server) routes() http.Handler {
 			r.Get("/link-preview", a.linkPreview)
 			r.Get("/me/security-events", a.securityEvents)
 			r.Post("/reports", a.createReport)
+			r.Get("/moderation-notifications", a.moderationNotifications)
+			r.Post("/moderation-notifications/read", a.markModerationNotificationsRead)
+			r.Post("/push/register", a.registerPushToken)
+			r.Delete("/push/token", a.deletePushToken)
 			r.Route("/moderation", func(mr chi.Router) {
 				mr.Use(a.moderationAuth)
 				mr.Get("/me", a.moderationMe)
@@ -642,6 +653,9 @@ func (a *server) openSession(user *store.User, r *http.Request) (string, error) 
 	keyHash := ""
 	if key := strings.TrimSpace(r.Header.Get("X-Device-Key")); key != "" {
 		keyHash = auth.HashDeviceKey(key)
+	}
+	if keyHash != "" {
+		_ = a.store.DeleteOtherSessionsByDeviceKey(user.ID, keyHash, sid)
 	}
 	if err := a.store.CreateSessionWithKey(sid, user.ID, device, keyHash); err != nil {
 		return "", err

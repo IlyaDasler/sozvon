@@ -930,6 +930,7 @@ function enterMain(user, password = '') {
         refreshContacts();
         refreshHubs();
         refreshRooms();
+        window.loadModerationNotifications?.();
         sendAutoStatus();
         resumeCall();
       } else if (state.call?.callId) {
@@ -1982,6 +1983,8 @@ const UNAVAILABLE_REASONS = {
 
 function handleEvent(msg) {
   switch (msg.type) {
+    case 'moderation:notification':
+      return window.receiveModerationNotification?.(msg.notification);
     case 'presence':
       return updateUser(msg.userId, { online: msg.online, status: msg.status || (msg.online ? 'online' : 'offline') });
     case 'me:status':

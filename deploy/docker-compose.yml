@@ -21,8 +21,12 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      # Для FCM: задать путь в контейнере и добавить read-only bind mount ниже.
+      FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT:-}
     volumes:
       - sozvon-data:/data
+      # Пример для включения FCM (путь к файлу задаётся вне репозитория):
+      # - ${FIREBASE_SERVICE_ACCOUNT_FILE}:/run/secrets/firebase-service-account.json:ro
 
   # TURN-сервер пересылает голос, когда друзья не могут соединиться напрямую (NAT, мобильный интернет)
   turn:

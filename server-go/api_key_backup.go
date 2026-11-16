@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"strings"
 
 	"sozvon/server/internal/version"
 
@@ -25,6 +26,10 @@ type keyBackupBody struct {
 }
 
 func keyBackupClientTooOld(r *http.Request) bool {
+	if strings.Contains(strings.ToLower(r.UserAgent()), "android") &&
+		strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("capability")), "key-backup-v1") {
+		return false
+	}
 	return version.Compare(r.Header.Get("X-Client-Version"), "3.6.8") < 0
 }
 

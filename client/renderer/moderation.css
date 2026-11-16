@@ -22,6 +22,8 @@
 .mod-table th { color: var(--muted); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; font-weight: 600; }
 .mod-table tr:last-child td { border-bottom: 0; }
 .mod-table tr:hover td { background: color-mix(in srgb, var(--bg-5) 45%, transparent); }
+.mod-table tr.mod-report-notice-target td { animation: mod-report-notice 1.8s ease-out both; }
+@keyframes mod-report-notice { 0%, 72% { background: color-mix(in srgb, var(--accent) 20%, var(--bg-3)); } 100% { background: transparent; } }
 .mod-user { display: flex; align-items: center; gap: 9px; min-width: 180px; }
 .mod-user .avatar { width: 28px; height: 28px; flex: 0 0 auto; }
 .mod-actions { display: flex; gap: 5px; flex-wrap: wrap; }

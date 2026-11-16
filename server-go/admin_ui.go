@@ -83,6 +83,18 @@ func (a *server) createReport(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError, "Не удалось сохранить жалобу").write(w)
 		return
 	}
+	if report, err := a.store.ModerationReportByID(id); err == nil {
+		if notices, err := a.store.CreateReportNotifications(*report); err == nil {
+			for _, notice := range notices {
+				a.hub.Send(notice.UserID, map[string]any{"type": "moderation:notification", "notification": notice})
+				a.pushModerationNotification(notice)
+			}
+		} else {
+			slogWarn("create report notifications", err)
+		}
+	} else {
+		slogWarn("read created report", err)
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "id": id})
 }
 

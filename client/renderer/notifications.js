@@ -123,6 +123,7 @@ const NOTIF_ICONS = {
   'hub-invite': '🏠',
   'hub-removed': '⛔',
   event: '📅',
+  moderation: '⚑',
 };
 
 const notifKey = () => `notifications:${state.me?.id}`;
@@ -165,8 +166,10 @@ function renderNotifPanel() {
     body.append(title, text);
     row.append(icon, body, time);
     row.onclick = () => {
+      markNotifsRead((item) => item.id === n.id);
+      if (n.serverNoticeId != null) void markModerationNotifsRead([n.serverNoticeId]);
       closeNotifPanel();
-      openNotifTarget(n.open);
+      openNotifTarget(n.open, n);
     };
     list.append(row);
   }
@@ -178,9 +181,15 @@ function formatNotifTime(at) {
   return today ? d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('ru', { day: 'numeric', month: 'short' });
 }
 
-function openNotifTarget(open) {
+function openNotifTarget(open, notification = null) {
   window.desktop?.focus();
-  if (open?.contact && state.contacts.has(open.contact)) selectContact(open.contact);
+  if (open?.reportDecision) {
+    toast(notification?.body || notification?.title || 'Жалоба рассмотрена', 6500);
+  } else if (open?.moderationReport != null) {
+    openSettings();
+    showSettingsTab('admin');
+    window.openModerationReport?.(Number(open.moderationReport));
+  } else if (open?.contact && state.contacts.has(open.contact)) selectContact(open.contact);
   else if (open?.room && state.rooms.has(open.room)) {
     selectRoom(open.room);
     // Уведомление треда ведёт не только в комнату, но и в сам тред.
@@ -216,7 +225,9 @@ function openNotifPanel() {
   $('notif-panel').classList.remove('hidden');
   placeNotifPanel();
   // Открыли — значит, всё прочитано
+  const serverIDs = loadNotifs().filter((item) => !item.read && item.serverNoticeId != null).map((item) => item.serverNoticeId);
   saveNotifs(loadNotifs().map((n) => ({ ...n, read: true })));
+  void markModerationNotifsRead(serverIDs);
   renderNotifBadge();
 }
 
@@ -250,6 +261,7 @@ $('notif-btn').onclick = (e) => {
   else closeNotifPanel();
 };
 $('notif-clear').onclick = () => {
+  void markModerationNotifsRead(loadNotifs().filter((item) => item.serverNoticeId != null).map((item) => item.serverNoticeId));
   saveNotifs([]);
   renderNotifPanel();
   renderNotifBadge();
@@ -268,13 +280,17 @@ document.addEventListener('click', (e) => {
  * kind: message, room, missed, friend, room-invite, room-removed, hub-invite, hub-removed;
  * open: { contact }, { room } или { hub } — куда перейти по щелчку
  */
-function notify(title, body, { kind = 'message', open = null, hub = null } = {}) {
+function notify(title, body, { kind = 'message', open = null, hub = null, serverNoticeId = null, silent = false } = {}) {
   const list = loadNotifs();
-  list.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, kind, title, body, open, at: Date.now(), read: false });
+  if (serverNoticeId != null && list.some((item) => item.serverNoticeId === Number(serverNoticeId))) return;
+  const item = { id: serverNoticeId == null ? `${Date.now()}-${Math.random().toString(36).slice(2, 6)}` : `moderation-${serverNoticeId}`, kind, title, body, open, at: Date.now(), read: false };
+  if (serverNoticeId != null) item.serverNoticeId = Number(serverNoticeId);
+  list.unshift(item);
   saveNotifs(list);
   renderNotifBadge();
   if (!$('notif-panel').classList.contains('hidden')) renderNotifPanel();
 
+  if (silent) return;
   const s = notifySettings();
   if (doNotDisturb()) return; // не беспокоить: только в центре уведомлений
   // В канале уведомления можно выключить: ни звука, ни мигания иконки, ни окна — только запись в центре
@@ -286,11 +302,45 @@ function notify(title, body, { kind = 'message', open = null, hub = null } = {})
   if (!s.desktop || !('Notification' in window)) return;
   const show = () => {
     const n = new Notification(title, { body: s.preview || (kind !== 'message' && kind !== 'room') ? body : 'Новое сообщение', silent: true });
-    n.onclick = () => openNotifTarget(open);
+    n.onclick = () => {
+      if (serverNoticeId != null) void markModerationNotifsRead([serverNoticeId]);
+      openNotifTarget(open, { kind, title, body, open });
+    };
   };
   if (Notification.permission === 'granted') show();
   else if (Notification.permission === 'default') Notification.requestPermission().then((p) => p === 'granted' && show());
 }
+
+function receiveModerationNotification(raw, { silent = false } = {}) {
+  if (!raw || !Number.isFinite(Number(raw.id))) return;
+  const open = raw.kind === 'report_new'
+    ? { moderationReport: Number(raw.reportId) }
+    : raw.kind === 'report_decision' ? { reportDecision: true } : {};
+  notify(String(raw.title || 'Уведомление модерации'), String(raw.body || ''), { kind: 'moderation', open, serverNoticeId: Number(raw.id), silent });
+}
+
+async function loadModerationNotifications() {
+  if (!state.me || !window.Api?.token) return;
+  try {
+    const result = await Api.request('GET', '/moderation-notifications');
+    for (const item of [...(result.notifications || [])].reverse()) {
+      receiveModerationNotification(item, { silent: true });
+      if (item.readAt) saveNotifs(loadNotifs().map((row) => row.serverNoticeId === Number(item.id) ? { ...row, read: true } : row));
+    }
+    renderNotifBadge();
+  } catch (error) {
+    if (error?.status !== 404 && error?.status !== 401) console.warn('moderation notifications unavailable', error?.message || error);
+  }
+}
+
+async function markModerationNotifsRead(ids) {
+  const unique = [...new Set(ids.map(Number).filter(Number.isFinite))];
+  if (!unique.length || !window.Api?.token) return;
+  try { await Api.request('POST', '/moderation-notifications/read', { ids: unique }); } catch { /* сохраняем локальное состояние прочтения */ }
+}
+
+window.receiveModerationNotification = receiveModerationNotification;
+window.loadModerationNotifications = loadModerationNotifications;
 
 // panel-moved-to-body: сайдбар обрезает вложенные окна (contain + overflow),
 // поэтому панель уведомлений переносим в body и ставим её fixed рядом с колокольчиком

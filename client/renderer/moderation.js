@@ -74,7 +74,7 @@
     };
     el('mod-users-refresh').onclick = () => load().catch((error) => fail(error.message));
     el('mod-users-status').onchange = () => load().catch((error) => fail(error.message));
-    el('mod-users-q').onkeydown = (event) => { if (event.key === 'Enter') load().catch((error) => fail(error.message)); };
+    el('mod-users-q').onkeydown = (event) => { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); load().catch((error) => fail(error.message)); } };
     await load();
   }
 
@@ -110,7 +110,7 @@
     };
     el('mod-channels-refresh').onclick = () => load().catch((error) => fail(error.message));
     el('mod-channels-kind').onchange = () => load().catch((error) => fail(error.message));
-    el('mod-channels-q').onkeydown = (event) => { if (event.key === 'Enter') load().catch((error) => fail(error.message)); };
+    el('mod-channels-q').onkeydown = (event) => { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); load().catch((error) => fail(error.message)); } };
     await load();
   }
 
@@ -121,6 +121,9 @@
       <td>${report.ID}</td><td>${esc(report.TargetType)} #${report.TargetID}</td><td>${esc(report.Category)}</td>
       <td>${esc(report.Reason)}</td><td>${fmt(report.CreatedAt)}</td>
       <td><div class="mod-actions"><button class="btn small" data-mod-action="report-resolve" data-id="${report.ID}" data-status="resolved">Решена</button><button class="btn small danger" data-mod-action="report-resolve" data-id="${report.ID}" data-status="rejected">Отклонить</button></div></td>`);
+    [...el('mod-reports-list').querySelectorAll('tbody tr')].forEach((row, index) => {
+      row.dataset.reportId = String(data.reports[index]?.ID ?? '');
+    });
   }
 
   async function appealsTab() {
@@ -192,6 +195,17 @@
     if (!state.me && !(await refreshModerationAccess())) return;
     await openTab(tab);
   }
+
+  window.openModerationReport = async (reportId) => {
+    if (!Number.isSafeInteger(Number(reportId)) || Number(reportId) <= 0) return;
+    await openAdminTab('reports');
+    const row = [...el('mod-reports-list').querySelectorAll('[data-report-id]')]
+      .find((item) => item.dataset.reportId === String(reportId));
+    if (!row) return toast('Жалоба уже рассмотрена или не найдена');
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.classList.add('mod-report-notice-target');
+    setTimeout(() => row.classList.remove('mod-report-notice-target'), 1800);
+  };
 
   async function runAction(action, dataset) {
     const needsReason = ['suspend', 'ban', 'delete-channel', 'reject', 'report-resolve', 'appeal-resolve'].includes(action);

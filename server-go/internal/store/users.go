@@ -430,3 +430,11 @@ func (s *Store) DeleteSessionsForUser(userID int64) error {
 	_, err := s.db.Exec(`DELETE FROM sessions WHERE user_id = ?`, userID)
 	return err
 }
+
+func (s *Store) DeleteOtherSessionsByDeviceKey(userID int64, deviceKeyHash, keepID string) error {
+	if deviceKeyHash == "" {
+		return nil
+	}
+	_, err := s.db.Exec(`DELETE FROM sessions WHERE user_id = ? AND device_key_hash = ? AND id <> ?`, userID, deviceKeyHash, keepID)
+	return err
+}
