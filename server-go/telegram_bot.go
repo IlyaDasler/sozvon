@@ -126,14 +126,23 @@ func (a *server) telegramSend(chatID int64, text string, withContactButton bool)
 }
 
 func (a *server) telegramBotLoop(ctx context.Context) {
-	me, err := a.telegramHTTP("getMe", nil)
-	if err != nil {
-		slog.Error("Telegram: не удалось получить бота", "error", err)
-		return
-	}
 	var bot telegramUser
-	if err := json.Unmarshal(me, &bot); err != nil || bot.Username == "" {
-		slog.Error("Telegram: пустой ответ getMe")
+	for ctx.Err() == nil {
+		me, err := a.telegramHTTP("getMe", nil)
+		if err == nil {
+			if err := json.Unmarshal(me, &bot); err == nil && bot.Username != "" {
+				break
+			}
+			err = fmt.Errorf("пустой ответ getMe")
+		}
+		slog.Error("Telegram: не удалось получить бота", "error", err)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(10 * time.Second):
+		}
+	}
+	if ctx.Err() != nil {
 		return
 	}
 	a.setTelegramBotUsername(bot.Username)
