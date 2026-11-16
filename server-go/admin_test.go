@@ -223,3 +223,68 @@ func TestAdminChannelPrivacyAndLastLogin(t *testing.T) {
 		t.Fatal("hub not listed")
 	}
 }
+
+func TestSuperAdminBanAndRestoreEmptyAccount(t *testing.T) {
+	c := newAdminTestClient(t)
+	c.login("admin")
+	resp, body := c.do(http.MethodGet, "/api/admin/users?q=target", nil, true)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("users: %d", resp.StatusCode)
+	}
+	list := body["users"].([]any)
+	if len(list) != 1 {
+		t.Fatalf("target: %v", body)
+	}
+	targetID := int64(list[0].(map[string]any)["ID"].(float64))
+	resp, body = c.do(http.MethodPost, "/api/admin/users/"+strconv.FormatInt(targetID, 10)+"/ban", map[string]any{"reason": "тест"}, true)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("ban: %d %v", resp.StatusCode, body)
+	}
+	user, err := c.store.UserByID(targetID)
+	if err != nil || user.BannedAt == 0 || user.PasswordHash != "!" {
+		t.Fatalf("banned: %+v %v", user, err)
+	}
+	resp, body = c.do(http.MethodPost, "/api/admin/users/"+strconv.FormatInt(targetID, 10)+"/unban", nil, true)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unban: %d %v", resp.StatusCode, body)
+	}
+	if body["temporaryPassword"] == "" {
+		t.Fatal("temporary password missing")
+	}
+	user, err = c.store.UserByID(targetID)
+	if err != nil || user.BannedAt != 0 || user.PasswordHash == "!" {
+		t.Fatalf("restored: %+v %v", user, err)
+	}
+	if user.PublicKey != "" {
+		t.Fatalf("public key restored: %q", user.PublicKey)
+	}
+}
+
+func TestModeratorChannelDeleteNeedsSuperApproval(t *testing.T) {
+	c := newAdminTestClient(t)
+	c.login("admin")
+	hub, err := c.store.CreateHub(c.owner.ID, "На удаление", "#0090ff")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, body := c.do(http.MethodGet, "/api/admin/users?q=moder", nil, true)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("users: %d", resp.StatusCode)
+	}
+	moderID := int64(body["users"].([]any)[0].(map[string]any)["ID"].(float64))
+	c.do(http.MethodPost, "/api/admin/roles", map[string]any{"userId": moderID, "role": "moderator", "reason": "test"}, true)
+	moderator := &adminTestClient{t: t, server: c.server, client: &http.Client{Jar: mustJar(t)}}
+	moderator.login("moder")
+	resp, body = moderator.do(http.MethodDelete, "/api/admin/channels/hub/"+strconv.FormatInt(hub.ID, 10), map[string]any{"reason": "нарушение"}, true)
+	if resp.StatusCode != http.StatusAccepted || body["pending"] != true {
+		t.Fatalf("delete request: %d %v", resp.StatusCode, body)
+	}
+	approvalID := int64(body["approvalId"].(float64))
+	resp, body = c.do(http.MethodPost, "/api/admin/approvals/"+strconv.FormatInt(approvalID, 10)+"/approve", nil, true)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("approve: %d %v", resp.StatusCode, body)
+	}
+	if _, err := c.store.HubByID(hub.ID); err == nil {
+		t.Fatal("hub still exists")
+	}
+}
