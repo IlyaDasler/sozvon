@@ -82,3 +82,29 @@ func (s *Store) AllKeyHistory() ([]KeyHistoryExportRow, error) {
 	}
 	return out, rows.Err()
 }
+
+type UserKeyHead struct {
+	ID        int64
+	PublicKey string
+}
+
+func (s *Store) UsersMissingKeyHistory() ([]UserKeyHead, error) {
+	rows, err := s.db.Query(`
+		SELECT u.id, u.public_key FROM users u
+		WHERE u.public_key <> '' AND NOT EXISTS (
+			SELECT 1 FROM user_key_history h WHERE h.user_id = u.id
+		)`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []UserKeyHead
+	for rows.Next() {
+		var item UserKeyHead
+		if err := rows.Scan(&item.ID, &item.PublicKey); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}

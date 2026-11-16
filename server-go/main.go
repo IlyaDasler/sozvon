@@ -68,6 +68,21 @@ type ticket struct {
 	expires time.Time
 }
 
+func (a *server) backfillKeyHistory() {
+	users, err := a.store.UsersMissingKeyHistory()
+	if err != nil {
+		return
+	}
+	for _, user := range users {
+		if err := a.store.RecordKeyHistory(user.ID, user.PublicKey, a.signKeyHistory); err != nil {
+			slog.Warn("key history backfill", "user", user.ID, "error", err)
+		}
+	}
+	if len(users) > 0 {
+		slog.Info("история ключей создана для существующих ключей", "count", len(users))
+	}
+}
+
 func loadKeySigningKey() ed25519.PrivateKey {
 	path := strings.TrimSpace(os.Getenv("UPDATE_SIGNING_KEY"))
 	if path == "" {
@@ -123,6 +138,8 @@ func main() {
 	app := &server{cfg: cfg, store: st, secret: secret, tickets: map[string]ticket{}, hub: realtime.NewHub(), calls: newCallManager(), voice: newVoiceManager(), oauth: oauth.Options{ClientID: cfg.YandexClientID, ClientSecret: cfg.YandexClientSecret, TestBase: cfg.OAuthTestBase}, preview: linkpreview.New(os.Getenv("LINK_PREVIEW_ALLOW_PRIVATE") == "1"), mail: mail.New(mail.Options{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom, TestFile: cfg.MailTestFile}), livekit: livekit.Options{URL: cfg.LiveKitURL, APIURL: cfg.LiveKitAPIURL, Key: cfg.LiveKitKey, Secret: cfg.LiveKitSecret, MinMembers: cfg.LiveKitMinMembers}, limits: newLimiter(), keySigningKey: loadKeySigningKey()}
 	// Хеш для «пустой» проверки пароля (см. login): та же стоимость scrypt.
 	app.dummyHash, _ = auth.HashPassword(auth.RandomID(32))
+	app.backfillKeyHistory()
+
 	app.telegramToken = strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN"))
 	app.telegramAPIBase = strings.TrimSpace(os.Getenv("TELEGRAM_API_BASE"))
 	if app.telegramAPIBase == "" {
