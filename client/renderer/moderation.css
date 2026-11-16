@@ -34,6 +34,8 @@
 .mod-form label { display: grid; gap: 7px; font-size: 11px; color: var(--muted); min-width: 140px; }
 .mod-form input, .mod-form select { width: 165px; height: 38px; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg-3); color: var(--text); font: inherit; }
 .mod-form button { height: 38px; }
+.mod-form label:nth-of-type(4) { flex: 1 1 220px; }
+.mod-form label:nth-of-type(4) input { width: 100%; }
 .mod-note { color: var(--muted); font-size: 12px; line-height: 1.45; margin: 0 0 12px; }
 .moderation-main .rs-head h3 { font-size: 18px; }
 @media (max-width: 760px) {
