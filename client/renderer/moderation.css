@@ -30,9 +30,10 @@
 .mod-pill.warn { color: var(--accent-2); border-color: color-mix(in srgb, var(--accent-2) 38%, var(--line)); }
 .mod-pill.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 42%, var(--line)); }
 .mod-empty { padding: 34px; text-align: center; color: var(--muted); }
-.mod-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; border: 1px solid var(--line); border-radius: var(--r-l, 12px); padding: 12px; margin-bottom: 14px; background: color-mix(in srgb, var(--bg-3) 35%, transparent); }
-.mod-form label { display: grid; gap: 5px; font-size: 11px; color: var(--muted); }
-.mod-form input, .mod-form select { width: 150px; }
+.mod-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; border: 1px solid var(--line); border-radius: var(--r-l, 12px); padding: 16px; margin: 4px 0 16px; background: color-mix(in srgb, var(--bg-3) 35%, transparent); }
+.mod-form label { display: grid; gap: 7px; font-size: 11px; color: var(--muted); min-width: 140px; }
+.mod-form input, .mod-form select { width: 165px; height: 38px; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg-3); color: var(--text); font: inherit; }
+.mod-form button { height: 38px; }
 .mod-note { color: var(--muted); font-size: 12px; line-height: 1.45; margin: 0 0 12px; }
 .moderation-main .rs-head h3 { font-size: 18px; }
 @media (max-width: 760px) {

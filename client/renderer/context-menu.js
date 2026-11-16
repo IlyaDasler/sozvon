@@ -34,6 +34,24 @@ function toggleMuteFor(userId) {
   renderRooms(); // знак «заглушён для вас» в списке голоса
 }
 
+async function reportUser(user) {
+  const reason = await askText('Жалоба на пользователя', '', { hint: 'Опишите нарушение. Переписка не прикладывается.' });
+  if (!reason || reason.trim().length < 3) return;
+  try {
+    await Api.post('/reports', { targetType: 'user', targetId: user.id, category: 'abuse', reason: reason.trim() });
+    toast('Жалоба отправлена модераторам');
+  } catch (err) { toast(err.message); }
+}
+
+async function reportChannel(id, name) {
+  const reason = await askText(`Жалоба на «${name}»`, '', { hint: 'Опишите нарушение. Переписка не прикладывается.' });
+  if (!reason || reason.trim().length < 3) return;
+  try {
+    await Api.post('/reports', { targetType: 'channel', targetId: id, category: 'abuse', reason: reason.trim() });
+    toast('Жалоба на канал отправлена модераторам');
+  } catch (err) { toast(err.message); }
+}
+
 function userMenu(userId, anchor) {
   const user = userById(userId);
   if (!user) return [];
@@ -84,14 +102,7 @@ function userMenu(userId, anchor) {
     roomMember && above && can(room, PERMS.kick) && { label: `Исключить из «${room.name}»`, danger: true, onclick: () => removeRoomMember(room, roomMember) },
     roomMember && above && can(room, PERMS.ban) && { label: `Забанить в «${room.name}»`, danger: true, onclick: () => banMember(room, roomMember) },
     'sep',
-    { label: 'Пожаловаться', danger: true, onclick: async () => {
-      const reason = await askText('Жалоба на пользователя', '', { hint: 'Опишите нарушение. Переписка не прикладывается.' });
-      if (!reason || reason.trim().length < 3) return;
-      try {
-        await Api.post('/reports', { targetType: 'user', targetId: user.id, category: 'abuse', reason: reason.trim() });
-        toast('Жалоба отправлена модераторам');
-      } catch (err) { toast(err.message); }
-    } },
+    { label: 'Пожаловаться', danger: true, onclick: () => reportUser(user) },
     friend && { label: 'Удалить из друзей', danger: true, onclick: () => removeFriend(friend) },
     blocked ? { label: 'Разблокировать', onclick: () => unblockUser(user) } : { label: 'Заблокировать', danger: true, onclick: () => blockUser(user) },
   ];

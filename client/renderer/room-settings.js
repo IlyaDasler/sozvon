@@ -129,6 +129,9 @@ function overviewPane(room) {
   }
   const myRole = isRoomOwner(room, state.me.id) ? 'Вы создатель — можно всё' : `Ваша роль: ${roleOf(room, state.me.id)?.name || 'без роли'}`;
   out.push(el('h4', { textContent: 'Что можно вам' }), el('p', { className: 'muted small', textContent: myRole }), list);
+  const report = el('button', { type: 'button', className: 'btn danger-outline', textContent: 'Пожаловаться на комнату' });
+  report.onclick = () => reportChannel(room.id, room.name);
+  out.push(el('div', { className: 'rs-row' }, report));
   return out;
 }
 

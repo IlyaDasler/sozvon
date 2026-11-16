@@ -565,6 +565,7 @@ function hubMenuItems(hub) {
     manager && { label: 'Создать событие', icon: EVENT_ICON, onclick: () => openEventCreate(hub) },
     { label: muted ? 'Включить уведомления' : 'Выключить уведомления', icon: muted ? BELL_OFF : BELL_ON, onclick: () => toggleHubMute(hub) },
     { label: manager ? 'Настройки канала' : 'Участники канала', onclick: () => openHubSettings(hub.id, manager ? 'overview' : 'members') },
+    { label: 'Пожаловаться на канал', danger: true, onclick: () => reportChannel(hub.id, hub.name) },
     'sep',
     hub.ownerId === state.me.id
       ? { label: 'Удалить канал', danger: true, onclick: () => deleteHub(hub) }

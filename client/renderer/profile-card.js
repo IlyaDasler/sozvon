@@ -209,6 +209,11 @@ function openProfileCard(userId, anchor) {
       };
       actions.append(add);
     }
+    if (userId !== state.me.id) {
+      const report = Object.assign(document.createElement('button'), { type: 'button', className: 'btn danger-outline', textContent: 'Пожаловаться' });
+      report.onclick = () => reportUser(user);
+      actions.append(report);
+    }
     body.append(actions);
   }
 

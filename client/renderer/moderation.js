@@ -142,13 +142,13 @@
   async function rolesTab() {
     el('admin-content').innerHTML = `
       <p class="mod-note">Только super admin может выдавать и отзывать роли.</p>
-      <form id="mod-role-form" class="mod-form">
+      <div id="mod-role-form" class="mod-form">
         <label>ID пользователя<input id="mod-role-user" inputmode="numeric" required></label>
         <label>Роль<select id="mod-role-name"><option value="moderator">Модератор</option><option value="super_admin">Super admin</option></select></label>
         <label>До<input id="mod-role-expires" type="date"></label>
         <label>Причина<input id="mod-role-reason" required></label>
-        <button class="btn primary" type="submit">Выдать</button>
-      </form>
+        <button id="mod-role-submit" class="btn primary" type="button">Выдать</button>
+      </div>
       <div id="mod-roles-list"></div>`;
     const load = async () => {
       const data = await api('/roles');
@@ -156,13 +156,14 @@
         <td>#${role.UserID}</td><td>${esc(role.Role)}</td><td>${role.Permissions}</td><td>${role.ExpiresAt ? fmt(role.ExpiresAt) : 'бессрочно'}</td>
         <td><button class="btn small danger" data-mod-action="revoke-role" data-id="${role.UserID}">Отозвать</button></td>`);
     };
-    el('mod-role-form').onsubmit = async (event) => {
-      event.preventDefault();
+    el('mod-role-submit').onclick = async () => {
       try {
         const expires = el('mod-role-expires').value ? new Date(`${el('mod-role-expires').value}T23:59:59`).getTime() : 0;
         await api('/roles', { method: 'POST', body: { userId: Number(el('mod-role-user').value), role: el('mod-role-name').value, expiresAt: expires, reason: el('mod-role-reason').value } });
         toast('Роль выдана');
-        el('mod-role-form').reset();
+        el('mod-role-user').value = '';
+        el('mod-role-expires').value = '';
+        el('mod-role-reason').value = '';
         await load();
       } catch (error) { fail(error.message); }
     };
