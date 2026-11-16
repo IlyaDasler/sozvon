@@ -812,3 +812,36 @@ func (a *server) oauthBlacklisted(providerID string) bool {
 	blocked, err := a.store.IsBlacklisted("oauth", a.adminValueHMAC("oauth", providerID))
 	return err == nil && blocked
 }
+
+// moderationAuth — вход в клиентскую админку по обычной сессии приложения.
+// Отдельный cookie/логин не нужен: роль проверяется на каждом запросе.
+func (a *server) moderationAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, ok := r.Context().Value(userKey).(*store.User)
+		if !ok || user == nil {
+			fail(http.StatusUnauthorized, "Требуется вход").write(w)
+			return
+		}
+		role, err := a.store.ActiveAdminRole(user.ID)
+		if err != nil {
+			fail(http.StatusForbidden, "Нет доступа к модерации").write(w)
+			return
+		}
+		info := &adminSessionInfo{User: user, Role: role}
+		next.ServeHTTP(w, r.WithContext(contextWithAdmin(r, info)))
+	})
+}
+
+func (a *server) moderationMe(w http.ResponseWriter, r *http.Request) {
+	info := adminInfo(r)
+	if info == nil {
+		fail(http.StatusForbidden, "Нет доступа к модерации").write(w)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"user":        publicAdminUser(info.User),
+		"role":        info.Role,
+		"isSuper":     info.Role.IsSuper(),
+		"permissions": info.Role.Permissions,
+	})
+}

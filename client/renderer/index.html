@@ -38,6 +38,7 @@
   <script src="preview-card.js" defer></script>
   <script src="combobox.js" defer></script>
   <script src="tooltips.js"></script>
+  <link rel="stylesheet" href="moderation.css">
 </head>
 <body>
   <div class="lg-aurora" aria-hidden="true"></div>
@@ -334,6 +335,9 @@
         </div>
         <button class="icon-btn" id="mic-btn" title="Микрофон (Ctrl+Shift+M)"></button>
         <button class="icon-btn" id="deafen-btn" title="Звук (Ctrl+Shift+D)"></button>
+        <button class="icon-btn hidden" id="moderation-btn" title="Модерация">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M9 12l2 2 4-4"/></svg>
+        </button>
         <button class="icon-btn" id="settings-btn" title="Настройки">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
         </button>
@@ -1483,6 +1487,32 @@
     </div>
   </div>
 
+
+  <!-- Клиентская модерация: доступна только super admin и модераторам -->
+  <div id="moderation" class="modal hidden">
+    <div class="modal-card moderation-card">
+      <nav class="rs-nav moderation-nav" id="moderation-nav">
+        <div class="rs-room">Модерация</div>
+        <div class="moderation-role muted small" id="moderation-role"></div>
+        <button type="button" data-mod-tab="users">Пользователи</button>
+        <button type="button" data-mod-tab="channels">Каналы</button>
+        <button type="button" data-mod-tab="reports">Жалобы</button>
+        <button type="button" data-mod-tab="appeals">Апелляции</button>
+        <button type="button" data-mod-tab="approvals">Подтверждения</button>
+        <button type="button" data-mod-tab="roles">Роли</button>
+        <button type="button" data-mod-tab="audit">Аудит</button>
+      </nav>
+      <section class="rs-main moderation-main">
+        <header class="rs-head">
+          <h3 id="moderation-title">Пользователи</h3>
+          <button type="button" class="icon-btn" id="moderation-close" title="Закрыть (Esc)"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </header>
+        <p class="error" id="moderation-error"></p>
+        <div class="moderation-content" id="moderation-content"></div>
+      </section>
+    </div>
+  </div>
+
   <script src="markdown.js"></script>
   <script src="url-policy.js"></script>
   <script src="server-url.js"></script>
@@ -1509,6 +1539,7 @@
   <script src="presence-policy.js"></script>
   <script src="telegram-link.js"></script>
   <script src="app.js"></script>
+  <script src="moderation.js"></script>
 <script type="module" src="room-utils.mjs"></script>
 <script type="module" src="update-bar.mjs"></script>
   <script src="ptt-keys.js"></script>

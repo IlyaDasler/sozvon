@@ -1,0 +1,38 @@
+.moderation-card {
+  width: min(1180px, 96vw);
+  height: min(760px, 88vh);
+  display: grid;
+  grid-template-columns: 225px minmax(0, 1fr);
+  overflow: hidden;
+}
+.moderation-nav { border-right: 1px solid var(--line); }
+.moderation-role { padding: 0 10px 10px; text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
+.moderation-main { min-width: 0; display: flex; flex-direction: column; }
+.moderation-content { min-width: 0; overflow: auto; padding: 0 4px 8px; }
+.moderation-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.moderation-toolbar input { max-width: 300px; }
+.moderation-toolbar select { max-width: 190px; }
+.mod-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mod-table th, .mod-table td { padding: 10px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.mod-table th { color: var(--muted); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; font-weight: 600; }
+.mod-table tr:last-child td { border-bottom: 0; }
+.mod-table tr:hover td { background: rgba(255,255,255,.025); }
+.mod-user { display: flex; align-items: center; gap: 9px; min-width: 180px; }
+.mod-user .avatar { width: 28px; height: 28px; flex: 0 0 auto; }
+.mod-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+.mod-pill { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 3px 7px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.mod-pill.ok { color: #58d6a2; border-color: rgba(88,214,162,.3); }
+.mod-pill.warn { color: #ffc857; border-color: rgba(255,200,87,.3); }
+.mod-pill.danger { color: #ff9b9b; border-color: rgba(255,107,107,.35); }
+.mod-empty { padding: 34px; text-align: center; color: var(--muted); }
+.mod-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+.mod-form label { display: grid; gap: 5px; font-size: 11px; color: var(--muted); }
+.mod-form input, .mod-form select { width: 150px; }
+.mod-note { color: var(--muted); font-size: 12px; line-height: 1.45; margin: 0 0 12px; }
+.moderation-main .rs-head h3 { font-size: 18px; }
+@media (max-width: 760px) {
+  .moderation-card { grid-template-columns: 1fr; height: min(820px, 94vh); }
+  .moderation-nav { display: flex; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px; }
+  .moderation-nav .rs-room, .moderation-role { display: none; }
+  .moderation-nav button { white-space: nowrap; }
+}

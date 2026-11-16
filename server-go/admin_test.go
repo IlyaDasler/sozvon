@@ -288,3 +288,46 @@ func TestModeratorChannelDeleteNeedsSuperApproval(t *testing.T) {
 		t.Fatal("hub still exists")
 	}
 }
+
+func TestModerationApiUsesAppSession(t *testing.T) {
+	c := newAdminTestClient(t)
+	c.login("admin")
+	// Выдаём модератора.
+	resp, body := c.do(http.MethodGet, "/api/admin/users?q=moder", nil, true)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("users: %d", resp.StatusCode)
+	}
+	moderID := int64(body["users"].([]any)[0].(map[string]any)["ID"].(float64))
+	c.do(http.MethodPost, "/api/admin/roles", map[string]any{"userId": moderID, "role": "moderator", "reason": "test"}, true)
+
+	login := func(username string) string {
+		req, _ := http.NewRequest(http.MethodPost, c.server.URL+"/api/login", bytes.NewReader([]byte(`{"username":"`+username+`","password":"password123"}`)))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Client-Version", "3.8.3")
+		res, err := c.client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		var payload map[string]any
+		_ = json.NewDecoder(res.Body).Decode(&payload)
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("app login %s: %d %v", username, res.StatusCode, payload)
+		}
+		return payload["token"].(string)
+	}
+	modToken := login("moder")
+	req, _ := http.NewRequest(http.MethodGet, c.server.URL+"/api/moderation/me", nil)
+	req.Header.Set("Authorization", "Bearer "+modToken)
+	req.Header.Set("X-Client-Version", "3.8.3")
+	res, err := c.client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var me map[string]any
+	_ = json.NewDecoder(res.Body).Decode(&me)
+	if res.StatusCode != http.StatusOK || me["isSuper"] != false {
+		t.Fatalf("moderation me: %d %v", res.StatusCode, me)
+	}
+}
