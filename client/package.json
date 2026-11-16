@@ -1,7 +1,7 @@
 {
   "name": "sozvon",
   "productName": "Sozvon",
-  "version": "3.8.0",
+  "version": "3.8.1",
   "description": "Созвон — голосовые звонки и чат с друзьями",
   "author": "IlyaDasler",
   "license": "MIT",
@@ -32,7 +32,9 @@
     "asarUnpack": [
       "native/capture/build/Release/*.node",
       "identity-worker.js",
-      "node_modules/hash-wasm/**"
+      "node_modules/hash-wasm/**",
+      "renderer/x3dh.js",
+      "renderer/ratchet-dh.js"
     ],
     "publish": {
       "provider": "github",
