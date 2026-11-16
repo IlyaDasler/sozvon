@@ -736,7 +736,11 @@ func (a *server) login(w http.ResponseWriter, r *http.Request) {
 		user, err = a.store.UserByUsername(login)
 	}
 	if err == nil && user.BannedAt != 0 {
-		fail(http.StatusForbidden, "Аккаунт забанен. Подайте апелляцию через поддержку").write(w)
+		appeal := "/appeal"
+		if base := strings.TrimRight(a.cfg.PublicURL, "/"); base != "" {
+			appeal = base + "/appeal"
+		}
+		fail(http.StatusForbidden, "Аккаунт забанен. Апелляция: "+appeal).write(w)
 		return
 	}
 	if err == nil && user.SuspendedAt != 0 {

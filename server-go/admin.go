@@ -787,10 +787,10 @@ func (a *server) blacklistBlocked(r *http.Request, username, email, phone string
 	if check("username", auth.NormalizeUsername(username)) || check("email", strings.ToLower(strings.TrimSpace(email))) || check("phone", phone) {
 		return true
 	}
-	if device := strings.TrimSpace(r.Header.Get("X-Device-Key")); device != "" && check("device", device) {
+	if device := strings.TrimSpace(r.Header.Get("X-Device-Key")); device != "" && check("device", auth.HashDeviceKey(device)) {
 		return true
 	}
-	return check("ip", clientIP(r))
+	return check("ip", a.adminIPHash(r))
 }
 
 func (a *server) banActive(user *store.User) bool {
