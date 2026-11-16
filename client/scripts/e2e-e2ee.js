@@ -33,6 +33,7 @@ runTest(async () => {
   if (JSON.stringify(onServer).includes('секрет-111')) throw new Error('Сервер хранит текст сообщения');
   if (last.enc?.v !== 3 || !last.enc?.copies?.[0]?.ratchet?.ct || !last.text.startsWith('🔒')) throw new Error('Личное сообщение ушло не через v3');
   console.log('✔ личное сообщение: на сервере только шифр, собеседник читает');
+  await waitFor(winB, `Object.keys(localStorage).some((k) => k.includes('v2plain'))`, 'v2 cache записан');
   await js(winB, `location.reload()`).catch(() => {});
   await waitFor(winB, `e2eeReady() && state.me.publicKey === e2ee.identity.publicKey`, 'после reload');
   await js(winB, `selectContact(${a.user.id})`);
