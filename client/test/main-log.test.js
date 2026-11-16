@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { test } = require('node:test');
-const { guardConsoleStream, writeMainError } = require('../main-log');
+const { guardConsoleMethods, guardConsoleStream, writeMainError } = require('../main-log');
 
 test('a closed GUI console pipe does not become an uncaught EPIPE', () => {
   const stream = new EventEmitter();
@@ -16,6 +16,18 @@ test('a closed GUI console pipe does not become an uncaught EPIPE', () => {
   assert.doesNotThrow(() => logger.warn('safeStorage warning'));
   assert.doesNotThrow(() => stream.emit('error', Object.assign(new Error('closed'), { code: 'EPIPE' })));
   assert.equal(reported.length, 0);
+});
+
+test('Electron console EPIPE is contained while other console failures still surface', () => {
+  const logger = {
+    warn() { throw Object.assign(new Error('closed launcher pipe'), { code: 'EPIPE' }); },
+    error() { throw Object.assign(new Error('formatter failure'), { code: 'EFORMAT' }); },
+  };
+  const reported = [];
+  assert.equal(guardConsoleMethods(logger, ['warn', 'error'], (error, method) => reported.push([error.code, method])), true);
+  assert.doesNotThrow(() => logger.warn('safeStorage warning'));
+  assert.throws(() => logger.error('real failure'), { code: 'EFORMAT' });
+  assert.deepEqual(reported, [['EPIPE', 'warn']]);
 });
 
 test('unexpected console stream errors are sent to the app log reporter', () => {

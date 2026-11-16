@@ -1,6 +1,14 @@
 const { exec, execFile, spawn } = require('node:child_process');
 const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, nativeTheme, powerMonitor, screen, session, shell, systemPreferences } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs');
+const { guardConsoleMethods, guardConsoleStream, writeMainError } = require('./main-log');
+
+// Electron can route console.warn/error through a launcher pipe that is already closed.
+// Install the guards before loading app modules so a harmless EPIPE cannot trigger a modal.
+guardConsoleStream(process.stdout);
+guardConsoleStream(process.stderr);
+
 const { isTrustedIpcEvent, trustedIpcMain } = require('./ipc-policy');
 let win;
 const rendererEntry = path.join(__dirname, 'renderer', 'index.html');
@@ -17,8 +25,9 @@ if (IS_BETA) {
     app.setPath('userData', path.join(app.getPath('appData'), 'Sozvon Beta'));
   } catch {}
 }
-const fs = require('node:fs');
-const { guardConsoleStream, writeMainError } = require('./main-log');
+const earlyLogPath = path.join(app.getPath('userData'), 'main.log');
+const reportEarlyMainError = (context, error) => writeMainError(earlyLogPath, context, error);
+guardConsoleMethods(console, undefined, (error, method) => reportEarlyMainError(`console.${method} EPIPE`, error));
 const { autoUpdater } = require('electron-updater');
 const { findTelegramDesktop, webTelegramUrl } = require('./telegram-open');
 const { listenForOAuth, openOAuthWindow, opensInApp } = require('./oauth-loopback');
