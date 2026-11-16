@@ -2997,6 +2997,7 @@ function showSettingsTab(tab) {
     renderDevices();
     renderTwoFactor();
   }
+  if (current === 'admin') window.openAdminTab?.();
 }
 
 for (const b of document.querySelectorAll('#set-nav [data-tab]')) b.onclick = () => showSettingsTab(b.dataset.tab);

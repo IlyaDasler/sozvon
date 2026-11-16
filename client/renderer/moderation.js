@@ -14,16 +14,15 @@
   }
 
   function fail(message) {
-    el('moderation-error').textContent = message || '';
+    el('admin-error').textContent = message || '';
   }
 
   async function refreshModerationAccess() {
     try {
       state.me = await api('/me');
       el('settings-admin-tab').classList.remove('hidden');
-      el('moderation-role').textContent = isSuper() ? 'super admin' : 'модератор';
       for (const tab of ['approvals', 'roles']) {
-        const button = document.querySelector(`#moderation-nav [data-mod-tab="${tab}"]`);
+        const button = document.querySelector(`#admin-tabs [data-admin-tab="${tab}"]`);
         if (button) button.classList.toggle('hidden', !isSuper());
       }
       document.querySelectorAll('[data-super-only]').forEach((card) => card.classList.toggle('hidden', !isSuper()));
@@ -51,8 +50,7 @@
   }
 
   async function usersTab() {
-    el('moderation-title').textContent = 'Пользователи';
-    el('moderation-content').innerHTML = `
+    el('admin-content').innerHTML = `
       <div class="moderation-toolbar">
         <input id="mod-users-q" placeholder="ID, логин или имя">
         <select id="mod-users-status"><option value="">Все статусы</option><option value="active">Активные</option><option value="suspended">Замороженные</option><option value="banned">Забаненные</option><option value="deleted">Удалённые</option></select>
@@ -67,7 +65,7 @@
       el('mod-users-list').innerHTML = table(data.users, ['ID', 'Логин', 'Почта', 'Имя', 'Статус', 'Последний вход', 'Роль', 'Действия'], (user) => `
         <td><code>${user.ID}</code></td>
         <td><code>@${esc(user.Username)}</code></td>
-        <td>${user.Email ? esc(user.Email) : '—'}</td>
+        <td title="${esc(user.Email)}">${user.Email ? esc(user.Email) : '—'}</td>
         <td><b>${esc(user.DisplayName)}</b></td>
         <td>${user.BannedAt ? '<span class="mod-pill danger">забанен</span>' : user.SuspendedAt ? '<span class="mod-pill warn">заморожен</span>' : user.DeletedAt ? '<span class="mod-pill">удалён</span>' : '<span class="mod-pill ok">активен</span>'}</td>
         <td>${fmt(user.LastLoginAt)}</td>
@@ -81,8 +79,7 @@
   }
 
   async function channelsTab() {
-    el('moderation-title').textContent = 'Каналы';
-    el('moderation-content').innerHTML = `
+    el('admin-content').innerHTML = `
       <div class="moderation-toolbar">
         <input id="mod-channels-q" placeholder="Название или ID">
         <select id="mod-channels-kind"><option value="">Все типы</option><option value="hub">Хабы</option><option value="room">Комнаты</option></select>
@@ -118,8 +115,7 @@
   }
 
   async function reportsTab() {
-    el('moderation-title').textContent = 'Жалобы';
-    el('moderation-content').innerHTML = '<p class="mod-note">Только метаданные жалобы. Переписка не прикладывается.</p><div id="mod-reports-list"></div>';
+    el('admin-content').innerHTML = '<p class="mod-note">Только метаданные жалобы. Переписка не прикладывается.</p><div id="mod-reports-list"></div>';
     const data = await api('/reports?status=open');
     el('mod-reports-list').innerHTML = table(data.reports, ['ID', 'Цель', 'Категория', 'Причина', 'Создана', 'Действия'], (report) => `
       <td>${report.ID}</td><td>${esc(report.TargetType)} #${report.TargetID}</td><td>${esc(report.Category)}</td>
@@ -128,8 +124,7 @@
   }
 
   async function appealsTab() {
-    el('moderation-title').textContent = 'Апелляции';
-    el('moderation-content').innerHTML = '<p class="mod-note">Обращения забаненных пользователей.</p><div id="mod-appeals-list"></div>';
+    el('admin-content').innerHTML = '<p class="mod-note">Обращения забаненных пользователей.</p><div id="mod-appeals-list"></div>';
     const data = await api('/appeals?status=open');
     el('mod-appeals-list').innerHTML = table(data.appeals, ['ID', 'Логин', 'Контакт', 'Причина', 'Создана', 'Действия'], (appeal) => `
       <td>${appeal.id}</td><td>${esc(appeal.username)}</td><td>${esc(appeal.contact)}</td><td>${esc(appeal.reason)}</td><td>${fmt(appeal.createdAt)}</td>
@@ -137,8 +132,7 @@
   }
 
   async function approvalsTab() {
-    el('moderation-title').textContent = 'Подтверждения';
-    el('moderation-content').innerHTML = '<p class="mod-note">Подтвердить необратимое действие может только super admin.</p><div id="mod-approvals-list"></div>';
+    el('admin-content').innerHTML = '<p class="mod-note">Подтвердить необратимое действие может только super admin.</p><div id="mod-approvals-list"></div>';
     const data = await api('/approvals?status=pending');
     el('mod-approvals-list').innerHTML = table(data.approvals, ['ID', 'Действие', 'Цель', 'Причина', 'Запросил', 'Действия'], (item) => `
       <td>${item.ID}</td><td>${esc(item.Action)}</td><td>${esc(item.TargetType)} #${item.TargetID}</td><td>${esc(item.Reason)}</td><td>#${item.RequestedBy}</td>
@@ -146,8 +140,7 @@
   }
 
   async function rolesTab() {
-    el('moderation-title').textContent = 'Роли';
-    el('moderation-content').innerHTML = `
+    el('admin-content').innerHTML = `
       <p class="mod-note">Только super admin может выдавать и отзывать роли.</p>
       <form id="mod-role-form" class="mod-form">
         <label>ID пользователя<input id="mod-role-user" inputmode="numeric" required></label>
@@ -177,8 +170,7 @@
   }
 
   async function auditTab() {
-    el('moderation-title').textContent = 'Аудит';
-    el('moderation-content').innerHTML = '<p class="mod-note">Модератор видит свои действия, super admin — все.</p><div id="mod-audit-list"></div>';
+    el('admin-content').innerHTML = '<p class="mod-note">Модератор видит свои действия, super admin — все.</p><div id="mod-audit-list"></div>';
     const data = await api('/audit');
     el('mod-audit-list').innerHTML = table(data.audit, ['Время', 'Кто', 'Действие', 'Цель', 'Причина'], (entry) => `
       <td>${fmt(entry.CreatedAt)}</td><td>#${entry.ActorID}</td><td>${esc(entry.Action)}</td><td>${entry.TargetType ? `${esc(entry.TargetType)} #${entry.TargetID}` : '—'}</td><td>${esc(entry.Reason)}</td>`);
@@ -187,24 +179,17 @@
   const tabs = { users: usersTab, channels: channelsTab, reports: reportsTab, appeals: appealsTab, approvals: approvalsTab, roles: rolesTab, audit: auditTab };
 
   async function openTab(tab) {
-    state.tab = tab;
-    fail('');
-    for (const button of document.querySelectorAll('#moderation-nav [data-mod-tab]')) {
-      button.classList.toggle('active', button.dataset.modTab === tab);
-    }
-    try { await tabs[tab](); } catch (error) { fail(error.message); }
-  }
-
-  async function openModeration(tab = 'users') {
-    if (!state.me && !(await refreshModerationAccess())) return;
     state.tab = tabs[tab] ? tab : 'users';
-    if (!$('settings').classList.contains('hidden')) closeSettings();
-    el('moderation').classList.remove('hidden');
-    await openTab(state.tab);
+    fail('');
+    for (const button of document.querySelectorAll('#admin-tabs [data-admin-tab]')) {
+      button.classList.toggle('active', button.dataset.adminTab === state.tab);
+    }
+    try { await tabs[state.tab](); } catch (error) { fail(error.message); }
   }
 
-  function closeModeration() {
-    el('moderation').classList.add('hidden');
+  async function openAdminTab(tab = 'users') {
+    if (!state.me && !(await refreshModerationAccess())) return;
+    await openTab(tab);
   }
 
   async function runAction(action, dataset) {
@@ -237,15 +222,13 @@
   }
 
   window.refreshModerationAccess = refreshModerationAccess;
-  window.openModeration = openModeration;
+  window.openAdminTab = openAdminTab;
 
   document.addEventListener('DOMContentLoaded', () => {
-    el('moderation-close').onclick = closeModeration;
-    document.querySelectorAll('[data-admin-tab]').forEach((card) => card.addEventListener('click', () => openModeration(card.dataset.adminTab)));
-    document.querySelectorAll('#moderation-nav [data-mod-tab]').forEach((button) => {
-      button.addEventListener('click', () => openTab(button.dataset.modTab));
+    document.querySelectorAll('#admin-tabs [data-admin-tab]').forEach((button) => {
+      button.addEventListener('click', () => openTab(button.dataset.adminTab));
     });
-    el('moderation').addEventListener('click', (event) => {
+    el('admin-content').addEventListener('click', (event) => {
       const button = event.target.closest('[data-mod-action]');
       if (button) runAction(button.dataset.modAction, button.dataset);
     });

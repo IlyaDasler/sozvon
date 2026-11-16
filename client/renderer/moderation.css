@@ -65,3 +65,59 @@
 .admin-card b { font-size: 13px; }
 .admin-card span { color: var(--muted); font-size: 12px; line-height: 1.4; }
 @media (max-width: 600px) { .admin-section-grid { grid-template-columns: 1fr; } }
+
+/* Администрирование — одна панель внутри настроек, без второго окна */
+#settings.admin-mode .set-card { width: min(1240px, 96vw); }
+#settings.admin-mode .set-nav { overflow-y: auto; min-height: 0; scrollbar-width: thin; }
+.admin-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 3px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 0 10px;
+  margin: 0 0 6px;
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: thin;
+}
+.admin-tabs button {
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.admin-tabs button:hover { color: var(--text); background: color-mix(in srgb, var(--bg-4) 55%, transparent); }
+.admin-tabs button.active { color: var(--text); background: color-mix(in srgb, var(--bg-4) 80%, transparent); border-color: var(--line); }
+.admin-content { min-width: 0; overflow: auto; }
+.admin-content .moderation-toolbar { margin-top: 10px; }
+.admin-content .mod-table { table-layout: auto; min-width: 760px; }
+.admin-content #mod-users-list .mod-table { table-layout: fixed; min-width: 930px; }
+.admin-content .mod-table th, .admin-content .mod-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  padding: 9px 7px;
+}
+.admin-content #mod-users-list .mod-table th:nth-child(1), .admin-content #mod-users-list .mod-table td:nth-child(1) { width: 40px; }
+.admin-content #mod-users-list .mod-table th:nth-child(2), .admin-content #mod-users-list .mod-table td:nth-child(2) { width: 132px; }
+.admin-content #mod-users-list .mod-table th:nth-child(3), .admin-content #mod-users-list .mod-table td:nth-child(3) { width: 192px; }
+.admin-content #mod-users-list .mod-table th:nth-child(4), .admin-content #mod-users-list .mod-table td:nth-child(4) { width: 132px; }
+.admin-content #mod-users-list .mod-table th:nth-child(5), .admin-content #mod-users-list .mod-table td:nth-child(5) { width: 82px; }
+.admin-content #mod-users-list .mod-table th:nth-child(6), .admin-content #mod-users-list .mod-table td:nth-child(6) { width: 128px; }
+.admin-content #mod-users-list .mod-table th:nth-child(7), .admin-content #mod-users-list .mod-table td:nth-child(7) { width: 78px; }
+.admin-content #mod-users-list .mod-table th:nth-child(8), .admin-content #mod-users-list .mod-table td:nth-child(8) { width: 154px; }
+.admin-content .mod-actions { flex-wrap: nowrap; }
+.admin-content .mod-actions .btn { padding: 5px 7px; font-size: 11px; white-space: nowrap; }
+.admin-content .mod-user { display: block; }
+.admin-content .moderation-toolbar input { width: min(280px, 100%); }
+.admin-content .moderation-toolbar select { width: 150px; }
+@media (max-width: 760px) {
+  #settings.admin-mode .set-card { width: calc(100% - 16px); height: calc(100% - 16px); }
+  .admin-content .mod-table { min-width: 860px; }
+}
