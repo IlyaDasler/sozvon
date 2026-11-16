@@ -92,7 +92,10 @@ func (a *server) telegramHTTP(method string, payload any) (json.RawMessage, erro
 	client := &http.Client{Timeout: 40 * time.Second, Transport: transport}
 	res, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("telegram %s: network error", method)
+		detail := err.Error()
+		detail = strings.ReplaceAll(detail, a.telegramToken, "<token>")
+		detail = strings.ReplaceAll(detail, a.telegramAPIBase, "<api>")
+		return nil, fmt.Errorf("telegram %s: network error: %s", method, detail)
 	}
 	defer res.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(res.Body, 4<<20))
