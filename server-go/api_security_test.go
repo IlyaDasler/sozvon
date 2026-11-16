@@ -37,14 +37,24 @@ func TestSecurityHeadersAreApplied(t *testing.T) {
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/health", nil))
 
 	for header, want := range map[string]string{
-		"X-Content-Type-Options":    "nosniff",
-		"X-Frame-Options":           "DENY",
-		"Referrer-Policy":           "no-referrer",
-		"Strict-Transport-Security": "max-age=15552000",
+		"X-Content-Type-Options": "nosniff",
+		"X-Frame-Options":        "DENY",
+		"Referrer-Policy":        "no-referrer",
 	} {
 		if got := response.Header().Get(header); got != want {
 			t.Errorf("%s = %q, want %q", header, got, want)
 		}
+	}
+}
+
+func TestRoutesLeaveHSTSToTLSProxy(t *testing.T) {
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	(&server{}).routes().ServeHTTP(response, request)
+
+	values := response.Header().Values("Strict-Transport-Security")
+	if len(values) != 0 {
+		t.Fatalf("Go backend emitted HSTS headers %q; the TLS proxy must own this header", values)
 	}
 }
 

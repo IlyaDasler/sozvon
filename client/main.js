@@ -1,8 +1,14 @@
 const { exec, execFile, spawn } = require('node:child_process');
 const { app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, nativeTheme, powerMonitor, screen, session, shell, systemPreferences } = require('electron');
 const path = require('node:path');
+const { isTrustedIpcEvent, trustedIpcMain } = require('./ipc-policy');
+let win;
+const rendererEntry = path.join(__dirname, 'renderer', 'index.html');
+const pipEntry = path.join(__dirname, 'renderer', 'pip.html');
+const isTrustedMainIpc = (event) => isTrustedIpcEvent(event, win?.webContents, rendererEntry);
+const mainIpc = trustedIpcMain(ipcMain, isTrustedMainIpc);
 // Ранний обработчик: preload спрашивает версию до создания окна, иначе X-Client-Version пустой
-ipcMain.on('app:version', (event) => { event.returnValue = app.getVersion(); });
+mainIpc.on('app:version', (event) => { event.returnValue = app.getVersion(); });
 // Бета живёт в отдельном профиле и не мешает установленной версии: их можно держать открытыми
 // одновременно, настройки и сессии не пересекаются
 const IS_BETA = /beta/i.test(app.getVersion());
@@ -32,6 +38,7 @@ const { UPDATE_EVERY_MS, checkDue } = require('./update-schedule');
 const { fetchSignedManifest, manifestHashForFile, fileSha512Base64, verifyKeyHistorySignature, PUBLIC_KEY } = require('./update-signature');
 const { isTrustedLocalNavigation } = require('./navigation-policy');
 const { canOpenPip, canSendPipFrame, canClosePip } = require('./pip-bridge-policy');
+const { validateTelegramBotLink } = require('./renderer/telegram-link');
 
 applyChromiumFlags(app);
 
@@ -50,7 +57,6 @@ const primary = IS_BETA || app.requestSingleInstanceLock();
 if (!primary) app.quit();
 app.on('second-instance', () => showWindow());
 
-let win;
 let tray = null;
 // Выходим по-настоящему (меню трея, установка обновления, завершение Windows): крестик тогда не прячет окно,
 // иначе обработчик close заблокирует выход и тихая установка обновления сломается
@@ -102,25 +108,24 @@ function createWindow({ show = true } = {}) {
 
   if (saved?.maximized) show ? win.maximize() : win.once('show', () => win.maximize());
   trackWindow(win, stateFile);
-  const rendererEntry = path.join(__dirname, 'renderer', 'index.html');
   win.loadFile(rendererEntry);
   // Кнопки окна — системные (Windows Snap Layouts), но их цвета берём из темы
-  ipcMain.on('window:titlebar', (_event, colors) => {
+  mainIpc.on('window:titlebar', (_event, colors) => {
     if (process.platform !== 'win32' || !win || win.isDestroyed()) return;
     const color = /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(String(colors?.color || '')) ? colors.color : '#17181c';
     const symbolColor = /^#[0-9a-f]{6}$/i.test(String(colors?.symbolColor || '')) ? colors.symbolColor : '#d6d4cf';
     win.setTitleBarOverlay({ color, symbolColor, height: TITLEBAR_H });
   });
-  ipcMain.on('window:minimize', () => win.minimize());
-  ipcMain.on('window:toggle-maximize', () => {
+  mainIpc.on('window:minimize', () => win.minimize());
+  mainIpc.on('window:toggle-maximize', () => {
     // На экране входа разворачивать нельзя
     if (!win.isResizable()) return;
     win.isMaximized() ? win.unmaximize() : win.maximize();
   });
-  ipcMain.on('window:close', () => win.close());
+  mainIpc.on('window:close', () => win.close());
   // До входа окно фиксированное: размер «как при запуске», без растягивания и во весь экран.
   // После входа — обычное окно: тянется за край, разворачивается, работает полный экран
-  ipcMain.on('window:auth-mode', (_event, locked) => {
+  mainIpc.on('window:auth-mode', (_event, locked) => {
     if (!win) return;
     if (locked) {
       if (win.isFullScreen()) win.setFullScreen(false);
@@ -261,7 +266,7 @@ function loadPtt() {
   return ptt;
 }
 
-ipcMain.handle('ptt:set', (_event, value) => {
+mainIpc.handle('ptt:set', (_event, value) => {
   const binding = parseBinding(value);
   if (!binding && !ptt) return true;
   try {
@@ -272,8 +277,8 @@ ipcMain.handle('ptt:set', (_event, value) => {
     return false;
   }
 });
-ipcMain.handle('ptt:capture', () => loadPtt().capture());
-ipcMain.handle('ptt:names', () => loadPtt().KEY_NAMES);
+mainIpc.handle('ptt:capture', () => loadPtt().capture());
+mainIpc.handle('ptt:names', () => loadPtt().KEY_NAMES);
 
 // ---------- Статус «Неактивен» ----------
 // 10 минут без мыши и клавиатуры или заблокированный экран — сообщаем странице, она передаст серверу
@@ -494,11 +499,11 @@ async function startWithSplash() {
   splash?.close();
 }
 
-ipcMain.handle('update:status', () => ({ ...updateStatus, current: app.getVersion() }));
-ipcMain.handle('update:verify-key-history', (_event, entryHash, signature) => verifyKeyHistorySignature(entryHash, signature));
-ipcMain.handle('update:public-key', () => PUBLIC_KEY);
-ipcMain.on('update:check', checkForUpdates);
-ipcMain.on('update:download', (_event, clientBase) => {
+mainIpc.handle('update:status', () => ({ ...updateStatus, current: app.getVersion() }));
+mainIpc.handle('update:verify-key-history', (_event, entryHash, signature) => verifyKeyHistorySignature(entryHash, signature));
+mainIpc.handle('update:public-key', () => PUBLIC_KEY);
+mainIpc.on('update:check', checkForUpdates);
+mainIpc.on('update:download', (_event, clientBase) => {
   // macOS: качаем архив с GitHub сами, потому что системный автоапдейтер без подписи не работает
   if (manualUpdate()) {
     downloadMacUpdate(clientBase);
@@ -539,7 +544,7 @@ async function downloadMacUpdate(clientBase = '') {
 // true, true — установить молча, без окна установщика, и сразу запустить новую версию.
 // Что идёт обновление, человек видит в самом приложении («Устанавливаем обновление…») перед его закрытием.
 // Окно приложения закрываем заранее: установщик не должен застать Созвон ещё запущенным
-ipcMain.on('update:install', () => {
+mainIpc.on('update:install', () => {
   if (updateStatus.state !== 'ready') return;
   if (!manualUpdate() && !updateDownloadVerified) {
     setUpdateStatus({ state: 'error', message: 'Установщик не проверен по подписи', checkedAt: Date.now() });
@@ -652,15 +657,15 @@ function detectGames() {
   });
 }
 
-ipcMain.handle('games:running', () => detectGames());
-ipcMain.handle('system:theme', () => systemThemeInfo());
+mainIpc.handle('games:running', () => detectGames());
+mainIpc.handle('system:theme', () => systemThemeInfo());
 nativeTheme.on('updated', broadcastSystemTheme);
 // На macOS смена акцента приходит отдельным уведомлением, на Windows — опрос раз в 20 секунд
 try {
   systemPreferences.subscribeNotification('AppleColorPreferencesChangedNotification', broadcastSystemTheme);
 } catch {}
 setInterval(broadcastSystemTheme, 20_000).unref();
-ipcMain.handle('open-external', async (_event, rawUrl) => {
+mainIpc.handle('open-external', async (_event, rawUrl) => {
   const url = String(rawUrl || '');
   if (!/^https:\/\/t\.me\//i.test(url) && !/^tg:\/\/resolve\?/i.test(url)) {
     return { ok: false, error: 'Ссылка не разрешена' };
@@ -689,18 +694,19 @@ function focusTelegramWindow() {
   } catch {}
 }
 
-ipcMain.handle('open-telegram', async (_event, rawUrl) => {
+mainIpc.handle('open-telegram', async (_event, rawUrl) => {
   let url;
   try {
-    url = new URL(String(rawUrl || ''));
+    const candidate = new URL(String(rawUrl || ''));
+    const username = candidate.pathname.startsWith('/') ? candidate.pathname.slice(1) : '';
+    const safeLink = validateTelegramBotLink(String(rawUrl || ''), username);
+    if (!safeLink) return { ok: false, error: 'Ссылка не разрешена' };
+    url = new URL(safeLink);
   } catch {
     return { ok: false, error: 'Некорректная ссылка Telegram' };
   }
-  if (url.protocol !== 'https:' || url.hostname !== 't.me' || !/^\/[A-Za-z0-9_]{4,}$/.test(url.pathname)) {
-    return { ok: false, error: 'Ссылка не разрешена' };
-  }
   const username = url.pathname.slice(1);
-  const start = url.searchParams.get('start') || '';
+  const start = url.searchParams.get('start');
   const tgUrl = `tg://resolve?domain=${encodeURIComponent(username)}${start ? `&start=${encodeURIComponent(start)}` : ''}`;
   const desktop = findTelegramDesktop();
   if (desktop) {
@@ -721,7 +727,7 @@ ipcMain.handle('open-telegram', async (_event, rawUrl) => {
   }
 });
 
-ipcMain.handle('oauth', async (_event, authUrl) => {
+mainIpc.handle('oauth', async (_event, authUrl) => {
   // Только https: адрес приходит из ответа сервера, открывать по нему что попало нельзя
   if (!/^https:\/\/[^\s]+$/i.test(String(authUrl || ''))) throw new Error('Неверный адрес входа');
   pendingOAuth?.close();
@@ -745,7 +751,7 @@ let screenSources = new Map();
 let screenChoice = null;
 
 // Экраны и окна приложений. Свёрнутые окна приходят без картинки — их не прячем, показываем значок приложения
-ipcMain.handle('screen:sources', async () => {
+mainIpc.handle('screen:sources', async () => {
   // Список мониторов и окон раздельно: если WGC завис на окнах, сам выбор
   // экрана всё равно должен открыться. Раньше общий getSources ждал вечно.
   const screens = await Promise.race([
@@ -773,9 +779,9 @@ ipcMain.handle('screen:sources', async () => {
 });
 
 // audio — передавать и звук компьютера (Windows умеет захватывать весь системный звук)
-registerNativeScreen(() => screenChoice?.source);
+registerNativeScreen(() => screenChoice?.source, mainIpc);
 
-ipcMain.handle('screen:choose', (_event, id, audio) => {
+mainIpc.handle('screen:choose', (_event, id, audio) => {
   const source = screenSources.get(id);
   // Звук экрана умеют и Windows, и macOS 14.2+ (Chromium берёт его через CoreAudio Tap).
   // На более старых macOS система просто не даст дорожке звука данных — тогда показываем без звука
@@ -783,19 +789,19 @@ ipcMain.handle('screen:choose', (_event, id, audio) => {
   return Boolean(source);
 });
 
-ipcMain.on('attention', () => {
+mainIpc.on('attention', () => {
   if (win && !win.isFocused()) win.flashFrame(true);
 });
 
-ipcMain.on('focus', showWindow);
+mainIpc.on('focus', showWindow);
 
 // Меню по правой кнопке: скопировать текст и команды правки в полях ввода
 // Превью ссылки для зашифрованного сообщения — страницу грузит приложение отправителя, а не сервер
-ipcMain.handle('preview:fetch', (_event, url) => fetchPreview(String(url)));
-registerVault();
-registerIdentityVault();
-registerDeviceKey();
-registerClipboardImage();
+mainIpc.handle('preview:fetch', (_event, url) => fetchPreview(String(url)));
+registerVault(mainIpc);
+registerIdentityVault(mainIpc);
+registerDeviceKey(mainIpc);
+registerClipboardImage(mainIpc);
 
 // ---------- Плавающее окно трансляции ----------
 // Отдельное окно Windows: его можно растянуть за края, унести на другой монитор и оставить поверх остальных.
@@ -812,6 +818,7 @@ function pipTitle(text) {
 }
 
 ipcMain.handle('pip:open', (event, opts = {}) => {
+  if (!isTrustedMainIpc(event)) throw new Error('Untrusted IPC sender');
   if (!canOpenPip(event.sender, win?.webContents)) throw new Error('Недостаточно прав для открытия PiP');
   if (pipWin && !pipWin.isDestroyed()) {
     pipTitle(opts.title);
@@ -820,7 +827,6 @@ ipcMain.handle('pip:open', (event, opts = {}) => {
   }
   const bounds = opts.bounds && typeof opts.bounds === 'object' ? opts.bounds : {};
   const main = win && !win.isDestroyed() ? win.getBounds() : { x: 100, y: 100, width: 1100, height: 720 };
-  const pipEntry = path.join(__dirname, 'renderer', 'pip.html');
   pipWin = new BrowserWindow({
     width: Math.max(240, Math.round(bounds.width || 480)),
     height: Math.max(150, Math.round(bounds.height || 300)),
@@ -860,15 +866,18 @@ ipcMain.handle('pip:open', (event, opts = {}) => {
 });
 
 ipcMain.on('pip:frame', (event, dataUrl) => {
+  if (!isTrustedMainIpc(event)) return;
   if (!canSendPipFrame(event.sender, win?.webContents)) return;
   if (pipWin && !pipWin.isDestroyed() && typeof dataUrl === 'string') pipWin.webContents.send('pip:frame', dataUrl);
 });
 ipcMain.on('pip:close', (event) => {
-  if (canClosePip(event.sender, win?.webContents, pipWin?.webContents)) closePip();
+  const fromMain = isTrustedMainIpc(event);
+  const fromPip = isTrustedIpcEvent(event, pipWin?.webContents, pipEntry);
+  if ((fromMain || fromPip) && canClosePip(event.sender, win?.webContents, pipWin?.webContents)) closePip();
 });
 
 const EDIT_COMMANDS = new Set(['cut', 'copy', 'paste', 'selectAll']);
-ipcMain.on('edit', (event, command) => {
+mainIpc.on('edit', (event, command) => {
   if (EDIT_COMMANDS.has(command)) event.sender[command]();
 });
 

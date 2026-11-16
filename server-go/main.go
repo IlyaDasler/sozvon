@@ -171,7 +171,6 @@ func (a *server) securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "no-referrer")
 		h.Set("Permissions-Policy", "camera=(self), microphone=(self), display-capture=(self), geolocation=()")
-		h.Set("Strict-Transport-Security", "max-age=15552000")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -218,20 +217,8 @@ func (a *server) logRequests(next http.Handler) http.Handler {
 	})
 }
 
-func securityHeaders(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
-		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("Permissions-Policy", "camera=(self), microphone=(self), display-capture=(self), geolocation=()")
-		next.ServeHTTP(w, r)
-	})
-}
-
 func (a *server) routes() http.Handler {
 	router := chi.NewRouter()
-	router.Use(securityHeaders)
 	router.Use(middleware.RequestID, middleware.Recoverer, middleware.Timeout(30*time.Second), a.securityHeaders, a.logRequests)
 	router.Get("/api/files/{id}/{name}", a.serveFile)
 	router.Get("/api/avatars/{name}", a.serveMedia)

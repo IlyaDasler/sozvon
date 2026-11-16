@@ -616,8 +616,12 @@ $('auth-toggle').onclick = (e) => {
 
   const openTelegram = async () => {
     if (!phoneSignup) return;
-    const https = phoneSignup.deepLink;
     const status = document.getElementById('phone-confirm-status');
+    const https = window.SozvonTelegramLinks?.validateTelegramBotLink(phoneSignup.deepLink, phoneSignup.botUsername) || '';
+    if (!https) {
+      if (status) status.textContent = 'Сервер вернул небезопасную ссылку Telegram. Запустите подтверждение заново.';
+      return;
+    }
     if (!window.desktop?.openTelegram) {
       if (status) status.textContent = 'Кнопка Telegram недоступна. Скопируйте ссылку ниже.';
       return;
@@ -673,10 +677,14 @@ $('auth-toggle').onclick = (e) => {
         password,
         inviteCode,
       });
-      phoneSignup = { ...result, password };
+      const deepLink = window.SozvonTelegramLinks?.validateTelegramBotLink(result?.deepLink, result?.botUsername) || '';
+      if (!result?.id || !result?.secret || !deepLink || !Number.isFinite(Number(result.expiresAt))) {
+        throw new Error('Сервер вернул неполную или небезопасную ссылку Telegram. Начните регистрацию заново.');
+      }
+      phoneSignup = { ...result, deepLink, password };
       document.getElementById('phone-confirm-text').textContent =
         `Откройте Telegram @${result.botUsername} и нажмите «Отправить номер». Регистрация завершится сама.`;
-      document.getElementById('phone-link-text').textContent = result.deepLink;
+      document.getElementById('phone-link-text').textContent = deepLink;
       document.getElementById('phone-confirm-status').textContent = 'Ожидаем подтверждение…';
       phonePanel().classList.remove('hidden');
       $('code-field').classList.add('hidden');
@@ -761,8 +769,10 @@ $('auth-toggle').onclick = (e) => {
 
   const openPhoneReset = async () => {
     if (!phoneResetSignup) return;
-    if (window.desktop?.openTelegram && (await window.desktop.openTelegram(phoneResetSignup.deepLink))?.ok) return;
-    try { window.open(phoneResetSignup.deepLink, '_blank', 'noopener'); } catch {}
+    const link = window.SozvonTelegramLinks?.validateTelegramBotLink(phoneResetSignup.deepLink, phoneResetSignup.botUsername) || '';
+    if (!link) { $('phone-reset-status').textContent = 'Сервер вернул небезопасную ссылку Telegram. Запустите сброс заново.'; return; }
+    if (window.desktop?.openTelegram && (await window.desktop.openTelegram(link))?.ok) return;
+    try { window.open(link, '_blank', 'noopener'); } catch {}
   };
 
   const pollPhoneReset = async () => {
@@ -798,13 +808,14 @@ $('auth-toggle').onclick = (e) => {
     Api.token = '';
     try {
       const result = await Api.post('/password/phone/start', { phone });
-      if (!result.id || !result.deepLink) {
+      const deepLink = window.SozvonTelegramLinks?.validateTelegramBotLink(result?.deepLink, result?.botUsername) || '';
+      if (!result?.id || !result?.secret || !deepLink || !Number.isFinite(Number(result.expiresAt))) {
         button.disabled = false;
         $('auth-error').textContent = 'Если номер зарегистрирован, бот придёт в Telegram. Проверьте номер.';
         return;
       }
-      phoneResetSignup = { ...result, phone, password };
-      $('phone-reset-link').textContent = result.deepLink;
+      phoneResetSignup = { ...result, deepLink, phone, password };
+      $('phone-reset-link').textContent = deepLink;
       $('phone-reset-status').textContent = 'Ожидаем подтверждение…';
       $('phone-reset').classList.remove('hidden');
       $('code-field').classList.add('hidden');
@@ -2606,8 +2617,10 @@ function resetPhoneLink() {
 
 const openPhoneLink = async () => {
   if (!phoneLink) return;
-  if (window.desktop?.openTelegram && (await window.desktop.openTelegram(phoneLink.deepLink))?.ok) return;
-  try { window.open(phoneLink.deepLink, '_blank', 'noopener'); } catch {}
+  const link = window.SozvonTelegramLinks?.validateTelegramBotLink(phoneLink.deepLink, phoneLink.botUsername) || '';
+  if (!link) { $('link-phone-status').textContent = 'Сервер вернул небезопасную ссылку Telegram. Запустите привязку заново.'; return; }
+  if (window.desktop?.openTelegram && (await window.desktop.openTelegram(link))?.ok) return;
+  try { window.open(link, '_blank', 'noopener'); } catch {}
 };
 
 async function pollPhoneLink() {
@@ -2683,8 +2696,12 @@ $('link-phone-start').onclick = async () => {
   $('link-phone-hint').textContent = '';
   try {
     const result = await Api.post('/me/phone/start', { phone, newPassword: needsPassword ? password : '' });
-    phoneLink = { ...result, password, needsPassword };
-    $('link-phone-link').textContent = result.deepLink;
+    const deepLink = window.SozvonTelegramLinks?.validateTelegramBotLink(result?.deepLink, result?.botUsername) || '';
+    if (!result?.id || !result?.secret || !deepLink || !Number.isFinite(Number(result.expiresAt))) {
+      throw new Error('Сервер вернул неполную или небезопасную ссылку Telegram. Начните привязку заново.');
+    }
+    phoneLink = { ...result, deepLink, password, needsPassword };
+    $('link-phone-link').textContent = deepLink;
     $('link-phone-pending').classList.remove('hidden');
     $('link-phone-start').classList.add('hidden');
     $('link-phone').disabled = true;

@@ -9,18 +9,18 @@ const path = require('node:path');
 // устройство не просит перенести ключ заново.
 const identityFile = () => path.join(app.getPath('userData'), 'e2ee-identity.bin');
 
-function registerVault() {
-  ipcMain.on('vault:seal', (event, text) => {
+function registerVault(ipc = ipcMain) {
+  ipc.on('vault:seal', (event, text) => {
     event.returnValue = safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(String(text)).toString('base64') : null;
   });
-  ipcMain.on('vault:open', (event, sealed) => {
+  ipc.on('vault:open', (event, sealed) => {
     try {
       event.returnValue = safeStorage.decryptString(Buffer.from(String(sealed), 'base64'));
     } catch {
       event.returnValue = null; // запись с другого компьютера или испорчена
     }
   });
-  ipcMain.on('identity:save', (event, text) => {
+  ipc.on('identity:save', (event, text) => {
     try {
       if (!safeStorage.isEncryptionAvailable()) return (event.returnValue = false);
       const file = identityFile();
@@ -33,7 +33,7 @@ function registerVault() {
       event.returnValue = false;
     }
   });
-  ipcMain.on('identity:load', (event) => {
+  ipc.on('identity:load', (event) => {
     try {
       const file = identityFile();
       if (!fs.existsSync(file)) return (event.returnValue = null);

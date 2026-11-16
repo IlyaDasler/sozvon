@@ -95,10 +95,10 @@ function start(frame, source, mode) {
 }
 
 /** chosenSource() — источник, который человек выбрал в окне выбора экрана */
-function registerNativeScreen(chosenSource) {
-  ipcMain.handle('screen:native-start', (event, mode) => start(event.senderFrame, chosenSource(), mode));
+function registerNativeScreen(chosenSource, ipc = ipcMain) {
+  ipc.handle('screen:native-start', (event, mode) => start(event.senderFrame, chosenSource(), mode));
   // Остановить только свой захват: при смене окна на ходу новый уже запущен, старая дорожка его не трогает
-  ipcMain.handle('screen:native-stop', (_event, id) => id === sessionId && stop());
+  ipc.handle('screen:native-stop', (_event, id) => id === sessionId && stop());
 }
 
 module.exports = { registerNativeScreen };

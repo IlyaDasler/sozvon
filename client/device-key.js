@@ -31,8 +31,8 @@ function read() {
   return cached;
 }
 
-function registerDeviceKey() {
-  ipcMain.on('device:key', (event) => { event.returnValue = read(); });
+function registerDeviceKey(ipc = ipcMain) {
+  ipc.on('device:key', (event) => { event.returnValue = read(); });
 }
 
 module.exports = { registerDeviceKey };

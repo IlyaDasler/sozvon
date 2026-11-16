@@ -197,26 +197,26 @@ async function unwrapBackup(context, backup, password, userId) {
   return result;
 }
 
-function registerIdentityVault() {
-  ipcMain.handle('identity-vault:load', (_event, context) => load(context || {}));
-  ipcMain.handle('identity-vault:import', (_event, context, identity) => importFor(context || {}, identity));
-  ipcMain.handle('identity-vault:generate', (_event, context) => generateFor(context || {}));
-  ipcMain.handle('identity-vault:prekey', (_event, context) => ensurePrekey(context || {}));
-  ipcMain.handle('identity-vault:x3dh-init', (_event, context, bundle) => x3dhInitiator(context || {}, bundle));
-  ipcMain.handle('identity-vault:x3dh-respond', (_event, context, identity, ephemeral) => x3dhResponder(context || {}, String(identity), String(ephemeral)));
-  ipcMain.handle('identity-vault:x3dh-verify', (_event, bundle, serverPublicKey) => verifyX3dhBundle(bundle, String(serverPublicKey)));
-  ipcMain.handle('identity-vault:ratchet-init', (_event, context, conv, root, role) => ratchetInit(context || {}, String(conv), String(root), String(role)));
-  ipcMain.handle('identity-vault:ratchet-ensure-static', (_event, context, conv, root, role, remotePublic) => ratchetEnsureStatic(context || {}, String(conv), String(root), String(role), String(remotePublic)));
-  ipcMain.handle('identity-vault:ratchet-rotate', (_event, context, conv) => ratchetRotate(context || {}, String(conv)));
-  ipcMain.handle('identity-vault:ratchet-handshake', (_event, context, conv, remotePublic) => ratchetHandshake(context || {}, String(conv), String(remotePublic)));
-  ipcMain.handle('identity-vault:ratchet-encrypt', (_event, context, conv, payload, aad) => ratchetEncrypt(context || {}, String(conv), payload, String(aad)));
-  ipcMain.handle('identity-vault:ratchet-decrypt', (_event, context, conv, envelope, aad) => ratchetDecrypt(context || {}, String(conv), envelope, String(aad)));
-  ipcMain.handle('identity-vault:open', (_event, context, sealed) => open(context || {}, String(sealed)));
-  ipcMain.handle('identity-vault:cache-seal', (_event, context, text) => cacheSeal(context || {}, String(text)));
-  ipcMain.handle('identity-vault:cache-open', (_event, context, blob) => cacheOpen(context || {}, String(blob)));
-  ipcMain.handle('identity-vault:wrap-backup', (_event, context, password, userId) => wrapBackup(context || {}, String(password), Number(userId)));
-  ipcMain.handle('identity-vault:unwrap-backup', (_event, context, backup, password, userId) => unwrapBackup(context || {}, backup, String(password), Number(userId)));
-  ipcMain.handle('identity-vault:clear', async () => {
+function registerIdentityVault(ipc = ipcMain) {
+  ipc.handle('identity-vault:load', (_event, context) => load(context || {}));
+  ipc.handle('identity-vault:import', (_event, context, identity) => importFor(context || {}, identity));
+  ipc.handle('identity-vault:generate', (_event, context) => generateFor(context || {}));
+  ipc.handle('identity-vault:prekey', (_event, context) => ensurePrekey(context || {}));
+  ipc.handle('identity-vault:x3dh-init', (_event, context, bundle) => x3dhInitiator(context || {}, bundle));
+  ipc.handle('identity-vault:x3dh-respond', (_event, context, identity, ephemeral) => x3dhResponder(context || {}, String(identity), String(ephemeral)));
+  ipc.handle('identity-vault:x3dh-verify', (_event, bundle, serverPublicKey) => verifyX3dhBundle(bundle, String(serverPublicKey)));
+  ipc.handle('identity-vault:ratchet-init', (_event, context, conv, root, role) => ratchetInit(context || {}, String(conv), String(root), String(role)));
+  ipc.handle('identity-vault:ratchet-ensure-static', (_event, context, conv, root, role, remotePublic) => ratchetEnsureStatic(context || {}, String(conv), String(root), String(role), String(remotePublic)));
+  ipc.handle('identity-vault:ratchet-rotate', (_event, context, conv) => ratchetRotate(context || {}, String(conv)));
+  ipc.handle('identity-vault:ratchet-handshake', (_event, context, conv, remotePublic) => ratchetHandshake(context || {}, String(conv), String(remotePublic)));
+  ipc.handle('identity-vault:ratchet-encrypt', (_event, context, conv, payload, aad) => ratchetEncrypt(context || {}, String(conv), payload, String(aad)));
+  ipc.handle('identity-vault:ratchet-decrypt', (_event, context, conv, envelope, aad) => ratchetDecrypt(context || {}, String(conv), envelope, String(aad)));
+  ipc.handle('identity-vault:open', (_event, context, sealed) => open(context || {}, String(sealed)));
+  ipc.handle('identity-vault:cache-seal', (_event, context, text) => cacheSeal(context || {}, String(text)));
+  ipc.handle('identity-vault:cache-open', (_event, context, blob) => cacheOpen(context || {}, String(blob)));
+  ipc.handle('identity-vault:wrap-backup', (_event, context, password, userId) => wrapBackup(context || {}, String(password), Number(userId)));
+  ipc.handle('identity-vault:unwrap-backup', (_event, context, backup, password, userId) => unwrapBackup(context || {}, backup, String(password), Number(userId)));
+  ipc.handle('identity-vault:clear', async () => {
     await loadFile();
     await rpc('clear');
     return true;
