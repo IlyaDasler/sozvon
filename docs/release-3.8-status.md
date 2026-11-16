@@ -1,10 +1,11 @@
-# Созвон 3.8 — статус перед релизом
+# Созвон 3.8 — статус
 
 ## Прод
 
-- Версия: 3.7.1.
-- 3.8 не выпущен.
-- CI 3.8: e2e, multi-device, Windows и macOS — success.
+- Версия: 3.8.0.
+- Релиз выпущен 16.11.2026.
+- CI тега v3.8.0: e2e, multi-device, Windows и macOS — success.
+- Внешний key-history witness опубликован в GitHub.
 
 ## Готово
 
