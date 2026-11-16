@@ -12,6 +12,8 @@ test('IPC policy accepts only the expected main frame and renderer file', () => 
   assert.equal(isTrustedIpcEvent({ sender: contents, senderFrame: frame }, contents, entry), true);
   assert.equal(isTrustedIpcEvent({ sender: {}, senderFrame: frame }, contents, entry), false);
   assert.equal(isTrustedIpcEvent({ sender: contents, senderFrame: { url: frame.url } }, contents, entry), false);
+  const contents2 = { isDestroyed: () => false, mainFrame: { url: frame.url, frameTreeNodeId: 7 } };
+  assert.equal(isTrustedIpcEvent({ sender: contents2, senderFrame: { url: frame.url, frameTreeNodeId: 7 } }, contents2, entry), true);
   assert.equal(isTrustedIpcEvent({ sender: contents, senderFrame: { url: 'https://evil.test/' } }, contents, entry), false);
 });
 
