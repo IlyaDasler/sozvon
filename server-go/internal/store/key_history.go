@@ -108,3 +108,30 @@ func (s *Store) UsersMissingKeyHistory() ([]UserKeyHead, error) {
 	}
 	return out, rows.Err()
 }
+
+type UnsignedKeyHistoryEntry struct {
+	ID        int64
+	EntryHash string
+}
+
+func (s *Store) UnsignedKeyHistory() ([]UnsignedKeyHistoryEntry, error) {
+	rows, err := s.db.Query(`SELECT id, entry_hash FROM user_key_history WHERE signature = ''`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []UnsignedKeyHistoryEntry
+	for rows.Next() {
+		var item UnsignedKeyHistoryEntry
+		if err := rows.Scan(&item.ID, &item.EntryHash); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) SetKeyHistorySignature(id int64, signature string) error {
+	_, err := s.db.Exec(`UPDATE user_key_history SET signature = ? WHERE id = ?`, signature, id)
+	return err
+}

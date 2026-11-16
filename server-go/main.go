@@ -69,6 +69,18 @@ type ticket struct {
 }
 
 func (a *server) backfillKeyHistory() {
+	unsigned, err := a.store.UnsignedKeyHistory()
+	if err == nil {
+		for _, entry := range unsigned {
+			signature := a.signKeyHistory(entry.EntryHash)
+			if signature == "" {
+				break
+			}
+			if err := a.store.SetKeyHistorySignature(entry.ID, signature); err != nil {
+				slog.Warn("key history signature backfill", "entry", entry.ID, "error", err)
+			}
+		}
+	}
 	users, err := a.store.UsersMissingKeyHistory()
 	if err != nil {
 		return

@@ -712,7 +712,7 @@ const changedKeysStore = () => scopedKey('changed');
 const keyChanged = (userId) => readScoped('changed', []).includes(userId);
 
 const keyHistoryRootKey = (userId) => `e2ee:${serverScope()}:keyhistory:${userId}`;
-const KEY_WITNESS_URL = 'https://raw.githubusercontent.com/IlyaDasler/sozvon/main/transparency/key-history.json';
+const KEY_WITNESS_URL = 'https://cdn.jsdelivr.net/gh/IlyaDasler/sozvon@main/transparency/key-history.json';
 let keyWitnessCache = null;
 async function witnessedKeyHistory(entryHash) {
   if (!entryHash) return null;
