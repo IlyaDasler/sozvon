@@ -45,12 +45,12 @@ function readState(file) {
 }
 
 /** Следим за окном и пишем его состояние (не чаще раза в полсекунды); у развёрнутого храним обычный размер */
-function trackWindow(win, file) {
+function trackWindow(win, file, { enabled = () => true } = {}) {
   let timer = null;
   const save = () => {
     clearTimeout(timer);
     timer = setTimeout(() => {
-      if (win.isDestroyed() || win.isMinimized() || win.isFullScreen()) return;
+      if (!enabled() || win.isDestroyed() || win.isMinimized() || win.isFullScreen()) return;
       const b = win.getNormalBounds();
       try {
         fs.writeFileSync(file, JSON.stringify({ ...b, maximized: win.isMaximized() }));

@@ -1,7 +1,11 @@
 // Окно запоминает размер, место и «развёрнуто»: при запуске возвращаем как было, но только на видимый экран
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { restoreBounds } = require('../window-state');
+const { restoreBounds, trackWindow } = require('../window-state');
+const { EventEmitter } = require('node:events');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 const screens = [{ x: 0, y: 0, width: 1920, height: 1040 }];
 const MIN = { width: 820, height: 540 };
@@ -41,4 +45,27 @@ test('мусор и слишком маленькое окно — по умол
 test('второй монитор слева (отрицательные координаты) — окно там и остаётся', () => {
   const two = [...screens, { x: -1600, y: 0, width: 1600, height: 860 }];
   assert.deepEqual(restoreBounds({ x: -1500, y: 50, width: 1000, height: 700 }, two, MIN), { x: -1500, y: 50, width: 1000, height: 700, maximized: false });
+});
+
+test('экран входа не перезаписывает привычный размер окна', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sozvon-window-'));
+  const file = path.join(dir, 'window.json');
+  const win = new EventEmitter();
+  Object.assign(win, {
+    isDestroyed: () => false,
+    isMinimized: () => false,
+    isFullScreen: () => false,
+    isMaximized: () => false,
+    getNormalBounds: () => ({ x: 11, y: 22, width: 1020, height: 700 }),
+  });
+  let enabled = false;
+  trackWindow(win, file, { enabled: () => enabled });
+  win.emit('resize');
+  await new Promise((resolve) => setTimeout(resolve, 650));
+  assert.equal(fs.existsSync(file), false);
+  enabled = true;
+  win.emit('resize');
+  await new Promise((resolve) => setTimeout(resolve, 650));
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { x: 11, y: 22, width: 1020, height: 700, maximized: false });
+  fs.rmSync(dir, { recursive: true, force: true });
 });

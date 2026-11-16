@@ -90,6 +90,10 @@ function createWindow({ show = true } = {}) {
   // Окно открывается там и такого размера, каким его оставили (если тот экран ещё подключён)
   const stateFile = path.join(app.getPath('userData'), 'window.json');
   const saved = restoreBounds(readState(stateFile), screen.getAllDisplays().map((d) => d.workArea), WINDOW_MIN);
+  // На экране входа окно принудительно компактное. Этот размер нельзя записывать
+  // в window.json, иначе после каждого обновления/выхода теряется привычный размер.
+  let authLocked = false;
+  let preferredState = null;
   win = new BrowserWindow({
     ...(saved ? { x: saved.x, y: saved.y, width: saved.width, height: saved.height } : { width: 1100, height: 720 }),
     minWidth: WINDOW_MIN.width,
@@ -116,7 +120,7 @@ function createWindow({ show = true } = {}) {
   });
 
   if (saved?.maximized) show ? win.maximize() : win.once('show', () => win.maximize());
-  trackWindow(win, stateFile);
+  trackWindow(win, stateFile, { enabled: () => !authLocked });
   win.loadFile(rendererEntry);
   // Кнопки окна — системные (Windows Snap Layouts), но их цвета берём из темы
   mainIpc.on('window:titlebar', (_event, colors) => {
@@ -137,6 +141,10 @@ function createWindow({ show = true } = {}) {
   mainIpc.on('window:auth-mode', (_event, locked) => {
     if (!win) return;
     if (locked) {
+      if (!authLocked) {
+        preferredState = { ...win.getNormalBounds(), maximized: win.isMaximized() };
+        authLocked = true;
+      }
       if (win.isFullScreen()) win.setFullScreen(false);
       if (win.isMaximized()) win.unmaximize();
       win.setFullScreenable(false);
@@ -148,9 +156,20 @@ function createWindow({ show = true } = {}) {
       win.center();
       win.setResizable(false);
     } else {
+      const wasLocked = authLocked;
+      authLocked = false;
       win.setResizable(true);
       win.setMaximizable(true);
       win.setFullScreenable(true);
+      if (wasLocked && preferredState) {
+        const restored = restoreBounds(preferredState, screen.getAllDisplays().map((d) => d.workArea), WINDOW_MIN);
+        if (restored) {
+          win.setBounds({ x: restored.x, y: restored.y, width: restored.width, height: restored.height }, false);
+          if (restored.maximized) win.maximize();
+          else if (win.isMaximized()) win.unmaximize();
+        }
+        preferredState = null;
+      }
     }
     sendWindowState();
   });
