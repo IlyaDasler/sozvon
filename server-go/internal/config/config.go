@@ -44,6 +44,9 @@ type Config struct {
 	TurnPort      string
 	ReconnectWait time.Duration
 
+	// Глобальная админка. Список ID через запятую; bootstrap выполняется при старте.
+	SuperAdminIDs []int64
+
 	// Ограничители частоты
 	AuthRateLimit    int
 	MessageRateLimit int
@@ -60,6 +63,16 @@ func list(value string) []string {
 	for _, part := range parts {
 		if trimmed := strings.TrimSpace(part); trimmed != "" {
 			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+func int64List(value string) []int64 {
+	var out []int64
+	for _, part := range list(value) {
+		if parsed, err := strconv.ParseInt(part, 10, 64); err == nil && parsed > 0 {
+			out = append(out, parsed)
 		}
 	}
 	return out
@@ -141,6 +154,8 @@ func Load() Config {
 		PublicIP:      publicIP,
 		TurnPort:      turnPort,
 		ReconnectWait: time.Duration(numberEnv("CALL_RECONNECT_GRACE_MS", 20_000)) * time.Millisecond,
+
+		SuperAdminIDs: int64List(os.Getenv("SUPER_ADMIN_USER_IDS")),
 
 		AuthRateLimit:    numberEnv("AUTH_RATE_LIMIT", 10),
 		MessageRateLimit: numberEnv("MESSAGE_RATE_LIMIT", 20),

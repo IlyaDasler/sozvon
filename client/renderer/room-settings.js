@@ -91,15 +91,22 @@ function overviewPane(room) {
   const out = [];
   const name = el('input', { id: 'rm-name', maxLength: 40, value: room.name, disabled: !manage });
   name.dataset.keep = 'name';
+  const privacy = el('select', { id: 'rm-privacy', disabled: !manage });
+  for (const [value, label] of [['public', 'Публичная — видна в каталоге'], ['hidden', 'Скрытая — только по приглашению']]) {
+    const option = el('option', { value, textContent: label });
+    option.selected = (room.privacy || 'public') === value;
+    privacy.append(option);
+  }
   const form = el(
     'form',
     { className: 'rs-row', id: 'rm-rename' },
     el('label', { className: 'field grow' }, el('span', { textContent: 'Название комнаты' }), name),
+    el('label', { className: 'field grow' }, el('span', { textContent: 'Приватность' }), privacy),
     manage && el('button', { className: 'btn primary', textContent: 'Сохранить' })
   );
   form.onsubmit = async (e) => {
     e.preventDefault();
-    if (await roomAction(Api.patch(`/rooms/${room.id}`, { name: name.value.trim() }), 'Название сохранено')) renderVoice();
+    if (await roomAction(Api.patch(`/rooms/${room.id}`, { name: name.value.trim(), privacy: privacy.value }), 'Сохранено')) renderVoice();
   };
   out.push(form);
 

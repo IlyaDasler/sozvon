@@ -372,6 +372,7 @@ func (a *server) hubJSON(hub *store.HubRow) map[string]any {
 		"createdAt":        hub.CreatedAt,
 		"defaultPerms":     hub.DefaultPerms,
 		"reactionsVisible": hub.ReactionsVisible,
+		"privacy":          hub.Privacy,
 		"groups":           groups,
 		"emojis":           emojis,
 		"roles":            roles,
@@ -438,10 +439,21 @@ func (a *server) patchHub(w http.ResponseWriter, r *http.Request) {
 		Name             string  `json:"name"`
 		IconColor        *string `json:"iconColor"`
 		ReactionsVisible *bool   `json:"reactionsVisible"`
+		Privacy          *string `json:"privacy"`
 	}
 	if err := decode(r, &request); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
+	}
+	if request.Privacy != nil {
+		if *request.Privacy != "public" && *request.Privacy != "hidden" {
+			fail(http.StatusBadRequest, "Неверная приватность").write(w)
+			return
+		}
+		if err := a.store.SetChannelPrivacy("hub", id, *request.Privacy); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
 	}
 	if request.ReactionsVisible != nil {
 		if err := a.store.SetHubReactionsVisible(id, *request.ReactionsVisible); err != nil {
@@ -542,6 +554,7 @@ func (a *server) roomJSON(room *store.RoomRow) map[string]any {
 		"hubId":         room.HubID,
 		"groupId":       room.GroupID,
 		"private":       room.Private,
+		"privacy":       room.Privacy,
 		"position":      room.Position,
 		"ownerId":       room.OwnerID,
 		"createdAt":     room.CreatedAt,
@@ -749,10 +762,21 @@ func (a *server) patchRoom(w http.ResponseWriter, r *http.Request) {
 		Name         string          `json:"name"`
 		DefaultPerms *int64          `json:"defaultPerms"`
 		GroupID      json.RawMessage `json:"groupId"`
+		Privacy      *string         `json:"privacy"`
 	}
 	if err := decode(r, &request); err != nil {
 		fail(http.StatusBadRequest, "Неверный формат запроса").write(w)
 		return
+	}
+	if request.Privacy != nil {
+		if *request.Privacy != "public" && *request.Privacy != "hidden" {
+			fail(http.StatusBadRequest, "Неверная приватность").write(w)
+			return
+		}
+		if err := a.store.SetChannelPrivacy("room", id, *request.Privacy); err != nil {
+			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)
+			return
+		}
 	}
 	if len(request.GroupID) > 0 {
 		var groupID *int64

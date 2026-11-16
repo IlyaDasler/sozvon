@@ -69,7 +69,7 @@ func (a *server) versionInfo(w http.ResponseWriter, r *http.Request) {
 func (a *server) requireClientVersion(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimSuffix(r.URL.Path, "/")
-		if path == "/api/health" || path == "/api/version" {
+		if path == "/api/health" || path == "/api/version" || strings.HasPrefix(path, "/api/admin/") || path == "/api/admin" || path == "/api/appeals" {
 			next.ServeHTTP(w, r)
 			return
 		}

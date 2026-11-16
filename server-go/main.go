@@ -151,6 +151,7 @@ func main() {
 	// Хеш для «пустой» проверки пароля (см. login): та же стоимость scrypt.
 	app.dummyHash, _ = auth.HashPassword(auth.RandomID(32))
 	app.backfillKeyHistory()
+	app.ensureSuperAdmins()
 
 	app.telegramToken = strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN"))
 	app.telegramAPIBase = strings.TrimSpace(os.Getenv("TELEGRAM_API_BASE"))
@@ -255,6 +256,13 @@ func (a *server) routes() http.Handler {
 	router.Get("/api/wallpapers/{name}", a.serveWallpaper)
 	router.Get("/api/hubs/{id}/icon", a.serveHubIcon)
 	router.Get("/ws", a.websocket)
+	router.Get("/admin", a.adminPage)
+	router.Get("/admin/", a.adminPage)
+	router.Get("/admin/app.js", a.adminJS)
+	router.Get("/admin/app.css", a.adminCSS)
+	router.Get("/appeal", a.appealPage)
+	router.Get("/appeal/", a.appealPage)
+	router.Get("/appeal/app.js", a.appealJS)
 
 	router.Route("/api", func(r chi.Router) {
 		r.Use(a.requireClientVersion)
@@ -283,11 +291,39 @@ func (a *server) routes() http.Handler {
 		r.Get("/oauth/{provider}/web", a.oauthWebStart)
 		r.Get("/oauth/{provider}/callback", a.oauthWebCallback)
 		r.Post("/oauth/web/exchange", a.oauthWebExchange)
+		r.Post("/appeals", a.createAppeal)
+
+		r.Post("/admin/login", a.adminLogin)
+		r.Group(func(r chi.Router) {
+			r.Use(a.adminAuth)
+			r.Get("/admin/me", a.adminMe)
+			r.Post("/admin/logout", a.adminLogout)
+			r.Get("/admin/users", a.adminUsers)
+			r.Get("/admin/channels", a.adminChannels)
+			r.Get("/admin/roles", a.adminRolesList)
+			r.Post("/admin/roles", a.adminGrantRole)
+			r.Delete("/admin/roles/{id}", a.adminRevokeRole)
+			r.Patch("/admin/channels/{kind}/{id}/privacy", a.adminSetPrivacy)
+			r.Delete("/admin/channels/{kind}/{id}", a.adminDeleteChannel)
+			r.Post("/admin/users/{id}/suspend", a.adminSuspend)
+			r.Delete("/admin/users/{id}/suspend", a.adminUnsuspend)
+			r.Post("/admin/users/{id}/ban", a.adminBan)
+			r.Post("/admin/users/{id}/unban", a.adminUnban)
+			r.Get("/admin/approvals", a.adminApprovals)
+			r.Post("/admin/approvals/{id}/approve", a.adminApprove)
+			r.Post("/admin/approvals/{id}/reject", a.adminReject)
+			r.Get("/admin/audit", a.adminAudit)
+			r.Get("/admin/reports", a.adminReports)
+			r.Post("/admin/reports/{id}/resolve", a.adminResolveReport)
+			r.Get("/admin/appeals", a.adminAppeals)
+			r.Post("/admin/appeals/{id}/resolve", a.adminResolveAppeal)
+		})
 
 		r.Group(func(r chi.Router) {
 			r.Use(a.requireAuth)
 			r.Get("/link-preview", a.linkPreview)
 			r.Get("/me/security-events", a.securityEvents)
+			r.Post("/reports", a.createReport)
 			r.Get("/users/{id}/key-history", a.keyHistory)
 			r.Get("/users/{id}/prekey", a.getPrekey)
 			r.Get("/users/{id}/prekeys", a.getDevicePrekeys)
@@ -587,6 +623,8 @@ func (a *server) openSession(user *store.User, r *http.Request) (string, error) 
 	if err := a.store.CreateSessionWithKey(sid, user.ID, device, keyHash); err != nil {
 		return "", err
 	}
+	_ = a.store.SetSessionIPHash(sid, a.adminIPHash(r))
+	_ = a.store.MarkLogin(user.ID)
 	return auth.SignToken(a.secret, user.ID, sid), nil
 }
 
@@ -616,6 +654,10 @@ func (a *server) register(w http.ResponseWriter, r *http.Request) {
 	// Приглашение проверяем тем же правилом, что Node
 	if a.cfg.InviteCode != "" && strings.TrimSpace(body.InviteCode) != a.cfg.InviteCode {
 		fail(http.StatusForbidden, "Неверный код приглашения. Спросите его у владельца сервера").write(w)
+		return
+	}
+	if a.blacklistBlocked(r, body.Username, body.Email, "") {
+		fail(http.StatusForbidden, "Регистрация недоступна").write(w)
 		return
 	}
 	if body.Email != "" {
@@ -692,6 +734,14 @@ func (a *server) login(w http.ResponseWriter, r *http.Request) {
 		user, err = a.store.UserByEmail(login)
 	} else {
 		user, err = a.store.UserByUsername(login)
+	}
+	if err == nil && user.BannedAt != 0 {
+		fail(http.StatusForbidden, "Аккаунт забанен. Подайте апелляцию через поддержку").write(w)
+		return
+	}
+	if err == nil && user.SuspendedAt != 0 {
+		fail(http.StatusForbidden, "Аккаунт временно заморожен").write(w)
+		return
 	}
 	if err == nil && a.loginLocked(login) {
 		fail(http.StatusTooManyRequests, "Слишком много неудачных попыток. Попробуйте через 15 минут или восстановите пароль").write(w)
@@ -781,6 +831,14 @@ func (a *server) requireAuth(next http.Handler) http.Handler {
 		user, err := a.store.UserByID(session.UserID)
 		if err != nil {
 			fail(http.StatusUnauthorized, "Требуется вход").write(w)
+			return
+		}
+		if user.BannedAt != 0 {
+			fail(http.StatusForbidden, "Аккаунт забанен").write(w)
+			return
+		}
+		if user.SuspendedAt != 0 {
+			fail(http.StatusForbidden, "Аккаунт временно заморожен").write(w)
 			return
 		}
 		if user.DeletedAt != 0 && r.URL.Path != "/api/me" && r.URL.Path != "/api/account/restore" {

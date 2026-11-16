@@ -7,30 +7,38 @@ import (
 )
 
 type User struct {
-	ID             int64
-	Username       string
-	PasswordHash   string
-	DisplayName    string
-	AvatarColor    string
-	CreatedAt      int64
-	Avatar         string
-	Email          string
-	EmailShown     string
-	Bio            string
-	BannerColor    string
-	Banner         string
-	Game           string
-	NameColor      string
-	Status         string
-	PublicKey      string
-	TotpSecret     string
-	PrivacyTyping  bool
-	PrivacyRead    bool
-	PrivacyGame    bool
-	FriendRequests bool
-	InvitePolicy   string
-	DeletedAt      int64
-	PhoneHMAC      string
+	ID              int64
+	Username        string
+	PasswordHash    string
+	DisplayName     string
+	AvatarColor     string
+	CreatedAt       int64
+	Avatar          string
+	Email           string
+	EmailShown      string
+	Bio             string
+	BannerColor     string
+	Banner          string
+	Game            string
+	NameColor       string
+	Status          string
+	PublicKey       string
+	TotpSecret      string
+	PrivacyTyping   bool
+	PrivacyRead     bool
+	PrivacyGame     bool
+	FriendRequests  bool
+	InvitePolicy    string
+	DeletedAt       int64
+	PhoneHMAC       string
+	LastLoginAt     int64
+	BannedAt        int64
+	BannedBy        int64
+	BanReason       string
+	SuspendedAt     int64
+	SuspendedBy     int64
+	SuspendedReason string
+	RestoredAt      int64
 }
 
 type Session struct {
@@ -52,7 +60,8 @@ var ErrNotFound = errors.New("not found")
 // Только настоящие столбцы: строку подставляем и в одиночный SELECT, и в JOIN с префиксом
 const userColumns = `id, username, password_hash, display_name, avatar_color, created_at,
 	avatar, email, email_shown, bio, banner_color, banner, game, name_color, status, public_key, totp_secret,
-	privacy_typing, privacy_read, privacy_game, friend_requests, invite_policy, deleted_at, phone_hmac`
+	privacy_typing, privacy_read, privacy_game, friend_requests, invite_policy, deleted_at, phone_hmac,
+	last_login_at, banned_at, banned_by, ban_reason, suspended_at, suspended_by, suspended_reason, restored_at`
 
 // scanUserInto читает строку users с учётом NULL и добавляет поля из JOIN.
 func scanUserInto(row interface{ Scan(...any) error }, user *User, extra ...any) error {
@@ -61,10 +70,13 @@ func scanUserInto(row interface{ Scan(...any) error }, user *User, extra ...any)
 	var privacyTyping, privacyRead, privacyGame, friendRequests sql.NullInt64
 	var deletedAt sql.NullInt64
 	var phoneHMAC sql.NullString
+	var lastLoginAt, bannedAt, bannedBy, suspendedAt, suspendedBy, restoredAt sql.NullInt64
+	var banReason, suspendedReason sql.NullString
 	args := []any{
 		&user.ID, &user.Username, &user.PasswordHash, &user.DisplayName, &user.AvatarColor, &user.CreatedAt,
 		&avatar, &email, &emailShown, &bio, &bannerColor, &banner, &game, &nameColor, &status, &publicKey, &totp,
 		&privacyTyping, &privacyRead, &privacyGame, &friendRequests, &invitePolicy, &deletedAt, &phoneHMAC,
+		&lastLoginAt, &bannedAt, &bannedBy, &banReason, &suspendedAt, &suspendedBy, &suspendedReason, &restoredAt,
 	}
 	args = append(args, extra...)
 	if err := row.Scan(args...); err != nil {
@@ -95,6 +107,14 @@ func scanUserInto(row interface{ Scan(...any) error }, user *User, extra ...any)
 	user.InvitePolicy = invitePolicy.String
 	user.DeletedAt = deletedAt.Int64
 	user.PhoneHMAC = phoneHMAC.String
+	user.LastLoginAt = lastLoginAt.Int64
+	user.BannedAt = bannedAt.Int64
+	user.BannedBy = bannedBy.Int64
+	user.BanReason = banReason.String
+	user.SuspendedAt = suspendedAt.Int64
+	user.SuspendedBy = suspendedBy.Int64
+	user.SuspendedReason = suspendedReason.String
+	user.RestoredAt = restoredAt.Int64
 	if user.InvitePolicy != "friends" {
 		user.InvitePolicy = "all"
 	}
@@ -398,5 +418,15 @@ func (s *Store) SetPrivacy(userID int64, typing, read, game, requests bool, invi
 		UPDATE users SET privacy_typing = ?, privacy_read = ?, privacy_game = ?,
 			friend_requests = ?, invite_policy = ? WHERE id = ?`,
 		flag(typing), flag(read), flag(game), flag(requests), invitePolicy, userID)
+	return err
+}
+
+func (s *Store) SetSessionIPHash(id, hash string) error {
+	_, err := s.db.Exec(`UPDATE sessions SET ip_hash = ? WHERE id = ?`, hash, id)
+	return err
+}
+
+func (s *Store) DeleteSessionsForUser(userID int64) error {
+	_, err := s.db.Exec(`DELETE FROM sessions WHERE user_id = ?`, userID)
 	return err
 }

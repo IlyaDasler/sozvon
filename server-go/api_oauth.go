@@ -165,6 +165,10 @@ func (a *server) oauthAuth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if linking != nil {
+		if a.oauthBlacklisted(profile.ProviderID) {
+			fail(http.StatusForbidden, "Вход через этот аккаунт недоступен").write(w)
+			return
+		}
 		existingID, _, exists, err := a.store.FindIdentity(provider, profile.ProviderID)
 		if err != nil {
 			fail(http.StatusInternalServerError, "Внутренняя ошибка сервера").write(w)

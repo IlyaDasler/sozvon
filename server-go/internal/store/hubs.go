@@ -41,6 +41,7 @@ type HubRow struct {
 	IconColor        string
 	Icon             string
 	CreatedAt        int64
+	Privacy          string
 	DefaultPerms     int64
 	ReactionsVisible bool
 	Roles            []RoleRow
@@ -65,6 +66,7 @@ type RoomRow struct {
 	HubID        *int64
 	GroupID      *int64
 	Private      bool
+	Privacy      string
 	Position     int64
 	OwnerID      int64
 	CreatedAt    int64
@@ -172,8 +174,8 @@ func createRoomTx(tx *sql.Tx, hubID, ownerID int64, name, kind string, private b
 		perms = 31
 	}
 	result, err := tx.Exec(
-		`INSERT INTO rooms (name, kind, owner_id, created_at, hub_id, position, private, default_perms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		name, kind, ownerID, now, hubID, position, privateValue, perms,
+		`INSERT INTO rooms (name, kind, owner_id, created_at, hub_id, position, private, default_perms, privacy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		name, kind, ownerID, now, hubID, position, privateValue, perms, "public",
 	)
 	if err != nil {
 		return 0, err
@@ -212,8 +214,8 @@ func (s *Store) HubByID(id int64) (*HubRow, error) {
 	var hub HubRow
 	var icon sql.NullString
 	err := s.db.QueryRow(
-		`SELECT id, name, owner_id, icon_color, icon, created_at, default_perms, reactions_visible FROM hubs WHERE id = ?`, id,
-	).Scan(&hub.ID, &hub.Name, &hub.OwnerID, &hub.IconColor, &icon, &hub.CreatedAt, &hub.DefaultPerms, &hub.ReactionsVisible)
+		`SELECT id, name, owner_id, icon_color, icon, created_at, default_perms, reactions_visible, privacy FROM hubs WHERE id = ?`, id,
+	).Scan(&hub.ID, &hub.Name, &hub.OwnerID, &hub.IconColor, &icon, &hub.CreatedAt, &hub.DefaultPerms, &hub.ReactionsVisible, &hub.Privacy)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -405,9 +407,9 @@ func (s *Store) RoomByID(id int64) (*RoomRow, error) {
 	var hubID, groupID sql.NullInt64
 	var background sql.NullString
 	err := s.db.QueryRow(`
-		SELECT id, name, kind, hub_id, group_id, private, COALESCE(position, 0), owner_id, created_at, default_perms, background
+		SELECT id, name, kind, hub_id, group_id, private, COALESCE(position, 0), owner_id, created_at, default_perms, background, privacy
 		FROM rooms WHERE id = ?`, id,
-	).Scan(&room.ID, &room.Name, &room.Kind, &hubID, &groupID, &room.Private, &room.Position, &room.OwnerID, &room.CreatedAt, &room.DefaultPerms, &background)
+	).Scan(&room.ID, &room.Name, &room.Kind, &hubID, &groupID, &room.Private, &room.Position, &room.OwnerID, &room.CreatedAt, &room.DefaultPerms, &background, &room.Privacy)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound

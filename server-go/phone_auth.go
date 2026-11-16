@@ -117,6 +117,10 @@ func (a *server) phoneSignupStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	phoneHMAC := a.phoneDigest(phone)
+	if a.phoneBlacklisted(phoneHMAC) {
+		fail(http.StatusForbidden, "Регистрация недоступна").write(w)
+		return
+	}
 	if _, err := a.store.PhoneSignupByUsername(username); err == nil {
 		fail(http.StatusConflict, "Этот логин уже занят").write(w)
 		return
@@ -282,6 +286,10 @@ func (a *server) phoneLinkStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	phoneHMAC := a.phoneDigest(phone)
+	if a.phoneBlacklisted(phoneHMAC) {
+		fail(http.StatusForbidden, "Этот номер недоступен").write(w)
+		return
+	}
 	if other, err := a.store.UserByPhoneHMAC(phoneHMAC); err == nil && other.ID != user.ID {
 		fail(http.StatusConflict, "Этот номер уже привязан к другому аккаунту").write(w)
 		return

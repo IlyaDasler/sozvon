@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Созвон — админка</title>
+  <link rel="stylesheet" href="/admin/app.css">
+</head>
+<body>
+  <div id="login" class="login-shell">
+    <form id="login-form" class="card login-card">
+      <div class="brand"><span class="brand-dot"></span> Созвон <span class="muted">/ админка</span></div>
+      <h1>Вход в панель</h1>
+      <p class="muted">Доступ только для super admin и назначенных модераторов.</p>
+      <label>Логин или email<input id="login-username" autocomplete="username" required></label>
+      <label>Пароль<input id="login-password" type="password" autocomplete="current-password" required></label>
+      <label id="totp-field" class="hidden">Код 2FA<input id="login-totp" inputmode="numeric" autocomplete="one-time-code"></label>
+      <button id="login-button" class="primary" type="submit">Войти</button>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+  </div>
+
+  <div id="app" class="app hidden">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-dot"></span> Созвон <span class="muted">admin</span></div>
+      <nav id="nav">
+        <button data-tab="users" class="active">Пользователи</button>
+        <button data-tab="channels">Каналы</button>
+        <button data-tab="reports">Жалобы</button>
+        <button data-tab="appeals">Апелляции</button>
+        <button data-tab="approvals">Подтверждения</button>
+        <button data-tab="roles">Роли</button>
+        <button data-tab="audit">Аудит</button>
+      </nav>
+      <div class="me">
+        <div id="me-name"></div>
+        <div id="me-role" class="muted"></div>
+        <button id="logout" class="ghost">Выйти</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div id="banner" class="banner hidden"></div>
+      <section id="tab-users" class="tab">
+        <header class="tab-head"><div><h1>Пользователи</h1><p class="muted">Только метаданные. Переписка и ключи недоступны.</p></div></header>
+        <div class="toolbar">
+          <input id="users-q" placeholder="ID, логин или имя">
+          <select id="users-status"><option value="">Все статусы</option><option value="active">Активные</option><option value="suspended">Замороженные</option><option value="banned">Забаненные</option><option value="deleted">Удалённые</option></select>
+          <button id="users-refresh" class="ghost">Обновить</button>
+        </div>
+        <div id="users-table" class="table-wrap"></div>
+      </section>
+
+      <section id="tab-channels" class="tab hidden">
+        <header class="tab-head"><div><h1>Каналы</h1><p class="muted">Видимость public / hidden. Содержимое сообщений не показывается.</p></div></header>
+        <div class="toolbar">
+          <input id="channels-q" placeholder="Название или ID">
+          <select id="channels-kind"><option value="">Все типы</option><option value="hub">Хабы</option><option value="room">Комнаты</option></select>
+          <button id="channels-refresh" class="ghost">Обновить</button>
+        </div>
+        <div id="channels-table" class="table-wrap"></div>
+      </section>
+
+      <section id="tab-reports" class="tab hidden">
+        <header class="tab-head"><div><h1>Жалобы</h1><p class="muted">Жалобы содержат только метаданные и текст обращения.</p></div></header>
+        <div id="reports-table" class="table-wrap"></div>
+      </section>
+
+      <section id="tab-appeals" class="tab hidden">
+        <header class="tab-head"><div><h1>Апелляции</h1><p class="muted">Апелляции забаненных пользователей.</p></div></header>
+        <div id="appeals-table" class="table-wrap"></div>
+      </section>
+
+      <section id="tab-approvals" class="tab hidden">
+        <header class="tab-head"><div><h1>Подтверждения</h1><p class="muted">Необратимые действия модератора выполняются только после подтверждения super admin.</p></div></header>
+        <div id="approvals-table" class="table-wrap"></div>
+      </section>
+
+      <section id="tab-roles" class="tab hidden">
+        <header class="tab-head"><div><h1>Роли</h1><p class="muted">Выдавать и отзывать роли может только super admin.</p></div></header>
+        <form id="role-form" class="card inline-form">
+          <label>ID пользователя<input id="role-user" inputmode="numeric" required></label>
+          <label>Роль<select id="role-name"><option value="moderator">Модератор</option><option value="super_admin">Super admin</option></select></label>
+          <label>Срок<input id="role-expires" type="date"></label>
+          <label>Причина<input id="role-reason" required></label>
+          <button class="primary" type="submit">Выдать</button>
+        </form>
+        <div id="roles-table" class="table-wrap"></div>
+      </section>
+
+      <section id="tab-audit" class="tab hidden">
+        <header class="tab-head"><div><h1>Аудит</h1><p class="muted">Только свои действия для модератора, все — для super admin.</p></div></header>
+        <div id="audit-table" class="table-wrap"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/admin/app.js" defer></script>
+</body>
+</html>
