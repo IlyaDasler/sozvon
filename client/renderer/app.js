@@ -2975,6 +2975,7 @@ const SETTINGS_TABS = {
   account: 'Аккаунт',
   privacy: 'Данные и конфиденциальность',
   about: 'О приложении',
+  admin: 'Администрирование',
 };
 
 function showSettingsTab(tab) {
@@ -2986,6 +2987,7 @@ function showSettingsTab(tab) {
   document.getElementById('settings')?.classList.toggle('privacy-mode', current === 'privacy');
   // Оформление: подложка без размытия — видно, как выбранная тема ложится на приложение
   document.getElementById('settings')?.classList.toggle('look-preview', current === 'look');
+  document.getElementById('settings')?.classList.toggle('admin-mode', current === 'admin');
   $('settings').querySelector('.set-body').scrollTop = 0;
   if (current === 'privacy') {
     showPrivacyPage(window.privacyPage || 'data');

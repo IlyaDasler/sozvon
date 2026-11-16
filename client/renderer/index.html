@@ -335,9 +335,6 @@
         </div>
         <button class="icon-btn" id="mic-btn" title="Микрофон (Ctrl+Shift+M)"></button>
         <button class="icon-btn" id="deafen-btn" title="Звук (Ctrl+Shift+D)"></button>
-        <button class="icon-btn hidden" id="moderation-btn" title="Модерация">
-          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M9 12l2 2 4-4"/></svg>
-        </button>
         <button class="icon-btn" id="settings-btn" title="Настройки">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
         </button>
@@ -535,6 +532,7 @@
           <button type="button" data-privacy="crypto">Шифрование</button>
         </div>
         <button type="button" data-tab="about">О приложении</button>
+        <button type="button" data-tab="admin" id="settings-admin-tab" class="hidden">Администрирование</button>
         <div class="rs-sep"></div>
         <button type="button" class="rs-danger" id="logout-btn">Выйти из аккаунта</button>
       </nav>
@@ -883,6 +881,22 @@
             </section>
           </div>
 
+
+          <div class="set-pane" data-pane="admin">
+            <div class="set-block admin-section-head">
+              <h4>Администрирование</h4>
+              <p class="muted small">Модерация пользователей и каналов. Переписка и ключи недоступны.</p>
+            </div>
+            <div class="admin-section-grid">
+              <button type="button" class="admin-card" data-admin-tab="users"><b>Пользователи</b><span>Логины, почта, последний вход, статусы и баны.</span></button>
+              <button type="button" class="admin-card" data-admin-tab="channels"><b>Каналы</b><span>Все каналы, приватность, удаление.</span></button>
+              <button type="button" class="admin-card" data-admin-tab="reports"><b>Жалобы</b><span>Очередь обращений пользователей.</span></button>
+              <button type="button" class="admin-card" data-admin-tab="appeals"><b>Апелляции</b><span>Обращения забаненных.</span></button>
+              <button type="button" class="admin-card hidden" data-admin-tab="approvals" data-super-only><b>Подтверждения</b><span>Необратимые действия модераторов.</span></button>
+              <button type="button" class="admin-card hidden" data-admin-tab="roles" data-super-only><b>Роли</b><span>Выдать или отозвать модератора.</span></button>
+              <button type="button" class="admin-card" data-admin-tab="audit"><b>Аудит</b><span>История действий администрации.</span></button>
+            </div>
+          </div>
           <div class="set-pane" data-pane="about">
             <div class="set-block" id="about-section">
               <h4>О приложении</h4>

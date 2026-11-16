@@ -394,7 +394,6 @@ func (s *Store) AdminUsers(query, status string, limit, offset int) ([]AdminUser
 			return nil, 0, err
 		}
 		item.EmailSet = item.Email != ""
-		item.Email = maskEmail(item.Email)
 		list = append(list, item)
 	}
 	return list, total, rows.Err()

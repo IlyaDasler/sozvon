@@ -20,21 +20,23 @@
   async function refreshModerationAccess() {
     try {
       state.me = await api('/me');
-      el('moderation-btn').classList.remove('hidden');
+      el('settings-admin-tab').classList.remove('hidden');
       el('moderation-role').textContent = isSuper() ? 'super admin' : 'модератор';
       for (const tab of ['approvals', 'roles']) {
         const button = document.querySelector(`#moderation-nav [data-mod-tab="${tab}"]`);
         if (button) button.classList.toggle('hidden', !isSuper());
       }
+      document.querySelectorAll('[data-super-only]').forEach((card) => card.classList.toggle('hidden', !isSuper()));
       return true;
     } catch {
       state.me = null;
-      el('moderation-btn').classList.add('hidden');
+      el('settings-admin-tab').classList.add('hidden');
+      document.querySelectorAll('[data-super-only]').forEach((card) => card.classList.add('hidden'));
       return false;
     }
   }
 
-  function actionButtons(id, status, banned, suspended) {
+  function actionButtons(id, banned, suspended) {
     const buttons = [];
     if (banned) return `<button class="btn small" data-mod-action="unban" data-id="${id}">Разбанить</button>`;
     if (suspended) buttons.push(`<button class="btn small" data-mod-action="unsuspend" data-id="${id}">Разморозить</button>`);
@@ -62,14 +64,15 @@
       const q = encodeURIComponent(el('mod-users-q').value.trim());
       const status = encodeURIComponent(el('mod-users-status').value);
       const data = await api(`/users?q=${q}&status=${status}&limit=100`);
-      el('mod-users-list').innerHTML = table(data.users, ['ID', 'Логин', 'Имя', 'Статус', 'Последний вход', 'Роль', 'Действия'], (user) => `
+      el('mod-users-list').innerHTML = table(data.users, ['ID', 'Логин', 'Почта', 'Имя', 'Статус', 'Последний вход', 'Роль', 'Действия'], (user) => `
         <td><code>${user.ID}</code></td>
         <td><code>@${esc(user.Username)}</code></td>
+        <td>${user.Email ? esc(user.Email) : '—'}</td>
         <td><b>${esc(user.DisplayName)}</b></td>
         <td>${user.BannedAt ? '<span class="mod-pill danger">забанен</span>' : user.SuspendedAt ? '<span class="mod-pill warn">заморожен</span>' : user.DeletedAt ? '<span class="mod-pill">удалён</span>' : '<span class="mod-pill ok">активен</span>'}</td>
         <td>${fmt(user.LastLoginAt)}</td>
         <td>${user.Role ? `<span class="mod-pill">${esc(user.Role)}</span>` : '—'}</td>
-        <td><div class="mod-actions">${actionButtons(user.ID, user.Status, Boolean(user.BannedAt), Boolean(user.SuspendedAt))}</div></td>`);
+        <td><div class="mod-actions">${actionButtons(user.ID, Boolean(user.BannedAt), Boolean(user.SuspendedAt))}</div></td>`);
     };
     el('mod-users-refresh').onclick = () => load().catch((error) => fail(error.message));
     el('mod-users-status').onchange = () => load().catch((error) => fail(error.message));
@@ -192,8 +195,10 @@
     try { await tabs[tab](); } catch (error) { fail(error.message); }
   }
 
-  async function openModeration() {
+  async function openModeration(tab = 'users') {
     if (!state.me && !(await refreshModerationAccess())) return;
+    state.tab = tabs[tab] ? tab : 'users';
+    if (!$('settings').classList.contains('hidden')) closeSettings();
     el('moderation').classList.remove('hidden');
     await openTab(state.tab);
   }
@@ -235,8 +240,8 @@
   window.openModeration = openModeration;
 
   document.addEventListener('DOMContentLoaded', () => {
-    el('moderation-btn').onclick = openModeration;
     el('moderation-close').onclick = closeModeration;
+    document.querySelectorAll('[data-admin-tab]').forEach((card) => card.addEventListener('click', () => openModeration(card.dataset.adminTab)));
     document.querySelectorAll('#moderation-nav [data-mod-tab]').forEach((button) => {
       button.addEventListener('click', () => openTab(button.dataset.modTab));
     });
