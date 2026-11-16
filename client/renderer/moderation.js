@@ -17,7 +17,7 @@
     el('admin-error').textContent = message || '';
   }
 
-  async function refreshModerationAccess() {
+  async function refreshModerationAccess(retry = 2) {
     try {
       state.me = await api('/me');
       el('settings-admin-tab').classList.remove('hidden');
@@ -27,10 +27,15 @@
       }
       document.querySelectorAll('[data-super-only]').forEach((card) => card.classList.toggle('hidden', !isSuper()));
       return true;
-    } catch {
+    } catch (error) {
       state.me = null;
       el('settings-admin-tab').classList.add('hidden');
       document.querySelectorAll('[data-super-only]').forEach((card) => card.classList.add('hidden'));
+      // После обновления приложение может стартовать раньше, чем восстановится
+      // сессия/сеть. Несколько коротких повторов не прячут меню навсегда.
+      if (retry > 0 && error?.status !== 403) {
+        setTimeout(() => refreshModerationAccess(retry - 1), 2000);
+      }
       return false;
     }
   }
