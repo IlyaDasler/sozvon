@@ -634,13 +634,14 @@ async function decryptMessages(list, conv) {
             localStorage.removeItem(cacheKey);
           }
         }
-        m.plain = await decryptV2(m, conv);
-        delete m.locked;
+        const plain = await decryptV2(m, conv);
         try {
-          const blob = await window.desktop.identity.cacheSeal(identityContext(), JSON.stringify(m.plain));
+          const blob = await window.desktop.identity.cacheSeal(identityContext(), JSON.stringify(plain));
           localStorage.setItem(cacheKey, blob);
         } catch (err) {
         }
+        m.plain = plain;
+        delete m.locked;
       } catch (err) {
         m.locked = 'broken';
       }
@@ -658,12 +659,13 @@ async function decryptMessages(list, conv) {
             localStorage.removeItem(cacheKey);
           }
         }
-        m.plain = await decryptV4Room(m, conv);
-        delete m.locked;
+        const plain = await decryptV4Room(m, conv);
         try {
-          const blob = await window.desktop.identity.cacheSeal(identityContext(), JSON.stringify(m.plain));
+          const blob = await window.desktop.identity.cacheSeal(identityContext(), JSON.stringify(plain));
           localStorage.setItem(cacheKey, blob);
         } catch {}
+        m.plain = plain;
+        delete m.locked;
       } catch (err) {
         m.locked = 'broken';
       }
