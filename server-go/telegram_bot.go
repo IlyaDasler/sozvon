@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -85,7 +86,10 @@ func (a *server) telegramHTTP(method string, payload any) (json.RawMessage, erro
 	if payload != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	client := &http.Client{Timeout: 40 * time.Second}
+	// На этом VPS IPv6 до api.telegram.org не маршрутизируется, а Go иногда
+	// выбирает AAAA и ждёт таймаут. Telegram работает по IPv4 — фиксируем tcp4.
+	transport := &http.Transport{DialContext: (&net.Dialer{Timeout: 15 * time.Second}).DialContext}
+	client := &http.Client{Timeout: 40 * time.Second, Transport: transport}
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("telegram %s: network error", method)
