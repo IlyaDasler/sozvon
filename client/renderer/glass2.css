@@ -524,6 +524,16 @@ html[data-theme='glass2'] .content {
   flex: none;
 }
 
+/* Кнопки, которые сами стоят абсолютно: правило центрирования значка выше
+   не должно срывать их в поток — иначе «карандаш» карточки профиля и крестики
+   карточек уезжают влево-вниз и обрезаются краем. */
+[data-theme='glass2'] .profile-card .pc-edit.icon-btn,
+[data-theme='glass2'] .event-form .event-close.icon-btn,
+[data-theme='glass2'] .invite-card .invite-close.icon-btn,
+[data-theme='glass2'] .room-card .invite-close.icon-btn {
+  position: absolute;
+}
+
 /* В шапке сайдбара кнопка 28 px, а значок был 17 px — из-за полупикселя
    (5,5 px с каждой стороны) сглаживание визуально сдвигало иконку. Берём 18 px:
    ровно по 5 px с каждой стороны, без дробных центров. */
