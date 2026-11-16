@@ -45,7 +45,7 @@
     .btn { border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--text); border-radius:8px; padding:6px 9px; font:inherit; font-size:12px; }
     .btn.primary { background:var(--accent); color:#081020; border-color:var(--accent); font-weight:700; }
     .btn.danger { color:#ffb3b3; border-color:rgba(255,107,107,.35); background:rgba(255,107,107,.06); }
-    .moderation-card { width:min(940px,92vw); height:min(620px,86vh); grid-template-columns:190px minmax(0,1fr); overflow:hidden; }
+    .moderation-card { width:min(1040px,94vw); height:min(620px,86vh); grid-template-columns:190px minmax(0,1fr); overflow:hidden; }
     .moderation-content { overflow:hidden; }
     .demo-toolbar { display:flex; gap:7px; margin:0 0 14px; }
     .demo-toolbar input, .demo-toolbar select { border:1px solid var(--line); background:rgba(0,0,0,.18); color:var(--text); border-radius:8px; padding:8px 10px; font:inherit; font-size:12px; }
@@ -88,12 +88,12 @@
           <div class="demo-toolbar"><input placeholder="ID, логин или имя"><select><option>Все статусы</option></select><button class="btn">Обновить</button></div>
           <p class="mod-note">Дата последнего входа и сессии — даже для забаненных и удалённых. Переписка и ключи недоступны.</p>
           <table class="mod-table">
-            <thead><tr><th>ID</th><th>Аккаунт</th><th>Статус</th><th>Последний вход</th><th>Роль</th><th>Действия</th></tr></thead>
+            <thead><tr><th>ID</th><th>Логин</th><th>Имя</th><th>Статус</th><th>Последний вход</th><th>Роль</th><th>Действия</th></tr></thead>
             <tbody>
-              <tr><td>9</td><td><div class="mod-user">Соломон Ицхакович<div class="sub">@ilya.dasler</div></div></td><td><span class="mod-pill ok">активен</span></td><td>16.11.2026, 15:26</td><td><span class="mod-pill">super_admin</span></td><td><div class="mod-actions"><button class="btn">Заморозить</button><button class="btn danger">Забанить</button></div></td></tr>
-              <tr><td>20</td><td><div class="mod-user">Эридан<div class="sub">@angiedoll</div></div></td><td><span class="mod-pill ok">активен</span></td><td>16.11.2026, 14:58</td><td><span class="mod-pill">super_admin</span></td><td><div class="mod-actions"><button class="btn">Заморозить</button><button class="btn danger">Забанить</button></div></td></tr>
-              <tr><td>41</td><td><div class="mod-user">Иван Петров<div class="sub">@ivan.petrov</div></div></td><td><span class="mod-pill warn">заморожен</span></td><td>15.11.2026, 21:04</td><td>—</td><td><div class="mod-actions"><button class="btn">Разморозить</button><button class="btn danger">Забанить</button></div></td></tr>
-              <tr><td>52</td><td><div class="mod-user">Мария Соколова<div class="sub">@masha</div></div></td><td><span class="mod-pill danger">забанен</span></td><td>13.11.2026, 09:10</td><td>—</td><td><div class="mod-actions"><button class="btn">Разбанить</button></div></td></tr>
+              <tr><td>9</td><td><code>@ilya.dasler</code></td><td><div class="mod-user">Соломон Ицхакович</div></td><td><span class="mod-pill ok">активен</span></td><td>16.11.2026, 15:26</td><td><span class="mod-pill">super_admin</span></td><td><div class="mod-actions"><button class="btn">Заморозить</button><button class="btn danger">Забанить</button></div></td></tr>
+              <tr><td>20</td><td><code>@angiedoll</code></td><td><div class="mod-user">Эридан</div></td><td><span class="mod-pill ok">активен</span></td><td>16.11.2026, 14:58</td><td><span class="mod-pill">super_admin</span></td><td><div class="mod-actions"><button class="btn">Заморозить</button><button class="btn danger">Забанить</button></div></td></tr>
+              <tr><td>41</td><td><code>@ivan.petrov</code></td><td><div class="mod-user">Иван Петров</div></td><td><span class="mod-pill warn">заморожен</span></td><td>15.11.2026, 21:04</td><td>—</td><td><div class="mod-actions"><button class="btn">Разморозить</button><button class="btn danger">Забанить</button></div></td></tr>
+              <tr><td>52</td><td><code>@masha</code></td><td><div class="mod-user">Мария Соколова</div></td><td><span class="mod-pill danger">забанен</span></td><td>13.11.2026, 09:10</td><td>—</td><td><div class="mod-actions"><button class="btn">Разбанить</button></div></td></tr>
             </tbody>
           </table>
         </div>

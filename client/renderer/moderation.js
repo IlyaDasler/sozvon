@@ -62,9 +62,10 @@
       const q = encodeURIComponent(el('mod-users-q').value.trim());
       const status = encodeURIComponent(el('mod-users-status').value);
       const data = await api(`/users?q=${q}&status=${status}&limit=100`);
-      el('mod-users-list').innerHTML = table(data.users, ['ID', 'Аккаунт', 'Статус', 'Последний вход', 'Роль', 'Действия'], (user) => `
+      el('mod-users-list').innerHTML = table(data.users, ['ID', 'Логин', 'Имя', 'Статус', 'Последний вход', 'Роль', 'Действия'], (user) => `
         <td><code>${user.ID}</code></td>
-        <td><b>${esc(user.DisplayName)}</b><div class="muted small">@${esc(user.Username)}</div></td>
+        <td><code>@${esc(user.Username)}</code></td>
+        <td><b>${esc(user.DisplayName)}</b></td>
         <td>${user.BannedAt ? '<span class="mod-pill danger">забанен</span>' : user.SuspendedAt ? '<span class="mod-pill warn">заморожен</span>' : user.DeletedAt ? '<span class="mod-pill">удалён</span>' : '<span class="mod-pill ok">активен</span>'}</td>
         <td>${fmt(user.LastLoginAt)}</td>
         <td>${user.Role ? `<span class="mod-pill">${esc(user.Role)}</span>` : '—'}</td>
