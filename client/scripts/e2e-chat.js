@@ -140,7 +140,7 @@ runTest(async () => {
       const card = document.getElementById('profile-card');
       return !card.classList.contains('hidden') && card.querySelector('.pc-name')?.textContent === 'Аня' &&
         card.querySelector('.pc-bio strong')?.textContent === 'CS2' && Boolean(card.querySelector('.pc-banner').style.getPropertyValue('--banner')) &&
-        [...card.querySelectorAll('.pc-actions .btn')].map((b) => b.textContent).join() === 'Написать,Позвонить';
+        [...card.querySelectorAll('.pc-actions .btn')].map((b) => b.textContent).join() === 'Написать,Позвонить,Пожаловаться';
     })()`,
     'карточка Ани у Бори'
   );
